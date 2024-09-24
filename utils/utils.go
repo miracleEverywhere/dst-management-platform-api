@@ -99,7 +99,7 @@ func Base64Decode(input string) string {
 }
 
 func ReadConfig() (Config, error) {
-	content, _ := os.ReadFile("DstMP.db")
+	content, _ := os.ReadFile("DstMP.sdb")
 	jsonData := Base64Decode(string(content))
 
 	var config Config
