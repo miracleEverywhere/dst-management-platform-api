@@ -15,9 +15,6 @@ func main() {
 
 	//静态资源
 	r.Use(static.Serve("/", static.LocalFile("C:/Users/admin/WebstormProjects/dst-management-platform-web/dist", true)))
-	r.GET("/", func(c *gin.Context) {
-		c.File("web/index.html")
-	})
 
 	//用户、鉴权模块
 	r = auth.RouteAuth(r)
