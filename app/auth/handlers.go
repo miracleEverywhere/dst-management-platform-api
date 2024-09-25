@@ -2,7 +2,6 @@ package auth
 
 import (
 	"dst-management-platform-api/utils"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -17,6 +16,11 @@ type JsonBody struct {
 }
 
 func handleLogin(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
 	var loginForm JsonBody
 	if err := c.ShouldBindJSON(&loginForm); err != nil {
 		// 如果绑定失败，返回 400 错误
@@ -24,14 +28,13 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 	config, _ := utils.ReadConfig()
+	// 校验用户名和密码
 	if loginForm.LoginForm.Username != config.Username {
-		fmt.Println(loginForm.LoginForm.Username)
-		fmt.Println(config)
-		c.JSON(http.StatusOK, gin.H{"code": 411, "message": "用户名错误"})
+		utils.RespondWithError(c, 420, langStr)
 		return
 	}
 	if loginForm.LoginForm.Password != config.Password {
-		c.JSON(http.StatusOK, gin.H{"code": 411, "message": "密码错误"})
+		utils.RespondWithError(c, 421, langStr)
 		return
 	}
 

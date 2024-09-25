@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
 	"os"
 	"time"
 )
@@ -74,13 +75,8 @@ func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
 }
 
 func Sha512(input string) string {
-	// 创建一个新的 SHA-512 哈希对象
 	hasher := sha512.New()
-
-	// 写入需要加密的数据
 	hasher.Write([]byte(input))
-
-	// 计算哈希值并返回十六进制字符串
 	hashed := hasher.Sum(nil)
 	return hex.EncodeToString(hashed)
 }
@@ -108,4 +104,27 @@ func ReadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
 	}
 	return config, nil
+}
+
+func MWlang() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		lang := c.Request.Header.Get("X-I18n-Lang")
+		c.Set("lang", lang)
+	}
+}
+
+func MWtoken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Request.Header.Get("authorization")
+		config, _ := ReadConfig()
+		tokenSecret := config.JwtSecret
+		_, err := ValidateJWT(token, []byte(tokenSecret))
+		if err != nil {
+			lang := c.Request.Header.Get("X-I18n-Lang")
+			RespondWithError(c, 411, lang)
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }

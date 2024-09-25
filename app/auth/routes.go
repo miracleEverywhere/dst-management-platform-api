@@ -1,12 +1,15 @@
 package auth
 
-import "github.com/gin-gonic/gin"
+import (
+	"dst-management-platform-api/utils"
+	"github.com/gin-gonic/gin"
+)
 
 func RouteAuth(r *gin.Engine) *gin.Engine {
 	v1 := r.Group("v1")
 	{
 		v1.POST("/login", handleLogin)
-		v1.GET("/userinfo", handleUserinfo)
+		v1.GET("/userinfo", utils.MWtoken(), handleUserinfo)
 	}
 
 	return r
