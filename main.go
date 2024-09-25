@@ -18,8 +18,8 @@ func main() {
 
 	//用户、鉴权模块
 	r = auth.RouteAuth(r)
-	// 启动服务器
 
+	// 启动服务器
 	err := r.Run(":7000")
 	if err != nil {
 		return
