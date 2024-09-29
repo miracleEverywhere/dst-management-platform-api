@@ -36,6 +36,7 @@ type AutoBackup struct {
 
 type Config struct {
 	Username     string         `json:"username"`
+	Nickname     string         `json:"nickname"`
 	Password     string         `json:"password"`
 	JwtSecret    string         `json:"jwtSecret"`
 	AutoUpdate   AutoUpdate     `json:"autoUpdate"`
@@ -96,14 +97,33 @@ func Base64Decode(input string) string {
 
 func ReadConfig() (Config, error) {
 	content, _ := os.ReadFile("DstMP.sdb")
-	jsonData := Base64Decode(string(content))
-
+	//jsonData := Base64Decode(string(content))
+	jsonData := string(content)
 	var config Config
 	err := json.Unmarshal([]byte(jsonData), &config)
 	if err != nil {
 		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
 	}
 	return config, nil
+}
+
+func WriteConfig(config Config) {
+	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+		return
+	}
+	file, err := os.OpenFile("DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer file.Close() // 在函数结束时关闭文件
+	// 写入 JSON 数据到文件
+	_, err = file.Write(data)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
 }
 
 func MWlang() gin.HandlerFunc {
@@ -121,7 +141,7 @@ func MWtoken() gin.HandlerFunc {
 		_, err := ValidateJWT(token, []byte(tokenSecret))
 		if err != nil {
 			lang := c.Request.Header.Get("X-I18n-Lang")
-			RespondWithError(c, 411, lang)
+			RespondWithError(c, 420, lang)
 			c.Abort()
 			return
 		}

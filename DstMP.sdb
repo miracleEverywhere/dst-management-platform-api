@@ -1,1 +1,28 @@
-ewogICJ1c2VybmFtZSI6ICJhZG1pbiIsCiAgInBhc3N3b3JkIjogImJhMzI1Mzg3NmFlZDZiYzIyZDRhNmZmNTNkODQwNmM2YWQ4NjQxOTVlZDE0NGFiNWM4NzYyMWI2YzIzM2I1NDhiYWVhZTY5NTZkZjM0NmVjOGMxN2Y1ZWExMGYzNWVlM2NiYzUxNDc5N2VkN2RkZDMxNDU0NjRlMmEwYmFiNDEzIiwKICAiand0U2VjcmV0IjogIkZTRElGSHNkZmtndm0zMmRjdmtLREpTVjA5IiwKICAiYXV0b1VwZGF0ZSI6IHsKICAgICJlbmFibGUiOiB0cnVlLAogICAgInRpbWUiOiAiMDY6MDA6MDAiCiAgfSwKICAiYXV0b0Fubm91bmNlIjogW3sibmFtZSI6ICJ0ZXN0MSIsICJlbmFibGUiOiB0cnVlLCAiY29udGVudCI6ICLkvaDlpb0iLCAiZnJlcXVlbmN5IjogNjB9LCB7Im5hbWUiOiAidGVzdDEiLCAiZW5hYmxlIjogdHJ1ZSwgImNvbnRlbnQiOiAi5L2g5aW9IiwgImZyZXF1ZW5jeSI6IDYwfV0sCiAgImF1dG9CYWNrdXAiOiB7CiAgICAiZW5hYmxlIjogdHJ1ZSwKICAgICJ0aW1lIjogIjA2OjAwOjAwIgogIH0KfQ==
+{
+    "username": "admin",
+    "nickname": "管理员",
+    "password": "4dff4ea340f0a823f15d3f4f01ab62eae0e5da579ccb851f8db9dfe84c58b2b37b89903a740e1ee172da793a6e79d560e5f7f9bd058a12a280433ed6fa46510a",
+    "jwtSecret": "FSDIFHsdfkgvm32dcvkKDJSV09",
+    "autoUpdate": {
+        "enable": true,
+        "time": "06:00:00"
+    },
+    "autoAnnounce": [
+        {
+            "name": "test1",
+            "enable": true,
+            "content": "你好",
+            "frequency": 60
+        },
+        {
+            "name": "test1",
+            "enable": true,
+            "content": "你好",
+            "frequency": 60
+        }
+    ],
+    "autoBackup": {
+        "enable": true,
+        "time": "06:00:00"
+    }
+}

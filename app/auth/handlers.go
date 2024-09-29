@@ -15,6 +15,10 @@ type JsonBody struct {
 	LoginForm LoginForm `json:"loginForm"`
 }
 
+type UpdatePasswordForm struct {
+	Password string `json:"password"`
+}
+
 func handleLogin(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -30,298 +34,312 @@ func handleLogin(c *gin.Context) {
 	config, _ := utils.ReadConfig()
 	// 校验用户名和密码
 	if loginForm.LoginForm.Username != config.Username {
-		utils.RespondWithError(c, 420, langStr)
+		utils.RespondWithError(c, 421, langStr)
 		return
 	}
 	if loginForm.LoginForm.Password != config.Password {
-		utils.RespondWithError(c, 421, langStr)
+		utils.RespondWithError(c, 422, langStr)
 		return
 	}
 
 	jwtSecret := []byte(config.JwtSecret)
 	token, _ := utils.GenerateJWT(config.Username, jwtSecret, 12)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "ok", "data": gin.H{"token": token}})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("loginSuccess", langStr), "data": gin.H{"token": token}})
 }
 
 func handleUserinfo(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{"username": "admin"}})
+	config, _ := utils.ReadConfig()
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
+		"username": config.Username,
+		"nickname": config.Nickname,
+	}})
 }
 
 func handleMenu(c *gin.Context) {
-	type BoolOrNil interface{}
-	type ChildItem struct {
-		ID          int         `json:"id"`
-		Name        string      `json:"name"`
-		Code        string      `json:"code"`
-		Type        string      `json:"type"`
-		ParentID    *int        `json:"parentId"` // 允许为 nil
-		Path        string      `json:"path"`
-		Redirect    *string     `json:"redirect"` // 允许为 nil
-		Icon        string      `json:"icon"`
-		Component   string      `json:"component"`
-		Layout      string      `json:"layout"`
-		KeepAlive   BoolOrNil   `json:"keepAlive"`   // 允许为 nil
-		Method      *string     `json:"method"`      // 允许为 nil
-		Description *string     `json:"description"` // 允许为 nil
-		Show        bool        `json:"show"`
-		Enable      bool        `json:"enable"`
-		Order       int         `json:"order"`
-		Children    []ChildItem `json:"children,omitempty"` // 可选字段
+	type MenuItem struct {
+		MenuId      int    `json:"menuId"`
+		MenuName    string `json:"menuName"`
+		EnName      string `json:"enName"`
+		ParentId    int    `json:"parentId"`
+		MenuType    string `json:"menuType"`
+		Path        string `json:"path"`
+		Name        string `json:"name"`
+		Component   string `json:"component"`
+		Icon        string `json:"icon"`
+		IsHide      string `json:"isHide"`
+		IsLink      string `json:"isLink"`
+		IsKeepAlive string `json:"isKeepAlive"`
+		IsFull      string `json:"isFull"`
+		IsAffix     string `json:"isAffix"`
+		Redirect    string `json:"redirect"`
+		ActiveMenu  *int   `json:"activeMenu"`
 	}
 
 	type Response struct {
-		Code    int         `json:"code"`
-		Message string      `json:"message"`
-		Data    []ChildItem `json:"data"`
+		Code    int        `json:"code"`
+		Message string     `json:"message"`
+		Data    []MenuItem `json:"data"`
 	}
-	data := []ChildItem{
+	menuItems := []MenuItem{
 		{
-			ID:          100,
-			Name:        "首页",
-			Code:        "Home",
-			Type:        "MENU",
-			ParentID:    nil,
-			Path:        "/",
-			Redirect:    nil,
-			Icon:        "i-fe:home",
-			Component:   "/src/views/home/index.vue",
-			Layout:      "",
-			KeepAlive:   true,
-			Method:      nil,
-			Description: nil,
-			Show:        true,
-			Enable:      true,
-			Order:       0,
+			MenuId:      100,
+			MenuName:    "个人中心",
+			EnName:      "Profile",
+			ParentId:    0,
+			MenuType:    "2",
+			Path:        "/profile",
+			Name:        "profile",
+			Component:   "profile/index",
+			Icon:        "User",
+			IsHide:      "0",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
 		},
 		{
-			ID:          101,
-			Name:        "设置",
-			Code:        "Setting",
-			Type:        "MENU",
-			ParentID:    nil,
-			Path:        "",
-			Redirect:    nil,
-			Icon:        "i-fe:settings",
+			MenuId:      101,
+			MenuName:    "设置",
+			EnName:      "Settings",
+			ParentId:    0,
+			MenuType:    "1",
+			Path:        "/settings",
+			Name:        "settings",
 			Component:   "",
-			Layout:      "",
-			KeepAlive:   true,
-			Method:      nil,
-			Description: nil,
-			Show:        true,
-			Enable:      true,
-			Order:       1,
-			Children: []ChildItem{
-				{
-					ID:          10101,
-					Name:        "玩家",
-					Code:        "Player",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(101),
-					Path:        "/setting/player",
-					Redirect:    nil,
-					Icon:        "i-fe:user",
-					Component:   "/src/views/setting/player.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       0,
-				},
-				{
-					ID:          10102,
-					Name:        "房间",
-					Code:        "Room",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(101),
-					Path:        "/setting/room",
-					Redirect:    nil,
-					Icon:        "i-fe:codesandbox",
-					Component:   "/src/views/setting/room.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       1,
-				},
-			},
+			Icon:        "Tools",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/settings/room",
+			ActiveMenu:  nil,
 		},
 		{
-			ID:          102,
-			Name:        "工具",
-			Code:        "Tools",
-			Type:        "MENU",
-			ParentID:    nil,
-			Path:        "",
-			Redirect:    nil,
-			Icon:        "i-fe:tool",
+			MenuId:      10101,
+			MenuName:    "房间",
+			EnName:      "Room",
+			ParentId:    101,
+			MenuType:    "2",
+			Path:        "/settings/room",
+			Name:        "settingsRoom",
+			Component:   "settings/room",
+			Icon:        "UserFilled",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      10102,
+			MenuName:    "玩家",
+			EnName:      "Player",
+			ParentId:    101,
+			MenuType:    "2",
+			Path:        "/settings/player",
+			Name:        "settingsPlayer",
+			Component:   "settings/player",
+			Icon:        "Avatar",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      102,
+			MenuName:    "工具",
+			EnName:      "Tools",
+			ParentId:    0,
+			MenuType:    "1",
+			Path:        "/tools",
+			Name:        "tools",
 			Component:   "",
-			Layout:      "",
-			KeepAlive:   true,
-			Method:      nil,
-			Description: nil,
-			Show:        true,
-			Enable:      true,
-			Order:       2,
-			Children: []ChildItem{
-				{
-					ID:          10201,
-					Name:        "定时更新",
-					Code:        "Update",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(102),
-					Path:        "/tools/update",
-					Redirect:    nil,
-					Icon:        "i-fe:download-cloud",
-					Component:   "/src/views/tools/update.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       0,
-				},
-				{
-					ID:          10202,
-					Name:        "定时备份",
-					Code:        "Backup",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(102),
-					Path:        "/tools/backup",
-					Redirect:    nil,
-					Icon:        "i-fe:save",
-					Component:   "/src/views/tools/backup.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       1,
-				},
-				{
-					ID:          10203,
-					Name:        "定时通知",
-					Code:        "Announce",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(102),
-					Path:        "/tools/announce",
-					Redirect:    nil,
-					Icon:        "i-fe:send",
-					Component:   "/src/views/tools/announce.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       2,
-				},
-			},
+			Icon:        "Tools",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/tools/update",
+			ActiveMenu:  nil,
 		},
 		{
-			ID:          103,
-			Name:        "日志",
-			Code:        "Logs",
-			Type:        "MENU",
-			ParentID:    nil,
-			Path:        "",
-			Redirect:    nil,
-			Icon:        "i-fe:settings",
+			MenuId:      10201,
+			MenuName:    "定时更新",
+			EnName:      "Update",
+			ParentId:    102,
+			MenuType:    "2",
+			Path:        "/tools/update",
+			Name:        "toolsUpdate",
+			Component:   "tools/update",
+			Icon:        "UserFilled",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      10202,
+			MenuName:    "定时备份",
+			EnName:      "Backup",
+			ParentId:    102,
+			MenuType:    "2",
+			Path:        "/tools/backup",
+			Name:        "toolsBackup",
+			Component:   "tools/backup",
+			Icon:        "Avatar",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      10203,
+			MenuName:    "定时通知",
+			EnName:      "Announce",
+			ParentId:    102,
+			MenuType:    "2",
+			Path:        "/tools/announce",
+			Name:        "toolsAnnounce",
+			Component:   "tools/announce",
+			Icon:        "Avatar",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      103,
+			MenuName:    "日志",
+			EnName:      "Logs",
+			ParentId:    0,
+			MenuType:    "1",
+			Path:        "/logs",
+			Name:        "logs",
 			Component:   "",
-			Layout:      "",
-			KeepAlive:   true,
-			Method:      nil,
-			Description: nil,
-			Show:        true,
-			Enable:      true,
-			Order:       3,
-			Children: []ChildItem{
-				{
-					ID:          10301,
-					Name:        "地面",
-					Code:        "Ground",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(103),
-					Path:        "/logs/ground",
-					Redirect:    nil,
-					Icon:        "i-fe:sunrise",
-					Component:   "/src/views/logs/ground.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       0,
-				},
-				{
-					ID:          10302,
-					Name:        "洞穴",
-					Code:        "Cave",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(103),
-					Path:        "/logs/cave",
-					Redirect:    nil,
-					Icon:        "i-fe:sunset",
-					Component:   "/src/views/logs/cave.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       1,
-				},
-				{
-					ID:          10303,
-					Name:        "聊天",
-					Code:        "Chat",
-					Type:        "MENU",
-					ParentID:    func(i int) *int { return &i }(103),
-					Path:        "/logs/chat",
-					Redirect:    nil,
-					Icon:        "i-fe:message-square",
-					Component:   "/src/views/logs/chat.vue",
-					Layout:      "",
-					KeepAlive:   true,
-					Method:      nil,
-					Description: nil,
-					Show:        true,
-					Enable:      true,
-					Order:       2,
-				},
-			},
+			Icon:        "Tools",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/logs/ground",
+			ActiveMenu:  nil,
 		},
 		{
-			ID:          104,
-			Name:        "帮助",
-			Code:        "Help",
-			Type:        "MENU",
-			ParentID:    nil,
+			MenuId:      10301,
+			MenuName:    "地面",
+			EnName:      "Ground",
+			ParentId:    103,
+			MenuType:    "2",
+			Path:        "/logs/ground",
+			Name:        "logsGround",
+			Component:   "logs/ground",
+			Icon:        "UserFilled",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      10302,
+			MenuName:    "洞穴",
+			EnName:      "Cave",
+			ParentId:    103,
+			MenuType:    "2",
+			Path:        "/logs/cave",
+			Name:        "logsCave",
+			Component:   "logs/cave",
+			Icon:        "Avatar",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      10303,
+			MenuName:    "聊天",
+			EnName:      "Chat",
+			ParentId:    103,
+			MenuType:    "2",
+			Path:        "/logs/chat",
+			Name:        "logsChat",
+			Component:   "logs/chat",
+			Icon:        "Avatar",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      104,
+			MenuName:    "帮助",
+			EnName:      "Help",
+			ParentId:    0,
+			MenuType:    "2",
 			Path:        "/help",
-			Redirect:    nil,
-			Icon:        "i-fe:help-circle",
-			Component:   "/src/views/help/index.vue",
-			Layout:      "",
-			KeepAlive:   true,
-			Method:      nil,
-			Description: nil,
-			Show:        true,
-			Enable:      true,
-			Order:       4,
+			Name:        "help",
+			Component:   "help/index",
+			Icon:        "Tools",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/help",
+			ActiveMenu:  nil,
 		},
 	}
 	response := Response{
 		Code:    200,
 		Message: "success",
-		Data:    data,
+		Data:    menuItems,
 	}
 
 	// 返回 JSON 响应
 	c.JSON(http.StatusOK, response)
+}
+
+func handleUpdatePassword(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var updatePasswordForm UpdatePasswordForm
+	if err := c.ShouldBindJSON(&updatePasswordForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.Password = updatePasswordForm.Password
+	utils.WriteConfig(config)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("updatePassword", langStr), "data": nil})
 }

@@ -7,20 +7,14 @@ import (
 
 func Exceptions(code int, lang string) string {
 	exceptionsZH := map[int]string{
-		410: "Token过期",
-		411: "Token认证失败",
-		412: "非法Token",
-		413: "请先登录",
-		420: "用户不存在",
-		421: "密码错误",
+		420: "Token认证失败",
+		421: "用户不存在",
+		422: "密码错误",
 	}
 	exceptionsEN := map[int]string{
-		410: "Token Expired",
-		411: "Token Auth Fail",
-		412: "Invalid Token",
-		413: "Please Login First",
-		420: "User Not Exist",
-		421: "Incorrect password",
+		420: "Token Auth Fail",
+		421: "User Not Exist",
+		422: "Incorrect password",
 	}
 
 	if lang == "zh" {
