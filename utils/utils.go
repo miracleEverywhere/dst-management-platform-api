@@ -17,6 +17,24 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
+type RoomSettingBase struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	PVP         bool   `json:"pvp"`
+	PlayerNum   int    `json:"playerNum"`
+	BackDays    int    `json:"backDays"`
+	Vote        bool   `json:"vote"`
+	Password    string `json:"password"`
+	Token       string `json:"token"`
+}
+
+type RoomSetting struct {
+	Base   RoomSettingBase `json:"base"`
+	Ground string          `json:"ground"`
+	Cave   string          `json:"cave"`
+	Mod    string          `json:"mod"`
+}
+
 type AutoUpdate struct {
 	Enable bool   `json:"enable"`
 	Time   string `json:"time"`
@@ -39,6 +57,7 @@ type Config struct {
 	Nickname     string         `json:"nickname"`
 	Password     string         `json:"password"`
 	JwtSecret    string         `json:"jwtSecret"`
+	RoomSetting  RoomSetting    `json:"roomSetting"`
 	AutoUpdate   AutoUpdate     `json:"autoUpdate"`
 	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
 	AutoBackup   AutoBackup     `json:"autoBackup"`

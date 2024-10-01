@@ -343,3 +343,124 @@ func handleUpdatePassword(c *gin.Context) {
 	utils.WriteConfig(config)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("updatePassword", langStr), "data": nil})
 }
+
+func handleRoomSettingBaseGet(c *gin.Context) {
+	config, _ := utils.ReadConfig()
+	type Response struct {
+		Code    int                   `json:"code"`
+		Message string                `json:"message"`
+		Data    utils.RoomSettingBase `json:"data"`
+	}
+	response := Response{
+		Code:    200,
+		Message: "success",
+		Data:    config.RoomSetting.Base,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func handleRoomSettingBasePost(c *gin.Context) {
+	var roomSettingBase utils.RoomSettingBase
+	if err := c.ShouldBindJSON(&roomSettingBase); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.RoomSetting.Base = roomSettingBase
+	utils.WriteConfig(config)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+}
+
+func handleRoomSettingGroundGet(c *gin.Context) {
+	config, _ := utils.ReadConfig()
+	type Response struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    string `json:"data"`
+	}
+	response := Response{
+		Code:    200,
+		Message: "success",
+		Data:    config.RoomSetting.Ground,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func handleRoomSettingGroundPost(c *gin.Context) {
+	type groundSetting struct {
+		GroundSetting string `json:"groundSetting"`
+	}
+	var ground groundSetting
+	if err := c.ShouldBindJSON(&ground); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.RoomSetting.Ground = ground.GroundSetting
+	utils.WriteConfig(config)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+}
+
+func handleRoomSettingCaveGet(c *gin.Context) {
+	config, _ := utils.ReadConfig()
+	type Response struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    string `json:"data"`
+	}
+	response := Response{
+		Code:    200,
+		Message: "success",
+		Data:    config.RoomSetting.Cave,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func handleRoomSettingCavePost(c *gin.Context) {
+	type caveSetting struct {
+		CaveSetting string `json:"caveSetting"`
+	}
+	var cave caveSetting
+	if err := c.ShouldBindJSON(&cave); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.RoomSetting.Cave = cave.CaveSetting
+	utils.WriteConfig(config)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+}
+
+func handleRoomSettingModGet(c *gin.Context) {
+	config, _ := utils.ReadConfig()
+	type Response struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    string `json:"data"`
+	}
+	response := Response{
+		Code:    200,
+		Message: "success",
+		Data:    config.RoomSetting.Mod,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func handleRoomSettingModPost(c *gin.Context) {
+	type modSetting struct {
+		ModSetting string `json:"modSetting"`
+	}
+	var mod modSetting
+	if err := c.ShouldBindJSON(&mod); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.RoomSetting.Mod = mod.ModSetting
+	utils.WriteConfig(config)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+}
