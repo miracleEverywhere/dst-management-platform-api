@@ -2,6 +2,7 @@ package main
 
 import (
 	"dst-management-platform-api/app/auth"
+	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
@@ -18,6 +19,8 @@ func main() {
 
 	//用户、鉴权模块
 	r = auth.RouteAuth(r)
+	//设置模块
+	r = setting.RouteSetting(r)
 
 	// 启动服务器
 	err := r.Run(":7000")
