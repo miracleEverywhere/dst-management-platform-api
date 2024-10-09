@@ -8,7 +8,11 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -61,6 +65,17 @@ type Config struct {
 	AutoUpdate   AutoUpdate     `json:"autoUpdate"`
 	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
 	AutoBackup   AutoBackup     `json:"autoBackup"`
+}
+
+type OSInfo struct {
+	Architecture    string
+	OS              string
+	CPUModel        string
+	CPUCores        int32
+	MemorySize      uint64
+	Platform        string
+	PlatformVersion string
+	Uptime          uint64
 }
 
 func GenerateJWT(username string, jwtSecret []byte, expiration int) (string, error) {
@@ -166,4 +181,44 @@ func MWtoken() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func GetOSInfo() (*OSInfo, error) {
+	architecture := runtime.GOARCH
+
+	// 获取CPU信息
+	cpuInfo, err := cpu.Info()
+	if err != nil {
+		return nil, err
+	}
+	cpuModel := cpuInfo[0].ModelName
+	cpuCore := cpuInfo[0].Cores
+
+	// 获取内存信息
+	virtualMemory, err := mem.VirtualMemory()
+	if err != nil {
+		return nil, err
+	}
+	memorySize := virtualMemory.Total
+
+	// 获取主机信息
+	hostInfo, err := host.Info()
+	if err != nil {
+		return nil, err
+	}
+	platformVersion := hostInfo.PlatformVersion
+	platform := hostInfo.Platform
+	uptime := hostInfo.Uptime
+	osName := hostInfo.OS
+	// 返回系统信息
+	return &OSInfo{
+		Architecture:    architecture,
+		OS:              osName,
+		CPUModel:        cpuModel,
+		CPUCores:        cpuCore,
+		MemorySize:      memorySize,
+		Platform:        platform,
+		Uptime:          uptime,
+		PlatformVersion: platformVersion,
+	}, nil
 }
