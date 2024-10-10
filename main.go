@@ -10,11 +10,13 @@ import (
 )
 
 func main() {
+	//一些启动前检查
+	initialize()
+
 	r := gin.Default()
 
 	//全局中间件，获取语言
 	r.Use(utils.MWlang())
-
 	//静态资源
 	r.Use(static.Serve("/", static.LocalFile("C:/Users/admin/WebstormProjects/dst-management-platform-web/dist", true)))
 
@@ -30,4 +32,9 @@ func main() {
 	if err != nil {
 		return
 	}
+}
+
+func initialize() {
+	//数据库检查
+	utils.CreateConfig()
 }

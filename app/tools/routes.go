@@ -12,6 +12,8 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 		{
 			// 设置
 			tools.GET("/os_info", utils.MWtoken(), handleOSInfoGet)
+			tools.POST("/install", utils.MWtoken(), handleInstall)
+			tools.GET("/install/status", utils.MWtoken(), handleGetInstallStatus)
 		}
 	}
 
