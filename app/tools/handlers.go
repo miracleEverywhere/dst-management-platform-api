@@ -26,6 +26,11 @@ func handleOSInfoGet(c *gin.Context) {
 }
 
 func handleInstall(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
 	scriptPath := "install.sh"
 
 	// 检查文件是否存在，如果存在则删除
@@ -33,7 +38,7 @@ func handleInstall(c *gin.Context) {
 		err := os.Remove(scriptPath)
 		if err != nil {
 			fmt.Println("Error removing file:", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to remove existing file", "data": nil})
+			utils.RespondWithError(c, 500, langStr)
 			return
 		}
 	}
@@ -42,7 +47,7 @@ func handleInstall(c *gin.Context) {
 	file, err := os.OpenFile(scriptPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0775)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to open file", "data": nil})
+		utils.RespondWithError(c, 500, langStr)
 		return
 	}
 	defer file.Close()
@@ -52,7 +57,7 @@ func handleInstall(c *gin.Context) {
 	_, err = file.Write(content)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to write to file", "data": nil})
+		utils.RespondWithError(c, 500, langStr)
 		return
 	}
 
@@ -62,15 +67,11 @@ func handleInstall(c *gin.Context) {
 		e := cmd.Run()
 		if e != nil {
 			fmt.Println("Error executing script:", e)
-			// 这里可以将错误记录到日志文件，或发送通知等
-		} else {
-			// 执行成功也可以记录
-			fmt.Println("Script executed successfully")
 		}
 	}()
 
 	// 返回成功响应
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "Script is being executed", "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("installing", langStr), "data": nil})
 }
 
 func handleGetInstallStatus(c *gin.Context) {
