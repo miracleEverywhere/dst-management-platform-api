@@ -12,7 +12,9 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 		{
 			// 设置
 			setting.GET("/room", utils.MWtoken(), handleRoomSettingGet)
-			setting.POST("/room", utils.MWtoken(), handleRoomSettingPost)
+			setting.POST("/save", utils.MWtoken(), handleRoomSettingSavePost)
+			setting.POST("/save_restart", utils.MWtoken(), handleRoomSettingSaveAndRestartPost)
+			setting.POST("/save_generate", utils.MWtoken(), handleRoomSettingSaveAndGeneratePost)
 		}
 	}
 

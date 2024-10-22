@@ -25,6 +25,7 @@ type Claims struct {
 type RoomSettingBase struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	GameMode    string `json:"gameMode"`
 	PVP         bool   `json:"pvp"`
 	PlayerNum   int    `json:"playerNum"`
 	BackDays    int    `json:"backDays"`
@@ -243,4 +244,29 @@ func GetOSInfo() (*OSInfo, error) {
 		Uptime:          uptime,
 		PlatformVersion: platformVersion,
 	}, nil
+}
+
+func TruncAndWriteFile(fileName string, fileContent string) {
+	fileContentByte := []byte(fileContent)
+	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		fmt.Println("打开或创建文件时出错:", err)
+		return
+	}
+	defer file.Close() // 确保在函数结束时关闭文件
+
+	// 写入新数据
+	_, err = file.Write(fileContentByte)
+	if err != nil {
+		fmt.Println("写入数据时出错:", err)
+		return
+	}
+}
+
+func DeleteDir(dirPath string) {
+	err := os.RemoveAll(dirPath)
+	if err != nil {
+		fmt.Println("删除目录失败:", err)
+		return
+	}
 }

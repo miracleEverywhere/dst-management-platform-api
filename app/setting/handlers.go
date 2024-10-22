@@ -21,7 +21,12 @@ func handleRoomSettingGet(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func handleRoomSettingPost(c *gin.Context) {
+func handleRoomSettingSavePost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
 	var roomSetting utils.RoomSetting
 	if err := c.ShouldBindJSON(&roomSetting); err != nil {
 		// 如果绑定失败，返回 400 错误
@@ -31,5 +36,16 @@ func handleRoomSettingPost(c *gin.Context) {
 	config, _ := utils.ReadConfig()
 	config.RoomSetting = roomSetting
 	utils.WriteConfig(config)
+
+	saveSetting(c, config, langStr)
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+}
+
+func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
+
+}
+
+func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
+
 }

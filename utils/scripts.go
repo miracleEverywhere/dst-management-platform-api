@@ -107,8 +107,14 @@ done
 
 
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
-mkdir -p ~/.klei/DoNotStarveTogether/MyDediServer/
+mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/
 
 # 安装完成
 echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
+
+# 清理
+cd ~
+rm -f steamcmd_linux.tar.gz
+rm -f $STEAM_DIR/install.log
+rm -f $0
 `
