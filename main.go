@@ -2,6 +2,7 @@ package main
 
 import (
 	"dst-management-platform-api/app/auth"
+	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/utils"
@@ -35,6 +36,8 @@ func main() {
 
 	//用户、鉴权模块
 	r = auth.RouteAuth(r)
+	//主页模块
+	r = home.RouteHome(r)
 	//设置模块
 	r = setting.RouteSetting(r)
 	//工具模块

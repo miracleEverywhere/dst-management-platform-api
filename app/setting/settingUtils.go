@@ -2,9 +2,13 @@ package setting
 
 import (
 	"dst-management-platform-api/utils"
+	"fmt"
 	"github.com/gin-gonic/gin"
-	"os"
+	lua "github.com/yuin/gopher-lua"
+	"os/exec"
 	"strconv"
+	"strings"
+	"time"
 )
 
 func clusterTemplate(base utils.RoomSettingBase) string {
@@ -66,28 +70,126 @@ authentication_port = 8769
 	return content
 }
 
-func saveSetting(c *gin.Context, config utils.Config, langStr string) {
-	utils.DeleteDir(utils.ServerPath + utils.MasterName)
-	utils.DeleteDir(utils.ServerPath + utils.CavesName)
+func saveSetting(config utils.Config) {
 	clusterIniFileContent := clusterTemplate(config.RoomSetting.Base)
+
+	//cluster.ini
 	utils.TruncAndWriteFile(utils.ServerSettingPath, clusterIniFileContent)
+
+	//cluster_token.txt
 	utils.TruncAndWriteFile(utils.ServerTokenPath, config.RoomSetting.Base.Token)
-	err := os.MkdirAll(utils.MasterPath, 0755)
+
+	//Master/leveldataoverride.lua
+	utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
+
+	//Master/modoverrides.lua
+	utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+
+	//Master/server.ini
+	utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate())
+
+	if config.RoomSetting.Cave != "" {
+		//Caves/leveldataoverride.lua
+		utils.TruncAndWriteFile(utils.CavesSettingPath, config.RoomSetting.Cave)
+		//Caves/modoverrides.lua
+		utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		//Caves/server.ini
+		utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate())
+	}
+}
+
+func restartWorld(c *gin.Context, config utils.Config, langStr string) {
+	//关闭Master进程
+	cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
+	err := cmdStopMaster.Run()
 	if err != nil {
+		fmt.Println("Error Stop Master:", err)
+	}
+	//关闭Caves进程
+	cmdStopCaves := exec.Command("/bin/bash", "-c", utils.StopCavesCMD)
+	err = cmdStopCaves.Run()
+	if err != nil {
+		fmt.Println("Error Stop Caves:", err)
+	}
+	//等待3秒
+	time.Sleep(3 * time.Second)
+	//启动Master
+	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
+	err = cmdStartMaster.Run()
+	if err != nil {
+		fmt.Println("Error Start Master:", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
-	utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-	utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate())
 	if config.RoomSetting.Cave != "" {
-		err := os.MkdirAll(utils.CavesPath, 0755)
+		//启动Caves
+		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
+		err = cmdStartCaves.Run()
 		if err != nil {
+			fmt.Println("Error Start Caves:", err)
 			utils.RespondWithError(c, 500, langStr)
 			return
 		}
-		utils.TruncAndWriteFile(utils.CavesSettingPath, config.RoomSetting.Cave)
-		utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
-		utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate())
+	}
+}
+
+func generateWorld(c *gin.Context, config utils.Config, langStr string) {
+	//关闭Master进程
+	cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
+	err := cmdStopMaster.Run()
+	if err != nil {
+		fmt.Println("Error Stop Master:", err)
+	}
+	//关闭Caves进程
+	cmdStopCaves := exec.Command("/bin/bash", "-c", utils.StopCavesCMD)
+	err = cmdStopCaves.Run()
+	if err != nil {
+		fmt.Println("Error Stop Caves:", err)
+	}
+	//删除Master/save目录
+	utils.DeleteDir(utils.MasterSavePath)
+	//等待3秒
+	time.Sleep(3 * time.Second)
+	//启动Master
+	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
+	err = cmdStartMaster.Run()
+	if err != nil {
+		fmt.Println("Error Start Master:", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	if config.RoomSetting.Cave != "" {
+		//删除Caves/save目录
+		utils.DeleteDir(utils.CavesSavePath)
+		//启动Caves
+		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
+		err = cmdStartCaves.Run()
+		if err != nil {
+			fmt.Println("Error Start Caves:", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+	}
+}
+
+func dstModsSetup() {
+	L := lua.NewState()
+	defer L.Close()
+	if err := L.DoFile(utils.MasterModPath); err != nil {
+		fmt.Println("加载 Lua 文件失败:", err)
+		return
+	}
+	modsTable := L.Get(-1)
+	fileContent := ""
+	if tbl, ok := modsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+			// 检查键是否是字符串，并且以 "workshop-" 开头
+			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
+				// 提取 "workshop-" 后面的数字
+				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
+				fileContent = fileContent + "ServerModSetup(\"" + workshopID + "\")\n"
+			}
+		})
+		utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
 	}
 }

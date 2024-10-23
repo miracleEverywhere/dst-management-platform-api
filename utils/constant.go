@@ -6,9 +6,13 @@ const MasterScreenName = "DST_MASTER"
 const CavesScreenName = "DST_CAVES"
 const ServerPath = ".klei/DoNotStarveTogether/MyDediServer/"
 
-const StartMasterCMD = "cd ~/dst/bin/ ; screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + MasterName + "  ;"
+const StartMasterCMD = "cd ~/dst/bin/ && screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + MasterName + "  ;"
 
-const StartCavesCMD = "cd ~/dst/bin/ ; screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + CavesName + "  ;"
+const StartCavesCMD = "cd ~/dst/bin/ && screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + CavesName + "  ;"
+
+const StopMasterCMD = "screen -S " + MasterScreenName + " -X quit"
+
+const StopCavesCMD = "screen -S " + CavesScreenName + " -X quit"
 
 const UpdateGameCMD = "cd ~/steamcmd ; ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit"
 
@@ -33,6 +37,10 @@ const ServerTokenPath = ServerPath + "cluster_token.txt"
 const MasterServerPath = ServerPath + MasterName + "/server.ini"
 
 const CavesServerPath = ServerPath + CavesName + "/server.ini"
+
+const MasterSavePath = ServerPath + MasterName + "/save"
+
+const CavesSavePath = ServerPath + CavesName + "/save"
 
 const MasterLogPath = ServerPath + MasterName + "/server_log.txt"
 

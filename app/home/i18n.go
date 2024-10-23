@@ -1,4 +1,4 @@
-package setting
+package home
 
 func Success(message string, lang string) string {
 	successZH := map[string]string{
