@@ -270,3 +270,22 @@ func DeleteDir(dirPath string) {
 		return
 	}
 }
+
+func CpuUsage() float64 {
+	// 获取 CPU 使用率
+	percent, err := cpu.Percent(0, false)
+	if err != nil {
+		fmt.Println("Error getting CPU percent: ", err)
+		return 0
+	}
+	return percent[0]
+}
+func MemoryUsage() float64 {
+	// 获取内存信息
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		fmt.Println("Error getting virtual memory info: ", err)
+		return 0
+	}
+	return vmStat.UsedPercent
+}

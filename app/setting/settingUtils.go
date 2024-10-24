@@ -19,6 +19,7 @@ max_players = ` + strconv.Itoa(base.PlayerNum) + `
 pvp = ` + strconv.FormatBool(base.PVP) + `
 pause_when_empty = true
 vote_enabled = ` + strconv.FormatBool(base.Vote) + `
+vote_kick_enabled = ` + strconv.FormatBool(base.Vote) + `
 
 [NETWORK]
 cluster_description = ` + base.Description + `

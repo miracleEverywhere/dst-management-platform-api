@@ -53,3 +53,5 @@ const AdminListPath = ServerPath + "adminlist.txt"
 const BlockListPath = ServerPath + "blocklist.txt"
 
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
+
+const MetaPath = ServerPath + MasterName + "/save/session"

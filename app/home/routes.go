@@ -10,8 +10,10 @@ func RouteHome(r *gin.Engine) *gin.Engine {
 	{
 		home := v1.Group("home")
 		{
-			// 设置
+			// 获取房间设置、季节、天数等
 			home.GET("/room_info", utils.MWtoken(), handleRoomInfoGet)
+			// 获取系统资源监控
+			home.GET("/sys_info", utils.MWtoken(), handleSystemInfoGet)
 		}
 	}
 
