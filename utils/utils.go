@@ -13,6 +13,7 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 	"math/rand"
 	"os"
+	"os/exec"
 	"runtime"
 	"time"
 )
@@ -288,4 +289,30 @@ func MemoryUsage() float64 {
 		return 0
 	}
 	return vmStat.UsedPercent
+}
+
+func ScreenCMD(cmd string, world string) error {
+	var totalCMD string
+	if world == MasterName {
+		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
+	}
+	if world == CavesName {
+		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
+	}
+
+	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
+	err := cmdExec.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func BashCMD(cmd string) error {
+	cmdExec := exec.Command("/bin/bash", "-c", cmd)
+	err := cmdExec.Run()
+	if err != nil {
+		return err
+	}
+	return nil
 }

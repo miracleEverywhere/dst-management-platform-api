@@ -1,6 +1,7 @@
 package home
 
 import (
+	"dst-management-platform-api/utils"
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
 	"os"
@@ -15,10 +16,15 @@ type seasonLength struct {
 	Winter int `json:"winter"`
 }
 
+type SeasonI18N struct {
+	En string `json:"en"`
+	Zh string `json:"zh"`
+}
+
 type metaInfo struct {
 	Cycles       int          `json:"cycles"`
-	Phase        string       `json:"phase"`
-	Season       string       `json:"season"`
+	Phase        SeasonI18N   `json:"phase"`
+	Season       SeasonI18N   `json:"season"`
 	ElapsedDays  int          `json:"elapsedDays"`
 	SeasonLength seasonLength `json:"seasonLength"`
 }
@@ -83,9 +89,12 @@ func findLatestMetaFile(directory string) (string, error) {
 
 func getMetaInfo(path string) metaInfo {
 	var seasonInfo metaInfo
-	seasonInfo.Season = "获取失败"
-	seasonInfo.Cycles = 0
-	seasonInfo.Phase = "获取失败"
+	seasonInfo.Season.En = "Failed to retrieve"
+	seasonInfo.Season.Zh = "获取失败"
+
+	seasonInfo.Cycles = -1
+	seasonInfo.Phase.En = "Failed to retrieve"
+	seasonInfo.Phase.Zh = "获取失败"
 
 	// 读取二进制文件
 	data, err := os.ReadFile(path)
@@ -121,7 +130,7 @@ func getMetaInfo(path string) metaInfo {
 			// 获取 phase 字段
 			phase := clock.RawGet(lua.LString("phase"))
 			if phaseValue, ok := phase.(lua.LString); ok {
-				seasonInfo.Phase = string(phaseValue)
+				seasonInfo.Phase.En = string(phaseValue)
 			}
 		}
 		// 获取 seasons 表
@@ -130,7 +139,7 @@ func getMetaInfo(path string) metaInfo {
 			// 获取 season 字段
 			season := seasons.RawGet(lua.LString("season"))
 			if seasonValue, ok := season.(lua.LString); ok {
-				seasonInfo.Season = string(seasonValue)
+				seasonInfo.Season.En = string(seasonValue)
 			}
 			// 获取 elapseddaysinseason 字段
 			elapsedDays := seasons.RawGet(lua.LString("elapseddaysinseason"))
@@ -161,5 +170,38 @@ func getMetaInfo(path string) metaInfo {
 		}
 	}
 
+	if seasonInfo.Phase.En == "night" {
+		seasonInfo.Phase.Zh = "夜晚"
+	}
+	if seasonInfo.Phase.En == "day" {
+		seasonInfo.Phase.Zh = "白天"
+	}
+	if seasonInfo.Phase.En == "dusk" {
+		seasonInfo.Phase.Zh = "黄昏"
+	}
+
+	if seasonInfo.Season.En == "summer" {
+		seasonInfo.Season.Zh = "夏天"
+	}
+	if seasonInfo.Season.En == "autumn" {
+		seasonInfo.Season.Zh = "秋天"
+	}
+	if seasonInfo.Season.En == "spring" {
+		seasonInfo.Season.Zh = "春天"
+	}
+	if seasonInfo.Season.En == "winter" {
+		seasonInfo.Season.Zh = "冬天"
+	}
+
 	return seasonInfo
+}
+
+func getProcessStatus(screenName string) int {
+	cmd := "ps -ef | grep " + screenName + " | grep -v grep"
+	err := utils.BashCMD(cmd)
+	if err != nil {
+		return 0
+	} else {
+		return 1
+	}
 }

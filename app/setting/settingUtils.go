@@ -101,22 +101,14 @@ func saveSetting(config utils.Config) {
 
 func restartWorld(c *gin.Context, config utils.Config, langStr string) {
 	//关闭Master进程
-	cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
-	err := cmdStopMaster.Run()
-	if err != nil {
-		fmt.Println("Error Stop Master:", err)
-	}
+	_ = utils.BashCMD(utils.StopMasterCMD)
 	//关闭Caves进程
-	cmdStopCaves := exec.Command("/bin/bash", "-c", utils.StopCavesCMD)
-	err = cmdStopCaves.Run()
-	if err != nil {
-		fmt.Println("Error Stop Caves:", err)
-	}
+	_ = utils.BashCMD(utils.StopCavesCMD)
 	//等待3秒
 	time.Sleep(3 * time.Second)
 	//启动Master
 	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
-	err = cmdStartMaster.Run()
+	err := cmdStartMaster.Run()
 	if err != nil {
 		fmt.Println("Error Start Master:", err)
 		utils.RespondWithError(c, 500, langStr)

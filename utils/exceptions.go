@@ -12,6 +12,7 @@ func exceptions(code int, lang string) string {
 		422: "密码错误",
 		500: "服务器内部错误",
 		510: "获取主机信息失败",
+		511: "执行命令失败",
 	}
 	exceptionsEN := map[int]string{
 		420: "Token Auth Fail",
@@ -19,6 +20,7 @@ func exceptions(code int, lang string) string {
 		422: "Incorrect password",
 		500: "Internal server error",
 		510: "Failed to retrieve host information",
+		511: "Failed to execute command",
 	}
 
 	if lang == "zh" {

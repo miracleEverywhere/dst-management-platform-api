@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/utils"
+	"embed"
 	"flag"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,7 @@ import (
 	"runtime"
 )
 
-const VERSION string = "0.0.1"
+const VERSION string = "0.0.1 2024-10-25"
 
 var (
 	// flag绑定的变量
@@ -22,6 +23,9 @@ var (
 	consoleOutput bool
 	versionShow   bool
 )
+
+//go:embed dist
+var EmbedFS embed.FS
 
 func main() {
 	//一些启动前检查
@@ -31,8 +35,6 @@ func main() {
 
 	//全局中间件，获取语言
 	r.Use(utils.MWlang())
-	//静态资源
-	r.Use(static.Serve("/", static.LocalFile("C:/Users/admin/WebstormProjects/dst-management-platform-web/dist", true)))
 
 	//用户、鉴权模块
 	r = auth.RouteAuth(r)
@@ -42,6 +44,9 @@ func main() {
 	r = setting.RouteSetting(r)
 	//工具模块
 	r = tools.RouteTools(r)
+
+	//静态资源，放在最后
+	r.Use(static.ServeEmbed("dist", EmbedFS))
 
 	// 启动服务器
 	err := r.Run(fmt.Sprintf(":%d", bindPort))
@@ -67,6 +72,7 @@ func initialize() {
 
 	//数据库检查
 	utils.CreateConfig()
+	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
 }

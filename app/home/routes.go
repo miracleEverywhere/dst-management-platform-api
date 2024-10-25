@@ -14,6 +14,9 @@ func RouteHome(r *gin.Engine) *gin.Engine {
 			home.GET("/room_info", utils.MWtoken(), handleRoomInfoGet)
 			// 获取系统资源监控
 			home.GET("/sys_info", utils.MWtoken(), handleSystemInfoGet)
+			home.POST("/exec", utils.MWtoken(), handleExecPost)
+			home.POST("/announce", utils.MWtoken(), handleAnnouncementPost)
+			home.POST("/console", utils.MWtoken(), handleConsolePost)
 		}
 	}
 
