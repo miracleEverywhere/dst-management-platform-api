@@ -31,6 +31,14 @@ func main() {
 	//一些启动前检查
 	initialize()
 
+	if !consoleOutput {
+		gin.DefaultWriter = io.Discard
+	}
+	if versionShow {
+		fmt.Println(VERSION + "\n" + runtime.Version())
+		return
+	}
+
 	r := gin.Default()
 
 	//全局中间件，获取语言
@@ -61,14 +69,6 @@ func initialize() {
 	flag.BoolVar(&consoleOutput, "c", false, "开启控制台日志输出，如： -c (Enable console log output, e.g. -c)")
 	flag.BoolVar(&versionShow, "v", false, "查看版本，如： -v (Check version, e.g. -v)")
 	flag.Parse()
-
-	if !consoleOutput {
-		gin.DefaultWriter = io.Discard
-	}
-	if versionShow {
-		fmt.Println(VERSION + "\n" + runtime.Version())
-		return
-	}
 
 	//数据库检查
 	utils.CreateConfig()
