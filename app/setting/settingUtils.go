@@ -1,10 +1,12 @@
 package setting
 
 import (
+	"bufio"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	lua "github.com/yuin/gopher-lua"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -186,4 +188,80 @@ func dstModsSetup() {
 		})
 		utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
 	}
+}
+
+func addAdminList(uid string, filePath string) error {
+	// 要追加的内容
+	content := "\n" + uid
+	// 打开文件，使用 os.O_APPEND | os.O_CREATE | os.O_WRONLY 选项
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("打开文件错误:", err)
+		return err
+	}
+	defer file.Close() // 确保在函数结束时关闭文件
+	// 写入内容到文件
+	if _, err := file.WriteString(content); err != nil {
+		fmt.Println("写入文件错误:", err)
+		return err
+	}
+
+	return nil
+}
+
+func deleteAdminList(uid string, filePath string) error {
+	// 读取文件内容
+	lines, err := readLines(filePath)
+	if err != nil {
+		fmt.Println("读取文件错误:", err)
+		return err
+	}
+
+	// 删除指定行
+	for i := 0; i < len(lines); i++ {
+		if lines[i] == uid {
+			lines = append(lines[:i], lines[i+1:]...)
+			break
+		}
+	}
+
+	// 将修改后的内容写回文件
+	err = writeLines(filePath, lines)
+	if err != nil {
+		fmt.Println("写入文件错误:", err)
+		return err
+	}
+
+	return nil
+}
+
+// 读取文件内容到切片中
+func readLines(filePath string) ([]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
+}
+
+// 将切片内容写回文件
+func writeLines(filePath string, lines []string) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		_, _ = writer.WriteString(line + "\n")
+	}
+	return writer.Flush()
 }

@@ -57,3 +57,7 @@ const BlockListPath = ServerPath + "blocklist.txt"
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
 const MetaPath = ServerPath + MasterName + "/save/session"
+
+const DSTLocalVersionPath = "dst/version.txt"
+
+const DSTServerVersionApi = "http://ver.tugos.cn/getLocalVersion"

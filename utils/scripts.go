@@ -105,16 +105,22 @@ do
     sleep 1
 done
 
-
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
+# 初始化一些目录和文件
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/
-
-# 安装完成
-echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
+# 管理员
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
+# 黑名单
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/blocklist.txt
+# 预留位
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/whitelist.txt
 
 # 清理
 cd ~
 rm -f steamcmd_linux.tar.gz
 rm -f $STEAM_DIR/install.log
 rm -f $0
+
+# 安装完成
+echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
 `
