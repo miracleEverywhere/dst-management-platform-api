@@ -6,6 +6,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -204,4 +205,25 @@ func getProcessStatus(screenName string) int {
 	} else {
 		return 1
 	}
+}
+
+func countMods(luaScript string) (int, error) {
+	L := lua.NewState()
+	defer L.Close()
+	if err := L.DoString(luaScript); err != nil {
+		fmt.Println("加载 Lua 文件失败:", err)
+		return 0, err
+	}
+	modsTable := L.Get(-1)
+	count := 0
+	if tbl, ok := modsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+			// 检查键是否是字符串，并且以 "workshop-" 开头
+			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
+				// 提取 "workshop-" 后面的数字
+				count++
+			}
+		})
+	}
+	return count, nil
 }

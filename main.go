@@ -3,6 +3,7 @@ package main
 import (
 	"dst-management-platform-api/app/auth"
 	"dst-management-platform-api/app/home"
+	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/utils"
@@ -15,7 +16,7 @@ import (
 	"runtime"
 )
 
-const VERSION string = "0.0.1 2024-10-25"
+const VERSION string = "0.0.2 2024-10-28"
 
 var (
 	// flag绑定的变量
@@ -52,6 +53,8 @@ func main() {
 	r = setting.RouteSetting(r)
 	//工具模块
 	r = tools.RouteTools(r)
+	//工具模块
+	r = logs.RouteLogs(r)
 
 	//静态资源，放在最后
 	r.Use(static.ServeEmbed("dist", EmbedFS))

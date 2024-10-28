@@ -25,6 +25,7 @@ vote_kick_enabled = ` + strconv.FormatBool(base.Vote) + `
 cluster_description = ` + base.Description + `
 cluster_name = ` + base.Name + `
 cluster_password = ` + base.Password + `
+cluster_language = zh
 
 [MISC]
 console_enabled = true

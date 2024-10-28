@@ -48,6 +48,8 @@ const CavesLogPath = ServerPath + CavesName + "/server_log.txt"
 
 const ChatLogPath = ServerPath + MasterName + "/server_chat_log.txt"
 
+const DMPLogPath = "./dmp.log"
+
 const AdminListPath = ServerPath + "adminlist.txt"
 
 const BlockListPath = ServerPath + "blocklist.txt"

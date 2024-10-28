@@ -13,6 +13,7 @@ func handleRoomInfoGet(c *gin.Context) {
 	type Data struct {
 		RoomSettingBase utils.RoomSettingBase `json:"roomSettingBase"`
 		SeasonInfo      metaInfo              `json:"seasonInfo"`
+		ModsCount       int                   `json:"modsCount"`
 	}
 	type Response struct {
 		Code    int    `json:"code"`
@@ -26,10 +27,12 @@ func handleRoomInfoGet(c *gin.Context) {
 
 	seasonInfo := getMetaInfo(filePath)
 	config, _ := utils.ReadConfig()
+	modsCount, _ := countMods(config.RoomSetting.Mod)
 
 	data := Data{
 		RoomSettingBase: config.RoomSetting.Base,
 		SeasonInfo:      seasonInfo,
+		ModsCount:       modsCount,
 	}
 
 	response := Response{
