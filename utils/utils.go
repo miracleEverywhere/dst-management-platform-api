@@ -297,7 +297,7 @@ func ScreenCMD(cmd string, world string) error {
 		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
 	}
 	if world == CavesName {
-		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
+		totalCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
 	}
 
 	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
