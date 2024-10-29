@@ -59,6 +59,11 @@ type AutoBackup struct {
 	Time   string `json:"time"`
 }
 
+type Players struct {
+	UID      string `json:"uid"`
+	NickName string `json:"nickName"`
+}
+
 type Config struct {
 	Username     string         `json:"username"`
 	Nickname     string         `json:"nickname"`
@@ -68,6 +73,7 @@ type Config struct {
 	AutoUpdate   AutoUpdate     `json:"autoUpdate"`
 	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
 	AutoBackup   AutoBackup     `json:"autoBackup"`
+	Players      []Players      `json:"players"`
 }
 
 type OSInfo struct {
@@ -315,4 +321,18 @@ func BashCMD(cmd string) error {
 		return err
 	}
 	return nil
+}
+
+func UniqueSliceKeepOrderString(slice []string) []string {
+	encountered := map[string]bool{}
+	var result []string
+
+	for _, value := range slice {
+		if !encountered[value] {
+			encountered[value] = true
+			result = append(result, value)
+		}
+	}
+
+	return result
 }

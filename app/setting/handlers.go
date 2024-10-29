@@ -40,7 +40,7 @@ func handleRoomSettingSavePost(c *gin.Context) {
 	saveSetting(config)
 	dstModsSetup()
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("saveSuccess", langStr), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("saveSuccess", langStr), "data": nil})
 }
 
 func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
@@ -63,7 +63,7 @@ func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
 	dstModsSetup()
 	restartWorld(c, config, langStr)
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("restartSuccess", langStr), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
 }
 
 func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
@@ -86,6 +86,88 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 	dstModsSetup()
 	generateWorld(c, config, langStr)
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("generateSuccess", langStr), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
 
+}
+
+func handlePlayerListGet(c *gin.Context) {
+	type PlayerList struct {
+		Players   []utils.Players `json:"players"`
+		AdminList []string        `json:"adminList"`
+		BlockList []string        `json:"blockList"`
+		WhiteList []string        `json:"whiteList"`
+	}
+
+	config, _ := utils.ReadConfig()
+	adminList := getList(utils.AdminListPath)
+	blockList := getList(utils.BlockListPath)
+	whiteList := getList(utils.WhiteListPath)
+
+	var playList PlayerList
+	playList.Players = config.Players
+	playList.AdminList = adminList
+	playList.BlockList = blockList
+	playList.WhiteList = whiteList
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playList})
+}
+
+func handleAdminAddPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var uidFrom UIDForm
+	if err := c.ShouldBindJSON(&uidFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err := addList(uidFrom.UID, utils.AdminListPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addAdminFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addAdmin", langStr), "data": nil})
+}
+
+func handleBlockAddPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var uidFrom UIDForm
+	if err := c.ShouldBindJSON(&uidFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err := addList(uidFrom.UID, utils.BlockListPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlockFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlock", langStr), "data": nil})
+}
+
+func handleWhiteAddPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var uidFrom UIDForm
+	if err := c.ShouldBindJSON(&uidFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err := addList(uidFrom.UID, utils.WhiteListPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhiteFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhite", langStr), "data": nil})
 }

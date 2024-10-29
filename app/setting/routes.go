@@ -12,9 +12,14 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 		{
 			// 设置
 			setting.GET("/room", utils.MWtoken(), handleRoomSettingGet)
-			setting.POST("/save", utils.MWtoken(), handleRoomSettingSavePost)
-			setting.POST("/save_restart", utils.MWtoken(), handleRoomSettingSaveAndRestartPost)
-			setting.POST("/save_generate", utils.MWtoken(), handleRoomSettingSaveAndGeneratePost)
+			setting.POST("/room/save", utils.MWtoken(), handleRoomSettingSavePost)
+			setting.POST("/room/save_restart", utils.MWtoken(), handleRoomSettingSaveAndRestartPost)
+			setting.POST("/room/save_generate", utils.MWtoken(), handleRoomSettingSaveAndGeneratePost)
+			// Player
+			setting.GET("/player/list", utils.MWtoken(), handlePlayerListGet)
+			setting.POST("/player/add/admin", utils.MWtoken(), handleAdminAddPost)
+			setting.POST("/player/add/block", utils.MWtoken(), handleBlockAddPost)
+			setting.POST("/player/add/white", utils.MWtoken(), handleWhiteAddPost)
 		}
 	}
 

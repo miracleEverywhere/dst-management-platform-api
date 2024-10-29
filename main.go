@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/app/tools"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"embed"
 	"flag"
@@ -16,7 +17,7 @@ import (
 	"runtime"
 )
 
-const VERSION string = "0.0.3 2024-10-28"
+const VERSION string = "0.0.4 2024-10-29"
 
 var (
 	// flag绑定的变量
@@ -78,4 +79,9 @@ func initialize() {
 	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
+
+	//加载定时任务
+	scheduler.InitTasks()
+	//启动定时任务调度器
+	go scheduler.Scheduler.StartAsync()
 }

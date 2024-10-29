@@ -190,7 +190,24 @@ func dstModsSetup() {
 	}
 }
 
-func addAdminList(uid string, filePath string) error {
+func getList(filepath string) []string {
+	// 预留位 黑名单 管理员
+	al, err := readLines(filepath)
+	if err != nil {
+		return []string{}
+	}
+	var adminList []string
+	for _, a := range al {
+		admin := strings.TrimSpace(a)
+		adminList = append(adminList, admin)
+	}
+	if adminList == nil {
+		return []string{}
+	}
+	return adminList
+}
+
+func addList(uid string, filePath string) error {
 	// 要追加的内容
 	content := "\n" + uid
 	// 打开文件，使用 os.O_APPEND | os.O_CREATE | os.O_WRONLY 选项
@@ -209,7 +226,7 @@ func addAdminList(uid string, filePath string) error {
 	return nil
 }
 
-func deleteAdminList(uid string, filePath string) error {
+func deleteList(uid string, filePath string) error {
 	// 读取文件内容
 	lines, err := readLines(filePath)
 	if err != nil {
@@ -264,4 +281,8 @@ func writeLines(filePath string, lines []string) error {
 		_, _ = writer.WriteString(line + "\n")
 	}
 	return writer.Flush()
+}
+
+type UIDForm struct {
+	UID string `json:"uid"`
 }
