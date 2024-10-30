@@ -126,7 +126,7 @@ func handleAdminAddPost(c *gin.Context) {
 	}
 	err := addList(uidFrom.UID, utils.AdminListPath)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addAdminFail", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addAdminFail", langStr), "data": nil})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addAdmin", langStr), "data": nil})
@@ -146,7 +146,7 @@ func handleBlockAddPost(c *gin.Context) {
 	}
 	err := addList(uidFrom.UID, utils.BlockListPath)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlockFail", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addBlockFail", langStr), "data": nil})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlock", langStr), "data": nil})
@@ -166,8 +166,92 @@ func handleWhiteAddPost(c *gin.Context) {
 	}
 	err := addList(uidFrom.UID, utils.WhiteListPath)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhiteFail", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhite", langStr), "data": nil})
+}
+
+func handleAdminDeletePost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var uidFrom UIDForm
+	if err := c.ShouldBindJSON(&uidFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err := deleteList(uidFrom.UID, utils.AdminListPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteAdminFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteAdmin", langStr), "data": nil})
+}
+
+func handleBlockDeletePost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var uidFrom UIDForm
+	if err := c.ShouldBindJSON(&uidFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err := deleteList(uidFrom.UID, utils.BlockListPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteBlockFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteBlock", langStr), "data": nil})
+}
+
+func handleWhiteDeletePost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var uidFrom UIDForm
+	if err := c.ShouldBindJSON(&uidFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err := deleteList(uidFrom.UID, utils.WhiteListPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteWhiteFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteWhite", langStr), "data": nil})
+}
+
+func handleKick(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var uidFrom UIDForm
+	if err := c.ShouldBindJSON(&uidFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	errMaster := kick(uidFrom.UID, utils.MasterName)
+	errCaves := kick(uidFrom.UID, utils.CavesName)
+
+	if errMaster != nil || errCaves != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("kickFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("kickSuccess", langStr), "data": nil})
 }

@@ -20,6 +20,10 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/player/add/admin", utils.MWtoken(), handleAdminAddPost)
 			setting.POST("/player/add/block", utils.MWtoken(), handleBlockAddPost)
 			setting.POST("/player/add/white", utils.MWtoken(), handleWhiteAddPost)
+			setting.POST("/player/delete/admin", utils.MWtoken(), handleAdminDeletePost)
+			setting.POST("/player/delete/block", utils.MWtoken(), handleBlockDeletePost)
+			setting.POST("/player/delete/white", utils.MWtoken(), handleWhiteDeletePost)
+			setting.POST("/player/kick", utils.MWtoken(), handleKick)
 		}
 	}
 

@@ -196,15 +196,15 @@ func getList(filepath string) []string {
 	if err != nil {
 		return []string{}
 	}
-	var adminList []string
+	var uidList []string
 	for _, a := range al {
-		admin := strings.TrimSpace(a)
-		adminList = append(adminList, admin)
+		uid := strings.TrimSpace(a)
+		uidList = append(uidList, uid)
 	}
-	if adminList == nil {
+	if uidList == nil {
 		return []string{}
 	}
-	return adminList
+	return uidList
 }
 
 func addList(uid string, filePath string) error {
@@ -285,4 +285,9 @@ func writeLines(filePath string, lines []string) error {
 
 type UIDForm struct {
 	UID string `json:"uid"`
+}
+
+func kick(uid string, world string) error {
+	cmd := "TheNet:Kick('" + uid + "')"
+	return utils.ScreenCMD(cmd, world)
 }
