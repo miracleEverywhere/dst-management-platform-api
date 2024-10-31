@@ -10,10 +10,15 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 	{
 		tools := v1.Group("tools")
 		{
-			// 设置
+			// 安装
 			tools.GET("/os_info", utils.MWtoken(), handleOSInfoGet)
 			tools.POST("/install", utils.MWtoken(), handleInstall)
 			tools.GET("/install/status", utils.MWtoken(), handleGetInstallStatus)
+			// 定时通知
+			tools.GET("/announce", utils.MWtoken(), handleAnnounceGet)
+			tools.POST("/announce", utils.MWtoken(), handleAnnouncePost)
+			tools.DELETE("/announce", utils.MWtoken(), handleAnnounceDelete)
+			tools.PUT("/announce", utils.MWtoken(), handleAnnouncePut)
 		}
 	}
 

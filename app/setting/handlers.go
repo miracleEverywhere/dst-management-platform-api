@@ -248,7 +248,7 @@ func handleKick(c *gin.Context) {
 	errMaster := kick(uidFrom.UID, utils.MasterName)
 	errCaves := kick(uidFrom.UID, utils.CavesName)
 
-	if errMaster != nil || errCaves != nil {
+	if errMaster != nil && errCaves != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("kickFail", langStr), "data": nil})
 		return
 	}

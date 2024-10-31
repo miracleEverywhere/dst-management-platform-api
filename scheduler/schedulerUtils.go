@@ -78,3 +78,8 @@ func getPlayersList() ([]string, error) {
 	return players, nil
 
 }
+
+func execAnnounce(content string) {
+	cmd := "c_announce('" + content + "')"
+	_ = utils.ScreenCMD(cmd, utils.MasterName)
+}

@@ -223,7 +223,11 @@ func handleAnnouncementPost(c *gin.Context) {
 	}
 
 	cmd := "c_announce('" + announcementForm.Message + "')"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	cmdErr := utils.ScreenCMD(cmd, utils.MasterName)
+	if cmdErr != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("announceFail", langStr), "data": nil})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("announceSuccess", langStr), "data": nil})
 }
@@ -246,12 +250,21 @@ func handleConsolePost(c *gin.Context) {
 	}
 	cmd := consoleForm.CMD
 	if consoleForm.World == "master" {
-		_ = utils.ScreenCMD(cmd, utils.MasterName)
+		err := utils.ScreenCMD(cmd, utils.MasterName)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("execFail", langStr), "data": nil})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("execSuccess", langStr), "data": nil})
 		return
 	}
 	if consoleForm.World == "caves" {
-		_ = utils.ScreenCMD(cmd, utils.CavesName)
+		err := utils.ScreenCMD(cmd, utils.CavesName)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("execFail", langStr), "data": nil})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("execSuccess", langStr), "data": nil})
 		return
 	}

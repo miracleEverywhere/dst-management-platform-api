@@ -1,16 +1,26 @@
 package tools
 
-func Success(message string, lang string) string {
-	successZH := map[string]string{
-		"installing": "正在安装中。。。",
+func response(message string, lang string) string {
+	responseZH := map[string]string{
+		"installing":     "正在安装中。。。",
+		"duplicatedName": "名字重复",
+		"createSuccess":  "创建成功",
+		"deleteSuccess":  "删除成功",
+		"updateSuccess":  "更新成功",
+		"updateFail":     "更新失败",
 	}
-	successEN := map[string]string{
-		"installing": "Installing...",
+	responseEN := map[string]string{
+		"installing":     "Installing...",
+		"duplicatedName": "Duplicated Name",
+		"createSuccess":  "Create Success",
+		"deleteSuccess":  "Delete Success",
+		"updateSuccess":  "Update Success",
+		"updateFail":     "Update Failed",
 	}
 
 	if lang == "zh" {
-		return successZH[message]
+		return responseZH[message]
 	} else {
-		return successEN[message]
+		return responseEN[message]
 	}
 }

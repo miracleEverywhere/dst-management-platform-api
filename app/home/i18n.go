@@ -8,7 +8,9 @@ func Success(message string, lang string) string {
 		"startupSuccess":  "开启成功",
 		"updating":        "正在更新中，请耐心等待",
 		"announceSuccess": "宣告成功",
+		"announceFail":    "宣告失败",
 		"execSuccess":     "执行成功",
+		"execFail":        "执行失败",
 		"resetSuccess":    "重置成功",
 	}
 	successEN := map[string]string{
@@ -18,7 +20,9 @@ func Success(message string, lang string) string {
 		"startupSuccess":  "Startup Success",
 		"updating":        "Updating, please wait patiently",
 		"announceSuccess": "Announce Success",
+		"announceFail":    "Announce Failed",
 		"execSuccess":     "Execute Success",
+		"execFail":        "Execute Failed",
 		"resetSuccess":    "Reset Success",
 	}
 
