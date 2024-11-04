@@ -108,6 +108,7 @@ done
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
 # 初始化一些目录和文件
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/
+mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
 # 管理员
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
 # 黑名单

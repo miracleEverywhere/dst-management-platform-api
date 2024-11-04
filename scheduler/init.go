@@ -21,4 +21,13 @@ func InitTasks() {
 		}
 	}
 
+	// 自动更新
+	if config.AutoUpdate.Enable {
+		_, _ = Scheduler.Every(1).Day().At(config.AutoUpdate.Time).Do(checkUpdate)
+	}
+
+	// 自动备份
+	if config.AutoBackup.Enable {
+		_, _ = Scheduler.Every(1).Day().At(config.AutoBackup.Time).Do(doBackup)
+	}
 }

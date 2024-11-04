@@ -21,15 +21,18 @@ func handleRoomInfoGet(c *gin.Context) {
 		Message string `json:"message"`
 		Data    Data   `json:"data"`
 	}
-	filePath, err := findLatestMetaFile(utils.MetaPath)
-	if err != nil {
-		return
-	}
 
-	seasonInfo := getMetaInfo(filePath)
 	config, _ := utils.ReadConfig()
 	modsCount, _ := countMods(config.RoomSetting.Mod)
-	dstVersion, _ := getDSTVersion()
+	dstVersion, _ := GetDSTVersion()
+	filePath, err := findLatestMetaFile(utils.MetaPath)
+
+	var seasonInfo metaInfo
+	if err != nil {
+		seasonInfo = getMetaInfo("")
+	} else {
+		seasonInfo = getMetaInfo(filePath)
+	}
 
 	data := Data{
 		RoomSettingBase: config.RoomSetting.Base,
@@ -119,6 +122,7 @@ func handleExecPost(c *gin.Context) {
 		time.Sleep(2 * time.Second)
 		_ = utils.BashCMD(utils.StopMasterCMD)
 		_ = utils.BashCMD(utils.StopCavesCMD)
+		_ = utils.BashCMD(utils.ClearScreenCMD)
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
 
 	case "restart":
@@ -172,16 +176,52 @@ func handleExecPost(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("resetSuccess", langStr), "data": nil})
 
+	case "delete":
+		errMaster := utils.RemoveDir(utils.MasterSavePath)
+		errCaves := utils.RemoveDir(utils.CavesSavePath)
+		if errMaster != nil {
+			if errCaves != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": Success("deleteGroundFail", langStr) + ", " + Success("deleteCavesFail", langStr),
+					"data":    nil,
+				})
+			} else {
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": Success("deleteGroundFail", langStr) + ", " + Success("deleteCavesSuccess", langStr),
+					"data":    nil,
+				})
+			}
+		} else {
+			if errCaves != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": Success("deleteGroundSuccess", langStr) + ", " + Success("deleteCavesFail", langStr),
+					"data":    nil,
+				})
+			} else {
+				c.JSON(http.StatusOK, gin.H{
+					"code":    200,
+					"message": Success("deleteGroundSuccess", langStr) + ", " + Success("deleteCavesSuccess", langStr),
+					"data":    nil,
+				})
+			}
+		}
+
 	case "masterSwitch":
 		if execFrom.Info == 0 {
 			cmd := "c_shutdown()"
 			_ = utils.ScreenCMD(cmd, utils.MasterName)
 			time.Sleep(2 * time.Second)
 			_ = utils.BashCMD(utils.StopMasterCMD)
+			_ = utils.BashCMD(utils.ClearScreenCMD)
 
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
 		} else {
 			//开启服务器
+			_ = utils.BashCMD(utils.ClearScreenCMD)
+			time.Sleep(1 * time.Second)
 			_ = utils.BashCMD(utils.StartMasterCMD)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("startupSuccess", langStr), "data": nil})
 		}
@@ -192,10 +232,13 @@ func handleExecPost(c *gin.Context) {
 			_ = utils.ScreenCMD(cmd, utils.CavesName)
 			time.Sleep(2 * time.Second)
 			_ = utils.BashCMD(utils.StopCavesCMD)
+			_ = utils.BashCMD(utils.ClearScreenCMD)
 
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
 		} else {
 			//开启服务器
+			_ = utils.BashCMD(utils.ClearScreenCMD)
+			time.Sleep(1 * time.Second)
 			_ = utils.BashCMD(utils.StartCavesCMD)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("startupSuccess", langStr), "data": nil})
 		}

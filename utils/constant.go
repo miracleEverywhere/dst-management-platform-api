@@ -14,6 +14,8 @@ const StopMasterCMD = "screen -S " + MasterScreenName + " -X quit"
 
 const StopCavesCMD = "screen -S " + CavesScreenName + " -X quit"
 
+const ClearScreenCMD = "screen -wipe"
+
 const UpdateGameCMD = "cd ~/steamcmd ; ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit"
 
 const PlayersListCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s\\\", 99999999, i-1, v.userid, v.name )) end$(printf \\\\r)\"\n"
@@ -63,3 +65,5 @@ const MetaPath = ServerPath + MasterName + "/save/session"
 const DSTLocalVersionPath = "dst/version.txt"
 
 const DSTServerVersionApi = "http://ver.tugos.cn/getLocalVersion"
+
+const BackupPath = ".klei/DMP_BACKUP"

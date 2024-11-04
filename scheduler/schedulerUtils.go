@@ -2,11 +2,13 @@ package scheduler
 
 import (
 	"bufio"
+	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func getPlayersList() ([]string, error) {
@@ -82,4 +84,38 @@ func getPlayersList() ([]string, error) {
 func execAnnounce(content string) {
 	cmd := "c_announce('" + content + "')"
 	_ = utils.ScreenCMD(cmd, utils.MasterName)
+}
+
+func checkUpdate() {
+	dstVersion, _ := home.GetDSTVersion()
+	if dstVersion.Local != dstVersion.Server {
+		doUpdate()
+	}
+}
+
+func doUpdate() {
+	config, _ := utils.ReadConfig()
+	cmd := "c_shutdown()"
+	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	if config.RoomSetting.Cave != "" {
+		_ = utils.ScreenCMD(cmd, utils.CavesName)
+	}
+
+	time.Sleep(2 * time.Second)
+	_ = utils.BashCMD(utils.StopMasterCMD)
+	if config.RoomSetting.Cave != "" {
+		_ = utils.BashCMD(utils.StopCavesCMD)
+	}
+
+	go func() {
+		_ = utils.BashCMD(utils.UpdateGameCMD)
+		_ = utils.BashCMD(utils.StartMasterCMD)
+		if config.RoomSetting.Cave != "" {
+			_ = utils.BashCMD(utils.StartCavesCMD)
+		}
+	}()
+}
+
+func doBackup() {
+	_ = utils.BackupGame()
 }

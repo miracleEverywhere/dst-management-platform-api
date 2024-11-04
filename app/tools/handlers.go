@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -117,6 +118,16 @@ func handleAnnouncePost(c *gin.Context) {
 }
 
 func handleAnnounceDelete(c *gin.Context) {
+	// 捕获函数退出时执行重启操作
+	defer func() {
+		// 在函数返回后执行重启程序，但确保响应已经发送
+		go func() {
+			err := restartMyself()
+			if err != nil {
+				fmt.Println("重启失败:", err)
+			}
+		}()
+	}()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -172,4 +183,166 @@ func handleAnnouncePut(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateFail", langStr), "data": nil})
+}
+
+func handleUpdateGet(c *gin.Context) {
+	dstVersion, _ := home.GetDSTVersion()
+	config, _ := utils.ReadConfig()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
+		"version":       dstVersion,
+		"updateSetting": config.AutoUpdate,
+	}})
+}
+
+func handleUpdatePut(c *gin.Context) {
+	// 捕获函数退出时执行重启操作
+	defer func() {
+		// 在函数返回后执行重启程序，但确保响应已经发送
+		go func() {
+			err := restartMyself()
+			if err != nil {
+				fmt.Println("重启失败:", err)
+			}
+		}()
+	}()
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var updateForm utils.AutoUpdate
+	if err := c.ShouldBindJSON(&updateForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.AutoUpdate.Time = updateForm.Time
+	config.AutoUpdate.Enable = updateForm.Enable
+	utils.WriteConfig(config)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
+}
+
+func handleBackupGet(c *gin.Context) {
+	type BackFiles struct {
+		Name       string `json:"name"`
+		CreateTime string `json:"createTime"`
+	}
+	var tmp []BackFiles
+	config, _ := utils.ReadConfig()
+	backupFiles, _ := getBackupFiles()
+	for _, i := range backupFiles {
+		var a BackFiles
+		a.Name = i.Name
+		a.CreateTime = i.ModTime.Format("2006-01-02 15:04:05")
+		tmp = append(tmp, a)
+	}
+	diskUsage, _ := utils.DiskUsage()
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
+		"backupSetting": config.AutoBackup,
+		"backupFiles":   tmp,
+		"diskUsage":     diskUsage,
+	}})
+}
+
+func handleBackupPut(c *gin.Context) {
+	// 捕获函数退出时执行重启操作
+	defer func() {
+		// 在函数返回后执行重启程序，但确保响应已经发送
+		go func() {
+			err := restartMyself()
+			if err != nil {
+				fmt.Println("重启失败:", err)
+			}
+		}()
+	}()
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var backupForm utils.AutoBackup
+	if err := c.ShouldBindJSON(&backupForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.AutoBackup.Time = backupForm.Time
+	config.AutoBackup.Enable = backupForm.Enable
+	utils.WriteConfig(config)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
+}
+
+func handleBackupDelete(c *gin.Context) {
+	type DeleteForm struct {
+		Name string `json:"name"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var deleteForm DeleteForm
+	if err := c.ShouldBindJSON(&deleteForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	filePath := utils.BackupPath + "/" + deleteForm.Name
+	err := utils.RemoveFile(filePath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteFail", langStr), "data": nil})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+	}
+}
+
+func handleBackupRestore(c *gin.Context) {
+	type RestoreForm struct {
+		Name string `json:"name"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var restoreForm RestoreForm
+	if err := c.ShouldBindJSON(&restoreForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	filePath := utils.BackupPath + "/" + restoreForm.Name
+	err := utils.RecoveryGame(filePath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
+	}
+}
+
+func handleMultiDelete(c *gin.Context) {
+	type MultiDeleteForm struct {
+		Names []string `json:"names"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var multiDeleteForm MultiDeleteForm
+	if err := c.ShouldBindJSON(&multiDeleteForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	for _, file := range multiDeleteForm.Names {
+		filePath := utils.BackupPath + "/" + file
+		_ = utils.RemoveFile(filePath)
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
 }

@@ -237,7 +237,7 @@ type DSTVersion struct {
 	Server int `json:"server"`
 }
 
-func getDSTVersion() (DSTVersion, error) { // 打开文件
+func GetDSTVersion() (DSTVersion, error) { // 打开文件
 	var dstVersion DSTVersion
 	dstVersion.Server = -1
 	dstVersion.Local = -1

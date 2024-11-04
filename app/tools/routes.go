@@ -19,6 +19,15 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.POST("/announce", utils.MWtoken(), handleAnnouncePost)
 			tools.DELETE("/announce", utils.MWtoken(), handleAnnounceDelete)
 			tools.PUT("/announce", utils.MWtoken(), handleAnnouncePut)
+			// 定时更新
+			tools.GET("/update", utils.MWtoken(), handleUpdateGet)
+			tools.PUT("/update", utils.MWtoken(), handleUpdatePut)
+			// 定时备份
+			tools.GET("/backup", utils.MWtoken(), handleBackupGet)
+			tools.PUT("/backup", utils.MWtoken(), handleBackupPut)
+			tools.DELETE("/backup", utils.MWtoken(), handleBackupDelete)
+			tools.DELETE("/backup/multi", utils.MWtoken(), handleMultiDelete)
+			tools.POST("/backup/restore", utils.MWtoken(), handleBackupRestore)
 		}
 	}
 

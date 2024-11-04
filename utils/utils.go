@@ -9,12 +9,16 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -156,6 +160,10 @@ func CreateConfig() {
 		randomString[i] = charset[r.Intn(len(charset))]
 	}
 	config.JwtSecret = string(randomString)
+	config.AutoUpdate.Time = "06:13:57"
+	config.AutoUpdate.Enable = true
+	config.AutoBackup.Time = "06:52:18"
+	config.AutoBackup.Enable = true
 	WriteConfig(config)
 }
 
@@ -287,6 +295,7 @@ func CpuUsage() float64 {
 	}
 	return percent[0]
 }
+
 func MemoryUsage() float64 {
 	// 获取内存信息
 	vmStat, err := mem.VirtualMemory()
@@ -295,6 +304,69 @@ func MemoryUsage() float64 {
 		return 0
 	}
 	return vmStat.UsedPercent
+}
+
+func DiskUsage() (float64, error) {
+	// 获取当前目录
+	currentDir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error getting current directory:", err)
+		return 0, err
+	}
+
+	// 获取当前目录所在的挂载点
+	mountPoint := findMountPoint(currentDir)
+	if mountPoint == "" {
+		fmt.Println("Unable to find mount point for current directory.")
+		return 0, fmt.Errorf("unable to find mount point for current directory")
+	}
+
+	// 获取挂载点的磁盘使用情况
+	usage, err := disk.Usage(mountPoint)
+	if err != nil {
+		fmt.Printf("Error getting usage for %s: %v\n", mountPoint, err)
+		return 0, err
+	}
+	return usage.UsedPercent, nil
+}
+
+// 查找当前目录所在的挂载点
+func findMountPoint(path string) string {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return ""
+	}
+
+	for {
+		partitions, err := disk.Partitions(false)
+		if err != nil {
+			return ""
+		}
+
+		for _, partition := range partitions {
+			if isSubPath(absPath, partition.Mountpoint) {
+				return partition.Mountpoint
+			}
+		}
+
+		// 向上遍历目录
+		parent := filepath.Dir(absPath)
+		if parent == absPath {
+			break
+		}
+		absPath = parent
+	}
+
+	return ""
+}
+
+// 检查路径是否是挂载点的子路径
+func isSubPath(path, mountpoint string) bool {
+	rel, err := filepath.Rel(mountpoint, path)
+	if err != nil {
+		return false
+	}
+	return !strings.Contains(rel, "..")
 }
 
 func ScreenCMD(cmd string, world string) error {
@@ -335,4 +407,102 @@ func UniqueSliceKeepOrderString(slice []string) []string {
 	}
 
 	return result
+}
+
+func RemoveDir(dirPath string) error {
+	// 调用 os.RemoveAll 删除目录及其所有内容
+	err := os.RemoveAll(dirPath)
+	if err != nil {
+		fmt.Println("删除目录失败:", err)
+		return err
+	}
+	return nil
+}
+
+func RemoveFile(filePath string) error {
+	// 删除文件
+	err := os.Remove(filePath)
+	if err != nil {
+		fmt.Printf("Error deleting file: %v\n", err)
+		return err
+	}
+	return nil
+}
+
+// EnsureDirExists 检查目录是否存在，如果不存在则创建
+func EnsureDirExists(dirPath string) error {
+	// 检查目录是否存在
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		// 目录不存在，创建目录
+		err := os.MkdirAll(dirPath, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("无法创建目录: %v", err)
+		}
+		fmt.Println("目录已创建:", dirPath)
+	} else if err != nil {
+		// 其他错误
+		return fmt.Errorf("检查目录时出错: %v", err)
+	} else {
+		// 目录已存在
+		fmt.Println("目录已存在:", dirPath)
+	}
+
+	return nil
+}
+
+func FileExists(filePath string) (bool, error) {
+	// 检查文件是否存在
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	} else {
+		return true, nil
+	}
+}
+
+func BackupGame() error {
+	err := EnsureDirExists(DMPLogPath)
+	if err != nil {
+		return err
+	}
+	currentTime := time.Now()
+	timestampSeconds := currentTime.Unix()
+	timestampSecondsStr := strconv.FormatInt(timestampSeconds, 10)
+	cmd := "tar zcvf " + BackupPath + "/" + timestampSecondsStr + ".tgz " + ServerPath[:len(ServerPath)-1]
+	go func() {
+		_ = BashCMD(cmd)
+	}()
+	return nil
+}
+
+func RecoveryGame(backupFile string) error {
+	// 检查文件是否存在
+	exist, err := FileExists(backupFile)
+	if !exist || err != nil {
+		return fmt.Errorf("文件不存在")
+	}
+	// 停止进程
+	cmd := "c_shutdown()"
+	_ = ScreenCMD(cmd, MasterName)
+	_ = ScreenCMD(cmd, CavesName)
+	time.Sleep(2 * time.Second)
+	_ = BashCMD(StopMasterCMD)
+	_ = BashCMD(StopCavesCMD)
+	_ = BashCMD(ClearScreenCMD)
+
+	// 删除主目录
+	err = RemoveDir(ServerPath)
+	if err != nil {
+		return err
+	}
+
+	// 解压备份文件
+	cmd = "tar zxvf " + backupFile
+	err = BashCMD(cmd)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
