@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var Scheduler = gocron.NewScheduler(time.UTC)
+var Scheduler = gocron.NewScheduler(time.Local)
 
 // InitTasks 初始化定时任务
 func InitTasks() {
@@ -30,4 +30,5 @@ func InitTasks() {
 	if config.AutoBackup.Enable {
 		_, _ = Scheduler.Every(1).Day().At(config.AutoBackup.Time).Do(doBackup)
 	}
+
 }

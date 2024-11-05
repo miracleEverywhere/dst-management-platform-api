@@ -119,15 +119,16 @@ func handleAnnouncePost(c *gin.Context) {
 
 func handleAnnounceDelete(c *gin.Context) {
 	// 捕获函数退出时执行重启操作
-	defer func() {
-		// 在函数返回后执行重启程序，但确保响应已经发送
-		go func() {
-			err := restartMyself()
-			if err != nil {
-				fmt.Println("重启失败:", err)
-			}
-		}()
-	}()
+	//defer func() {
+	//	// 在函数返回后执行重启程序，但确保响应已经发送
+	//	go func() {
+	//		err := restartMyself()
+	//		if err != nil {
+	//			fmt.Println("重启失败:", err)
+	//		}
+	//	}()
+	//}()
+	defer reloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -152,16 +153,7 @@ func handleAnnounceDelete(c *gin.Context) {
 }
 
 func handleAnnouncePut(c *gin.Context) {
-	// 捕获函数退出时执行重启操作
-	defer func() {
-		// 在函数返回后执行重启程序，但确保响应已经发送
-		go func() {
-			err := restartMyself()
-			if err != nil {
-				fmt.Println("重启失败:", err)
-			}
-		}()
-	}()
+	defer reloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -196,16 +188,7 @@ func handleUpdateGet(c *gin.Context) {
 }
 
 func handleUpdatePut(c *gin.Context) {
-	// 捕获函数退出时执行重启操作
-	defer func() {
-		// 在函数返回后执行重启程序，但确保响应已经发送
-		go func() {
-			err := restartMyself()
-			if err != nil {
-				fmt.Println("重启失败:", err)
-			}
-		}()
-	}()
+	defer reloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -229,6 +212,7 @@ func handleBackupGet(c *gin.Context) {
 	type BackFiles struct {
 		Name       string `json:"name"`
 		CreateTime string `json:"createTime"`
+		Size       int64  `json:"size"`
 	}
 	var tmp []BackFiles
 	config, _ := utils.ReadConfig()
@@ -237,6 +221,7 @@ func handleBackupGet(c *gin.Context) {
 		var a BackFiles
 		a.Name = i.Name
 		a.CreateTime = i.ModTime.Format("2006-01-02 15:04:05")
+		a.Size = i.Size
 		tmp = append(tmp, a)
 	}
 	diskUsage, _ := utils.DiskUsage()
@@ -248,16 +233,7 @@ func handleBackupGet(c *gin.Context) {
 }
 
 func handleBackupPut(c *gin.Context) {
-	// 捕获函数退出时执行重启操作
-	defer func() {
-		// 在函数返回后执行重启程序，但确保响应已经发送
-		go func() {
-			err := restartMyself()
-			if err != nil {
-				fmt.Println("重启失败:", err)
-			}
-		}()
-	}()
+	defer reloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -344,5 +320,16 @@ func handleMultiDelete(c *gin.Context) {
 		filePath := utils.BackupPath + "/" + file
 		_ = utils.RemoveFile(filePath)
 	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+}
+
+func handleDownloadModManualPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	modList := utils.GetModList()
+	utils.DownloadMod(modList)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
 }

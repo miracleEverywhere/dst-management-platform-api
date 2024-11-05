@@ -28,6 +28,8 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.DELETE("/backup", utils.MWtoken(), handleBackupDelete)
 			tools.DELETE("/backup/multi", utils.MWtoken(), handleMultiDelete)
 			tools.POST("/backup/restore", utils.MWtoken(), handleBackupRestore)
+			//MOD
+			tools.POST("/mod/install/all", utils.MWtoken(), handleDownloadModManualPost)
 		}
 	}
 

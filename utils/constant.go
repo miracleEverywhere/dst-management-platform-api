@@ -67,3 +67,5 @@ const DSTLocalVersionPath = "dst/version.txt"
 const DSTServerVersionApi = "http://ver.tugos.cn/getLocalVersion"
 
 const BackupPath = ".klei/DMP_BACKUP"
+
+const KillDST = "pkill -f -9 dontstarve_dedicated_server_nullrenderer"

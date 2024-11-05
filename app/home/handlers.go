@@ -92,6 +92,8 @@ func handleExecPost(c *gin.Context) {
 
 	switch execFrom.Type {
 	case "startup":
+		_ = utils.BashCMD(utils.KillDST)
+		_ = utils.BashCMD(utils.ClearScreenCMD)
 		masterStatus := getProcessStatus(utils.MasterScreenName)
 		cavesStatus := getProcessStatus(utils.CavesScreenName)
 		if masterStatus == 0 {
@@ -140,6 +142,8 @@ func handleExecPost(c *gin.Context) {
 		}
 
 		time.Sleep(1 * time.Second)
+		_ = utils.BashCMD(utils.KillDST)
+		_ = utils.BashCMD(utils.ClearScreenCMD)
 		_ = utils.BashCMD(utils.StartMasterCMD)
 		if config.RoomSetting.Cave != "" {
 			_ = utils.BashCMD(utils.StartCavesCMD)
@@ -159,6 +163,9 @@ func handleExecPost(c *gin.Context) {
 		if config.RoomSetting.Cave != "" {
 			_ = utils.BashCMD(utils.StopCavesCMD)
 		}
+		time.Sleep(1 * time.Second)
+		_ = utils.BashCMD(utils.KillDST)
+		_ = utils.BashCMD(utils.ClearScreenCMD)
 
 		go func() {
 			_ = utils.BashCMD(utils.UpdateGameCMD)

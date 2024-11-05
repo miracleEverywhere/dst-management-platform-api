@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
+	lua "github.com/yuin/gopher-lua"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -442,9 +443,6 @@ func EnsureDirExists(dirPath string) error {
 	} else if err != nil {
 		// 其他错误
 		return fmt.Errorf("检查目录时出错: %v", err)
-	} else {
-		// 目录已存在
-		fmt.Println("目录已存在:", dirPath)
 	}
 
 	return nil
@@ -469,10 +467,9 @@ func BackupGame() error {
 	currentTime := time.Now()
 	timestampSeconds := currentTime.Unix()
 	timestampSecondsStr := strconv.FormatInt(timestampSeconds, 10)
+	fmt.Println(123)
 	cmd := "tar zcvf " + BackupPath + "/" + timestampSecondsStr + ".tgz " + ServerPath[:len(ServerPath)-1]
-	go func() {
-		_ = BashCMD(cmd)
-	}()
+	_ = BashCMD(cmd)
 	return nil
 }
 
@@ -505,4 +502,49 @@ func RecoveryGame(backupFile string) error {
 	}
 
 	return nil
+}
+
+func GetModList() []string {
+	var modList []string
+	L := lua.NewState()
+	defer L.Close()
+	if err := L.DoFile(MasterModPath); err != nil {
+		fmt.Println("加载 Lua 文件失败:", err)
+		return []string{}
+	}
+	modsTable := L.Get(-1)
+	if tbl, ok := modsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+			// 检查键是否是字符串，并且以 "workshop-" 开头
+			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
+				// 提取 "workshop-" 后面的数字
+				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
+				modList = append(modList, workshopID)
+			}
+		})
+	}
+	return modList
+}
+
+func DownloadMod(modList []string) {
+	if len(modList) == 0 {
+		return
+	}
+	TruncAndWriteFile(GameModSettingPath, "")
+
+	downloadCMD := "steamcmd/steamcmd.sh +force_install_dir dl +login anonymous"
+	for _, mod := range modList {
+		downloadCMD = downloadCMD + " +workshop_download_item 322330 " + mod
+	}
+	downloadCMD = downloadCMD + " +quit"
+	_ = BashCMD(downloadCMD)
+
+	for _, mod := range modList {
+		mvCMD := "mv ~/steamcmd/dl/steamapps/workshop/content/322330/" + mod + " ~/dst/mods/workshop-" + mod
+		fmt.Println(mvCMD)
+		_ = BashCMD(mvCMD)
+	}
+
+	rmCMD := "rm -rf ~/dl"
+	_ = BashCMD(rmCMD)
 }
