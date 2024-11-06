@@ -17,7 +17,7 @@ import (
 	"runtime"
 )
 
-const VERSION string = "0.0.8 2024-11-05"
+const VERSION string = "0.0.9 2024-11-06"
 
 var (
 	// flag绑定的变量
