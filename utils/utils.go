@@ -69,6 +69,11 @@ type Players struct {
 	NickName string `json:"nickName"`
 }
 
+type Statistics struct {
+	Timestamp int64 `json:"timestamp"`
+	Num       int   `json:"num"`
+}
+
 type Config struct {
 	Username     string         `json:"username"`
 	Nickname     string         `json:"nickname"`
@@ -79,6 +84,7 @@ type Config struct {
 	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
 	AutoBackup   AutoBackup     `json:"autoBackup"`
 	Players      []Players      `json:"players"`
+	Statistics   []Statistics   `json:"statistics"`
 }
 
 type OSInfo struct {
@@ -547,4 +553,11 @@ func DownloadMod(modList []string) {
 
 	rmCMD := "rm -rf ~/dl"
 	_ = BashCMD(rmCMD)
+}
+
+func GetTimestamp() int64 {
+	now := time.Now()
+	// 获取毫秒级时间戳
+	milliseconds := now.UnixNano() / int64(time.Millisecond)
+	return milliseconds
 }

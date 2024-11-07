@@ -333,3 +333,9 @@ func handleDownloadModManualPost(c *gin.Context) {
 	utils.DownloadMod(modList)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
 }
+
+func handleStatisticsGet(c *gin.Context) {
+	config, _ := utils.ReadConfig()
+	data := config.Statistics
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}

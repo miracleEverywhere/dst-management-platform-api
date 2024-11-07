@@ -11,6 +11,38 @@ import (
 	"time"
 )
 
+func setPlayer2DB() {
+	config, _ := utils.ReadConfig()
+
+	players, err := getPlayersList()
+	if err != nil {
+		return
+	}
+	var playerList []utils.Players
+	for _, p := range players {
+		var player utils.Players
+		uidNickName := strings.Split(p, ",")
+		player.UID = uidNickName[0]
+		player.NickName = uidNickName[1]
+		playerList = append(playerList, player)
+	}
+	config.Players = playerList
+
+	numPlayer := len(playerList)
+	currentTime := utils.GetTimestamp()
+	var statistics utils.Statistics
+	statistics.Timestamp = currentTime
+	statistics.Num = numPlayer
+	statisticsLength := len(config.Statistics)
+	if statisticsLength > 2880 {
+		// 只保留一天的数据量
+		config.Statistics = append(config.Statistics[:0], config.Statistics[1:]...)
+	}
+	config.Statistics = append(config.Statistics, statistics)
+
+	utils.WriteConfig(config)
+}
+
 func getPlayersList() ([]string, error) {
 	// 先执行命令
 	_ = utils.BashCMD(utils.PlayersListCMD)

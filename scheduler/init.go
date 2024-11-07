@@ -11,7 +11,7 @@ var Scheduler = gocron.NewScheduler(time.Local)
 // InitTasks 初始化定时任务
 func InitTasks() {
 	// 获取当前玩家
-	_, _ = Scheduler.Every(15).Seconds().Do(setPlayer2DB)
+	_, _ = Scheduler.Every(30).Seconds().Do(setPlayer2DB)
 
 	//初始化定时通知
 	config, _ := utils.ReadConfig()

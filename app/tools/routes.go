@@ -30,6 +30,9 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.POST("/backup/restore", utils.MWtoken(), handleBackupRestore)
 			//MOD
 			//tools.POST("/mod/install/all", utils.MWtoken(), handleDownloadModManualPost)
+			// 统计信息
+			tools.GET("/statistics", utils.MWtoken(), handleStatisticsGet)
+
 		}
 	}
 
