@@ -1,30 +1,34 @@
 
-#### 使用方法
+#### 使用方法(Usage)
 ```shell
 # 执行以下命令，根据系统提示输入并回车
+# Please execute the following command according to the system prompts, enter the input and press Enter.
 wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
 ```
-如果下载了发行版，则执行以下命令：
+如果下载了发行版，则执行以下命令：(If the release-version bin-file has been downloaded, execute the following command:)
 ```shell
 # -c 为开启日志，建议开启
+# The -c option is for enabling logging, it is recommended to enable it.
 nohup ./dmp -c 2>&1 > dmp.log &
 ```
-默认启动端口为80，如果您想修改，则修改启动命令：
+默认启动端口为80，如果您想修改，则修改启动命令：(
+The default port is 80. If you wish to modify it, please modify the startup command:)
 ```shell
 # 修改端口为8888
+# Change the port to 8888.
 nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 ```
 
 ---
 
-#### 默认用户名密码
->登录后请尽快修改密码  
+#### 默认用户名密码(Default username and password)
+>登录后请尽快修改密码(After logging in, please change your password as soon as possible)
 >  
 >>admin/123456
 
 ---
 
-#### 平台截图
+#### 平台截图(DMP screenshot)
 ![home-en](http://8.137.107.46/dmp/home-en.png)
 ![home-zh](http://8.137.107.46/dmp/home-zh.png)
 ![room-en](http://8.137.107.46/dmp/room-en.png)
@@ -38,7 +42,7 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 
 ---
 
-#### 文件介绍
+#### 文件介绍(File Introduction)
 ```text
 .
 ├── dmp             # 主程序
@@ -49,7 +53,7 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 
 ---
 
-#### 项目介绍
+#### 项目介绍(Project Introduction)
 ```text
 .
 ├── app                                 # 接口
