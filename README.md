@@ -30,14 +30,37 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 
 #### 平台截图(DMP screenshot)
 ![home-en](http://8.137.107.46/dmp/home-en.png)
+
+
 ![home-zh](http://8.137.107.46/dmp/home-zh.png)
+
+![home-en](http://8.137.107.46/dmp/mobile-zh.png)
+
+
+![home-zh](http://8.137.107.46/dmp/mobile-en.png)
+
+
 ![room-en](http://8.137.107.46/dmp/room-en.png)
+
+
 ![room-zh](http://8.137.107.46/dmp/room-zh.png)
+
+
 ![player-en](http://8.137.107.46/dmp/player-en.png)
+
+
 ![player-zh](http://8.137.107.46/dmp/player-zh.png)
+
+
 ![statistics-en](http://8.137.107.46/dmp/statistics-en.png)
+
+
 ![statistics-zh](http://8.137.107.46/dmp/statistics-zh.png)
+
+
 ![menu-tools-en](http://8.137.107.46/dmp/menu-tools-en.png)
+
+
 ![menu-tools-zh](http://8.137.107.46/dmp/menu-tools-zh.png)
 
 ---
