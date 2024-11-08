@@ -2,7 +2,7 @@
 #### 使用方法
 ```shell
 # 执行以下命令，根据系统提示输入并回车
-wget http://8.137.107.46/dmp/run.sh && chmod +x run.sh && ./run.sh
+wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
 ```
 如果下载了发行版，则执行以下命令：
 ```shell
