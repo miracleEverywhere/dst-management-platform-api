@@ -94,6 +94,7 @@ func handleAnnounceGet(c *gin.Context) {
 }
 
 func handleAnnouncePost(c *gin.Context) {
+	defer reloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
