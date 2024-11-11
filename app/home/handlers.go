@@ -15,6 +15,7 @@ func handleRoomInfoGet(c *gin.Context) {
 		SeasonInfo      metaInfo              `json:"seasonInfo"`
 		ModsCount       int                   `json:"modsCount"`
 		Version         DSTVersion            `json:"version"`
+		ConnectionCode  string                `json:"connectionCode"`
 	}
 	type Response struct {
 		Code    int    `json:"code"`
@@ -34,11 +35,15 @@ func handleRoomInfoGet(c *gin.Context) {
 		seasonInfo = getMetaInfo(filePath)
 	}
 
+	internetIp, err := GetInternetIP()
+	connectionCode := "c_connect('" + internetIp + "',11000)"
+
 	data := Data{
 		RoomSettingBase: config.RoomSetting.Base,
 		SeasonInfo:      seasonInfo,
 		ModsCount:       modsCount,
 		Version:         dstVersion,
+		ConnectionCode:  connectionCode,
 	}
 
 	response := Response{

@@ -3,6 +3,7 @@ package home
 import (
 	"bufio"
 	"dst-management-platform-api/utils"
+	"encoding/json"
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
 	"io"
@@ -302,4 +303,45 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 	dstVersion.Server = -1
 	dstVersion.Local = -1
 	return dstVersion, fmt.Errorf("文件为空")
+}
+
+func GetInternetIP() (string, error) {
+	type JSONResponse struct {
+		Status      string  `json:"status"`
+		Country     string  `json:"country"`
+		CountryCode string  `json:"countryCode"`
+		Region      string  `json:"region"`
+		RegionName  string  `json:"regionName"`
+		City        string  `json:"city"`
+		Zip         string  `json:"zip"`
+		Lat         float64 `json:"lat"`
+		Lon         float64 `json:"lon"`
+		Timezone    string  `json:"timezone"`
+		Isp         string  `json:"isp"`
+		Org         string  `json:"org"`
+		As          string  `json:"as"`
+		Query       string  `json:"query"`
+	}
+
+	response, err := http.Get(utils.InternetApi)
+	if err != nil {
+		return "", err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(response.Body) // 确保在函数结束时关闭响应体
+
+	// 检查 HTTP 状态码
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP 请求失败，状态码: %d", response.StatusCode)
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(response.Body).Decode(&jsonResp); err != nil {
+		fmt.Println("解析JSON失败:", err)
+		return "", err
+	}
+	return jsonResp.Query, nil
 }
