@@ -1,5 +1,7 @@
 
 #### 使用方法(Usage)
+>**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
+>**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
 # 执行以下命令，根据系统提示输入并回车
 # Please execute the following command according to the system prompts, enter the input and press Enter.
