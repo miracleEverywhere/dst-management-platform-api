@@ -70,4 +70,4 @@ const BackupPath = ".klei/DMP_BACKUP"
 
 const KillDST = "pkill -f -9 dontstarve_dedicated_server_nullrenderer"
 
-const InternetApi = "http://ip-api.com/json/?lang=zh-CN"
+const InternetIPApi = "http://ip-api.com/json/?lang=zh-CN"

@@ -323,7 +323,7 @@ func GetInternetIP() (string, error) {
 		Query       string  `json:"query"`
 	}
 
-	response, err := http.Get(utils.InternetApi)
+	response, err := http.Get(utils.InternetIPApi)
 	if err != nil {
 		return "", err
 	}
