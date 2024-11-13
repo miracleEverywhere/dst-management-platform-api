@@ -118,12 +118,50 @@ func execAnnounce(content string) {
 	_ = utils.ScreenCMD(cmd, utils.MasterName)
 }
 
+// 将更新时间提前30分钟，提前通知重启服务器，实际重启的时间仍为设置时间
+func updateTimeFix(timeStr string) string {
+	// 解析时间字符串
+	parsedTime, err := time.Parse("15:04:05", timeStr)
+	if err != nil {
+		fmt.Println("解析时间字符串失败:", err)
+		return timeStr
+	}
+
+	// 减去30分钟
+	duration, _ := time.ParseDuration("-30m")
+	newTime := parsedTime.Add(duration)
+
+	// 格式化新的时间字符串
+	newTimeStr := newTime.Format("15:04:05")
+	return newTimeStr
+}
+
 func checkUpdate() {
 	dstVersion, _ := home.GetDSTVersion()
+	doAnnounce()
 	if dstVersion.Local != dstVersion.Server {
 		doUpdate()
 	}
 	doRestart()
+}
+
+func doAnnounce() {
+	// 重启前进行宣告
+	cmd := "c_announce('将在30分钟后自动重启服务器(The server will automatically restart in 30 minutes)')"
+	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	time.Sleep(10 * time.Minute)
+	cmd = "c_announce('将在20分钟后自动重启服务器(The server will automatically restart in 20 minutes)')"
+	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	time.Sleep(10 * time.Minute)
+	cmd = "c_announce('将在10分钟后自动重启服务器(The server will automatically restart in 10 minutes)')"
+	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	time.Sleep(5 * time.Minute)
+	cmd = "c_announce('将在5分钟后自动重启服务器(The server will automatically restart in 5 minutes)')"
+	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	time.Sleep(4 * time.Minute)
+	cmd = "c_announce('将在1分钟后自动重启服务器(The server will automatically restart in 1 minute)')"
+	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	time.Sleep(1 * time.Minute)
 }
 
 func doUpdate() {
@@ -151,6 +189,7 @@ func doUpdate() {
 
 func doRestart() {
 	config, _ := utils.ReadConfig()
+
 	cmd := "c_shutdown()"
 	_ = utils.ScreenCMD(cmd, utils.MasterName)
 	if config.RoomSetting.Cave != "" {
