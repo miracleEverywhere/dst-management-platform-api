@@ -91,7 +91,7 @@ type OSInfo struct {
 	Architecture    string
 	OS              string
 	CPUModel        string
-	CPUCores        int32
+	CPUCores        int
 	MemorySize      uint64
 	Platform        string
 	PlatformVersion string
@@ -237,7 +237,8 @@ func GetOSInfo() (*OSInfo, error) {
 		return nil, err
 	}
 	cpuModel := cpuInfo[0].ModelName
-	cpuCore := cpuInfo[0].Cores
+	cpuCount, _ := cpu.Counts(true)
+	cpuCore := cpuCount
 
 	// 获取内存信息
 	virtualMemory, err := mem.VirtualMemory()
