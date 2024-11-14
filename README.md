@@ -141,5 +141,6 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 ```
 ##  :sparkling_heart: 致谢
 本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-api)前端页面基于**koi-ui**二开，感谢开源  
-[[koi-ui gitee地址]](https://gitee.com/s763483966/dst-management-platform-api)  
-[[koi-ui github地址]](https://github.com/yuxintao6/koi-ui)
+The [front-end page](https://github.com/miracleEverywhere/dst-management-platform-api) of this project is based on the secondary development of **koi-ui**, thanks to open source  
+[[koi-ui gitee]](https://gitee.com/s763483966/dst-management-platform-api)  
+[[koi-ui github]](https://github.com/yuxintao6/koi-ui)
