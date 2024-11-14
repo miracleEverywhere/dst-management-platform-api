@@ -32,7 +32,9 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			//tools.POST("/mod/install/all", utils.MWtoken(), handleDownloadModManualPost)
 			// 统计信息
 			tools.GET("/statistics", utils.MWtoken(), handleStatisticsGet)
-
+			// 自动保活
+			tools.GET("/keepalive", utils.MWtoken(), handleKeepaliveGet)
+			tools.PUT("/keepalive", utils.MWtoken(), handleKeepalivePut)
 		}
 	}
 
