@@ -31,4 +31,9 @@ func InitTasks() {
 		_, _ = Scheduler.Every(1).Day().At(config.AutoBackup.Time).Do(doBackup)
 	}
 
+	// 自动保活
+	if config.Keepalive.Enable {
+		_, _ = Scheduler.Every(config.Keepalive.Frequency).Minute().Do(doKeepalive)
+	}
+
 }

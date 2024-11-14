@@ -214,3 +214,51 @@ func doRestart() {
 func doBackup() {
 	_ = utils.BackupGame()
 }
+
+func doKeepalive() {
+	config, _ := utils.ReadConfig()
+	// 先执行命令
+	_ = utils.BashCMD(utils.PlayersListCMD)
+	// 获取日志文件中的list
+	file, err := os.Open(utils.MasterLogPath)
+	if err != nil {
+		return
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			return
+		}
+	}(file)
+
+	// 逐行读取文件
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	timeRegex := regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}\]`)
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return
+	}
+	// 反向遍历行
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		// 将行添加到结果切片
+		match := timeRegex.FindString(line)
+		if match != "" {
+			// 去掉方括号
+			lastTime := strings.Trim(match, "[]")
+			fmt.Println(lastTime)
+			if config.Keepalive.LastTime == lastTime {
+				doRestart()
+			} else {
+				config.Keepalive.LastTime = lastTime
+				utils.WriteConfig(config)
+			}
+			break
+		}
+	}
+
+}
