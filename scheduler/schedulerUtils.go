@@ -250,14 +250,13 @@ func doKeepalive() {
 		if match != "" {
 			// 去掉方括号
 			lastTime := strings.Trim(match, "[]")
-			fmt.Println(lastTime)
 			if config.Keepalive.LastTime == lastTime {
 				doRestart()
 			} else {
 				config.Keepalive.LastTime = lastTime
 				utils.WriteConfig(config)
 			}
-			break
+			return
 		}
 	}
 
