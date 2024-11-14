@@ -74,6 +74,12 @@ type Statistics struct {
 	Num       int   `json:"num"`
 }
 
+type Keepalive struct {
+	Enable    bool   `json:"enable"`
+	Frequency int    `json:"frequency"`
+	LastTime  string `json:"lastTime"`
+}
+
 type Config struct {
 	Username     string         `json:"username"`
 	Nickname     string         `json:"nickname"`
@@ -85,6 +91,7 @@ type Config struct {
 	AutoBackup   AutoBackup     `json:"autoBackup"`
 	Players      []Players      `json:"players"`
 	Statistics   []Statistics   `json:"statistics"`
+	Keepalive    Keepalive      `json:"keepalive"`
 }
 
 type OSInfo struct {
@@ -152,6 +159,12 @@ func Base64Decode(input string) string {
 func CreateConfig() {
 	_, err := os.Stat("DstMP.sdb")
 	if !os.IsNotExist(err) {
+		config, _ := ReadConfig()
+		if config.Keepalive.Frequency == 30 {
+			return
+		}
+		config.Keepalive.Frequency = 30
+		WriteConfig(config)
 		return
 	}
 	var config Config
@@ -167,10 +180,16 @@ func CreateConfig() {
 		randomString[i] = charset[r.Intn(len(charset))]
 	}
 	config.JwtSecret = string(randomString)
+
 	config.AutoUpdate.Time = "06:13:57"
 	config.AutoUpdate.Enable = true
+
 	config.AutoBackup.Time = "06:52:18"
 	config.AutoBackup.Enable = true
+
+	config.Keepalive.Enable = true
+	config.Keepalive.Frequency = 30
+
 	WriteConfig(config)
 }
 
