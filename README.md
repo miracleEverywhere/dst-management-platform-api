@@ -5,7 +5,22 @@
 ```shell
 # 执行以下命令，根据系统提示输入并回车
 # Please execute the following command according to the system prompts, enter the input and press Enter.
-wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
+```
+**更新方法(Update)**  
+```shell
+cd ~ && ./run.sh
+```
+_根据提示输入4 (Input 4 according to the prompt)_
+```shell
+# root@VM-0-16-ubuntu:~# cd ~
+# root@VM-0-16-ubuntu:~# ./run.sh 
+# 请输入需要执行的操作(Please enter the operation to be performed): 
+# [0]: 下载并启动服务(Download and start the service) 
+# [1]: 启动服务(Start the service) 
+# [2]: 关闭服务(Stop the service) 
+# [3]: 重启服务(Restart the service) 
+# [4]: 更新服务(Update the service)
 ```
 如果下载了发行版，则执行以下命令：(If the release-version bin-file has been downloaded, execute the following command:)
 ```shell
@@ -13,8 +28,7 @@ wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.s
 # The -c option is for enabling logging, it is recommended to enable it.
 nohup ./dmp -c 2>&1 > dmp.log &
 ```
-默认启动端口为80，如果您想修改，则修改启动命令：(
-The default port is 80. If you wish to modify it, please modify the startup command:)
+默认启动端口为80，如果您想修改，则修改启动命令：(The default port is 80. If you wish to modify it, please modify the startup command:)
 ```shell
 # 修改端口为8888
 # Change the port to 8888.
