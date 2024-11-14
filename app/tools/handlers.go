@@ -340,3 +340,34 @@ func handleStatisticsGet(c *gin.Context) {
 	data := config.Statistics
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
+
+func handleKeepaliveGet(c *gin.Context) {
+	config, _ := utils.ReadConfig()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
+		"enable": config.Keepalive.Enable,
+	}})
+}
+
+func handleKeepalivePut(c *gin.Context) {
+	defer reloadScheduler()
+	type UpdateForm struct {
+		Enable bool `json:"enable"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var updateForm UpdateForm
+	if err := c.ShouldBindJSON(&updateForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, _ := utils.ReadConfig()
+	config.Keepalive.Enable = updateForm.Enable
+	utils.WriteConfig(config)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
+}
