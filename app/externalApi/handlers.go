@@ -1,6 +1,7 @@
 package externalApi
 
 import (
+	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -42,4 +43,19 @@ func handleConnectionCodeGet(c *gin.Context) {
 
 	connectionCode := "c_connect('" + internetIp + "',11000)"
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})
+}
+
+func handleModInfoGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	config, _ := utils.ReadConfig()
+	modInfoList, err := getModsInfo(config.RoomSetting.Mod)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modInfoList})
 }

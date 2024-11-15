@@ -5,10 +5,14 @@ import (
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
+	lua "github.com/yuin/gopher-lua"
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -155,4 +159,100 @@ func GetInternetIP2() (string, error) {
 		return "", err
 	}
 	return jsonResp.Ip, nil
+}
+
+type Tags struct {
+	Tag         string `json:"tag"`
+	DisplayName string `json:"display_name"`
+}
+type PublishedFileDetails struct {
+	FileSize   string `json:"file_size"`
+	Title      string `json:"title"`
+	Tags       []Tags `json:"tags"`
+	PreviewUrl string `json:"preview_url"`
+}
+type Response struct {
+	Publishedfiledetails []PublishedFileDetails `json:"publishedfiledetails"`
+}
+type JSONResponse struct {
+	Response Response `json:"response"`
+}
+type ModInfo struct {
+	Name       string `json:"name"`
+	ID         string `json:"id"`
+	Size       string `json:"size"`
+	Tags       []Tags `json:"tags"`
+	PreviewUrl string `json:"preview_url"`
+}
+
+func getModsInfo(luaScriptContent string) ([]ModInfo, error) {
+	L := lua.NewState()
+	defer L.Close()
+
+	if err := L.DoString(luaScriptContent); err != nil {
+		return nil, fmt.Errorf("加载 Lua 文件失败: %w", err)
+	}
+
+	modsLuaTable := L.Get(-1)
+	var modInfoList []ModInfo
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	if tbl, ok := modsLuaTable.(*lua.LTable); ok {
+		re := regexp.MustCompile(`\d+`)
+
+		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+			// 检查键是否是字符串，并且以 "workshop-" 开头
+			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
+				// 提取 "workshop-" 后面的数字
+				modID := re.FindString(string(strKey))
+
+				wg.Add(1)
+				go func(modID string) {
+					defer wg.Done()
+
+					url := fmt.Sprintf("%s?language=%d&publishedfileids[0]=%s&key=%s", utils.SteamApi, 6, modID, utils.SteamApiKey)
+					client := &http.Client{
+						Timeout: 5 * time.Second, // 设置超时时间为5秒
+					}
+					httpResponse, err := client.Get(url)
+					if err != nil {
+						return
+					}
+					defer func(Body io.ReadCloser) {
+						err := Body.Close()
+						if err != nil {
+							fmt.Println(err)
+						}
+					}(httpResponse.Body) // 确保在函数结束时关闭响应体
+
+					// 检查 HTTP 状态码
+					if httpResponse.StatusCode != http.StatusOK {
+						return
+					}
+
+					var jsonResp JSONResponse
+					if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+						fmt.Println("解析JSON失败:", err)
+						return
+					}
+
+					modInfo := ModInfo{
+						ID:         modID,
+						Name:       jsonResp.Response.Publishedfiledetails[0].Title,
+						Size:       jsonResp.Response.Publishedfiledetails[0].FileSize,
+						Tags:       jsonResp.Response.Publishedfiledetails[0].Tags,
+						PreviewUrl: jsonResp.Response.Publishedfiledetails[0].PreviewUrl,
+					}
+
+					mu.Lock()
+					modInfoList = append(modInfoList, modInfo)
+					mu.Unlock()
+				}(modID)
+			}
+		})
+	}
+
+	wg.Wait()
+	return modInfoList, nil
 }

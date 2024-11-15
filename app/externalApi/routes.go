@@ -14,6 +14,8 @@ func RouteExternalApi(r *gin.Engine) *gin.Engine {
 			externalApi.GET("/dst_version", utils.MWtoken(), handleVersionGet)
 			// 获取直连代码
 			externalApi.GET("/connection_code", utils.MWtoken(), handleConnectionCodeGet)
+			// 获取模组信息
+			externalApi.GET("/mod_info", utils.MWtoken(), handleModInfoGet)
 		}
 	}
 
