@@ -66,4 +66,6 @@ const BackupPath = ".klei/DMP_BACKUP"
 
 const KillDST = "pkill -f -9 dontstarve_dedicated_server_nullrenderer"
 
-const InternetIPApi = "http://ip-api.com/json/?lang=zh-CN"
+const InternetIPApi1 = "http://ip-api.com/json/?lang=zh-CN"
+
+const InternetIPApi2 = "https://qifu-api.baidubce.com/ip/local/geo/v1/district"
