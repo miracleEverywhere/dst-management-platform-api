@@ -3,11 +3,13 @@ package tools
 import (
 	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
+	"encoding/base64"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -300,6 +302,38 @@ func handleBackupRestore(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
 	}
+}
+
+func handleBackupDownload(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type DownloadForm struct {
+		Filename string `json:"filename"`
+	}
+	var downloadForm DownloadForm
+	if err := c.ShouldBindJSON(&downloadForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	filePath := filepath.Join(utils.BackupPath, downloadForm.Filename)
+	// 检查文件是否存在
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileNotFound", langStr), "data": nil})
+		return
+	}
+	// 读取文件内容
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileReadFail", langStr), "data": nil})
+		return
+	}
+
+	fileContentBase64 := base64.StdEncoding.EncodeToString(fileData)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": fileContentBase64})
 }
 
 func handleMultiDelete(c *gin.Context) {

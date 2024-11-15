@@ -11,6 +11,8 @@ func response(message string, lang string) string {
 		"updateFail":     "更新失败",
 		"restoreFail":    "恢复失败",
 		"restoreSuccess": "恢复成功",
+		"fileNotFound":   "文件不存在",
+		"fileReadFail":   "读取文件失败",
 	}
 	responseEN := map[string]string{
 		"installing":     "Installing...",
@@ -22,6 +24,8 @@ func response(message string, lang string) string {
 		"updateFail":     "Update Failed",
 		"restoreFail":    "Restore Fail",
 		"restoreSuccess": "Restore Success",
+		"fileNotFound":   "File Not Found",
+		"fileReadFail":   "File Read Fail",
 	}
 
 	if lang == "zh" {

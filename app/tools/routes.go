@@ -28,6 +28,7 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.DELETE("/backup", utils.MWtoken(), handleBackupDelete)
 			tools.DELETE("/backup/multi", utils.MWtoken(), handleMultiDelete)
 			tools.POST("/backup/restore", utils.MWtoken(), handleBackupRestore)
+			tools.POST("/backup/download", utils.MWtoken(), handleBackupDownload)
 			//MOD
 			//tools.POST("/mod/install/all", utils.MWtoken(), handleDownloadModManualPost)
 			// 统计信息
