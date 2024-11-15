@@ -227,8 +227,3 @@ func countMods(luaScript string) (int, error) {
 	}
 	return count, nil
 }
-
-type DSTVersion struct {
-	Local  int `json:"local"`
-	Server int `json:"server"`
-}
