@@ -45,39 +45,39 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 ---
 
 ## :cherries: 平台截图(DMP screenshot)
-![home-en](http://8.137.107.46/dmp/home-en.png)
+![home-en](docs/images/home-en.png)
 
 
-![home-zh](http://8.137.107.46/dmp/home-zh.png)
+![home-zh](docs/images/home-zh.png)
 
-![home-en](http://8.137.107.46/dmp/mobile-zh.png)
-
-
-![home-zh](http://8.137.107.46/dmp/mobile-en.png)
+![home-en](docs/images/mobile-zh.png)
 
 
-![room-en](http://8.137.107.46/dmp/room-en.png)
+![home-zh](docs/images/mobile-en.png)
 
 
-![room-zh](http://8.137.107.46/dmp/room-zh.png)
+![room-en](docs/images/room-en.png)
 
 
-![player-en](http://8.137.107.46/dmp/player-en.png)
+![room-zh](docs/images/room-zh.png)
 
 
-![player-zh](http://8.137.107.46/dmp/player-zh.png)
+![player-en](docs/images/player-en.png)
 
 
-![statistics-en](http://8.137.107.46/dmp/statistics-en.png)
+![player-zh](docs/images/player-zh.png)
 
 
-![statistics-zh](http://8.137.107.46/dmp/statistics-zh.png)
+![statistics-en](docs/images/statistics-en.png)
 
 
-![menu-tools-en](http://8.137.107.46/dmp/menu-tools-en.png)
+![statistics-zh](docs/images/statistics-zh.png)
 
 
-![menu-tools-zh](http://8.137.107.46/dmp/menu-tools-zh.png)
+![menu-tools-en](docs/images/menu-tools-en.png)
+
+
+![menu-tools-zh](docs/images/menu-tools-zh.png)
 
 ---
 
