@@ -99,6 +99,11 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 │   │   ├── handlers.go
 │   │   ├── i18n.go
 │   │   └── routes.go
+│   ├── externalApi                     # 外部接口
+│   │   ├── externalApiUtils.go
+│   │   ├── handlers.go
+│   │   ├── i18n.go
+│   │   └── routes.go
 │   ├── home                            # 主页模块
 │   │   ├── handlers.go
 │   │   ├── homeUtils.go
