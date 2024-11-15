@@ -13,8 +13,7 @@ cd ~ && ./run.sh
 ```
 _根据提示输入4 (Input 4 according to the prompt)_
 ```shell
-# root@VM-0-16-ubuntu:~# cd ~
-# root@VM-0-16-ubuntu:~# ./run.sh 
+# root@VM-0-16-ubuntu:~# cd ~ && ./run.sh
 # 请输入需要执行的操作(Please enter the operation to be performed): 
 # [0]: 下载并启动服务(Download and start the service) 
 # [1]: 启动服务(Start the service) 
