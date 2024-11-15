@@ -7,7 +7,7 @@
 # Please execute the following command according to the system prompts, enter the input and press Enter.
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
 ```
-**更新方法(Update)**  
+**更新方法(Update)**
 ```shell
 cd ~ && ./run.sh
 ```
@@ -38,7 +38,7 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 
 ## :grapes: 默认用户名密码(Default username and password)
 >登录后请尽快修改密码(After logging in, please change your password as soon as possible)
->  
+>
 >>admin/123456
 
 ---
@@ -144,7 +144,7 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
     └── utils.go                        # 工具函数
 ```
 ##  :sparkling_heart: 致谢
-本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-api)基于**koi-ui**二次开发，感谢开源  
+本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-api)基于**koi-ui**二次开发，感谢开源 [@yuxintao6](https://github.com/yuxintao6)  
 The [front-end page](https://github.com/miracleEverywhere/dst-management-platform-api) of this project is based on the secondary development of **koi-ui**, thanks to open source  
 [[koi-ui gitee]](https://gitee.com/s763483966/dst-management-platform-api)  
 [[koi-ui github]](https://github.com/yuxintao6/koi-ui)
