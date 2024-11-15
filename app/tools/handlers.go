@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"dst-management-platform-api/app/home"
+	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -179,7 +179,7 @@ func handleAnnouncePut(c *gin.Context) {
 }
 
 func handleUpdateGet(c *gin.Context) {
-	dstVersion, _ := home.GetDSTVersion()
+	dstVersion, _ := externalApi.GetDSTVersion()
 	config, _ := utils.ReadConfig()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{

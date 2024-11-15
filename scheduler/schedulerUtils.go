@@ -2,7 +2,7 @@ package scheduler
 
 import (
 	"bufio"
-	"dst-management-platform-api/app/home"
+	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
@@ -137,7 +137,7 @@ func updateTimeFix(timeStr string) string {
 }
 
 func checkUpdate() {
-	dstVersion, _ := home.GetDSTVersion()
+	dstVersion, _ := externalApi.GetDSTVersion()
 	doAnnounce()
 	if dstVersion.Local != dstVersion.Server {
 		doUpdate()
