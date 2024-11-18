@@ -3,7 +3,6 @@ package tools
 import (
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
-	"fmt"
 	"os"
 	"sort"
 	"time"
@@ -42,7 +41,7 @@ func (f FileInfoList) Swap(i, j int) {
 func getBackupFiles() (FileInfoList, error) {
 	entries, err := os.ReadDir(utils.BackupPath)
 	if err != nil {
-		fmt.Println("读取目录时出错:", err)
+		utils.Logger.Error("读取目录时出错", "err", err)
 		return FileInfoList{}, err
 	}
 	// 创建 FileInfoList 切片
@@ -54,7 +53,7 @@ func getBackupFiles() (FileInfoList, error) {
 			// 获取文件信息
 			info, err := entry.Info()
 			if err != nil {
-				fmt.Printf("获取文件 %s 信息时出错: %v\n", entry.Name(), err)
+				utils.Logger.Error("获取文件信息时出错", "err", err, "file", entry.Name())
 				continue
 			}
 			fileInfoList = append(fileInfoList, FileInfo{

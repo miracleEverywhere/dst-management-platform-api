@@ -3,7 +3,6 @@ package setting
 import (
 	"bufio"
 	"dst-management-platform-api/utils"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	lua "github.com/yuin/gopher-lua"
 	"os"
@@ -74,46 +73,73 @@ authentication_port = 8769
 	return content
 }
 
-func saveSetting(config utils.Config) {
+func saveSetting(config utils.Config) error {
 	clusterIniFileContent := clusterTemplate(config.RoomSetting.Base)
 
 	//cluster.ini
-	utils.TruncAndWriteFile(utils.ServerSettingPath, clusterIniFileContent)
+	err := utils.TruncAndWriteFile(utils.ServerSettingPath, clusterIniFileContent)
+	if err != nil {
+		return err
+	}
 
 	//cluster_token.txt
-	utils.TruncAndWriteFile(utils.ServerTokenPath, config.RoomSetting.Base.Token)
+	err = utils.TruncAndWriteFile(utils.ServerTokenPath, config.RoomSetting.Base.Token)
+	if err != nil {
+		return err
+	}
 
 	//Master/leveldataoverride.lua
-	utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
+	err = utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
+	if err != nil {
+		return err
+	}
 
 	//Master/modoverrides.lua
-	utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+	err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+	if err != nil {
+		return err
+	}
 
 	//Master/server.ini
-	utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate())
+	err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate())
+	if err != nil {
+		return err
+	}
 
 	if config.RoomSetting.Cave != "" {
 		//Caves/leveldataoverride.lua
-		utils.TruncAndWriteFile(utils.CavesSettingPath, config.RoomSetting.Cave)
+		err = utils.TruncAndWriteFile(utils.CavesSettingPath, config.RoomSetting.Cave)
+		if err != nil {
+			return err
+		}
 		//Caves/modoverrides.lua
-		utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		if err != nil {
+			return err
+		}
 		//Caves/server.ini
-		utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate())
+		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate())
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func restartWorld(c *gin.Context, config utils.Config, langStr string) {
+	var err error
 	//关闭Master进程
-	_ = utils.BashCMD(utils.StopMasterCMD)
+	err = utils.BashCMD(utils.StopMasterCMD)
 	//关闭Caves进程
-	_ = utils.BashCMD(utils.StopCavesCMD)
+	err = utils.BashCMD(utils.StopCavesCMD)
 	//等待3秒
 	time.Sleep(3 * time.Second)
 	//启动Master
 	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
-	err := cmdStartMaster.Run()
+	err = cmdStartMaster.Run()
 	if err != nil {
-		fmt.Println("Error Start Master:", err)
+		utils.Logger.Error("启动地面失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
@@ -122,7 +148,7 @@ func restartWorld(c *gin.Context, config utils.Config, langStr string) {
 		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
 		err = cmdStartCaves.Run()
 		if err != nil {
-			fmt.Println("Error Start Caves:", err)
+			utils.Logger.Error("启动洞穴失败", "err", err)
 			utils.RespondWithError(c, 500, langStr)
 			return
 		}
@@ -134,46 +160,52 @@ func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 	cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
 	err := cmdStopMaster.Run()
 	if err != nil {
-		fmt.Println("Error Stop Master:", err)
+		utils.Logger.Error("关闭地面失败", "err", err)
 	}
 	//关闭Caves进程
 	cmdStopCaves := exec.Command("/bin/bash", "-c", utils.StopCavesCMD)
 	err = cmdStopCaves.Run()
 	if err != nil {
-		fmt.Println("Error Stop Caves:", err)
+		utils.Logger.Error("关闭洞穴失败", "err", err)
 	}
 	//删除Master/save目录
-	utils.DeleteDir(utils.MasterSavePath)
+	err = utils.DeleteDir(utils.MasterSavePath)
+	if err != nil {
+		utils.Logger.Error("删除地面文件失败", "err", err, "dir", utils.MasterSavePath)
+	}
 	//等待3秒
 	time.Sleep(3 * time.Second)
 	//启动Master
 	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
 	err = cmdStartMaster.Run()
 	if err != nil {
-		fmt.Println("Error Start Master:", err)
+		utils.Logger.Error("启动地面失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
 	if config.RoomSetting.Cave != "" {
 		//删除Caves/save目录
-		utils.DeleteDir(utils.CavesSavePath)
+		err = utils.DeleteDir(utils.CavesSavePath)
+		if err != nil {
+			utils.Logger.Error("删除洞穴文件失败", "err", err, "dir", utils.CavesSavePath)
+		}
 		//启动Caves
 		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
 		err = cmdStartCaves.Run()
 		if err != nil {
-			fmt.Println("Error Start Caves:", err)
+			utils.Logger.Error("启动洞穴失败", "err", err)
 			utils.RespondWithError(c, 500, langStr)
 			return
 		}
 	}
 }
 
-func dstModsSetup() {
+func dstModsSetup() error {
 	L := lua.NewState()
 	defer L.Close()
 	if err := L.DoFile(utils.MasterModPath); err != nil {
-		fmt.Println("加载 Lua 文件失败:", err)
-		return
+		utils.Logger.Error("加载 Lua 文件失败:", "err", err)
+		return err
 	}
 	modsTable := L.Get(-1)
 	fileContent := ""
@@ -186,14 +218,21 @@ func dstModsSetup() {
 				fileContent = fileContent + "ServerModSetup(\"" + workshopID + "\")\n"
 			}
 		})
-		utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+		err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+		if err != nil {
+			utils.Logger.Error("mod配置文件写入失败", "err", err, "file", utils.GameModSettingPath)
+			return err
+		}
 	}
+
+	return nil
 }
 
 func getList(filepath string) []string {
 	// 预留位 黑名单 管理员
 	al, err := readLines(filepath)
 	if err != nil {
+		utils.Logger.Error("获取失败", "err", err, "file", filepath)
 		return []string{}
 	}
 	var uidList []string
@@ -213,13 +252,16 @@ func addList(uid string, filePath string) error {
 	// 打开文件，使用 os.O_APPEND | os.O_CREATE | os.O_WRONLY 选项
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Println("打开文件错误:", err)
 		return err
 	}
-	defer file.Close() // 确保在函数结束时关闭文件
+	defer func(file *os.File) {
+		err = file.Close()
+		if err != nil {
+			utils.Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file) // 确保在函数结束时关闭文件
 	// 写入内容到文件
-	if _, err := file.WriteString(content); err != nil {
-		fmt.Println("写入文件错误:", err)
+	if _, err = file.WriteString(content); err != nil {
 		return err
 	}
 
@@ -230,7 +272,6 @@ func deleteList(uid string, filePath string) error {
 	// 读取文件内容
 	lines, err := readLines(filePath)
 	if err != nil {
-		fmt.Println("读取文件错误:", err)
 		return err
 	}
 
@@ -245,7 +286,6 @@ func deleteList(uid string, filePath string) error {
 	// 将修改后的内容写回文件
 	err = writeLines(filePath, lines)
 	if err != nil {
-		fmt.Println("写入文件错误:", err)
 		return err
 	}
 
@@ -258,7 +298,12 @@ func readLines(filePath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			utils.Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
 
 	var lines []string
 	scanner := bufio.NewScanner(file)
@@ -274,7 +319,12 @@ func writeLines(filePath string, lines []string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			utils.Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
 
 	writer := bufio.NewWriter(file)
 	for _, line := range lines {

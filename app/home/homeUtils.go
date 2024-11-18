@@ -88,7 +88,7 @@ func findLatestMetaFile(directory string) (string, error) {
 	return latestMetaFile, nil
 }
 
-func getMetaInfo(path string) metaInfo {
+func getMetaInfo(path string) (metaInfo, error) {
 	var seasonInfo metaInfo
 	seasonInfo.Season.En = "Failed to retrieve"
 	seasonInfo.Season.Zh = "获取失败"
@@ -100,8 +100,7 @@ func getMetaInfo(path string) metaInfo {
 	// 读取二进制文件
 	data, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Println("读取文件失败: ", err)
-		return seasonInfo
+		return seasonInfo, fmt.Errorf("读取文件失败: %w", err)
 	}
 
 	// 创建 Lua 虚拟机
@@ -114,8 +113,7 @@ func getMetaInfo(path string) metaInfo {
 
 	err = L.DoString(content)
 	if err != nil {
-		fmt.Println("执行 Lua 代码失败: ", err)
-		return seasonInfo
+		return seasonInfo, fmt.Errorf("执行 Lua 代码失败: %w", err)
 	}
 	// 获取 Lua 脚本的返回值
 	lv := L.Get(-1)
@@ -194,7 +192,7 @@ func getMetaInfo(path string) metaInfo {
 		seasonInfo.Season.Zh = "冬天"
 	}
 
-	return seasonInfo
+	return seasonInfo, nil
 }
 
 func getProcessStatus(screenName string) int {
@@ -211,8 +209,7 @@ func countMods(luaScript string) (int, error) {
 	L := lua.NewState()
 	defer L.Close()
 	if err := L.DoString(luaScript); err != nil {
-		fmt.Println("加载 Lua 文件失败:", err)
-		return 0, err
+		return 0, fmt.Errorf("加载 Lua 文件失败: %w", err)
 	}
 	modsTable := L.Get(-1)
 	count := 0

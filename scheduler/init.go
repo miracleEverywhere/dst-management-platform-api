@@ -14,7 +14,11 @@ func InitTasks() {
 	_, _ = Scheduler.Every(30).Seconds().Do(setPlayer2DB)
 
 	//初始化定时通知
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
 	for _, announce := range config.AutoAnnounce {
 		if announce.Enable {
 			_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(execAnnounce, announce.Content)

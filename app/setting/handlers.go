@@ -7,7 +7,12 @@ import (
 )
 
 func handleRoomSettingGet(c *gin.Context) {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 	type Response struct {
 		Code    int               `json:"code"`
 		Message string            `json:"message"`
@@ -33,12 +38,30 @@ func handleRoomSettingSavePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	config.RoomSetting = roomSetting
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
-	saveSetting(config)
-	dstModsSetup()
+	err = saveSetting(config)
+	if err != nil {
+		utils.Logger.Error("房间配置保存失败", "err", err)
+	}
+	err = dstModsSetup()
+	if err != nil {
+		utils.Logger.Error("mod配置保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("saveSuccess", langStr), "data": nil})
 }
@@ -55,12 +78,28 @@ func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	config.RoomSetting = roomSetting
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
-	saveSetting(config)
-	dstModsSetup()
+	err = saveSetting(config)
+	if err != nil {
+		utils.Logger.Error("房间配置保存失败", "err", err)
+	}
+	err = dstModsSetup()
+	if err != nil {
+		utils.Logger.Error("mod配置保存失败", "err", err)
+	}
 	restartWorld(c, config, langStr)
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
@@ -78,12 +117,28 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	config.RoomSetting = roomSetting
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
-	saveSetting(config)
-	dstModsSetup()
+	err = saveSetting(config)
+	if err != nil {
+		utils.Logger.Error("房间配置保存失败", "err", err)
+	}
+	err = dstModsSetup()
+	if err != nil {
+		utils.Logger.Error("mod配置保存失败", "err", err)
+	}
 	generateWorld(c, config, langStr)
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
@@ -98,7 +153,12 @@ func handlePlayerListGet(c *gin.Context) {
 		WhiteList []string        `json:"whiteList"`
 	}
 
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 	adminList := getList(utils.AdminListPath)
 	blockList := getList(utils.BlockListPath)
 	whiteList := getList(utils.WhiteListPath)
@@ -126,6 +186,7 @@ func handleAdminAddPost(c *gin.Context) {
 	}
 	err := addList(uidFrom.UID, utils.AdminListPath)
 	if err != nil {
+		utils.Logger.Error("添加管理员失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addAdminFail", langStr), "data": nil})
 		return
 	}
@@ -146,6 +207,7 @@ func handleBlockAddPost(c *gin.Context) {
 	}
 	err := addList(uidFrom.UID, utils.BlockListPath)
 	if err != nil {
+		utils.Logger.Error("添加黑名单失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addBlockFail", langStr), "data": nil})
 		return
 	}
@@ -166,6 +228,7 @@ func handleWhiteAddPost(c *gin.Context) {
 	}
 	err := addList(uidFrom.UID, utils.WhiteListPath)
 	if err != nil {
+		utils.Logger.Error("添加白名单失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
 		return
 	}
@@ -186,6 +249,7 @@ func handleAdminDeletePost(c *gin.Context) {
 	}
 	err := deleteList(uidFrom.UID, utils.AdminListPath)
 	if err != nil {
+		utils.Logger.Error("删除管理员失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteAdminFail", langStr), "data": nil})
 		return
 	}
@@ -206,6 +270,7 @@ func handleBlockDeletePost(c *gin.Context) {
 	}
 	err := deleteList(uidFrom.UID, utils.BlockListPath)
 	if err != nil {
+		utils.Logger.Error("删除黑名单失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteBlockFail", langStr), "data": nil})
 		return
 	}
@@ -226,6 +291,7 @@ func handleWhiteDeletePost(c *gin.Context) {
 	}
 	err := deleteList(uidFrom.UID, utils.WhiteListPath)
 	if err != nil {
+		utils.Logger.Error("删除白名单失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteWhiteFail", langStr), "data": nil})
 		return
 	}
@@ -249,6 +315,7 @@ func handleKick(c *gin.Context) {
 	errCaves := kick(uidFrom.UID, utils.CavesName)
 
 	if errMaster != nil && errCaves != nil {
+		utils.Logger.Error("踢出玩家失败", "errMaster", errMaster, "errCaves", errCaves)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("kickFail", langStr), "data": nil})
 		return
 	}

@@ -3,6 +3,7 @@ package setting
 func response(message string, lang string) string {
 	responseZH := map[string]string{
 		"saveSuccess":     "保存成功",
+		"saveFail":        "保存失败",
 		"restartSuccess":  "重启成功",
 		"generateSuccess": "世界生成成功",
 		"addAdmin":        "添加管理员成功",
@@ -22,6 +23,7 @@ func response(message string, lang string) string {
 	}
 	responseEN := map[string]string{
 		"saveSuccess":     "Save Success",
+		"saveFail":        "Save Fail",
 		"restartSuccess":  "Restart Success",
 		"generateSuccess": "Generate World Success",
 		"addAdmin":        "Successfully added administrator",

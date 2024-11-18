@@ -31,7 +31,12 @@ func handleLogin(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	// 校验用户名和密码
 	if loginForm.LoginForm.Username != config.Username {
 		utils.RespondWithError(c, 421, langStr)
@@ -48,7 +53,12 @@ func handleLogin(c *gin.Context) {
 }
 
 func handleUserinfo(c *gin.Context) {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"username": config.Username,
 		"nickname": config.Nickname,
@@ -428,8 +438,18 @@ func handleUpdatePassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	config.Password = updatePasswordForm.Password
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("updatePassword", langStr), "data": nil})
 }

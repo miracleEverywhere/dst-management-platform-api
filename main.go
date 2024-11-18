@@ -66,7 +66,7 @@ func main() {
 	// 启动服务器
 	err := r.Run(fmt.Sprintf(":%d", bindPort))
 	if err != nil {
-		fmt.Println(err)
+		utils.Logger.Error("启动服务器失败", "err", err)
 		return
 	}
 }

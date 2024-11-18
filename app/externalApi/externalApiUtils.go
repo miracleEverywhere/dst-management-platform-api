@@ -29,7 +29,12 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 	if err != nil {
 		return dstVersion, err
 	}
-	defer file.Close() // 确保文件在函数结束时关闭
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			utils.Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file) // 确保文件在函数结束时关闭
 
 	// 创建一个扫描器来读取文件内容
 	scanner := bufio.NewScanner(file)
@@ -51,7 +56,12 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 		if err != nil {
 			return dstVersion, err
 		}
-		defer response.Body.Close() // 确保在函数结束时关闭响应体
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				utils.Logger.Error("关闭文件失败", "err", err)
+			}
+		}(response.Body) // 确保在函数结束时关闭响应体
 
 		// 检查 HTTP 状态码
 		if response.StatusCode != http.StatusOK {

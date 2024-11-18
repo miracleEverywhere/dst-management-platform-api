@@ -34,8 +34,10 @@ func handleConnectionCodeGet(c *gin.Context) {
 	)
 	internetIp, err = GetInternetIP1()
 	if err != nil {
+		utils.Logger.Warn("调用公网ip接口1失败", "err", err)
 		internetIp, err = GetInternetIP2()
 		if err != nil {
+			utils.Logger.Warn("调用公网ip接口2失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getConnectionCodeFail", langStr), "data": nil})
 			return
 		}
@@ -51,8 +53,16 @@ func handleModInfoGet(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	modInfoList, err := getModsInfo(config.RoomSetting.Mod)
+	if err != nil {
+		utils.Logger.Error("获取mod信息失败", "err", err)
+	}
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
 		return

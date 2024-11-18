@@ -21,6 +21,7 @@ func handleLogGet(c *gin.Context) {
 	case "ground":
 		logsValue, err := getLastNLines(utils.MasterLogPath, logForm.Line)
 		if err != nil {
+			utils.Logger.Error("读取日志失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
 			return
 		}
@@ -28,6 +29,7 @@ func handleLogGet(c *gin.Context) {
 	case "caves":
 		logsValue, err := getLastNLines(utils.CavesLogPath, logForm.Line)
 		if err != nil {
+			utils.Logger.Error("读取日志失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
 			return
 		}
@@ -35,6 +37,7 @@ func handleLogGet(c *gin.Context) {
 	case "chat":
 		logsValue, err := getLastNLines(utils.ChatLogPath, logForm.Line)
 		if err != nil {
+			utils.Logger.Error("读取日志失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
 			return
 		}
@@ -42,6 +45,7 @@ func handleLogGet(c *gin.Context) {
 	case "dmp":
 		logsValue, err := getLastNLines(utils.DMPLogPath, logForm.Line)
 		if err != nil {
+			utils.Logger.Error("读取日志失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
 			return
 		}

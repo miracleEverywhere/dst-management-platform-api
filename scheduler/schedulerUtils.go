@@ -12,10 +12,15 @@ import (
 )
 
 func setPlayer2DB() {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
 
 	players, err := getPlayersList()
 	if err != nil {
+		utils.Logger.Error("获取玩家列表失败", "err", err)
 		return
 	}
 	var playerList []utils.Players
@@ -40,18 +45,29 @@ func setPlayer2DB() {
 	}
 	config.Statistics = append(config.Statistics, statistics)
 
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+	}
 }
 
 func getPlayersList() ([]string, error) {
 	// 先执行命令
-	_ = utils.BashCMD(utils.PlayersListCMD)
+	err := utils.BashCMD(utils.PlayersListCMD)
+	if err != nil {
+		return nil, err
+	}
 	// 获取日志文件中的list
 	file, err := os.Open(utils.MasterLogPath)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			utils.Logger.Error("文件关闭失败", "err", err)
+		}
+	}(file)
 
 	// 逐行读取文件
 	scanner := bufio.NewScanner(file)
@@ -115,7 +131,10 @@ func getPlayersList() ([]string, error) {
 
 func execAnnounce(content string) {
 	cmd := "c_announce('" + content + "')"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err := utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 }
 
 // 将更新时间提前30分钟，提前通知重启服务器，实际重启的时间仍为设置时间
@@ -123,7 +142,7 @@ func updateTimeFix(timeStr string) string {
 	// 解析时间字符串
 	parsedTime, err := time.Parse("15:04:05", timeStr)
 	if err != nil {
-		fmt.Println("解析时间字符串失败:", err)
+		utils.Logger.Error("解析时间字符串失败", "err", err)
 		return timeStr
 	}
 
@@ -137,7 +156,11 @@ func updateTimeFix(timeStr string) string {
 }
 
 func checkUpdate() {
-	dstVersion, _ := externalApi.GetDSTVersion()
+	dstVersion, err := externalApi.GetDSTVersion()
+	if err != nil {
+		utils.Logger.Error("解析时间字符串失败", "err", err)
+		return
+	}
 	doAnnounce()
 	if dstVersion.Local != dstVersion.Server {
 		doUpdate()
@@ -148,86 +171,166 @@ func checkUpdate() {
 func doAnnounce() {
 	// 重启前进行宣告
 	cmd := "c_announce('将在30分钟后自动重启服务器(The server will automatically restart in 30 minutes)')"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err := utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 	time.Sleep(10 * time.Minute)
 	cmd = "c_announce('将在20分钟后自动重启服务器(The server will automatically restart in 20 minutes)')"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 	time.Sleep(10 * time.Minute)
 	cmd = "c_announce('将在10分钟后自动重启服务器(The server will automatically restart in 10 minutes)')"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 	time.Sleep(5 * time.Minute)
 	cmd = "c_announce('将在5分钟后自动重启服务器(The server will automatically restart in 5 minutes)')"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 	time.Sleep(4 * time.Minute)
 	cmd = "c_announce('将在1分钟后自动重启服务器(The server will automatically restart in 1 minute)')"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 	time.Sleep(1 * time.Minute)
 }
 
-func doUpdate() {
-	config, _ := utils.ReadConfig()
+func doUpdate() error {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
 	cmd := "c_shutdown()"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 	if config.RoomSetting.Cave != "" {
-		_ = utils.ScreenCMD(cmd, utils.CavesName)
+		err = utils.ScreenCMD(cmd, utils.CavesName)
+		if err != nil {
+			utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+		}
 	}
 
 	time.Sleep(2 * time.Second)
-	_ = utils.BashCMD(utils.StopMasterCMD)
+	err = utils.BashCMD(utils.StopMasterCMD)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopMasterCMD)
+	}
 	if config.RoomSetting.Cave != "" {
-		_ = utils.BashCMD(utils.StopCavesCMD)
+		err = utils.BashCMD(utils.StopCavesCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopCavesCMD)
+		}
 	}
 
 	go func() {
-		_ = utils.BashCMD(utils.UpdateGameCMD)
-		_ = utils.BashCMD(utils.StartMasterCMD)
+		err = utils.BashCMD(utils.UpdateGameCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.UpdateGameCMD)
+		}
+		err = utils.BashCMD(utils.StartMasterCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartMasterCMD)
+		}
 		if config.RoomSetting.Cave != "" {
-			_ = utils.BashCMD(utils.StartCavesCMD)
+			err = utils.BashCMD(utils.StartCavesCMD)
+			if err != nil {
+				utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartCavesCMD)
+			}
 		}
 	}()
+	return nil
 }
 
 func doRestart() {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
 
 	cmd := "c_shutdown()"
-	_ = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, utils.MasterName)
+	if err != nil {
+		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
 	if config.RoomSetting.Cave != "" {
-		_ = utils.ScreenCMD(cmd, utils.CavesName)
+		err = utils.ScreenCMD(cmd, utils.CavesName)
+		if err != nil {
+			utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+		}
 	}
 
 	time.Sleep(2 * time.Second)
-	_ = utils.BashCMD(utils.StopMasterCMD)
+	err = utils.BashCMD(utils.StopMasterCMD)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopMasterCMD)
+	}
 	if config.RoomSetting.Cave != "" {
-		_ = utils.BashCMD(utils.StopCavesCMD)
+		err = utils.BashCMD(utils.StopCavesCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopCavesCMD)
+		}
 	}
 
 	time.Sleep(1 * time.Second)
-	_ = utils.BashCMD(utils.KillDST)
-	_ = utils.BashCMD(utils.ClearScreenCMD)
-	_ = utils.BashCMD(utils.StartMasterCMD)
+	err = utils.BashCMD(utils.KillDST)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.KillDST)
+	}
+	err = utils.BashCMD(utils.ClearScreenCMD)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.ClearScreenCMD)
+	}
+	err = utils.BashCMD(utils.StartMasterCMD)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartMasterCMD)
+	}
 	if config.RoomSetting.Cave != "" {
-		_ = utils.BashCMD(utils.StartCavesCMD)
+		err = utils.BashCMD(utils.StartCavesCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartCavesCMD)
+		}
 	}
 }
 
 func doBackup() {
-	_ = utils.BackupGame()
+	err := utils.BackupGame()
+	if err != nil {
+		utils.Logger.Error("游戏备份失败", "err", err)
+	}
 }
 
 func doKeepalive() {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
 	// 先执行命令
-	_ = utils.BashCMD(utils.PlayersListCMD)
+	err = utils.BashCMD(utils.PlayersListCMD)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCMD)
+	}
 	// 获取日志文件中的list
 	file, err := os.Open(utils.MasterLogPath)
 	if err != nil {
+		utils.Logger.Error("打开文件失败", "err", err, "file", utils.MasterLogPath)
 		return
 	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			return
+			utils.Logger.Error("关闭文件失败", "err", err, "file", utils.MasterLogPath)
 		}
 	}(file)
 
@@ -240,6 +343,7 @@ func doKeepalive() {
 		lines = append(lines, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
+		utils.Logger.Error("文件scan失败", "err", err)
 		return
 	}
 	// 反向遍历行
@@ -254,7 +358,12 @@ func doKeepalive() {
 				doRestart()
 			} else {
 				config.Keepalive.LastTime = lastTime
-				utils.WriteConfig(config)
+				err := utils.WriteConfig(config)
+				if err != nil {
+					if err != nil {
+						utils.Logger.Error("配置文件写入失败", "err", err)
+					}
+				}
 			}
 			return
 		}

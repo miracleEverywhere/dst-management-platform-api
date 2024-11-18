@@ -4,7 +4,6 @@ import (
 	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
 	"encoding/base64"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -22,7 +21,7 @@ func handleOSInfoGet(c *gin.Context) {
 	}
 	if err != nil {
 		utils.RespondWithError(c, 510, langStr)
-		fmt.Println(err)
+		utils.Logger.Error("获取系统信息失败", "err", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": osInfo})
@@ -40,7 +39,7 @@ func handleInstall(c *gin.Context) {
 	if _, err := os.Stat(scriptPath); err == nil {
 		err := os.Remove(scriptPath)
 		if err != nil {
-			fmt.Println("Error removing file:", err)
+			utils.Logger.Error("删除文件失败", "err", err)
 			utils.RespondWithError(c, 500, langStr)
 			return
 		}
@@ -49,17 +48,22 @@ func handleInstall(c *gin.Context) {
 	// 创建或打开文件
 	file, err := os.OpenFile(scriptPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0775)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
+		utils.Logger.Error("打开文件失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			utils.Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
 
 	// 写入内容
 	content := []byte(utils.ShInstall)
 	_, err = file.Write(content)
 	if err != nil {
-		fmt.Println("Error writing to file:", err)
+		utils.Logger.Error("写入文件失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
@@ -69,7 +73,7 @@ func handleInstall(c *gin.Context) {
 		cmd := exec.Command("/bin/bash", scriptPath) // 使用 /bin/bash 执行脚本
 		e := cmd.Run()
 		if e != nil {
-			fmt.Println("Error executing script:", e)
+			utils.Logger.Error("执行安装脚本失败", "err", e)
 		}
 	}()
 
@@ -78,7 +82,8 @@ func handleInstall(c *gin.Context) {
 }
 
 func handleGetInstallStatus(c *gin.Context) {
-	content, _ := os.ReadFile("/tmp/install_status")
+	content, err := os.ReadFile("/tmp/install_status")
+	utils.Logger.Error("读取文件失败", "err", err)
 	status := string(content)
 	statusSlice := strings.Split(status, "\t")
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
@@ -87,7 +92,12 @@ func handleGetInstallStatus(c *gin.Context) {
 }
 
 func handleAnnounceGet(c *gin.Context) {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 	if config.AutoAnnounce == nil {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{}})
 		return
@@ -108,7 +118,12 @@ func handleAnnouncePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	for _, announce := range config.AutoAnnounce {
 		if announce.Name == announceForm.Name {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("duplicatedName", langStr), "data": nil})
@@ -116,21 +131,16 @@ func handleAnnouncePost(c *gin.Context) {
 		}
 	}
 	config.AutoAnnounce = append(config.AutoAnnounce, announceForm)
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createSuccess", langStr), "data": nil})
 }
 
 func handleAnnounceDelete(c *gin.Context) {
-	// 捕获函数退出时执行重启操作
-	//defer func() {
-	//	// 在函数返回后执行重启程序，但确保响应已经发送
-	//	go func() {
-	//		err := restartMyself()
-	//		if err != nil {
-	//			fmt.Println("重启失败:", err)
-	//		}
-	//	}()
-	//}()
 	defer reloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -143,7 +153,12 @@ func handleAnnounceDelete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	// 删除，遍历不添加
 	for i := 0; i < len(config.AutoAnnounce); i++ {
 		if config.AutoAnnounce[i].Name == announceForm.Name {
@@ -151,7 +166,12 @@ func handleAnnounceDelete(c *gin.Context) {
 			i--
 		}
 	}
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
 }
 
@@ -168,11 +188,21 @@ func handleAnnouncePut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	for index, announce := range config.AutoAnnounce {
 		if announce.Name == announceForm.Name {
 			config.AutoAnnounce[index] = announceForm
-			utils.WriteConfig(config)
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("配置文件写入失败", "err", err)
+				utils.RespondWithError(c, 500, langStr)
+				return
+			}
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
 			return
 		}
@@ -181,8 +211,16 @@ func handleAnnouncePut(c *gin.Context) {
 }
 
 func handleUpdateGet(c *gin.Context) {
-	dstVersion, _ := externalApi.GetDSTVersion()
-	config, _ := utils.ReadConfig()
+	dstVersion, err := externalApi.GetDSTVersion()
+	if err != nil {
+		utils.Logger.Error("获取饥荒版本失败", "err", err)
+	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"version":       dstVersion,
@@ -203,10 +241,20 @@ func handleUpdatePut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	config.AutoUpdate.Time = updateForm.Time
 	config.AutoUpdate.Enable = updateForm.Enable
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
 }
@@ -218,8 +266,16 @@ func handleBackupGet(c *gin.Context) {
 		Size       int64  `json:"size"`
 	}
 	var tmp []BackFiles
-	config, _ := utils.ReadConfig()
-	backupFiles, _ := getBackupFiles()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	backupFiles, err := getBackupFiles()
+	if err != nil {
+		utils.Logger.Error("备份文件获取", "err", err)
+	}
 	for _, i := range backupFiles {
 		var a BackFiles
 		a.Name = i.Name
@@ -227,7 +283,10 @@ func handleBackupGet(c *gin.Context) {
 		a.Size = i.Size
 		tmp = append(tmp, a)
 	}
-	diskUsage, _ := utils.DiskUsage()
+	diskUsage, err := utils.DiskUsage()
+	if err != nil {
+		utils.Logger.Error("磁盘使用率获取失败", "err", err)
+	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"backupSetting": config.AutoBackup,
 		"backupFiles":   tmp,
@@ -248,10 +307,20 @@ func handleBackupPut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	config.AutoBackup.Time = backupForm.Time
 	config.AutoBackup.Enable = backupForm.Enable
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
 }
@@ -274,6 +343,7 @@ func handleBackupDelete(c *gin.Context) {
 	filePath := utils.BackupPath + "/" + deleteForm.Name
 	err := utils.RemoveFile(filePath)
 	if err != nil {
+		utils.Logger.Error("备份文件删除失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteFail", langStr), "data": nil})
 	} else {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
@@ -298,6 +368,7 @@ func handleBackupRestore(c *gin.Context) {
 	filePath := utils.BackupPath + "/" + restoreForm.Name
 	err := utils.RecoveryGame(filePath)
 	if err != nil {
+		utils.Logger.Error("恢复游戏失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
 	} else {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
@@ -328,6 +399,7 @@ func handleBackupDownload(c *gin.Context) {
 	// 读取文件内容
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
+		utils.Logger.Error("读取备份文件失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileReadFail", langStr), "data": nil})
 		return
 	}
@@ -353,30 +425,32 @@ func handleMultiDelete(c *gin.Context) {
 	}
 	for _, file := range multiDeleteForm.Names {
 		filePath := utils.BackupPath + "/" + file
-		_ = utils.RemoveFile(filePath)
+		err := utils.RemoveFile(filePath)
+		if err != nil {
+			utils.Logger.Error("删除文件失败", "err", err, "file", filePath)
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
-}
-
-func handleDownloadModManualPost(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	modList := utils.GetModList()
-	utils.DownloadMod(modList)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
 }
 
 func handleStatisticsGet(c *gin.Context) {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 	data := config.Statistics
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
 func handleKeepaliveGet(c *gin.Context) {
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"enable": config.Keepalive.Enable,
@@ -399,9 +473,19 @@ func handleKeepalivePut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	config, _ := utils.ReadConfig()
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 	config.Keepalive.Enable = updateForm.Enable
-	utils.WriteConfig(config)
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
 }

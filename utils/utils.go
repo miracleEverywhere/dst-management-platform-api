@@ -1,9 +1,6 @@
 package utils
 
 import (
-	"crypto/sha512"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -126,6 +123,7 @@ func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
 	})
 
 	if err != nil {
+		Logger.Warn("JWT验证失败")
 		return nil, err
 	}
 
@@ -136,37 +134,27 @@ func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
 	return nil, fmt.Errorf("invalid token")
 }
 
-func Sha512(input string) string {
-	hasher := sha512.New()
-	hasher.Write([]byte(input))
-	hashed := hasher.Sum(nil)
-	return hex.EncodeToString(hashed)
-}
-
-func Base64Encode(input string) string {
-	return base64.StdEncoding.EncodeToString([]byte(input))
-}
-
-func Base64Decode(input string) string {
-	decodedData, err := base64.StdEncoding.DecodeString(input)
-	if err != nil {
-		fmt.Println("解码失败:", err)
-		return ""
-	}
-	return string(decodedData)
-}
-
 func CreateConfig() {
 	_, err := os.Stat("DstMP.sdb")
 	if !os.IsNotExist(err) {
-		config, _ := ReadConfig()
+		Logger.Info("执行数据库检查中，发现数据库文件")
+		config, err := ReadConfig()
+		if err != nil {
+			Logger.Error("执行数据库检查中，打开数据库文件失败", "err", err)
+			return
+		}
 		if config.Keepalive.Frequency == 30 {
 			return
 		}
+		Logger.Info("执行数据库检查中，自动保活设置为30秒")
 		config.Keepalive.Frequency = 30
-		WriteConfig(config)
+		err = WriteConfig(config)
+		if err != nil {
+			Logger.Error("写入数据库失败", "err", err)
+		}
 		return
 	}
+	Logger.Info("执行数据库检查中，初始化数据库")
 	var config Config
 	config.Username = "admin"
 	config.Password = "ba3253876aed6bc22d4a6ff53d8406c6ad864195ed144ab5c87621b6c233b548baeae6956df346ec8c17f5ea10f35ee3cbc514797ed7ddd3145464e2a0bab413"
@@ -190,41 +178,51 @@ func CreateConfig() {
 	config.Keepalive.Enable = true
 	config.Keepalive.Frequency = 30
 
-	WriteConfig(config)
+	err = WriteConfig(config)
+	if err != nil {
+		Logger.Error("写入数据库失败", "err", err)
+	}
 }
 
 func ReadConfig() (Config, error) {
-	content, _ := os.ReadFile("DstMP.sdb")
+	content, err := os.ReadFile("DstMP.sdb")
+	if err != nil {
+		return Config{}, err
+	}
 	//jsonData := Base64Decode(string(content))
 	jsonData := string(content)
 	var config Config
-	err := json.Unmarshal([]byte(jsonData), &config)
+	err = json.Unmarshal([]byte(jsonData), &config)
 	if err != nil {
 		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
 	}
 	return config, nil
 }
 
-func WriteConfig(config Config) {
+func WriteConfig(config Config) error {
 	if config.Username == "" {
-		return
+		return fmt.Errorf("传入的配置文件异常")
 	}
 	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
 	if err != nil {
-		fmt.Println("Error marshalling JSON:", err)
-		return
+		return fmt.Errorf("Error marshalling JSON:" + err.Error())
 	}
 	file, err := os.OpenFile("DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		return fmt.Errorf("Error opening file:" + err.Error())
 	}
-	defer file.Close() // 在函数结束时关闭文件
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file) // 在函数结束时关闭文件
 	// 写入 JSON 数据到文件
 	_, err = file.Write(data)
 	if err != nil {
-		fmt.Println("Error writing to file:", err)
+		return fmt.Errorf("Error writing to file:" + err.Error())
 	}
+	return nil
 }
 
 func MWlang() gin.HandlerFunc {
@@ -237,9 +235,13 @@ func MWlang() gin.HandlerFunc {
 func MWtoken() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Request.Header.Get("authorization")
-		config, _ := ReadConfig()
+		config, err := ReadConfig()
+		if err != nil {
+			Logger.Error("配置文件打开失败", "err", err)
+			return
+		}
 		tokenSecret := config.JwtSecret
-		_, err := ValidateJWT(token, []byte(tokenSecret))
+		_, err = ValidateJWT(token, []byte(tokenSecret))
 		if err != nil {
 			lang := c.Request.Header.Get("X-I18n-Lang")
 			RespondWithError(c, 420, lang)
@@ -291,71 +293,72 @@ func GetOSInfo() (*OSInfo, error) {
 	}, nil
 }
 
-func TruncAndWriteFile(fileName string, fileContent string) {
+func TruncAndWriteFile(fileName string, fileContent string) error {
 	fileContentByte := []byte(fileContent)
 	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		fmt.Println("打开或创建文件时出错:", err)
-		return
+		return fmt.Errorf("打开或创建文件时出错: %w", err)
 	}
-	defer file.Close() // 确保在函数结束时关闭文件
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file) // 确保在函数结束时关闭文件
 
 	// 写入新数据
 	_, err = file.Write(fileContentByte)
 	if err != nil {
-		fmt.Println("写入数据时出错:", err)
-		return
+		return fmt.Errorf("写入数据时出错: %w", err)
 	}
+
+	return nil
 }
 
-func DeleteDir(dirPath string) {
+func DeleteDir(dirPath string) error {
 	err := os.RemoveAll(dirPath)
 	if err != nil {
-		fmt.Println("删除目录失败:", err)
-		return
+		return fmt.Errorf("删除目录失败: %w", err)
 	}
+
+	return nil
 }
 
-func CpuUsage() float64 {
+func CpuUsage() (float64, error) {
 	// 获取 CPU 使用率
 	percent, err := cpu.Percent(0, false)
 	if err != nil {
-		fmt.Println("Error getting CPU percent: ", err)
-		return 0
+		return 0, fmt.Errorf("error getting CPU percent: %w", err)
 	}
-	return percent[0]
+	return percent[0], nil
 }
 
-func MemoryUsage() float64 {
+func MemoryUsage() (float64, error) {
 	// 获取内存信息
 	vmStat, err := mem.VirtualMemory()
 	if err != nil {
-		fmt.Println("Error getting virtual memory info: ", err)
-		return 0
+		return 0, fmt.Errorf("error getting virtual memory info: %w", err)
 	}
-	return vmStat.UsedPercent
+	return vmStat.UsedPercent, nil
 }
 
 func DiskUsage() (float64, error) {
 	// 获取当前目录
 	currentDir, err := os.Getwd()
 	if err != nil {
-		fmt.Println("Error getting current directory:", err)
-		return 0, err
+		return 0, fmt.Errorf("error getting current directory: %w", err)
 	}
 
 	// 获取当前目录所在的挂载点
 	mountPoint := findMountPoint(currentDir)
 	if mountPoint == "" {
-		fmt.Println("Unable to find mount point for current directory.")
 		return 0, fmt.Errorf("unable to find mount point for current directory")
 	}
 
 	// 获取挂载点的磁盘使用情况
 	usage, err := disk.Usage(mountPoint)
 	if err != nil {
-		fmt.Printf("Error getting usage for %s: %v\n", mountPoint, err)
-		return 0, err
+		return 0, fmt.Errorf("error getting usage for %s: %w", mountPoint, err)
 	}
 	return usage.UsedPercent, nil
 }
@@ -443,8 +446,7 @@ func RemoveDir(dirPath string) error {
 	// 调用 os.RemoveAll 删除目录及其所有内容
 	err := os.RemoveAll(dirPath)
 	if err != nil {
-		fmt.Println("删除目录失败:", err)
-		return err
+		return fmt.Errorf("删除目录失败: %w", err)
 	}
 	return nil
 }
@@ -453,8 +455,7 @@ func RemoveFile(filePath string) error {
 	// 删除文件
 	err := os.Remove(filePath)
 	if err != nil {
-		fmt.Printf("Error deleting file: %v\n", err)
-		return err
+		return fmt.Errorf("删除文件失败: %w", err)
 	}
 	return nil
 }
@@ -466,12 +467,12 @@ func EnsureDirExists(dirPath string) error {
 		// 目录不存在，创建目录
 		err := os.MkdirAll(dirPath, os.ModePerm)
 		if err != nil {
-			return fmt.Errorf("无法创建目录: %v", err)
+			return fmt.Errorf("无法创建目录: %w", err)
 		}
 		fmt.Println("目录已创建:", dirPath)
 	} else if err != nil {
 		// 其他错误
-		return fmt.Errorf("检查目录时出错: %v", err)
+		return fmt.Errorf("检查目录时出错: %w", err)
 	}
 
 	return nil
@@ -497,7 +498,10 @@ func BackupGame() error {
 	timestampSeconds := currentTime.Unix()
 	timestampSecondsStr := strconv.FormatInt(timestampSeconds, 10)
 	cmd := "tar zcvf " + BackupPath + "/" + timestampSecondsStr + ".tgz " + ServerPath[:len(ServerPath)-1]
-	_ = BashCMD(cmd)
+	err = BashCMD(cmd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -505,20 +509,41 @@ func RecoveryGame(backupFile string) error {
 	// 检查文件是否存在
 	exist, err := FileExists(backupFile)
 	if !exist || err != nil {
-		return fmt.Errorf("文件不存在")
+		return fmt.Errorf("文件不存在，%w", err)
 	}
 	// 停止进程
 	cmd := "c_shutdown()"
-	_ = ScreenCMD(cmd, MasterName)
-	_ = ScreenCMD(cmd, CavesName)
+	err = ScreenCMD(cmd, MasterName)
+	if err != nil {
+		Logger.Warn("ScreenCMD执行失败", "err", err, "cmd", cmd, "world", MasterName)
+	}
+
+	err = ScreenCMD(cmd, CavesName)
+	if err != nil {
+		Logger.Warn("ScreenCMD执行失败", "err", err, "cmd", cmd, "world", CavesName)
+	}
+
 	time.Sleep(2 * time.Second)
-	_ = BashCMD(StopMasterCMD)
-	_ = BashCMD(StopCavesCMD)
-	_ = BashCMD(ClearScreenCMD)
+
+	err = BashCMD(StopMasterCMD)
+	if err != nil {
+		Logger.Error("BashCMD执行失败", "err", err, "cmd", StopMasterCMD)
+	}
+
+	err = BashCMD(StopCavesCMD)
+	if err != nil {
+		Logger.Error("BashCMD执行失败", "err", err, "cmd", StopCavesCMD)
+	}
+
+	err = BashCMD(ClearScreenCMD)
+	if err != nil {
+		Logger.Error("BashCMD执行失败", "err", err, "cmd", ClearScreenCMD)
+	}
 
 	// 删除主目录
 	err = RemoveDir(ServerPath)
 	if err != nil {
+		Logger.Error("删除主目录失败", "err", err)
 		return err
 	}
 
@@ -526,19 +551,20 @@ func RecoveryGame(backupFile string) error {
 	cmd = "tar zxvf " + backupFile
 	err = BashCMD(cmd)
 	if err != nil {
+		Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
 		return err
 	}
 
 	return nil
 }
 
-func GetModList() []string {
+func GetModList() ([]string, error) {
 	var modList []string
 	L := lua.NewState()
 	defer L.Close()
 	if err := L.DoFile(MasterModPath); err != nil {
 		fmt.Println("加载 Lua 文件失败:", err)
-		return []string{}
+		return []string{}, fmt.Errorf("加载 Lua 文件失败: %w", err)
 	}
 	modsTable := L.Get(-1)
 	if tbl, ok := modsTable.(*lua.LTable); ok {
@@ -551,30 +577,43 @@ func GetModList() []string {
 			}
 		})
 	}
-	return modList
+	return modList, nil
 }
 
-func DownloadMod(modList []string) {
+func DownloadMod(modList []string) error {
 	if len(modList) == 0 {
-		return
+		return nil
 	}
-	TruncAndWriteFile(GameModSettingPath, "")
+	err := TruncAndWriteFile(GameModSettingPath, "")
+	if err != nil {
+		return err
+	}
 
 	downloadCMD := "steamcmd/steamcmd.sh +force_install_dir dl +login anonymous"
 	for _, mod := range modList {
 		downloadCMD = downloadCMD + " +workshop_download_item 322330 " + mod
 	}
 	downloadCMD = downloadCMD + " +quit"
-	_ = BashCMD(downloadCMD)
+	err = BashCMD(downloadCMD)
+	if err != nil {
+		return err
+	}
 
 	for _, mod := range modList {
 		mvCMD := "mv ~/steamcmd/dl/steamapps/workshop/content/322330/" + mod + " ~/dst/mods/workshop-" + mod
-		fmt.Println(mvCMD)
-		_ = BashCMD(mvCMD)
+		err = BashCMD(mvCMD)
+		if err != nil {
+			return err
+		}
 	}
 
 	rmCMD := "rm -rf ~/dl"
-	_ = BashCMD(rmCMD)
+	err = BashCMD(rmCMD)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func GetTimestamp() int64 {
