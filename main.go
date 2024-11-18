@@ -67,7 +67,7 @@ func main() {
 	err := r.Run(fmt.Sprintf(":%d", bindPort))
 	if err != nil {
 		utils.Logger.Error("启动服务器失败", "err", err)
-		return
+		panic("启动服务器失败")
 	}
 }
 
@@ -87,4 +87,5 @@ func initialize() {
 	scheduler.InitTasks()
 	//启动定时任务调度器
 	go scheduler.Scheduler.StartAsync()
+	utils.Logger.Info("定时任务已启动")
 }

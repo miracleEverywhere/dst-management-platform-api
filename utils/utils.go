@@ -144,6 +144,7 @@ func CreateConfig() {
 			return
 		}
 		if config.Keepalive.Frequency == 30 {
+			Logger.Info("数据库检查完成")
 			return
 		}
 		Logger.Info("执行数据库检查中，自动保活设置为30秒")
@@ -152,6 +153,7 @@ func CreateConfig() {
 		if err != nil {
 			Logger.Error("写入数据库失败", "err", err)
 		}
+		Logger.Info("数据库检查完成")
 		return
 	}
 	Logger.Info("执行数据库检查中，初始化数据库")
@@ -181,7 +183,9 @@ func CreateConfig() {
 	err = WriteConfig(config)
 	if err != nil {
 		Logger.Error("写入数据库失败", "err", err)
+		panic("数据库初始化失败")
 	}
+	Logger.Info("数据库初始化完成")
 }
 
 func ReadConfig() (Config, error) {
