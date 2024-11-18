@@ -36,7 +36,7 @@ func InitTasks() {
 	// 自动备份
 	if config.AutoBackup.Enable {
 		_, _ = Scheduler.Every(1).Day().At(config.AutoBackup.Time).Do(doBackup)
-		utils.Logger.Info("自动更新定时任务已配置")
+		utils.Logger.Info("自动备份定时任务已配置")
 	}
 
 	// 自动保活
