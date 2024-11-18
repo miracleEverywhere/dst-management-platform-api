@@ -74,4 +74,4 @@ const SteamApiKey = "1D15E021E1AB06D20F761C16525FFD40"
 
 const SteamApi = "http://api.steampowered.com/IPublishedFileService/GetDetails/v1/"
 
-const ProcessLogFile = "dmp_process.log"
+const ProcessLogFile = "dmpProcess.log"
