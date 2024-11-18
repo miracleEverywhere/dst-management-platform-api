@@ -206,6 +206,9 @@ func ReadConfig() (Config, error) {
 }
 
 func WriteConfig(config Config) {
+	if config.Username == "" {
+		return
+	}
 	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
 	if err != nil {
 		fmt.Println("Error marshalling JSON:", err)
@@ -486,14 +489,13 @@ func FileExists(filePath string) (bool, error) {
 }
 
 func BackupGame() error {
-	err := EnsureDirExists(DMPLogPath)
+	err := EnsureDirExists(BackupPath)
 	if err != nil {
 		return err
 	}
 	currentTime := time.Now()
 	timestampSeconds := currentTime.Unix()
 	timestampSecondsStr := strconv.FormatInt(timestampSeconds, 10)
-	fmt.Println(123)
 	cmd := "tar zcvf " + BackupPath + "/" + timestampSecondsStr + ".tgz " + ServerPath[:len(ServerPath)-1]
 	_ = BashCMD(cmd)
 	return nil
