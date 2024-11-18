@@ -125,7 +125,7 @@ func GetInternetIP1() (string, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			fmt.Println(err)
+			utils.Logger.Error("请求关闭失败", "err", err)
 		}
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 
@@ -135,7 +135,7 @@ func GetInternetIP1() (string, error) {
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		fmt.Println("解析JSON失败:", err)
+		utils.Logger.Error("解析JSON失败", "err", err)
 		return "", err
 	}
 	return jsonResp.Query, nil
@@ -155,7 +155,7 @@ func GetInternetIP2() (string, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			fmt.Println(err)
+			utils.Logger.Error("请求关闭失败", "err", err)
 		}
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 
@@ -165,7 +165,7 @@ func GetInternetIP2() (string, error) {
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		fmt.Println("解析JSON失败:", err)
+		utils.Logger.Error("解析JSON失败", "err", err)
 		return "", err
 	}
 	return jsonResp.Ip, nil
@@ -232,7 +232,7 @@ func getModsInfo(luaScriptContent string) ([]ModInfo, error) {
 					defer func(Body io.ReadCloser) {
 						err := Body.Close()
 						if err != nil {
-							fmt.Println(err)
+							utils.Logger.Error("请求关闭失败", "err", err)
 						}
 					}(httpResponse.Body) // 确保在函数结束时关闭响应体
 
@@ -243,7 +243,7 @@ func getModsInfo(luaScriptContent string) ([]ModInfo, error) {
 
 					var jsonResp JSONResponse
 					if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-						fmt.Println("解析JSON失败:", err)
+						utils.Logger.Error("解析JSON失败", "err", err)
 						return
 					}
 

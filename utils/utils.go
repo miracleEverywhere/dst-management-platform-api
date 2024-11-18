@@ -469,7 +469,6 @@ func EnsureDirExists(dirPath string) error {
 		if err != nil {
 			return fmt.Errorf("无法创建目录: %w", err)
 		}
-		fmt.Println("目录已创建:", dirPath)
 	} else if err != nil {
 		// 其他错误
 		return fmt.Errorf("检查目录时出错: %w", err)
@@ -563,7 +562,6 @@ func GetModList() ([]string, error) {
 	L := lua.NewState()
 	defer L.Close()
 	if err := L.DoFile(MasterModPath); err != nil {
-		fmt.Println("加载 Lua 文件失败:", err)
 		return []string{}, fmt.Errorf("加载 Lua 文件失败: %w", err)
 	}
 	modsTable := L.Get(-1)

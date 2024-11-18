@@ -2,7 +2,7 @@ package logs
 
 import (
 	"bufio"
-	"fmt"
+	"dst-management-platform-api/utils"
 	"os"
 )
 
@@ -14,7 +14,7 @@ func getLastNLines(filename string, n int) ([]string, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			fmt.Println(err)
+			utils.Logger.Error("文件关闭失败", "err", err)
 		}
 	}(file)
 
