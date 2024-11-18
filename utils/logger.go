@@ -13,8 +13,8 @@ func init() {
 		panic(err)
 	}
 	Logger = slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{
-		AddSource:   true,            // 记录日志位置
-		Level:       slog.LevelDebug, // 设置日志级别
+		AddSource:   true,           // 记录日志位置
+		Level:       slog.LevelInfo, // 设置日志级别
 		ReplaceAttr: nil,
 	}))
 }
