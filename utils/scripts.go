@@ -25,18 +25,18 @@ function check_directory() {
 }
 
 function install_ubuntu() {
-    dpkg --add-architecture i386
-	apt update
-    apt install -y lib32gcc1
-	apt install -y lib32gcc-s1
-    apt install -y libcurl4-gnutls-dev:i386
-    apt install -y screen
+    dpkg --add-architecture i386 2>&1 > /dev/null
+	apt update 2>&1 > /dev/null
+    apt install -y lib32gcc1 2>&1 > /dev/null
+	apt install -y lib32gcc-s1 2>&1 > /dev/null
+    apt install -y libcurl4-gnutls-dev:i386 2>&1 > /dev/null
+    apt install -y screen 2>&1 > /dev/null
 }
 
 function install_rhel() {
-    yum -y install glibc.i686 libstdc++.i686 libcurl.i686
-    yum -y install screen
-    ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
+    yum -y install glibc.i686 libstdc++.i686 libcurl.i686 2>&1 > /dev/null
+    yum -y install screen 2>&1 > /dev/null
+    ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4 2>&1 > /dev/null
 }
 
 function check_screen() {
@@ -75,18 +75,18 @@ check_screen
 # 下载安装包
 echo -e "29\t正在下载Steam安装包\tDownloading the Steam installation package" > /tmp/install_status
 cd ~
-wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
+wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz 2>&1 > /dev/null
 
 # 解压安装包
 echo -e "41\t正在解压Steam安装包\tExtracting the Steam installation package" > /tmp/install_status
 mkdir -p $STEAM_DIR
-tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR
+tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR 2>&1 > /dev/null
 
 # 安装DST
 echo -e "49\t正在下载Steam\tDownloading Steam" > /tmp/install_status
 cd $STEAM_DIR
 > install.log
-./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit | tee -a "install.log" &
+./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit | tee -a "install.log" 2>&1 > /dev/null &
 PID=$!
 
 while true
