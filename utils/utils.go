@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+var STATISTICS []Statistics
+
 type Claims struct {
 	Username string `json:"username"`
 	jwt.StandardClaims
@@ -67,8 +69,9 @@ type Players struct {
 }
 
 type Statistics struct {
-	Timestamp int64 `json:"timestamp"`
-	Num       int   `json:"num"`
+	Timestamp int64     `json:"timestamp"`
+	Num       int       `json:"num"`
+	Players   []Players `json:"players"`
 }
 
 type Keepalive struct {
@@ -143,12 +146,15 @@ func CreateConfig() {
 			Logger.Error("执行数据库检查中，打开数据库文件失败", "err", err)
 			return
 		}
-		if config.Keepalive.Frequency == 30 {
+		if config.Keepalive.Frequency == 30 && config.Statistics == nil && config.Players == nil {
 			Logger.Info("数据库检查完成")
 			return
 		}
 		Logger.Info("执行数据库检查中，自动保活设置为30秒")
 		config.Keepalive.Frequency = 30
+		Logger.Info("执行数据库检查中，清除历史脏数据")
+		config.Statistics = nil
+		config.Players = nil
 		err = WriteConfig(config)
 		if err != nil {
 			Logger.Error("写入数据库失败", "err", err)

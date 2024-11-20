@@ -434,13 +434,18 @@ func handleMultiDelete(c *gin.Context) {
 }
 
 func handleStatisticsGet(c *gin.Context) {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
+	type stats struct {
+		Num       int   `json:"num"`
+		Timestamp int64 `json:"timestamp"`
 	}
-	data := config.Statistics
+	var data []stats
+	for _, i := range utils.STATISTICS {
+		var j stats
+		j.Num = i.Num
+		j.Timestamp = i.Timestamp
+		data = append(data, j)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 

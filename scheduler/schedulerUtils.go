@@ -12,11 +12,11 @@ import (
 )
 
 func setPlayer2DB() {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
-	}
+	//config, err := utils.ReadConfig()
+	//if err != nil {
+	//	utils.Logger.Error("配置文件读取失败", "err", err)
+	//	return
+	//}
 
 	players, err := getPlayersList()
 	if err != nil {
@@ -31,24 +31,28 @@ func setPlayer2DB() {
 		player.NickName = uidNickName[1]
 		playerList = append(playerList, player)
 	}
-	config.Players = playerList
+	//config.Players = playerList
 
 	numPlayer := len(playerList)
 	currentTime := utils.GetTimestamp()
 	var statistics utils.Statistics
 	statistics.Timestamp = currentTime
 	statistics.Num = numPlayer
-	statisticsLength := len(config.Statistics)
+	statistics.Players = playerList
+	//statisticsLength := len(config.Statistics)
+	statisticsLength := len(utils.STATISTICS)
 	if statisticsLength > 2880 {
 		// 只保留一天的数据量
-		config.Statistics = append(config.Statistics[:0], config.Statistics[1:]...)
+		//config.Statistics = append(config.Statistics[:0], config.Statistics[1:]...)
+		utils.STATISTICS = append(utils.STATISTICS[:0], utils.STATISTICS[1:]...)
 	}
-	config.Statistics = append(config.Statistics, statistics)
+	//config.Statistics = append(config.Statistics, statistics)
+	utils.STATISTICS = append(utils.STATISTICS, statistics)
 
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-	}
+	//err = utils.WriteConfig(config)
+	//if err != nil {
+	//	utils.Logger.Error("配置文件写入失败", "err", err)
+	//}
 }
 
 func getPlayersList() ([]string, error) {

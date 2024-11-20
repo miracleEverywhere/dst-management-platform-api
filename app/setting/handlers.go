@@ -153,18 +153,19 @@ func handlePlayerListGet(c *gin.Context) {
 		WhiteList []string        `json:"whiteList"`
 	}
 
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
+	//config, err := utils.ReadConfig()
+	//if err != nil {
+	//	utils.Logger.Error("配置文件读取失败", "err", err)
+	//	utils.RespondWithError(c, 500, "zh")
+	//	return
+	//}
 	adminList := getList(utils.AdminListPath)
 	blockList := getList(utils.BlockListPath)
 	whiteList := getList(utils.WhiteListPath)
 
 	var playList PlayerList
-	playList.Players = config.Players
+	//playList.Players = config.Players
+	playList.Players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
 	playList.AdminList = adminList
 	playList.BlockList = blockList
 	playList.WhiteList = whiteList
