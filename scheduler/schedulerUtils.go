@@ -61,6 +61,8 @@ func getPlayersList() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 等待命令执行完毕
+	time.Sleep(time.Second * 2)
 	// 获取日志文件中的list
 	file, err := os.Open(utils.MasterLogPath)
 	if err != nil {
