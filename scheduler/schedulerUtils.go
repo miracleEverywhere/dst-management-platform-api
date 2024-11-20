@@ -106,7 +106,7 @@ func getPlayersList() ([]string, error) {
 	}
 
 	// 正则表达式匹配模式
-	pattern := `playerlist 99999999 \[[0-9]+\] (KU_[A-Za-z0-9]+) (.+)`
+	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) (.+)`
 	re := regexp.MustCompile(pattern)
 
 	var players []string
