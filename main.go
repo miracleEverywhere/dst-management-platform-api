@@ -79,6 +79,17 @@ func initialize() {
 
 	//数据库检查
 	utils.CreateConfig()
+
+	//创建手动安装脚本
+	err := utils.TruncAndWriteFile("manual_install.sh", utils.ManualInstall)
+	if err != nil {
+		utils.Logger.Error("手动安装脚本创建失败", "err", err)
+	}
+	err = utils.BashCMD("chmod +x manual_install.sh")
+	if err != nil {
+		utils.Logger.Error("手动安装脚本添加执行权限失败", "err", err)
+	}
+
 	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
