@@ -341,3 +341,38 @@ func kick(uid string, world string) error {
 	cmd := "TheNet:Kick('" + uid + "')"
 	return utils.ScreenCMD(cmd, world)
 }
+
+func checkZipFile(filename string) (bool, error) {
+	filePath := utils.ImportFileUploadPath + filename
+	err := utils.EnsureDirExists(utils.ImportFileUnzipPath)
+	if err != nil {
+		utils.Logger.Error("解压目录创建失败", "err", err)
+		return false, err
+	}
+	err = utils.BashCMD("unzip -qo " + filePath + " -d " + utils.ImportFileUnzipPath)
+	if err != nil {
+		utils.Logger.Error("解压失败", "err", err)
+		return false, err
+	}
+
+	var result bool
+	checkItems := []string{"cluster.ini", "cluster_token.txt", "Master/leveldataoverride.lua", "Master/modoverrides.lua", "Master/server.ini"}
+	for _, item := range checkItems {
+		filePath = utils.ImportFileUnzipPath + item
+		result, err = utils.FileDirectoryExists(filePath)
+		if err != nil {
+			utils.Logger.Error("检查文件"+filePath+"失败", "err", err)
+			return false, err
+		}
+		if !result {
+			utils.Logger.Error("文件" + filePath + "不存在")
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func writeDatabase() error {
+
+	return nil
+}

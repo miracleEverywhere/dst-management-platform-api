@@ -323,3 +323,57 @@ func handleKick(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("kickSuccess", langStr), "data": nil})
 }
+
+func handleImportFileUploadPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+	//保存文件
+	savePath := utils.ImportFileUploadPath + file.Filename
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.Logger.Error("文件保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+	//检查导入文件是否合法
+	result, err := checkZipFile(file.Filename)
+	if err != nil {
+		utils.Logger.Error("检查导入文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("wrongUploadFile", langStr), "data": nil})
+		return
+	}
+	if !result {
+		utils.Logger.Error("导入文件校验失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("wrongUploadFile", langStr), "data": nil})
+		return
+	}
+	//备份服务器
+	err = utils.BackupGame()
+	if err != nil {
+		utils.Logger.Warn("游戏备份失败", "err", err)
+	}
+	//删除旧服务器文件
+	err = utils.BashCMD("rm -rf " + utils.ServerPath + "*")
+	if err != nil {
+		utils.Logger.Error("删除旧服务器文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteOldServerFail", langStr), "data": nil})
+		return
+	}
+	//创建新服务器文件
+	err = utils.BashCMD("mv " + utils.ImportFileUnzipPath + "* " + utils.ServerPath)
+	if err != nil {
+		utils.Logger.Error("创建新服务器文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("createNewServerFail", langStr), "data": nil})
+		return
+	}
+	//写入数据库
+	err = writeDatabase()
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
+}

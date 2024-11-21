@@ -24,6 +24,8 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/player/delete/block", utils.MWtoken(), handleBlockDeletePost)
 			setting.POST("/player/delete/white", utils.MWtoken(), handleWhiteDeletePost)
 			setting.POST("/player/kick", utils.MWtoken(), handleKick)
+			// 存档导入
+			setting.POST("/import/upload", utils.MWtoken(), handleImportFileUploadPost)
 		}
 	}
 
