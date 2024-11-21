@@ -487,7 +487,7 @@ func EnsureDirExists(dirPath string) error {
 	return nil
 }
 
-func FileExists(filePath string) (bool, error) {
+func FileDirectoryExists(filePath string) (bool, error) {
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false, nil
@@ -516,7 +516,7 @@ func BackupGame() error {
 
 func RecoveryGame(backupFile string) error {
 	// 检查文件是否存在
-	exist, err := FileExists(backupFile)
+	exist, err := FileDirectoryExists(backupFile)
 	if !exist || err != nil {
 		return fmt.Errorf("文件不存在，%w", err)
 	}
