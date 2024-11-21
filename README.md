@@ -84,7 +84,8 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 ```text
 .
 ├── dmp             # 主程序
-├── dmp.log         # 日志
+├── dmp.log         # 请求日志
+├── dmpProcess.log  # 运行日志
 ├── DstMP.sdb       # 数据库
 └── run.sh          # 运行脚本
 ```
@@ -130,7 +131,7 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 ├── go.sum
 ├── LICENSE
 ├── main.go                             # 程序入口
-├── README.md
+├── README.md                           # 帮助文档
 ├── scheduler                           # 定时任务模块
 │   ├── init.go
 │   ├── player.go
@@ -139,7 +140,8 @@ nohup ./dmp -c -l 8888 2>&1 > dmp.log &
 └── utils                               # 工具集
     ├── constant.go                     # 一些路径和命令的常量
     ├── exceptions.go                   # 异常返回（今后可能会弃用）
-    ├── install.go                      # 预留
+    ├── install.go                      # 安装脚本
+    ├── logger.go                       # 日志
     ├── scripts.go                      # 需要执行的shell脚本
     └── utils.go                        # 工具函数
 ```
