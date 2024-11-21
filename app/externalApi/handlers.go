@@ -15,6 +15,7 @@ func handleVersionGet(c *gin.Context) {
 
 	dstVersion, err := GetDSTVersion()
 	if err != nil {
+		utils.Logger.Error("获取饥荒版本失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getVersionFail", langStr), "data": nil})
 		return
 	}
@@ -62,8 +63,6 @@ func handleModInfoGet(c *gin.Context) {
 	modInfoList, err := getModsInfo(config.RoomSetting.Mod)
 	if err != nil {
 		utils.Logger.Error("获取mod信息失败", "err", err)
-	}
-	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
 		return
 	}

@@ -42,7 +42,9 @@ func handleRoomInfoGet(c *gin.Context) {
 		utils.Logger.Error("获取meta文件内容失败", "err", err)
 	} else {
 		seasonInfo, err = getMetaInfo(filePath)
-		utils.Logger.Error("获取meta文件内容失败", "err", err)
+		if err != nil {
+			utils.Logger.Error("获取meta文件内容失败", "err", err)
+		}
 	}
 
 	data := Data{
