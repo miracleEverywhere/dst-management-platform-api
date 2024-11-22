@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -9,7 +10,7 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
-	lua "github.com/yuin/gopher-lua"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -567,66 +568,171 @@ func RecoveryGame(backupFile string) error {
 	return nil
 }
 
-func GetModList() ([]string, error) {
-	var modList []string
-	L := lua.NewState()
-	defer L.Close()
-	if err := L.DoFile(MasterModPath); err != nil {
-		return []string{}, fmt.Errorf("加载 Lua 文件失败: %w", err)
-	}
-	modsTable := L.Get(-1)
-	if tbl, ok := modsTable.(*lua.LTable); ok {
-		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-			// 检查键是否是字符串，并且以 "workshop-" 开头
-			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
-				// 提取 "workshop-" 后面的数字
-				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
-				modList = append(modList, workshopID)
-			}
-		})
-	}
-	return modList, nil
-}
-
-func DownloadMod(modList []string) error {
-	if len(modList) == 0 {
-		return nil
-	}
-	err := TruncAndWriteFile(GameModSettingPath, "")
-	if err != nil {
-		return err
-	}
-
-	downloadCMD := "steamcmd/steamcmd.sh +force_install_dir dl +login anonymous"
-	for _, mod := range modList {
-		downloadCMD = downloadCMD + " +workshop_download_item 322330 " + mod
-	}
-	downloadCMD = downloadCMD + " +quit"
-	err = BashCMD(downloadCMD)
-	if err != nil {
-		return err
-	}
-
-	for _, mod := range modList {
-		mvCMD := "mv ~/steamcmd/dl/steamapps/workshop/content/322330/" + mod + " ~/dst/mods/workshop-" + mod
-		err = BashCMD(mvCMD)
-		if err != nil {
-			return err
-		}
-	}
-
-	rmCMD := "rm -rf ~/dl"
-	err = BashCMD(rmCMD)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func GetModList() ([]string, error) {
+//	var modList []string
+//	L := lua.NewState()
+//	defer L.Close()
+//	if err := L.DoFile(MasterModPath); err != nil {
+//		return []string{}, fmt.Errorf("加载 Lua 文件失败: %w", err)
+//	}
+//	modsTable := L.Get(-1)
+//	if tbl, ok := modsTable.(*lua.LTable); ok {
+//		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+//			// 检查键是否是字符串，并且以 "workshop-" 开头
+//			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
+//				// 提取 "workshop-" 后面的数字
+//				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
+//				modList = append(modList, workshopID)
+//			}
+//		})
+//	}
+//	return modList, nil
+//}
+//
+//func DownloadMod(modList []string) error {
+//	if len(modList) == 0 {
+//		return nil
+//	}
+//	err := TruncAndWriteFile(GameModSettingPath, "")
+//	if err != nil {
+//		return err
+//	}
+//
+//	downloadCMD := "steamcmd/steamcmd.sh +force_install_dir dl +login anonymous"
+//	for _, mod := range modList {
+//		downloadCMD = downloadCMD + " +workshop_download_item 322330 " + mod
+//	}
+//	downloadCMD = downloadCMD + " +quit"
+//	err = BashCMD(downloadCMD)
+//	if err != nil {
+//		return err
+//	}
+//
+//	for _, mod := range modList {
+//		mvCMD := "mv ~/steamcmd/dl/steamapps/workshop/content/322330/" + mod + " ~/dst/mods/workshop-" + mod
+//		err = BashCMD(mvCMD)
+//		if err != nil {
+//			return err
+//		}
+//	}
+//
+//	rmCMD := "rm -rf ~/dl"
+//	err = BashCMD(rmCMD)
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func GetTimestamp() int64 {
 	now := time.Now()
 	// 获取毫秒级时间戳
 	milliseconds := now.UnixNano() / int64(time.Millisecond)
 	return milliseconds
+}
+
+func GetFileAllContent(filePath string) (string, error) {
+	// 打开文件
+	file, err := os.Open(filePath)
+	if err != nil {
+		Logger.Error("打开"+filePath+"文件失败", "err", err)
+		return "", err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭"+filePath+"文件失败", "err", err)
+		}
+	}(file) // 确保在函数结束时关闭文件
+	// 创建一个Reader，可以使用任何实现了io.Reader接口的类型
+	reader := file
+
+	// 读取文件内容到byte切片中
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		Logger.Error("读取"+filePath+"文件失败", "err", err)
+		return "", err
+	}
+	return string(content), nil
+}
+
+func GetRoomSettingBase() (RoomSettingBase, error) {
+	roomSettings := RoomSettingBase{}
+	// 打开文件
+	file, err := os.Open(ServerSettingPath)
+	if err != nil {
+		Logger.Error("打开cluster.ini文件失败", "err", err)
+		return RoomSettingBase{}, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭cluster.ini文件失败", "err", err)
+		}
+	}(file)
+
+	// 定义要读取的字段映射
+	fieldsToRead := map[string]string{
+		"cluster_name":        "Name",
+		"cluster_description": "Description",
+		"game_mode":           "GameMode",
+		"pvp":                 "PVP",
+		"max_players":         "PlayerNum",
+		"vote_enabled":        "Vote",
+		"cluster_password":    "Password",
+	}
+
+	// 使用bufio.Scanner逐行读取文件内容
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		// 跳过注释和空行
+		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
+			continue
+		}
+		// 解析字段和值
+		for field, structField := range fieldsToRead {
+			if strings.HasPrefix(line, field+" =") {
+				value := strings.TrimPrefix(line, field+" =")
+				value = strings.TrimSpace(value)
+
+				// 根据结构体字段类型设置值
+				switch structField {
+				case "Name":
+					roomSettings.Name = value
+				case "Description":
+					roomSettings.Description = value
+				case "GameMode":
+					roomSettings.GameMode = value
+				case "PVP":
+					roomSettings.PVP, _ = strconv.ParseBool(value)
+				case "PlayerNum":
+					roomSettings.PlayerNum, _ = strconv.Atoi(value)
+				case "Vote":
+					roomSettings.Vote, _ = strconv.ParseBool(value)
+				case "Password":
+					roomSettings.Password = value
+				}
+				break
+			}
+		}
+	}
+
+	// 检查是否有错误
+	if err := scanner.Err(); err != nil {
+		Logger.Error("读取cluster.ini文件失败", "err", err)
+		return RoomSettingBase{}, err
+	}
+
+	//token文件
+	token, err := GetFileAllContent(ServerTokenPath)
+	if err != nil {
+		Logger.Error("读取token文件失败", "err", err)
+		return RoomSettingBase{}, err
+	}
+	roomSettings.Token = token
+
+	return roomSettings, nil
 }
