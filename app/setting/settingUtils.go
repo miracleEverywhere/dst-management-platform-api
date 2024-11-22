@@ -372,7 +372,49 @@ func checkZipFile(filename string) (bool, error) {
 	return true, nil
 }
 
-func writeDatabase() error {
+func WriteDatabase() error {
+	//地面配置
+	ground, err := utils.GetFileAllContent(utils.MasterSettingPath)
+	if err != nil {
+		utils.Logger.Error("读取地面配置文件失败", "err", err)
+		return err
+	}
+	//模组配置
+	mod, err := utils.GetFileAllContent(utils.MasterModPath)
+	if err != nil {
+		utils.Logger.Error("读取mod配置文件失败", "err", err)
+		return err
+	}
+	//洞穴配置
+	caves, err := utils.GetFileAllContent(utils.CavesSettingPath)
+	if err != nil {
+		utils.Logger.Warn("读取洞穴配置文件失败", "err", err)
+		caves = ""
+	}
+
+	var baseSetting utils.RoomSettingBase
+	baseSetting, err = utils.GetRoomSettingBase()
+	if err != nil {
+		utils.Logger.Error("读取cluster配置文件失败", "err", err)
+		return err
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	config.RoomSetting.Base = baseSetting
+	config.RoomSetting.Ground = ground
+	config.RoomSetting.Cave = caves
+	config.RoomSetting.Mod = mod
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		return err
+	}
 
 	return nil
 }

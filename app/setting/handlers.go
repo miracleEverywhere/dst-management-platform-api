@@ -47,7 +47,7 @@ func handleRoomSettingSavePost(c *gin.Context) {
 	config.RoomSetting = roomSetting
 	err = utils.WriteConfig(config)
 	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.Logger.Error("配置文件写入失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
@@ -374,6 +374,12 @@ func handleImportFileUploadPost(c *gin.Context) {
 		return
 	}
 	//写入数据库
-	err = writeDatabase()
+	err = WriteDatabase()
+	if err != nil {
+		utils.Logger.Error("导入文件写入数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("writeToDBFail", langStr), "data": nil})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
 }

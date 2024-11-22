@@ -25,6 +25,7 @@ func response(message string, lang string) string {
 		"wrongUploadFile":     "导入文件未通过校验",
 		"deleteOldServerFail": "删除旧服务器文件失败",
 		"createNewServerFail": "创建新服务器文件失败",
+		"writeToDBFail":       "写入数据库失败",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":         "Save Success",
@@ -50,6 +51,7 @@ func response(message string, lang string) string {
 		"wrongUploadFile":     "The import file did not pass validation",
 		"deleteOldServerFail": "Failed to delete old server files",
 		"createNewServerFail": "Failed to create new server files",
+		"writeToDBFail":       "Writing to database failed",
 	}
 
 	if lang == "zh" {
