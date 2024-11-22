@@ -2,6 +2,7 @@ package tools
 
 import (
 	"dst-management-platform-api/app/externalApi"
+	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/utils"
 	"encoding/base64"
 	"github.com/gin-gonic/gin"
@@ -370,9 +371,16 @@ func handleBackupRestore(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("恢复游戏失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
-	} else {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
+		return
 	}
+	err = setting.WriteDatabase()
+	if err != nil {
+		utils.Logger.Error("恢复存档文件写入数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccessSaveFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
 }
 
 func handleBackupDownload(c *gin.Context) {
