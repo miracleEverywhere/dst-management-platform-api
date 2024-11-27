@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/assets/logo-D0FGhbWs.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DMP</title>
+  <!-- 加载第一步开始 -->
+  <style>
+    .preloader {
+      background: #5838fc;
+      width: 100%;
+      height: 100%;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 9999;
+    }
+
+    .loader-inner {
+      width: 70px;
+      height: 60px;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      margin: auto;
+    }
+
+    .mask {
+      position: absolute;
+      border-radius: 2px;
+      overflow: hidden;
+      perspective: 1000;
+      backface-visibility: hidden;
+    }
+
+    .plane {
+      background: #fff;
+      width: 400%;
+      height: 100%;
+      position: absolute;
+      transform: translate3d(0px, 0, 0);
+      /*transition: all 0.8s ease; */
+      z-index: 100;
+      perspective: 1000;
+      backface-visibility: hidden;
+    }
+
+    .animation {
+      transition: all 0.3s ease;
+    }
+
+    #top .plane {
+      z-index: 2000;
+      animation: trans1 1.3s ease-in infinite 0s backwards;
+    }
+
+    #middle .plane {
+      transform: translate3d(0px, 0, 0);
+      background: #fff;
+      animation: trans2 1.3s linear infinite 0.3s backwards;
+    }
+
+    #bottom .plane {
+      z-index: 2000;
+      animation: trans3 1.3s ease-out infinite 0.7s backwards;
+    }
+
+    #top {
+      width: 53px;
+      height: 20px;
+      left: 20px;
+      transform: skew(-15deg, 0);
+      z-index: 100;
+    }
+
+    #middle {
+      width: 33px;
+      height: 20px;
+      left: 20px;
+      top: 15px;
+      transform: skew(-15deg, 40deg);
+    }
+
+    #bottom {
+      width: 53px;
+      height: 20px;
+      top: 30px;
+      transform: skew(-15deg, 0);
+    }
+
+    .preloader p {
+      color: #fff;
+      position: absolute;
+      left: -50px;
+      top: 60px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      font-style: italic;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin: 0;
+      width: 200px;
+    }
+
+    @keyframes trans1 {
+      from {
+        transform: translate3d(53px, 0, 0);
+      }
+      to {
+        transform: translate3d(-250px, 0, 0);
+      }
+    }
+
+    @keyframes trans2 {
+      from {
+        transform: translate3d(-160px, 0, 0);
+      }
+      to {
+        transform: translate3d(53px, 0, 0);
+      }
+    }
+
+    @keyframes trans3 {
+      from {
+        transform: translate3d(53px, 0, 0);
+      }
+      to {
+        transform: translate3d(-220px, 0, 0);
+      }
+    }
+  </style>
+  <!-- 加载第一步结束 -->
+  <script type="module" crossorigin src="/assets/index-Er8_s2TA.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-q1WEzuvd.css">
+</head>
+<body>
+<div id="app">
+  <!-- 第二步开始 -->
+  <div class="preloader">
+    <div class="loader-inner">
+      <div id="top" class="mask">
+        <div class="plane"></div>
+      </div>
+      <div id="middle" class="mask">
+        <div class="plane"></div>
+      </div>
+      <div id="bottom" class="mask">
+        <div class="plane"></div>
+      </div>
+      <p>美好的事情即将发生，请耐心等待...</p>
+    </div>
+  </div>
+  <!-- 第二步结束 -->
+</div>
+</body>
+</html>
