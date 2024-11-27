@@ -12,6 +12,7 @@ func RouteLogs(r *gin.Engine) *gin.Engine {
 		{
 			// 获取4种日志
 			logs.GET("/log_value", utils.MWtoken(), handleLogGet)
+			logs.POST("/process_log", utils.MWtoken(), handleProcessLogPost)
 		}
 	}
 
