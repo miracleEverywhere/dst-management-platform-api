@@ -27,10 +27,11 @@ function check_directory() {
 function install_ubuntu() {
     dpkg --add-architecture i386
     apt update
-    apt install -y lib32gcc1     install -y lib32gcc-s1
+    apt install -y lib32gcc1     
+	install -y lib32gcc-s1
     apt install -y libcurl4-gnutls-dev:i386
     apt install -y screen
-	apt install -y unzip 2>&1 > /dev/null
+	apt install -y unzip
 }
 
 function install_rhel() {
