@@ -30,11 +30,13 @@ function install_ubuntu() {
     apt install -y lib32gcc1     install -y lib32gcc-s1
     apt install -y libcurl4-gnutls-dev:i386
     apt install -y screen
+	apt install -y unzip 2>&1 > /dev/null
 }
 
 function install_rhel() {
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686
     yum -y install screen
+	yum install -y unzip 2>&1 > /dev/null
     ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
 }
 
@@ -80,7 +82,8 @@ cd $STEAM_DIR
 
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
 # 初始化一些目录和文件
-mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/
+mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
+mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
 mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
 # 管理员
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
