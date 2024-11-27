@@ -165,7 +165,7 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      10103,
-			MenuName:    "存档导入",
+			MenuName:    "导入",
 			EnName:      "Import",
 			ParentId:    101,
 			MenuType:    "2",
