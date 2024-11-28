@@ -316,27 +316,17 @@ func doBackup() {
 	}
 }
 
-func doKeepalive() {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
-	}
-	// 先执行命令
-	err = utils.BashCMD(utils.PlayersListCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCMD)
-	}
+func getWorldLastTime(logfile string) (string, error) {
 	// 获取日志文件中的list
-	file, err := os.Open(utils.MasterLogPath)
+	file, err := os.Open(logfile)
 	if err != nil {
-		utils.Logger.Error("打开文件失败", "err", err, "file", utils.MasterLogPath)
-		return
+		utils.Logger.Error("打开文件失败", "err", err, "file", logfile)
+		return "", err
 	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			utils.Logger.Error("关闭文件失败", "err", err, "file", utils.MasterLogPath)
+			utils.Logger.Error("关闭文件失败", "err", err, "file", logfile)
 		}
 	}(file)
 
@@ -350,7 +340,7 @@ func doKeepalive() {
 	}
 	if err := scanner.Err(); err != nil {
 		utils.Logger.Error("文件scan失败", "err", err)
-		return
+		return "", err
 	}
 	// 反向遍历行
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -360,19 +350,61 @@ func doKeepalive() {
 		if match != "" {
 			// 去掉方括号
 			lastTime := strings.Trim(match, "[]")
-			if config.Keepalive.LastTime == lastTime {
-				doRestart()
-			} else {
-				config.Keepalive.LastTime = lastTime
-				err := utils.WriteConfig(config)
-				if err != nil {
-					if err != nil {
-						utils.Logger.Error("配置文件写入失败", "err", err)
-					}
-				}
-			}
-			return
+			return lastTime, nil
 		}
 	}
 
+	return "", fmt.Errorf("没有找到日志时间戳")
+}
+
+func doKeepalive() {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
+	// 先执行命令
+	// 地面
+	err = utils.BashCMD(utils.PlayersListCMD)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCMD)
+	}
+	// 洞穴
+	err = utils.BashCMD(utils.PlayersListCavesCMD)
+	if err != nil {
+		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCavesCMD)
+	}
+
+	masterLastTime, err := getWorldLastTime(utils.MasterLogPath)
+	if err != nil {
+		utils.Logger.Error("获取日志信息失败", "err", err)
+	}
+
+	if config.Keepalive.LastTime == masterLastTime {
+		doRestart()
+		return
+	} else {
+		config.Keepalive.LastTime = masterLastTime
+	}
+
+	if config.RoomSetting.Cave != "" {
+		cavesLastTime, err := getWorldLastTime(utils.CavesLogPath)
+		if err != nil {
+			utils.Logger.Error("获取日志信息失败", "err", err)
+		}
+
+		if config.Keepalive.CavesLastTime == cavesLastTime {
+			doRestart()
+			return
+		} else {
+			config.Keepalive.CavesLastTime = cavesLastTime
+		}
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+		}
+	}
 }
