@@ -100,11 +100,12 @@ docker logs -f dmp
 ## :strawberry: 文件介绍(File Introduction)
 ```text
 .
-├── dmp             # 主程序
-├── dmp.log         # 请求日志
-├── dmpProcess.log  # 运行日志
-├── DstMP.sdb       # 数据库
-└── run.sh          # 运行脚本
+├── dmp                 # 主程序
+├── dmp.log             # 请求日志
+├── dmpProcess.log      # 运行日志
+├── DstMP.sdb           # 数据库
+├── manual_install.sh   # 饥荒手动安装脚本
+└── run.sh              # 运行脚本
 ```
 
 ---
@@ -112,55 +113,39 @@ docker logs -f dmp
 ## :peach: 项目介绍(Project Introduction)
 ```text
 .
-├── app                                 # 接口
-│   ├── auth                            # 鉴权模块，包含登录、菜单等
-│   │   ├── handlers.go
-│   │   ├── i18n.go
-│   │   └── routes.go
-│   ├── externalApi                     # 外部接口
-│   │   ├── externalApiUtils.go
-│   │   ├── handlers.go
-│   │   ├── i18n.go
-│   │   └── routes.go
-│   ├── home                            # 主页模块
-│   │   ├── handlers.go
-│   │   ├── homeUtils.go
-│   │   ├── i18n.go
-│   │   └── routes.go
-│   ├── logs                            # 日志模块
-│   │   ├── handlers.go
-│   │   ├── i18n.go
-│   │   ├── logsUtils.go
-│   │   └── routes.go
-│   ├── setting                         # 设置模块
-│   │   ├── handlers.go
-│   │   ├── i18n.go
-│   │   ├── routes.go
-│   │   └── settingUtils.go
-│   └── tools                           # 工具模块
-│       ├── handlers.go
-│       ├── i18n.go
-│       ├── routes.go
-│       └── toolsUtils.go
-├── dist                                # 前端静态资源
-├── DstMP.sdb                           # 数据库
+├── app
+│   ├── auth                    # 登录鉴权
+│   ├── externalApi             # 外部接口
+│   ├── home                    # 首页
+│   ├── logs                    # 日志
+│   ├── setting                 # 配置
+│   └── tools                   # 工具
+├── dist                        # 静态资源
+│   ├── assets 
+│   ├── index.html
+│   ├── index.html.gz
+│   └── vite.png
+├── docker                      # 容器镜像
+│   ├── Dockerfile
+│   └── entry-point.sh
+├── docs                        # 帮助文档
+│   └── images
+├── DstMP.sdb                   # 数据库
 ├── go.mod
 ├── go.sum
 ├── LICENSE
-├── main.go                             # 程序入口
-├── README.md                           # 帮助文档
-├── scheduler                           # 定时任务模块
+├── main.go
+├── README.md
+├── scheduler                   # 定时任务
 │   ├── init.go
-│   ├── player.go
-│   ├── schedulerUtils.go
-│   └── tools.go
-└── utils                               # 工具集
-    ├── constant.go                     # 一些路径和命令的常量
-    ├── exceptions.go                   # 异常返回（今后可能会弃用）
-    ├── install.go                      # 安装脚本
-    ├── logger.go                       # 日志
-    ├── scripts.go                      # 需要执行的shell脚本
-    └── utils.go                        # 工具函数
+│   └── schedulerUtils.go
+└── utils                       # 工具集
+    ├── constant.go
+    ├── exceptions.go
+    ├── install.go
+    ├── logger.go
+    ├── scripts.go
+    └── utils.go
 ```
 ##  :sparkling_heart: 致谢
 本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-api)基于**koi-ui**二次开发，感谢开源 [@yuxintao6](https://github.com/yuxintao6)  
