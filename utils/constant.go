@@ -20,6 +20,8 @@ const UpdateGameCMD = "cd ~/steamcmd ; ./steamcmd.sh +login anonymous +force_ins
 
 const PlayersListCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s\\\", 99999999, i-1, v.userid, v.name )) end$(printf \\\\r)\"\n"
 
+const PlayersListCavesCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s\\\", 99999999, i-1, v.userid, v.name )) end$(printf \\\\r)\"\n"
+
 const MasterModPath = ServerPath + MasterName + "/modoverrides.lua"
 
 const CavesModPath = ServerPath + CavesName + "/modoverrides.lua"
