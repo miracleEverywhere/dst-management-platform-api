@@ -1,11 +1,25 @@
-FROM ubuntu:24.04
+FROM --platform=$BUILDPLATFORM golang:1.23 as build
 
-RUN dpkg --add-architecture i386 && apt update && apt install -y lib32gcc1 && install -y lib32gcc-s1 && apt install -y libcurl4-gnutls-dev:i386 && apt install -y screen && apt install -y unzip
+ARG GOPROXY
+ARG GOSUMDB
+ARG GOPRIVATE
+ARG TARGETARCH
+
+WORKDIR /app
+
+ENV GO111MODULE=on
+# GOPROXY=https://goproxy.cn,direct
+
+COPY . .
+
+RUN go build -o dmp main.go
+
+FROM ubuntu:24.04
 
 WORKDIR /root
 
-COPY dmp /root/dmp
-COPY entry-point.sh /root/entry-point.sh
+COPY --from=build /app/dmp  /root/dmp
+COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
