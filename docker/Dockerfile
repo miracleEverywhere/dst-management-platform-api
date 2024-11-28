@@ -26,7 +26,7 @@ RUN chmod +x /root/entry-point.sh
 
 EXPOSE 80/tcp
 EXPOSE 10889/udp
-EXPOSE 11000/tcp
-EXPOSE 11001/tcp
+EXPOSE 11000/udp
+EXPOSE 11001/udp
 
 ENTRYPOINT ["/root/entry-point.sh"]
