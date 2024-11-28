@@ -76,9 +76,10 @@ type Statistics struct {
 }
 
 type Keepalive struct {
-	Enable    bool   `json:"enable"`
-	Frequency int    `json:"frequency"`
-	LastTime  string `json:"lastTime"`
+	Enable        bool   `json:"enable"`
+	Frequency     int    `json:"frequency"`
+	LastTime      string `json:"lastTime"`
+	CavesLastTime string `json:"cavesLastTime"`
 }
 
 type Config struct {
