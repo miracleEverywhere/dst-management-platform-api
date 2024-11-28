@@ -14,6 +14,8 @@ func response(message string, lang string) string {
 		"fileNotFound":           "文件不存在",
 		"fileReadFail":           "读取文件失败",
 		"restoreSuccessSaveFail": "恢复成功，写入数据库失败",
+		"backupSuccess":          "备份成功",
+		"backupFail":             "备份失败",
 	}
 	responseEN := map[string]string{
 		"installing":             "Installing...",
@@ -28,6 +30,8 @@ func response(message string, lang string) string {
 		"fileNotFound":           "File Not Found",
 		"fileReadFail":           "File Read Fail",
 		"restoreSuccessSaveFail": "Restore Success, but writing to database failed",
+		"backupSuccess":          "Backup Success",
+		"backupFail":             "Backup Fail",
 	}
 
 	if lang == "zh" {

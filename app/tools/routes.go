@@ -24,6 +24,7 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.PUT("/update", utils.MWtoken(), handleUpdatePut)
 			// 定时备份
 			tools.GET("/backup", utils.MWtoken(), handleBackupGet)
+			tools.POST("/backup", utils.MWtoken(), handleBackupPost) // 手动创建备份
 			tools.PUT("/backup", utils.MWtoken(), handleBackupPut)
 			tools.DELETE("/backup", utils.MWtoken(), handleBackupDelete)
 			tools.DELETE("/backup/multi", utils.MWtoken(), handleMultiDelete)
