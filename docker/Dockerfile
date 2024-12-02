@@ -23,6 +23,7 @@ COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
+RUN mkdir /root/.klei
 
 EXPOSE 80/tcp
 EXPOSE 10889/udp
