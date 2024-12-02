@@ -44,13 +44,6 @@ docker run -p 80:80 --name dmp -itd ghcr.io/miracleeverywhere/dst-management-pla
 # 绑定8000端口
 docker run -p 8000:80 --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
-容器启动后，会自动安装steam和饥荒，请使用以下命令查看安装进度
-```shell
-docker logs -f dmp
-
-# 如果出现Success! App '343050' fully installed.则说明安装完成
-```
-
 ---
 
 ## :grapes: 默认用户名密码(Default username and password)
