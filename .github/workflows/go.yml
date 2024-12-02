@@ -38,7 +38,7 @@ jobs:
       with:
         file: ./docker/Dockerfile
         context: .
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }},${{ env.REGISTRY_SERVER_ADDRESS }}:${{ env.TAG }}
         labels: ${{ steps.meta.outputs.labels }}
