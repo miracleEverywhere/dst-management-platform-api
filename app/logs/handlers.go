@@ -52,6 +52,14 @@ func handleLogGet(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
+	case "runtime":
+		logsValue, err := getLastNLines(utils.ProcessLogFile, logForm.Line)
+		if err != nil {
+			utils.Logger.Error("读取日志失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 	}
