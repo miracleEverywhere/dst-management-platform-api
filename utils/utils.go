@@ -190,6 +190,9 @@ func CreateConfig() {
 	config.Keepalive.Enable = true
 	config.Keepalive.Frequency = 30
 
+	config.RoomSetting.Base.MasterPort = 11000
+	config.RoomSetting.Base.CavesPort = 11001
+
 	err = WriteConfig(config)
 	if err != nil {
 		Logger.Error("写入数据库失败", "err", err)
