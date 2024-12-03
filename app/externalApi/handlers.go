@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 func handleVersionGet(c *gin.Context) {
@@ -51,9 +52,9 @@ func handleConnectionCodeGet(c *gin.Context) {
 	}
 	var connectionCode string
 	if config.RoomSetting.Base.Password != "" {
-		connectionCode = "c_connect('" + internetIp + "',11000, '" + config.RoomSetting.Base.Password + "')"
+		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(config.RoomSetting.Base.MasterPort) + ", '" + config.RoomSetting.Base.Password + "')"
 	} else {
-		connectionCode = "c_connect('" + internetIp + "',11000)"
+		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(config.RoomSetting.Base.MasterPort) + ")"
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})
