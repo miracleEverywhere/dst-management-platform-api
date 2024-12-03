@@ -380,6 +380,8 @@ func handleImportFileUploadPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("writeToDBFail", langStr), "data": nil})
 		return
 	}
+	//清理上传的文件
+	clearUpZipFile()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
 }
