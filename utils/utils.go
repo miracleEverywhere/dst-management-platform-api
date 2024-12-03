@@ -38,6 +38,8 @@ type RoomSettingBase struct {
 	Vote        bool   `json:"vote"`
 	Password    string `json:"password"`
 	Token       string `json:"token"`
+	MasterPort  int    `json:"masterPort"`
+	CavesPort   int    `json:"cavesPort"`
 }
 
 type RoomSetting struct {
@@ -736,4 +738,40 @@ func GetRoomSettingBase() (RoomSettingBase, error) {
 	roomSettings.Token = token
 
 	return roomSettings, nil
+}
+
+func GetServerPort(serverFile string) (int, error) {
+	file, err := os.Open(serverFile)
+	if err != nil {
+		Logger.Error("打开"+serverFile+"文件失败", "err", err)
+		return 0, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭"+serverFile+"文件失败", "err", err)
+		}
+	}(file)
+	// 使用bufio.Scanner逐行读取文件内容
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		// 跳过注释和空行
+		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
+			continue
+		}
+		// 解析字段和值
+		if strings.HasPrefix(line, "server_port =") {
+			value := strings.TrimPrefix(line, "server_port =")
+			value = strings.TrimSpace(value)
+			port, err := strconv.Atoi(value)
+			if err != nil {
+				Logger.Error("获取端口失败，端口必须为数字", "err", err)
+				return 0, err
+			}
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("没有找到端口配置")
 }

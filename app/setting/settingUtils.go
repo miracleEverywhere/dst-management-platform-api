@@ -399,6 +399,21 @@ func WriteDatabase() error {
 		return err
 	}
 
+	masterPort, err := utils.GetServerPort(utils.MasterServerPath)
+	if err != nil {
+		utils.Logger.Error("获取地面端口失败", "err", err)
+		return err
+	}
+	baseSetting.MasterPort = masterPort
+	if caves != "" {
+		cavesPort, err := utils.GetServerPort(utils.CavesServerPath)
+		if err != nil {
+			utils.Logger.Error("获取洞穴端口失败", "err", err)
+			return err
+		}
+		baseSetting.CavesPort = cavesPort
+	}
+
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
@@ -417,4 +432,11 @@ func WriteDatabase() error {
 	}
 
 	return nil
+}
+
+func clearUpZipFile() {
+	err := utils.BashCMD("rm -rf " + utils.ImportFileUploadPath + "*")
+	if err != nil {
+		utils.Logger.Error("清理导入的压缩文件失败", "err", err)
+	}
 }
