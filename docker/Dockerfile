@@ -45,7 +45,9 @@ RUN mkdir /home/app/.klei
 # 切换到 app 用户
 USER app
 
+# web端口
 EXPOSE 80/tcp
+# 服务器端口
 EXPOSE 10998/udp
 EXPOSE 10999/udp
 EXPOSE 11000/udp
