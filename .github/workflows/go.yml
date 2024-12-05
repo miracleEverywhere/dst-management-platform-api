@@ -2,7 +2,7 @@ name: release-packages
 
 on:
   push:
-    branches: [ "master", "docker-edit" ]
+    # branches: [ "master", "docker-edit" ]
     tags: ["v*"]
   pull_request:
     branches: [ "master" ]

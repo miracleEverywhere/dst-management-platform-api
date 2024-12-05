@@ -16,16 +16,16 @@ RUN apt-get update
 RUN apt-get install -y wget
 
 # 预装依赖
-dpkg --add-architecture i386
-apt update
-apt install -y lib32gcc1
-apt install -y lib32gcc-s1
-apt install -y libcurl4-gnutls-dev:i386
-apt install -y screen
-apt install -y unzip
+RUN dpkg --add-architecture i386
+RUN apt-get install -y lib32gcc1
+RUN apt-get install -y lib32gcc-s1
+RUN apt-get install -y libcurl4-gnutls-dev:i386
+RUN apt-get install -y screen
+RUN apt-get install -y unzip
 
 # 清理 apt 缓存
 RUN apt-get clean
+RUN rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
