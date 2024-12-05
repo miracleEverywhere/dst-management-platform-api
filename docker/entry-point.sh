@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 定义变量
-DMP_HOME="/home/app"
+DMP_HOME="/root"
 #STEAM_DIR="$DMP_HOME/steamcmd"
 #DST_DIR="$DMP_HOME/dst"
 #DST_SETTING_DIR="$DMP_HOME/.klei"
@@ -13,7 +13,7 @@ DMP_HOME="/home/app"
 #apt install -y libcurl4-gnutls-dev:i386
 #apt install -y screen
 #apt install -y unzip
-#apt install -y wget
+apt install -y wget
 #
 #cd $DMP_HOME || exit
 #

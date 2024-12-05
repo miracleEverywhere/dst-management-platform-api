@@ -142,7 +142,7 @@ func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
 }
 
 func CreateConfig() {
-	_, err := os.Stat("DstMP.sdb")
+	_, err := os.Stat("/config/DstMP.sdb")
 	if !os.IsNotExist(err) {
 		Logger.Info("执行数据库检查中，发现数据库文件")
 		config, err := ReadConfig()
@@ -202,7 +202,7 @@ func CreateConfig() {
 }
 
 func ReadConfig() (Config, error) {
-	content, err := os.ReadFile("DstMP.sdb")
+	content, err := os.ReadFile("/config/DstMP.sdb")
 	if err != nil {
 		return Config{}, err
 	}
@@ -224,7 +224,7 @@ func WriteConfig(config Config) error {
 	if err != nil {
 		return fmt.Errorf("Error marshalling JSON:" + err.Error())
 	}
-	file, err := os.OpenFile("DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile("/config/DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("Error opening file:" + err.Error())
 	}

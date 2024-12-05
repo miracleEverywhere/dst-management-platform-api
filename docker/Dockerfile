@@ -5,28 +5,10 @@ ARG GOSUMDB
 ARG GOPRIVATE
 ARG TARGETARCH
 
-WORKDIR /go_build
+WORKDIR /app
 
 ENV GO111MODULE=on
 # GOPROXY=https://goproxy.cn,direct
-
-# 更新 apt 包列表
-RUN apt-get update
-# 安装 wget
-RUN apt-get install -y wget
-
-# 预装依赖
-RUN dpkg --add-architecture i386
-RUN apt-get install -y lib32gcc1
-RUN apt-get install -y lib32gcc-s1
-RUN apt-get install -y libcurl4-gnutls-dev:i386
-RUN apt-get install -y screen
-RUN apt-get install -y unzip
-
-
-# 清理 apt 缓存
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
@@ -34,27 +16,14 @@ RUN go build -o dmp main.go
 
 FROM ubuntu:24.04
 
-# 创建 app 用户和组
-RUN groupadd -r app && useradd -r -g app -m -s /bin/bash app
+WORKDIR /root
 
-# 设置工作目录为 app 用户的家目录
-WORKDIR /home/app
+COPY --from=build /app/dmp  /root/dmp
+COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
-# 复制可执行文件和入口脚本到 app 用户的家目录
-COPY --from=build /go_build/dmp /home/app/dmp
-COPY --from=build /go_build/docker/entry-point.sh /home/app/entry-point.sh
-
-# 更改文件权限为 app 用户所有
-RUN chown -R app:app /home/app
-
-# 设置文件权限
-RUN chmod +x /home/app/dmp
-RUN chmod +x /home/app/entry-point.sh
-
-RUN mkdir /home/app/.klei
-
-# 切换到 app 用户
-USER app
+RUN chmod +x /root/dmp
+RUN chmod +x /root/entry-point.sh
+RUN mkdir /root/.klei
 
 # web端口
 EXPOSE 80/tcp
@@ -64,4 +33,4 @@ EXPOSE 10999/udp
 EXPOSE 11000/udp
 EXPOSE 11001/udp
 
-ENTRYPOINT ["/home/app/entry-point.sh"]
+ENTRYPOINT ["/root/entry-point.sh"]
