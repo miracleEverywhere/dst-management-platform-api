@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 定义变量
-DMP_HOME="/root"
+DMP_HOME="/home/app"
 #STEAM_DIR="$DMP_HOME/steamcmd"
 #DST_DIR="$DMP_HOME/dst"
 #DST_SETTING_DIR="$DMP_HOME/.klei"
