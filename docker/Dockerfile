@@ -14,6 +14,16 @@ ENV GO111MODULE=on
 RUN apt-get update
 # 安装 wget
 RUN apt-get install -y wget
+
+# 预装依赖
+dpkg --add-architecture i386
+apt update
+apt install -y lib32gcc1
+apt install -y lib32gcc-s1
+apt install -y libcurl4-gnutls-dev:i386
+apt install -y screen
+apt install -y unzip
+
 # 清理 apt 缓存
 RUN apt-get clean
 
