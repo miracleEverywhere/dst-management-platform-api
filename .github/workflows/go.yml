@@ -9,7 +9,8 @@ on:
 
 env:
   # Use docker.io for Docker Hub if empty
-  REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
+  # REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
+  REGISTRY_SERVER_ADDRESS: ghcr.io/${{ github.repository }}
 
 jobs:
   build:

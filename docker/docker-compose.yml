@@ -1,0 +1,26 @@
+services:
+
+  dmp:
+    # image: ghcr.io/harelive/dst-management-platform-api:latest # 测试用
+    image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest
+    container_name: dmp
+
+    ports:
+      - 9000:80
+      - 10998:10998/udp
+      - 10999:10999/udp
+      - 11000:11000/udp
+      - 11001:11001/udp
+
+    # 新建一个文件夹存Dockerfile
+    volumes:
+      - ./.klei:/root/.klei
+      - ./config:/root/config
+    network_mode: bridge
+
+    # restart: unless-stopped #选择是否开机自启
+    environment:
+      - TZ=Asia/Shanghai
+      - PGID=$(id -g)
+      - PUID=$(id -u)
+

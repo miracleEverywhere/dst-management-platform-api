@@ -1,9 +1,10 @@
-FROM --platform=$BUILDPLATFORM golang:1.23 as build
+FROM --platform=$BUILDPLATFORM golang:1.23 AS build
 
 ARG GOPROXY
 ARG GOSUMDB
 ARG GOPRIVATE
 ARG TARGETARCH
+
 
 WORKDIR /app
 
@@ -20,13 +21,18 @@ WORKDIR /root
 
 COPY --from=build /app/dmp  /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
+COPY --from=build /app/config /root/config
 
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
+RUN chmod -R +x /root/config/
 RUN mkdir /root/.klei
 
+# web端口
 EXPOSE 80/tcp
-EXPOSE 10889/udp
+# 服务器端口
+EXPOSE 10998/udp
+EXPOSE 10999/udp
 EXPOSE 11000/udp
 EXPOSE 11001/udp
 
