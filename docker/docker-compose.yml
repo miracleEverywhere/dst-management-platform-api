@@ -1,8 +1,8 @@
 services:
 
   dmp:
-    image: ghcr.io/harelive/dst-management-platform-api:latest # 测试用
-    # image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest
+    # image: ghcr.io/harelive/dst-management-platform-api:latest # 测试用
+    image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest
     container_name: dmp
 
     ports:

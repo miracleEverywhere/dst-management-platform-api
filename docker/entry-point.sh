@@ -5,9 +5,11 @@ DMP_HOME="/root"
 #STEAM_DIR="$DMP_HOME/steamcmd"
 #DST_DIR="$DMP_HOME/dst"
 #DST_SETTING_DIR="$DMP_HOME/.klei"
+
+# 由于install.go里没有安装wget，在启动容器的时候安装；或者在install.go进行安装
 apt update
 apt install -y wget
-#
+
 #dpkg --add-architecture i386
 #apt install -y lib32gcc1
 #apt install -y lib32gcc-s1
