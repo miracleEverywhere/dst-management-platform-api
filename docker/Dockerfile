@@ -25,6 +25,7 @@ COPY ../config /root/config
 
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
+RUN chmod -R +x /root/config/
 RUN mkdir /root/.klei
 
 # web端口
