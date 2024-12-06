@@ -21,7 +21,7 @@ WORKDIR /root
 
 COPY --from=build /app/dmp  /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
-COPY ../config/DstMP.sdb /root/config/DstMP.sdb
+COPY ../config /root/config
 
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
