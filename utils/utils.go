@@ -22,6 +22,7 @@ import (
 )
 
 var STATISTICS []Statistics
+var ConfDir string
 
 type Claims struct {
 	Username string `json:"username"`
@@ -142,7 +143,8 @@ func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
 }
 
 func CreateConfig() {
-	_, err := os.Stat("./config/DstMP.sdb")
+	_ = EnsureDirExists(ConfDir)
+	_, err := os.Stat(ConfDir + "/DstMP.sdb")
 	if !os.IsNotExist(err) {
 		Logger.Info("执行数据库检查中，发现数据库文件")
 		config, err := ReadConfig()
@@ -202,7 +204,7 @@ func CreateConfig() {
 }
 
 func ReadConfig() (Config, error) {
-	content, err := os.ReadFile("./config/DstMP.sdb")
+	content, err := os.ReadFile(ConfDir + "/DstMP.sdb")
 	if err != nil {
 		return Config{}, err
 	}
@@ -224,7 +226,7 @@ func WriteConfig(config Config) error {
 	if err != nil {
 		return fmt.Errorf("Error marshalling JSON:" + err.Error())
 	}
-	file, err := os.OpenFile("./config/DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(ConfDir+"/DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("Error opening file:" + err.Error())
 	}

@@ -73,6 +73,7 @@ func main() {
 
 func initialize() {
 	flag.IntVar(&bindPort, "l", 80, "监听端口，如： -l 8080 (Listening Port, e.g. -l 8080)")
+	flag.StringVar(&utils.ConfDir, "s", "./", "数据库文件目录，如： -s ./conf (Database Directory, e.g. -s ./conf)")
 	flag.BoolVar(&consoleOutput, "c", false, "开启控制台日志输出，如： -c (Enable console log output, e.g. -c)")
 	flag.BoolVar(&versionShow, "v", false, "查看版本，如： -v (Check version, e.g. -v)")
 	flag.Parse()
