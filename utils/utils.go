@@ -523,6 +523,71 @@ func BackupGame() error {
 	return nil
 }
 
+func StopGame() error {
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	cmd := "c_shutdown()"
+	err = ScreenCMD(cmd, MasterName)
+	if err != nil {
+		Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
+	if config.RoomSetting.Cave != "" {
+		err = ScreenCMD(cmd, CavesName)
+		if err != nil {
+			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+		}
+	}
+
+	time.Sleep(2 * time.Second)
+	err = BashCMD(StopMasterCMD)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+	}
+	if config.RoomSetting.Cave != "" {
+		err = BashCMD(StopCavesCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopCavesCMD)
+		}
+	}
+
+	time.Sleep(1 * time.Second)
+	err = BashCMD(KillDST)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", KillDST)
+	}
+	err = BashCMD(ClearScreenCMD)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
+	}
+
+	return nil
+}
+
+func StartGame() error {
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	err = BashCMD(StartMasterCMD)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+	}
+	if config.RoomSetting.Cave != "" {
+		err = BashCMD(StartCavesCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartCavesCMD)
+		}
+	}
+
+	return nil
+}
+
 func RecoveryGame(backupFile string) error {
 	// 检查文件是否存在
 	exist, err := FileDirectoryExists(backupFile)
