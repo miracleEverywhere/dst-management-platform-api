@@ -68,6 +68,10 @@ function stop_dmp() {
     echo -e "\e[32m关闭成功 (Shutdown Success) \e[0m"
 }
 
+function clear_dmp() {
+    rm -f dmp*
+}
+
 # 使用无限循环让用户输入命令
 while true; do
     # 提示用户输入
@@ -77,6 +81,7 @@ while true; do
     # 使用 case 语句判断输入的命令
     case $command in
         0)
+            clear_dmp
             check_glibc
             install_dmp
             start_dmp
@@ -104,7 +109,7 @@ while true; do
             ;;
         4)
             stop_dmp
-            rm -f dmp*
+            clear_dmp
             check_glibc
             install_dmp
             start_dmp

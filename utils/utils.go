@@ -244,6 +244,18 @@ func WriteConfig(config Config) error {
 	return nil
 }
 
+func CreateManualInstallScript() {
+	//创建手动安装脚本
+	err := TruncAndWriteFile("manual_install.sh", ManualInstall)
+	if err != nil {
+		Logger.Error("手动安装脚本创建失败", "err", err)
+	}
+	err = BashCMD("chmod +x manual_install.sh")
+	if err != nil {
+		Logger.Error("手动安装脚本添加执行权限失败", "err", err)
+	}
+}
+
 func MWlang() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		lang := c.Request.Header.Get("X-I18n-Lang")
