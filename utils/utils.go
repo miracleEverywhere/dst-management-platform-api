@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -21,8 +22,14 @@ import (
 	"time"
 )
 
-var STATISTICS []Statistics
-var ConfDir string
+var (
+	STATISTICS []Statistics
+	// flag绑定的变量
+	BindPort      int
+	ConsoleOutput bool
+	VersionShow   bool
+	ConfDir       string
+)
 
 type Claims struct {
 	Username string `json:"username"`
@@ -254,6 +261,13 @@ func CreateManualInstallScript() {
 	if err != nil {
 		Logger.Error("手动安装脚本添加执行权限失败", "err", err)
 	}
+}
+
+func BindFlags() {
+	flag.IntVar(&BindPort, "l", 80, "监听端口，如： -l 8080 (Listening Port, e.g. -l 8080)")
+	flag.StringVar(&ConfDir, "s", "./", "数据库文件目录，如： -s ./conf (Database Directory, e.g. -s ./conf)")
+	flag.BoolVar(&ConsoleOutput, "c", false, "开启控制台日志输出，如： -c (Enable console log output, e.g. -c)")
+	flag.BoolVar(&VersionShow, "v", false, "查看版本，如： -v (Check version, e.g. -v)")
 }
 
 func MWlang() gin.HandlerFunc {
