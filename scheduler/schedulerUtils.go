@@ -169,7 +169,7 @@ func checkUpdate() {
 	}
 	doAnnounce()
 	if dstVersion.Local != dstVersion.Server {
-		doUpdate()
+		_ = doUpdate()
 	}
 	doRestart()
 }
@@ -214,29 +214,8 @@ func doUpdate() error {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		return err
 	}
-	cmd := "c_shutdown()"
-	err = utils.ScreenCMD(cmd, utils.MasterName)
-	if err != nil {
-		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
-	}
-	if config.RoomSetting.Cave != "" {
-		err = utils.ScreenCMD(cmd, utils.CavesName)
-		if err != nil {
-			utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
-		}
-	}
 
-	time.Sleep(2 * time.Second)
-	err = utils.BashCMD(utils.StopMasterCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopMasterCMD)
-	}
-	if config.RoomSetting.Cave != "" {
-		err = utils.BashCMD(utils.StopCavesCMD)
-		if err != nil {
-			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopCavesCMD)
-		}
-	}
+	_ = utils.StopGame()
 
 	go func() {
 		err = utils.BashCMD(utils.UpdateGameCMD)
@@ -258,55 +237,8 @@ func doUpdate() error {
 }
 
 func doRestart() {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
-	}
-
-	cmd := "c_shutdown()"
-	err = utils.ScreenCMD(cmd, utils.MasterName)
-	if err != nil {
-		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
-	}
-	if config.RoomSetting.Cave != "" {
-		err = utils.ScreenCMD(cmd, utils.CavesName)
-		if err != nil {
-			utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
-		}
-	}
-
-	time.Sleep(2 * time.Second)
-	err = utils.BashCMD(utils.StopMasterCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopMasterCMD)
-	}
-	if config.RoomSetting.Cave != "" {
-		err = utils.BashCMD(utils.StopCavesCMD)
-		if err != nil {
-			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StopCavesCMD)
-		}
-	}
-
-	time.Sleep(1 * time.Second)
-	err = utils.BashCMD(utils.KillDST)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.KillDST)
-	}
-	err = utils.BashCMD(utils.ClearScreenCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.ClearScreenCMD)
-	}
-	err = utils.BashCMD(utils.StartMasterCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartMasterCMD)
-	}
-	if config.RoomSetting.Cave != "" {
-		err = utils.BashCMD(utils.StartCavesCMD)
-		if err != nil {
-			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartCavesCMD)
-		}
-	}
+	_ = utils.StopGame()
+	_ = utils.StartGame()
 }
 
 func doBackup() {
