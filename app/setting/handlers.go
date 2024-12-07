@@ -354,6 +354,8 @@ func handleImportFileUploadPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("wrongUploadFile", langStr), "data": nil})
 		return
 	}
+	//关闭服务器
+	_ = utils.StopGame()
 	//备份服务器
 	err = utils.BackupGame()
 	if err != nil {
