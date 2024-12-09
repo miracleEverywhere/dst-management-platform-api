@@ -33,7 +33,6 @@ COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
-RUN chmod -R +x /root/config/
 
 RUN mkdir /root/config
 RUN mkdir /root/.klei
