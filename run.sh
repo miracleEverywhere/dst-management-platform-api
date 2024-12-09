@@ -1,7 +1,22 @@
 #!/bin/bash
 
-USER=`whoami`
+########################################################
+# 用户自定义设置请修改下方变量，其他变量请不要修改
+
+# dmp暴露端口，即网页打开时所用的端口
+PORT=80
+
+# 配置文件所在目录
+CONFIG_DIR="./"
+
+########################################################
+
+
+
+# 下方变量请不要修改，否则可能会出现异常
+USER=$(whoami)
 ExeFile="$HOME/dmp"
+
 
 # 检查用户，只能使用root执行
 if [[ "${USER}" != "root" ]];then
@@ -33,9 +48,55 @@ function check_glibc() {
     fi
 }
 
+# 下载函数:下载链接,尝试次数,超时时间(s)
+function download() {
+    local download_url="$1"
+    local tries="$2"
+    local timeout="$3"
+
+    wget -q --show-progress --tries="$tries" --timeout="$timeout" "$download_url"
+    return $?  # 返回 wget 的退出状态
+}
+
 # 安装主程序
 function install_dmp() {
-    wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/dmp.tgz
+    # Gitee下载链接
+    GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
+    # 原GitHub下载链接
+    GITHUB_URL=$(curl -s "https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest" | jq -r .assets[0].browser_download_url)
+    # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
+    PRIMARY_PROXY="https://ghproxy.cc/"     # 主加速站点
+    SECONDARY_PROXY="https://ghproxy.cn/"   # 备用加速站点
+    # 尝试通过主加速站点下载 GitHub
+    echo -e "\e[32m尝试通过主加速站点下载 GitHub\e[0m"
+    if download "$PRIMARY_PROXY$GITHUB_URL" 5 10; then
+        echo -e "\e[32m通过主加速站点下载成功！\e[0m"
+    else
+        echo -e "\e[31m主加速站点下载失败: wget 返回码为 $?, 尝试备用加速站点下载 GitHub\e[0m"
+
+        # 尝试通过备用加速站点下载 GitHub
+        if download "$SECONDARY_PROXY$GITHUB_URL" 5 10; then
+            echo -e "\e[32m通过备用加速站点下载成功！\e[0m"
+        else
+            echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?, 尝试从 Gitee 下载\e[0m"
+
+            # 尝试从 Gitee 下载
+            if download "$GITEE_URL" 5 10; then
+                echo -e "\e[32m从 Gitee 下载成功！\e[0m"
+            else
+                echo -e "\e[31m从 Gitee 下载失败: wget 返回码为 $?, 尝试从原 GitHub 链接下载\e[0m"
+
+                # 尝试从原 GitHub 链接下载
+                if download "$GITHUB_URL" 5 10; then
+                    echo -e "\e[32m从原 GitHub 链接下载成功！\e[0m"
+                else
+                    echo -e "\e[31m从原 GitHub 链接下载失败: wget 返回码为 $?, 下载失败！\e[0m"
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+
     tar zxvf dmp.tgz
     rm -f dmp.tgz
     chmod +x $ExeFile
@@ -43,7 +104,7 @@ function install_dmp() {
 
 # 检查进程状态
 function check_dmp() {
-    ps -ef | grep dmp | grep -v grep > /dev/null
+    pgrep dmp > /dev/null
     if (($? == 0)); then
         echo -e "\e[32m启动成功 (Startup Success) \e[0m"
     else
@@ -55,10 +116,10 @@ function check_dmp() {
 # 启动主程序
 function start_dmp() {
     if [ -e $ExeFile ];then
-        nohup $ExeFile -c 2>&1 > dmp.log &
+        nohup $ExeFile -c -l ${PORT} -s ${CONFIG_DIR} 2>&1 > dmp.log &
     else
         install_dmp
-        nohup $ExeFile -c 2>&1 > dmp.log &
+        nohup $ExeFile -c -l ${PORT} -s ${CONFIG_DIR} 2>&1 > dmp.log &
     fi
 }
 
@@ -68,6 +129,7 @@ function stop_dmp() {
     echo -e "\e[32m关闭成功 (Shutdown Success) \e[0m"
 }
 
+# 删除主程序、请求日志、运行日志、遗漏的压缩包
 function clear_dmp() {
     rm -f dmp*
 }
@@ -77,7 +139,7 @@ while true; do
     # 提示用户输入
     prompt_user
     # 读取用户输入
-    read command
+    read -r command
     # 使用 case 语句判断输入的命令
     case $command in
         0)
