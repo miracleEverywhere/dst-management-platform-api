@@ -16,6 +16,8 @@ func response(message string, lang string) string {
 		"restoreSuccessSaveFail": "恢复成功，写入数据库失败",
 		"backupSuccess":          "备份成功",
 		"backupFail":             "备份失败",
+		"replaceSuccess":         "替换成功",
+		"replaceFail":            "替换失败",
 	}
 	responseEN := map[string]string{
 		"installing":             "Installing...",
@@ -32,6 +34,8 @@ func response(message string, lang string) string {
 		"restoreSuccessSaveFail": "Restore Success, but writing to database failed",
 		"backupSuccess":          "Backup Success",
 		"backupFail":             "Backup Fail",
+		"replaceSuccess":         "Replace Success",
+		"replaceFail":            "Replace Fail",
 	}
 
 	if lang == "zh" {
