@@ -125,6 +125,7 @@ function start_dmp() {
 function stop_dmp() {
     pkill -9 dmp
     echo -e "\e[32m关闭成功 (Shutdown Success) \e[0m"
+    sleep 1
 }
 
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
@@ -161,7 +162,6 @@ while true; do
         ;;
     3)
         stop_dmp
-        sleep 1
         check_glibc
         start_dmp
         check_dmp
