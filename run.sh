@@ -6,7 +6,7 @@
 # dmp暴露端口，即网页打开时所用的端口
 PORT=80
 
-# 配置文件所在目录
+# 数据库文件所在目录，例如：./config
 CONFIG_DIR="./"
 
 ########################################################
@@ -36,7 +36,7 @@ function check_glibc() {
     echo -e "\e[32m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
-        if (($(strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34) != 0)); then
+        if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34 ; then
             apt install -y libc6
         fi
     else
@@ -51,13 +51,12 @@ function download() {
     local timeout="$3"
 
     wget -q --show-progress --tries="$tries" --timeout="$timeout" "$download_url"
+
     return $? # 返回 wget 的退出状态
 }
 
 # 安装主程序
 function install_dmp() {
-    # Gitee下载链接
-    GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
     # 原GitHub下载链接
     GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
@@ -71,18 +70,22 @@ function install_dmp() {
         echo -e "\e[31m主加速站点下载失败: wget 返回码为 $?, 尝试备用加速站点下载 GitHub\e[0m"
 
         # 尝试通过备用加速站点下载 GitHub
+        echo -e "\e[36m尝试通过备用加速站点下载 GitHub\e[0m"
         if download "$SECONDARY_PROXY$GITHUB_URL" 5 10; then
             echo -e "\e[32m通过备用加速站点下载成功！\e[0m"
         else
             echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?, 尝试从 Gitee 下载\e[0m"
-
+            # Gitee下载链接
+            GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
             # 尝试从 Gitee 下载
+            echo -e "\e[36m尝试通过国内站点下载 Gitee\e[0m"
             if download "$GITEE_URL" 5 10; then
                 echo -e "\e[32m从 Gitee 下载成功！\e[0m"
             else
                 echo -e "\e[31m从 Gitee 下载失败: wget 返回码为 $?, 尝试从原 GitHub 链接下载\e[0m"
 
                 # 尝试从原 GitHub 链接下载
+                echo -e "\e[36m尝试通过原站点下载 GitHub\e[0m"
                 if download "$GITHUB_URL" 5 10; then
                     echo -e "\e[32m从原 GitHub 链接下载成功！\e[0m"
                 else
@@ -100,7 +103,7 @@ function install_dmp() {
 
 # 检查进程状态
 function check_dmp() {
-    if (($(pgrep dmp >/dev/null) == 0)); then
+    if pgrep dmp > /dev/null; then
         echo -e "\e[32m启动成功 (Startup Success) \e[0m"
     else
         echo -e "\e[31m启动失败 (Startup Fail) \e[0m"
