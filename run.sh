@@ -11,16 +11,13 @@ CONFIG_DIR="./"
 
 ########################################################
 
-
-
 # 下方变量请不要修改，否则可能会出现异常
 USER=$(whoami)
 ExeFile="$HOME/dmp"
 
-
 # 检查用户，只能使用root执行
-if [[ "${USER}" != "root" ]];then
-    echo  -e "\e[31m请使用root用户执行此脚本 (Please run this script as the root user) \e[0m"
+if [[ "${USER}" != "root" ]]; then
+    echo -e "\e[31m请使用root用户执行此脚本 (Please run this script as the root user) \e[0m"
     exit 1
 fi
 
@@ -39,8 +36,7 @@ function check_glibc() {
     echo -e "\e[32m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
-        strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34
-        if (($? != 0)); then
+        if (($(strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34) != 0)); then
             apt install -y libc6
         fi
     else
@@ -55,7 +51,7 @@ function download() {
     local timeout="$3"
 
     wget -q --show-progress --tries="$tries" --timeout="$timeout" "$download_url"
-    return $?  # 返回 wget 的退出状态
+    return $? # 返回 wget 的退出状态
 }
 
 # 安装主程序
@@ -63,12 +59,12 @@ function install_dmp() {
     # Gitee下载链接
     GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
     # 原GitHub下载链接
-    GITHUB_URL=$(curl -s "https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest" | jq -r .assets[0].browser_download_url)
+    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
-    PRIMARY_PROXY="https://ghproxy.cc/"     # 主加速站点
-    SECONDARY_PROXY="https://ghproxy.cn/"   # 备用加速站点
+    PRIMARY_PROXY="https://ghproxy.cc/"   # 主加速站点
+    SECONDARY_PROXY="https://ghproxy.cn/" # 备用加速站点
     # 尝试通过主加速站点下载 GitHub
-    echo -e "\e[32m尝试通过主加速站点下载 GitHub\e[0m"
+    echo -e "\e[36m尝试通过主加速站点下载 GitHub\e[0m"
     if download "$PRIMARY_PROXY$GITHUB_URL" 5 10; then
         echo -e "\e[32m通过主加速站点下载成功！\e[0m"
     else
@@ -99,13 +95,12 @@ function install_dmp() {
 
     tar zxvf dmp.tgz
     rm -f dmp.tgz
-    chmod +x $ExeFile
+    chmod +x "$ExeFile"
 }
 
 # 检查进程状态
 function check_dmp() {
-    pgrep dmp > /dev/null
-    if (($? == 0)); then
+    if (($(pgrep dmp >/dev/null) == 0)); then
         echo -e "\e[32m启动成功 (Startup Success) \e[0m"
     else
         echo -e "\e[31m启动失败 (Startup Fail) \e[0m"
@@ -115,11 +110,11 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
-    if [ -e $ExeFile ];then
-        nohup $ExeFile -c -l ${PORT} -s ${CONFIG_DIR} 2>&1 > dmp.log &
+    if [ -e "$ExeFile" ]; then
+        nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     else
         install_dmp
-        nohup $ExeFile -c -l ${PORT} -s ${CONFIG_DIR} 2>&1 > dmp.log &
+        nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     fi
 }
 
@@ -131,6 +126,7 @@ function stop_dmp() {
 
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
 function clear_dmp() {
+    echo -e "\e[36m正在执行清理 (Cleaning Files) \e[0m"
     rm -f dmp*
 }
 
@@ -142,46 +138,46 @@ while true; do
     read -r command
     # 使用 case 语句判断输入的命令
     case $command in
-        0)
-            clear_dmp
-            check_glibc
-            install_dmp
-            start_dmp
-            check_dmp
-            break
-            ;;
-        1)
-            check_glibc
-            start_dmp
-            check_dmp
-            break
-            ;;
-        2)
-            stop_dmp
-            break
-            ;;
-        3)
-            stop_dmp
-            sleep 1
-            check_glibc
-            start_dmp
-            check_dmp
-            echo -e "\e[32m重启成功 (Restart Success) \e[0m"
-            break
-            ;;
-        4)
-            stop_dmp
-            clear_dmp
-            check_glibc
-            install_dmp
-            start_dmp
-            check_dmp
-            echo -e "\e[32m更新成功 (Restart Success) \e[0m"
-            break
-            ;;
-        *)
-            echo  -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4 (Invalid input, please enter 0, 1, 2, 3, 4) \e[0m"
-            continue
-            ;;
+    0)
+        clear_dmp
+        check_glibc
+        install_dmp
+        start_dmp
+        check_dmp
+        break
+        ;;
+    1)
+        check_glibc
+        start_dmp
+        check_dmp
+        break
+        ;;
+    2)
+        stop_dmp
+        break
+        ;;
+    3)
+        stop_dmp
+        sleep 1
+        check_glibc
+        start_dmp
+        check_dmp
+        echo -e "\e[32m重启成功 (Restart Success) \e[0m"
+        break
+        ;;
+    4)
+        stop_dmp
+        clear_dmp
+        check_glibc
+        install_dmp
+        start_dmp
+        check_dmp
+        echo -e "\e[32m更新成功 (Restart Success) \e[0m"
+        break
+        ;;
+    *)
+        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4 (Invalid input, please enter 0, 1, 2, 3, 4) \e[0m"
+        continue
+        ;;
     esac
 done
