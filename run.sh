@@ -31,12 +31,27 @@ function prompt_user() {
     echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
 }
 
+# 检查jq
+function check_jq() {
+    echo -e "\e[36m正在检查jq命令(Checking jq command) \e[0m"
+    if ! jq --version >/dev/null 2>&1; then
+        OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+        if [[ ${OS} == "ubuntu" ]]; then
+            apt install -y jq
+        else
+            if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+                yum install -y jq
+            fi
+        fi
+    fi
+}
+
 # Ubuntu检查GLIBC, rhel需要下载文件手动安装
 function check_glibc() {
-    echo -e "\e[32m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
+    echo -e "\e[36m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
-        if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34 ; then
+        if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34; then
             apt install -y libc6
         fi
     else
@@ -57,6 +72,7 @@ function download() {
 
 # 安装主程序
 function install_dmp() {
+    check_jq
     # 原GitHub下载链接
     GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
@@ -103,7 +119,7 @@ function install_dmp() {
 
 # 检查进程状态
 function check_dmp() {
-    if pgrep dmp > /dev/null; then
+    if pgrep dmp >/dev/null; then
         echo -e "\e[32m启动成功 (Startup Success) \e[0m"
     else
         echo -e "\e[31m启动失败 (Startup Fail) \e[0m"
