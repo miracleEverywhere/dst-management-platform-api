@@ -1,4 +1,4 @@
-[[中文文档]](README.md) | [English README]
+# [[中文文档]](README.md) | [English README]
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell

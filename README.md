@@ -1,4 +1,4 @@
-[中文文档] | [[English README]](README_EN.md)
+# [中文文档] | [[English README]](README_EN.md)
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
