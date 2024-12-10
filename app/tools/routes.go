@@ -24,6 +24,7 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.PUT("/update", utils.MWtoken(), handleUpdatePut)
 			// 定时备份
 			tools.GET("/backup", utils.MWtoken(), handleBackupGet)
+			tools.POST("/backup", utils.MWtoken(), handleBackupPost) // 手动创建备份
 			tools.PUT("/backup", utils.MWtoken(), handleBackupPut)
 			tools.DELETE("/backup", utils.MWtoken(), handleBackupDelete)
 			tools.DELETE("/backup/multi", utils.MWtoken(), handleMultiDelete)
@@ -36,6 +37,9 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			// 自动保活
 			tools.GET("/keepalive", utils.MWtoken(), handleKeepaliveGet)
 			tools.PUT("/keepalive", utils.MWtoken(), handleKeepalivePut)
+			//帮助页面替换steam so文件
+			//不想再开一个router了，就塞在tools里，后续官方修复后会删除
+			tools.POST("/replace_so", utils.MWtoken(), handleReplaceDSTSOFile)
 		}
 	}
 

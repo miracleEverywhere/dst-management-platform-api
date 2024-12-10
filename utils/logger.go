@@ -12,9 +12,20 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	// 创建一个替换时间的函数
+	customTimeFormat := "2006-01-02 15:04:05"
+	replaceTime := func(groups []string, a slog.Attr) slog.Attr {
+		if a.Key == slog.TimeKey {
+			t := a.Value.Time()
+			a.Value = slog.StringValue(t.Format(customTimeFormat))
+		}
+		return a
+	}
+
 	Logger = slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{
-		AddSource:   true,           // 记录日志位置
+		AddSource:   true,           // 记录错误位置
 		Level:       slog.LevelInfo, // 设置日志级别
-		ReplaceAttr: nil,
+		ReplaceAttr: replaceTime,
 	}))
 }

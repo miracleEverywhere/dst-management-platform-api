@@ -1,17 +1,15 @@
-
-## :watermelon: 使用方法(Usage)
+[中文文档] | [[English README]](README_EN.md)
+## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
->**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
 # 执行以下命令，根据系统提示输入并回车
-# Please execute the following command according to the system prompts, enter the input and press Enter.
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
 ```
-**更新方法(Update)**
+**更新方法**
 ```shell
 cd ~ && ./run.sh
 ```
-_根据提示输入4 (Input 4 according to the prompt)_
+_根据提示输入4_
 ```shell
 # root@VM-0-16-ubuntu:~# cd ~ && ./run.sh
 # 请输入需要执行的操作(Please enter the operation to be performed): 
@@ -21,76 +19,61 @@ _根据提示输入4 (Input 4 according to the prompt)_
 # [3]: 重启服务(Restart the service) 
 # [4]: 更新服务(Update the service)
 ```
-如果下载了发行版，则执行以下命令：(If the release-version bin-file has been downloaded, execute the following command:)
+如果下载了发行版，则执行以下命令：
 ```shell
 # -c 为开启日志，建议开启
-# The -c option is for enabling logging, it is recommended to enable it.
-nohup ./dmp -c 2>&1 > dmp.log &
+nohup ./dmp -c > dmp.log 2>&1 &
 ```
-默认启动端口为80，如果您想修改，则修改启动命令：(The default port is 80. If you wish to modify it, please modify the startup command:)
+默认启动端口为80，如果您想修改，则修改启动命令：
 ```shell
 # 修改端口为8888
-# Change the port to 8888.
-nohup ./dmp -c -l 8888 2>&1 > dmp.log &
+nohup ./dmp -c -l 8888 > dmp.log 2>&1 &
+```
+也可以指定数据库文件的存储目录(You can also specify the storage directory for the database file)  
+```shell
+# 开启控制台输出，监听8899端口，DstMP.sdb的存储位置为 ./config/DstMP.sdb
+nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 ```
 **docker部署方式**  
 首先在package页面获取docker镜像tag
-
 ```shell
 # 绑定80端口
-docker run -p 80:80 --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+docker run -p 80:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
 # 绑定8000端口
-docker run -p 8000:80 --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ---
 
-## :grapes: 默认用户名密码(Default username and password)
->登录后请尽快修改密码(After logging in, please change your password as soon as possible)
+## :grapes: 默认用户名密码
+>登录后请尽快修改密码
 >
 >>admin/123456
 
 ---
 
-## :cherries: 平台截图(DMP screenshot)
-![home-en](docs/images/home-en.png)
-
-
+## :cherries: 平台截图
 ![home-zh](docs/images/home-zh.png)
+  
 
 ![home-en](docs/images/mobile-zh.png)
-
-
-![home-zh](docs/images/mobile-en.png)
-
-
-![room-en](docs/images/room-en.png)
-
+  
 
 ![room-zh](docs/images/room-zh.png)
-
-
-![player-en](docs/images/player-en.png)
-
+  
 
 ![player-zh](docs/images/player-zh.png)
-
-
-![statistics-en](docs/images/statistics-en.png)
-
+  
 
 ![statistics-zh](docs/images/statistics-zh.png)
+  
 
-
-![menu-tools-en](docs/images/menu-tools-en.png)
-
-
-![menu-tools-zh](docs/images/menu-tools-zh.png)
+![menu-tools-zh](docs/images/menu-tools-zh.png)  
 
 ---
 
-## :strawberry: 文件介绍(File Introduction)
+## :strawberry: 文件介绍
 ```text
 .
 ├── dmp                 # 主程序
@@ -103,7 +86,7 @@ docker run -p 8000:80 --name dmp -itd ghcr.io/miracleeverywhere/dst-management-p
 
 ---
 
-## :peach: 项目介绍(Project Introduction)
+## :peach: 项目介绍
 ```text
 .
 ├── app
@@ -141,7 +124,6 @@ docker run -p 8000:80 --name dmp -itd ghcr.io/miracleeverywhere/dst-management-p
     └── utils.go
 ```
 ##  :sparkling_heart: 致谢
-本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-api)基于**koi-ui**二次开发，感谢开源 [@yuxintao6](https://github.com/yuxintao6)  
-The [front-end page](https://github.com/miracleEverywhere/dst-management-platform-api) of this project is based on the secondary development of **koi-ui**, thanks to open source  
+本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)基于**koi-ui**二次开发，感谢开源 [@yuxintao6](https://github.com/yuxintao6)  
 [[koi-ui gitee]](https://gitee.com/BigCatHome/koi-ui)  
 [[koi-ui github]](https://github.com/yuxintao6/koi-ui)  

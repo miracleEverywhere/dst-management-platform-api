@@ -295,6 +295,21 @@ func handleBackupGet(c *gin.Context) {
 	}})
 }
 
+func handleBackupPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	err := utils.BackupGame()
+	if err != nil {
+		utils.Logger.Error("游戏备份失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("backupFail", langStr), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("backupSuccess", langStr), "data": nil})
+}
+
 func handleBackupPut(c *gin.Context) {
 	defer reloadScheduler()
 	lang, _ := c.Get("lang")
@@ -501,4 +516,35 @@ func handleKeepalivePut(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
+}
+
+func handleReplaceDSTSOFile(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	err := utils.BashCMD("mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
+		return
+	}
+	err = utils.BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
+		return
+	}
+	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
+		return
+	}
+	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("replaceSuccess", langStr), "data": nil})
 }

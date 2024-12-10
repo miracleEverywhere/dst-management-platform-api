@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -21,7 +22,14 @@ import (
 	"time"
 )
 
-var STATISTICS []Statistics
+var (
+	STATISTICS []Statistics
+	// flag绑定的变量
+	BindPort      int
+	ConsoleOutput bool
+	VersionShow   bool
+	ConfDir       string
+)
 
 type Claims struct {
 	Username string `json:"username"`
@@ -38,6 +46,8 @@ type RoomSettingBase struct {
 	Vote        bool   `json:"vote"`
 	Password    string `json:"password"`
 	Token       string `json:"token"`
+	MasterPort  int    `json:"masterPort"`
+	CavesPort   int    `json:"cavesPort"`
 }
 
 type RoomSetting struct {
@@ -76,9 +86,10 @@ type Statistics struct {
 }
 
 type Keepalive struct {
-	Enable    bool   `json:"enable"`
-	Frequency int    `json:"frequency"`
-	LastTime  string `json:"lastTime"`
+	Enable        bool   `json:"enable"`
+	Frequency     int    `json:"frequency"`
+	LastTime      string `json:"lastTime"`
+	CavesLastTime string `json:"cavesLastTime"`
 }
 
 type Config struct {
@@ -139,7 +150,8 @@ func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
 }
 
 func CreateConfig() {
-	_, err := os.Stat("DstMP.sdb")
+	_ = EnsureDirExists(ConfDir)
+	_, err := os.Stat(ConfDir + "/DstMP.sdb")
 	if !os.IsNotExist(err) {
 		Logger.Info("执行数据库检查中，发现数据库文件")
 		config, err := ReadConfig()
@@ -187,6 +199,9 @@ func CreateConfig() {
 	config.Keepalive.Enable = true
 	config.Keepalive.Frequency = 30
 
+	config.RoomSetting.Base.MasterPort = 11000
+	config.RoomSetting.Base.CavesPort = 11001
+
 	err = WriteConfig(config)
 	if err != nil {
 		Logger.Error("写入数据库失败", "err", err)
@@ -196,7 +211,7 @@ func CreateConfig() {
 }
 
 func ReadConfig() (Config, error) {
-	content, err := os.ReadFile("DstMP.sdb")
+	content, err := os.ReadFile(ConfDir + "/DstMP.sdb")
 	if err != nil {
 		return Config{}, err
 	}
@@ -218,7 +233,7 @@ func WriteConfig(config Config) error {
 	if err != nil {
 		return fmt.Errorf("Error marshalling JSON:" + err.Error())
 	}
-	file, err := os.OpenFile("DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(ConfDir+"/DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("Error opening file:" + err.Error())
 	}
@@ -234,6 +249,26 @@ func WriteConfig(config Config) error {
 		return fmt.Errorf("Error writing to file:" + err.Error())
 	}
 	return nil
+}
+
+func CreateManualInstallScript() {
+	//创建手动安装脚本
+	err := TruncAndWriteFile("manual_install.sh", ManualInstall)
+	if err != nil {
+		Logger.Error("手动安装脚本创建失败", "err", err)
+	}
+	err = BashCMD("chmod +x manual_install.sh")
+	if err != nil {
+		Logger.Error("手动安装脚本添加执行权限失败", "err", err)
+	}
+}
+
+func BindFlags() {
+	flag.IntVar(&BindPort, "l", 80, "监听端口，如： -l 8080 (Listening Port, e.g. -l 8080)")
+	flag.StringVar(&ConfDir, "s", "./", "数据库文件目录，如： -s ./conf (Database Directory, e.g. -s ./conf)")
+	flag.BoolVar(&ConsoleOutput, "c", false, "开启控制台日志输出，如： -c (Enable console log output, e.g. -c)")
+	flag.BoolVar(&VersionShow, "v", false, "查看版本，如： -v (Check version, e.g. -v)")
+	flag.Parse()
 }
 
 func MWlang() gin.HandlerFunc {
@@ -515,6 +550,71 @@ func BackupGame() error {
 	return nil
 }
 
+func StopGame() error {
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	cmd := "c_shutdown()"
+	err = ScreenCMD(cmd, MasterName)
+	if err != nil {
+		Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	}
+	if config.RoomSetting.Cave != "" {
+		err = ScreenCMD(cmd, CavesName)
+		if err != nil {
+			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+		}
+	}
+
+	time.Sleep(2 * time.Second)
+	err = BashCMD(StopMasterCMD)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+	}
+	if config.RoomSetting.Cave != "" {
+		err = BashCMD(StopCavesCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopCavesCMD)
+		}
+	}
+
+	time.Sleep(1 * time.Second)
+	err = BashCMD(KillDST)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", KillDST)
+	}
+	err = BashCMD(ClearScreenCMD)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
+	}
+
+	return nil
+}
+
+func StartGame() error {
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	err = BashCMD(StartMasterCMD)
+	if err != nil {
+		Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+	}
+	if config.RoomSetting.Cave != "" {
+		err = BashCMD(StartCavesCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartCavesCMD)
+		}
+	}
+
+	return nil
+}
+
 func RecoveryGame(backupFile string) error {
 	// 检查文件是否存在
 	exist, err := FileDirectoryExists(backupFile)
@@ -735,4 +835,40 @@ func GetRoomSettingBase() (RoomSettingBase, error) {
 	roomSettings.Token = token
 
 	return roomSettings, nil
+}
+
+func GetServerPort(serverFile string) (int, error) {
+	file, err := os.Open(serverFile)
+	if err != nil {
+		Logger.Error("打开"+serverFile+"文件失败", "err", err)
+		return 0, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭"+serverFile+"文件失败", "err", err)
+		}
+	}(file)
+	// 使用bufio.Scanner逐行读取文件内容
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		// 跳过注释和空行
+		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
+			continue
+		}
+		// 解析字段和值
+		if strings.HasPrefix(line, "server_port =") {
+			value := strings.TrimPrefix(line, "server_port =")
+			value = strings.TrimSpace(value)
+			port, err := strconv.Atoi(value)
+			if err != nil {
+				Logger.Error("获取端口失败，端口必须为数字", "err", err)
+				return 0, err
+			}
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("没有找到端口配置")
 }

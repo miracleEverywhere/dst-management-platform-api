@@ -42,10 +42,10 @@ cluster_key = supersecretkey
 	return contents
 }
 
-func masterServerTemplate() string {
+func masterServerTemplate(port int) string {
 	content := `
 [NETWORK]
-server_port = 11000
+server_port = ` + strconv.Itoa(port) + `
 
 [SHARD]
 is_master = true
@@ -57,10 +57,10 @@ authentication_port = 8768
 	return content
 }
 
-func cavesServerTemplate() string {
+func cavesServerTemplate(port int) string {
 	content := `
 [NETWORK]
-server_port = 11001
+server_port = ` + strconv.Itoa(port) + `
 
 [SHARD]
 is_master = false
@@ -101,7 +101,7 @@ func saveSetting(config utils.Config) error {
 	}
 
 	//Master/server.ini
-	err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate())
+	err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate(config.RoomSetting.Base.MasterPort))
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func saveSetting(config utils.Config) error {
 			return err
 		}
 		//Caves/server.ini
-		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate())
+		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate(config.RoomSetting.Base.CavesPort))
 		if err != nil {
 			return err
 		}
@@ -399,6 +399,21 @@ func WriteDatabase() error {
 		return err
 	}
 
+	masterPort, err := utils.GetServerPort(utils.MasterServerPath)
+	if err != nil {
+		utils.Logger.Error("获取地面端口失败", "err", err)
+		return err
+	}
+	baseSetting.MasterPort = masterPort
+	if caves != "" {
+		cavesPort, err := utils.GetServerPort(utils.CavesServerPath)
+		if err != nil {
+			utils.Logger.Error("获取洞穴端口失败", "err", err)
+			return err
+		}
+		baseSetting.CavesPort = cavesPort
+	}
+
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
@@ -417,4 +432,11 @@ func WriteDatabase() error {
 	}
 
 	return nil
+}
+
+func clearUpZipFile() {
+	err := utils.BashCMD("rm -rf " + utils.ImportFileUploadPath + "*")
+	if err != nil {
+		utils.Logger.Error("清理导入的压缩文件失败", "err", err)
+	}
 }
