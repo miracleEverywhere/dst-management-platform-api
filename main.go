@@ -10,7 +10,6 @@ import (
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"embed"
-	"flag"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
@@ -26,7 +25,7 @@ var EmbedFS embed.FS
 func main() {
 	//一些启动前检查
 	initialize()
-	flag.Parse()
+
 	if !utils.ConsoleOutput {
 		gin.DefaultWriter = io.Discard
 	}
