@@ -63,6 +63,9 @@ docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/mi
 ![room-zh](docs/images/room-zh.png)
   
 
+![world-zh](docs/images/world-zh.png)
+  
+
 ![player-zh](docs/images/player-zh.png)
   
 
