@@ -1,4 +1,4 @@
-[中文文档] | [[English README]](README_EN.md)
+# [中文文档] | [[English README]](README_EN.md)
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
@@ -61,6 +61,9 @@ docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/mi
   
 
 ![room-zh](docs/images/room-zh.png)
+  
+
+![world-zh](docs/images/world-zh.png)
   
 
 ![player-zh](docs/images/player-zh.png)

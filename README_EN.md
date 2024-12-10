@@ -1,4 +1,4 @@
-[[中文文档]](README.md) | [English README]
+# [[中文文档]](README.md) | [English README]
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
@@ -61,6 +61,9 @@ docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/mi
   
 
 ![room-en](docs/images/room-en.png)
+
+
+![world-en](docs/images/world-en.png)
   
 
 ![player-en](docs/images/player-en.png)
