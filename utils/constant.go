@@ -81,3 +81,7 @@ const ProcessLogFile = "dmpProcess.log"
 const ImportFileUploadPath = "/tmp/dst/"
 
 const ImportFileUnzipPath = "/tmp/dst/unzip/"
+
+const ModUgcPath = "~/dst/ugc_mods/MyDediServer/Master/content/322330"
+
+const ModNoUgcPath = "~/dst/mods"
