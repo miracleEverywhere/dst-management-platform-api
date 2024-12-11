@@ -733,6 +733,15 @@ func GetTimestamp() int64 {
 }
 
 func GetFileAllContent(filePath string) (string, error) {
+	// 如果路径中包含 ~，则将其替换为用户的 home 目录
+	if strings.HasPrefix(filePath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return "", err
+		}
+		filePath = strings.Replace(filePath, "~", homeDir, 1)
+	}
 	// 打开文件
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -755,6 +764,47 @@ func GetFileAllContent(filePath string) (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+// GetDirs 获取指定目录下的目录，不包含子目录和文件
+func GetDirs(dirPath string) ([]string, error) {
+	var dirs []string
+	// 如果路径中包含 ~，则将其替换为用户的 home 目录
+	if strings.HasPrefix(dirPath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return []string{}, err
+		}
+		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+	}
+	// 打开目录
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		Logger.Error("打开目录失败", "err", err)
+		return []string{}, err
+	}
+	defer func(dir *os.File) {
+		err := dir.Close()
+		if err != nil {
+			Logger.Error("关闭目录失败", "err", err)
+		}
+	}(dir)
+
+	// 读取目录条目
+	entries, err := dir.Readdir(-1)
+	if err != nil {
+		Logger.Error("读取目录失败", "err", err)
+		return []string{}, err
+	}
+
+	// 遍历目录条目，只输出目录
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, entry.Name())
+		}
+	}
+	return dirs, nil
 }
 
 func GetRoomSettingBase() (RoomSettingBase, error) {
