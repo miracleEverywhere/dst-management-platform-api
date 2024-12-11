@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/app/logs"
+	"dst-management-platform-api/app/mod"
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/scheduler"
@@ -17,7 +18,7 @@ import (
 	"runtime"
 )
 
-const VERSION string = "1.0.7"
+const VERSION string = "1.0.8"
 
 //go:embed dist
 var EmbedFS embed.FS
@@ -48,6 +49,8 @@ func main() {
 	r = logs.RouteLogs(r)
 	// 外部接口
 	r = externalApi.RouteExternalApi(r)
+	//模组模块
+	r = mod.RouteMod(r)
 	//静态资源，放在最后
 	r.Use(static.ServeEmbed("dist", EmbedFS))
 
