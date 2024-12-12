@@ -72,7 +72,7 @@ func handleModInfoGet(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	modInfoList, err := getModsInfo(config.RoomSetting.Mod)
+	modInfoList, err := GetModsInfo(config.RoomSetting.Mod)
 	if err != nil {
 		utils.Logger.Error("获取mod信息失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
