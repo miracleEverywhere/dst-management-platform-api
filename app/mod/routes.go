@@ -10,8 +10,8 @@ func RouteMod(r *gin.Engine) *gin.Engine {
 	{
 		mod := v1.Group("mod")
 		{
-			mod.GET("/setting", utils.MWtoken(), handleModSettingGet)
-			mod.GET("/info", utils.MWtoken(), handleModInfoGet)
+			mod.GET("/setting/format", utils.MWtoken(), handleModSettingFormatGet)
+			mod.GET("/config_options", utils.MWtoken(), handleModConfigOptionsGet)
 		}
 	}
 

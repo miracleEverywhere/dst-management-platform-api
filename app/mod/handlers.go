@@ -1,19 +1,64 @@
 package mod
 
 import (
+	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
 )
 
-func handleModSettingGet(c *gin.Context) {
+func handleModSettingFormatGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
 	luaScript, _ := utils.GetFileAllContent(utils.MasterModPath)
-	a := utils.ModOverridesToStruct(luaScript)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": a})
+	type ResponseData struct {
+		ID                   int                    `json:"id"`
+		Name                 string                 `json:"name"`
+		Enable               bool                   `json:"enable"`
+		ConfigurationOptions map[string]interface{} `json:"configurationOptions"`
+		PreviewUrl           string                 `json:"preview_url"`
+	}
+
+	modInfo, err := externalApi.GetModsInfo(luaScript)
+	if err != nil {
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	var responseData []ResponseData
+	for _, i := range utils.ModOverridesToStruct(luaScript) {
+		item := ResponseData{
+			ID: i.ID,
+			Name: func() string {
+				for _, j := range modInfo {
+					if i.ID == j.ID {
+						return j.Name
+					}
+				}
+				return ""
+			}(),
+			Enable:               i.Enabled,
+			ConfigurationOptions: i.ConfigurationOptions,
+			PreviewUrl: func() string {
+				for _, j := range modInfo {
+					if i.ID == j.ID {
+						return j.PreviewUrl
+					}
+				}
+				return ""
+			}(),
+		}
+		responseData = append(responseData, item)
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": responseData})
 }
 
-func handleModInfoGet(c *gin.Context) {
+func handleModConfigOptionsGet(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
