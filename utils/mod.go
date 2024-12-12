@@ -80,7 +80,9 @@ func GetModConfigOptions(luaScript string) []ConfigurationOption {
 					})
 				}
 			})
-			options = append(options, option)
+			if option.Name != "" && option.Label != "" {
+				options = append(options, option)
+			}
 		}
 	})
 	return options
