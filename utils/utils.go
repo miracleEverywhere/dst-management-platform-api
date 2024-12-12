@@ -524,6 +524,15 @@ func EnsureDirExists(dirPath string) error {
 }
 
 func FileDirectoryExists(filePath string) (bool, error) {
+	// 如果路径中包含 ~，则将其替换为用户的 home 目录
+	if strings.HasPrefix(filePath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return false, err
+		}
+		filePath = strings.Replace(filePath, "~", homeDir, 1)
+	}
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false, nil
