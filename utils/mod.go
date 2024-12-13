@@ -30,11 +30,13 @@ type ModOverrides struct {
 	ConfigurationOptions map[string]interface{} `json:"configurationOptions"`
 }
 
-func GetModConfigOptions(luaScript string) []ConfigurationOption {
+func GetModConfigOptions(luaScript string, lang string) []ConfigurationOption {
 	var options []ConfigurationOption
 
 	L := lua.NewState()
 	defer L.Close()
+
+	L.SetGlobal("locale", lua.LString(lang))
 
 	// 加载并执行 Lua 脚本
 	if err := L.DoString(luaScript); err != nil {

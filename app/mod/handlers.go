@@ -101,7 +101,7 @@ func handleModConfigOptionsGet(c *gin.Context) {
 
 	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
 	modConfig.ID = modID
-	modConfig.ConfigOptions = utils.GetModConfigOptions(luaScript)
+	modConfig.ConfigOptions = utils.GetModConfigOptions(luaScript, langStr)
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
 }
