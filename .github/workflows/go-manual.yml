@@ -14,7 +14,7 @@ on:
           - nightly
 
 env:
-  REGISTRY_SERVER_ADDRESS: ghcr.io/${{ github.repository }}
+  REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
 
 jobs:
   build:
