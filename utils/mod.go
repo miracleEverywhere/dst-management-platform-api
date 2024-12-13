@@ -197,7 +197,7 @@ type ModEntry struct {
 	Enabled           bool
 }
 
-func jsonToLua(jsonStr string) (string, error) {
+func JsonToLua(jsonStr string) (string, error) {
 	var mods []ModConfig
 	err := json.Unmarshal([]byte(jsonStr), &mods)
 	if err != nil {

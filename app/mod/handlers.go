@@ -105,3 +105,18 @@ func handleModConfigOptionsGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
 }
+
+func test(c *gin.Context) {
+	type JsonForm struct {
+		Json string `json:"json"`
+	}
+	var jsonForm JsonForm
+	if err := c.ShouldBindJSON(&jsonForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	data, err := utils.JsonToLua(jsonForm.Json)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data, "err": err})
+}

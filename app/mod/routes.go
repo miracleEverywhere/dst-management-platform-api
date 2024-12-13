@@ -12,6 +12,7 @@ func RouteMod(r *gin.Engine) *gin.Engine {
 		{
 			mod.GET("/setting/format", utils.MWtoken(), handleModSettingFormatGet)
 			mod.GET("/config_options", utils.MWtoken(), handleModConfigOptionsGet)
+			mod.POST("/test", utils.MWtoken(), test)
 		}
 	}
 
