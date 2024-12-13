@@ -77,6 +77,7 @@ type AutoBackup struct {
 type Players struct {
 	UID      string `json:"uid"`
 	NickName string `json:"nickName"`
+	Prefab   string `json:"prefab"`
 }
 
 type Statistics struct {

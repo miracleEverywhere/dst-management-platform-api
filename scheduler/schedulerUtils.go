@@ -29,6 +29,7 @@ func setPlayer2DB() {
 		uidNickName := strings.Split(p, ",")
 		player.UID = uidNickName[0]
 		player.NickName = uidNickName[1]
+		player.Prefab = uidNickName[2]
 		playerList = append(playerList, player)
 	}
 	//config.Players = playerList
@@ -108,7 +109,7 @@ func getPlayersList() ([]string, error) {
 	}
 
 	// 正则表达式匹配模式
-	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) (.+)`
+	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) (.+) (.+)?`
 	re := regexp.MustCompile(pattern)
 
 	var players []string
@@ -122,8 +123,9 @@ func getPlayersList() ([]string, error) {
 				uid = strings.ReplaceAll(uid, " ", "")
 				nickName := strings.ReplaceAll(matches[2], "\t", "")
 				nickName = strings.ReplaceAll(nickName, " ", "")
-
-				player := uid + "," + nickName
+				prefab := strings.ReplaceAll(matches[3], "\t", "")
+				prefab = strings.ReplaceAll(prefab, " ", "")
+				player := uid + "," + nickName + "," + prefab
 				players = append(players, player)
 			}
 		}
