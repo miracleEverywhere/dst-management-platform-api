@@ -26,11 +26,6 @@ WORKDIR /root
 COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
-# 成功设置时区，但镜像增大50M
-# RUN apt-get update && apt-get install -y tzdata
-# ENV TZ=Asia/Shanghai
-# RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
 
