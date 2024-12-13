@@ -38,11 +38,19 @@ nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 首先在package页面获取docker镜像tag
 ```shell
 # 绑定80端口
-docker run -itd --name dmp -p 80:80 -v /app/config:/root/config -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+docker run -itd --name dmp -p 80:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
 # 绑定8000端口
-docker run -itd --name dmp -p 8000:80 -v /app/config:/root/config -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+docker run -itd --name dmp -p 8000:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ---
 

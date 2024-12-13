@@ -38,12 +38,18 @@ nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 First, obtain the Docker image tag from the package page
 ```shell
 # Bing port 80
-docker run -itd --name dmp -p 80:80 -v /app/config:/root/config -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ghcr.io/miracleeverywhere/dst-management-platform-api:tag
-```
+docker run -itd --name dmp -p 80:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag```
 ```shell
 # Bing port 8000
-docker run -itd --name dmp -p 8000:80 -v /app/config:/root/config -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ghcr.io/miracleeverywhere/dst-management-platform-api:tag
-```
+docker run -itd --name dmp -p 8000:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag```
 ---
 
 ## :grapes: Default username and password
