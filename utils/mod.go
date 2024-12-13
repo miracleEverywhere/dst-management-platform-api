@@ -1,10 +1,12 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type Option struct {
@@ -168,6 +170,66 @@ func StringToBool(s string) (bool, error) {
 	}
 
 	return false, fmt.Errorf("无法转换字符串%s", s)
+}
+
+type ModConfig struct {
+	ID                int             `json:"id"`
+	Name              string          `json:"name"`
+	Enable            bool            `json:"enable"`
+	ConfigurationOpts map[string]bool `json:"configurationOptions"`
+	PreviewURL        string          `json:"preview_url"`
+}
+
+type ModEntry struct {
+	ID                string
+	ConfigurationOpts map[string]bool
+	Enabled           bool
+}
+
+func jsonToLua(jsonStr string) (string, error) {
+	var mods []ModConfig
+	err := json.Unmarshal([]byte(jsonStr), &mods)
+	if err != nil {
+		return "", fmt.Errorf("Failed to parse JSON: %v", err)
+	}
+
+	luaTableEntries := make([]string, 0, len(mods))
+
+	for _, mod := range mods {
+		if !mod.Enable {
+			continue // Skip disabled mods
+		}
+
+		configOpts := make(map[string]bool)
+		for k, v := range mod.ConfigurationOpts {
+			configOpts[k] = v
+		}
+
+		entry := ModEntry{
+			ID:                fmt.Sprintf("workshop-%d", mod.ID),
+			ConfigurationOpts: configOpts,
+			Enabled:           mod.Enable,
+		}
+
+		luaEntry := generateLuaEntry(entry)
+		luaTableEntries = append(luaTableEntries, luaEntry)
+	}
+
+	luaCode := "return {\n" + strings.Join(luaTableEntries, ",\n") + "\n}"
+
+	return luaCode, nil
+}
+
+func generateLuaEntry(entry ModEntry) string {
+	// Generate configuration_options table
+	var configOptsParts []string
+	for k, v := range entry.ConfigurationOpts {
+		configOptsParts = append(configOptsParts, fmt.Sprintf("%q = %t", k, v))
+	}
+	configOptsStr := "{ " + strings.Join(configOptsParts, ", ") + " }"
+
+	return fmt.Sprintf("[\"%s\"] = { configuration_options = %s, enabled = %t }",
+		entry.ID, configOptsStr, entry.Enabled)
 }
 
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）
