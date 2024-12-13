@@ -39,6 +39,17 @@ func GetModConfigOptions(luaScript string, lang string) []ConfigurationOption {
 	defer L.Close()
 
 	L.SetGlobal("locale", lua.LString(lang))
+	// insight模组需要ChooseTranslationTable才能返回i18n
+	L.SetGlobal("ChooseTranslationTable", L.NewFunction(func(L *lua.LState) int {
+		tbl := L.ToTable(1)
+		CTT := tbl.RawGetString(lang)
+		if CTT != lua.LNil {
+			L.Push(CTT)
+		} else {
+			L.Push(tbl.RawGetInt(1))
+		}
+		return 1
+	}))
 
 	// 加载并执行 Lua 脚本
 	if err := L.DoString(luaScript); err != nil {
