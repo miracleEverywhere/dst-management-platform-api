@@ -303,6 +303,9 @@ func doKeepalive() {
 	if err != nil {
 		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCMD)
 	}
+
+	time.Sleep(1 * time.Second)
+
 	masterLastTime, err := getWorldLastTime(utils.MasterLogPath)
 	if err != nil {
 		utils.Logger.Error("获取日志信息失败", "err", err)
@@ -322,6 +325,9 @@ func doKeepalive() {
 		if err != nil {
 			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCavesCMD)
 		}
+
+		time.Sleep(1 * time.Second)
+
 		cavesLastTime, err := getWorldLastTime(utils.CavesLogPath)
 		if err != nil {
 			utils.Logger.Error("获取日志信息失败", "err", err)
