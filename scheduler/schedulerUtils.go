@@ -297,18 +297,12 @@ func doKeepalive() {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		return
 	}
-	// 先执行命令
+
 	// 地面
 	err = utils.BashCMD(utils.PlayersListCMD)
 	if err != nil {
 		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCMD)
 	}
-	// 洞穴
-	err = utils.BashCMD(utils.PlayersListCavesCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCavesCMD)
-	}
-
 	masterLastTime, err := getWorldLastTime(utils.MasterLogPath)
 	if err != nil {
 		utils.Logger.Error("获取日志信息失败", "err", err)
@@ -322,7 +316,12 @@ func doKeepalive() {
 		config.Keepalive.LastTime = masterLastTime
 	}
 
+	// 洞穴
 	if config.RoomSetting.Cave != "" {
+		err = utils.BashCMD(utils.PlayersListCavesCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCavesCMD)
+		}
 		cavesLastTime, err := getWorldLastTime(utils.CavesLogPath)
 		if err != nil {
 			utils.Logger.Error("获取日志信息失败", "err", err)
