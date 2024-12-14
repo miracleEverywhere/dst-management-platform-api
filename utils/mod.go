@@ -151,7 +151,11 @@ func ModOverridesToStruct(luaScript string) []ModOverrides {
 						case lua.LTBool:
 							parsedValue, err = StringToBool(optionsValue.String())
 						case lua.LTNumber:
+							// 尝试转换整数
 							parsedValue, err = strconv.Atoi(optionsValue.String())
+							if err != nil {
+								parsedValue, err = strconv.ParseFloat(optionsValue.String(), 64)
+							}
 						default:
 							parsedValue, err = optionsValue.String(), nil
 						}
