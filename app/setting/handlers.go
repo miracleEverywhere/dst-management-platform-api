@@ -56,7 +56,7 @@ func handleRoomSettingSavePost(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("房间配置保存失败", "err", err)
 	}
-	err = dstModsSetup()
+	err = DstModsSetup()
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
@@ -96,7 +96,7 @@ func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("房间配置保存失败", "err", err)
 	}
-	err = dstModsSetup()
+	err = DstModsSetup()
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 	}
@@ -135,7 +135,7 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("房间配置保存失败", "err", err)
 	}
-	err = dstModsSetup()
+	err = DstModsSetup()
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 	}
@@ -385,7 +385,7 @@ func handleImportFileUploadPost(c *gin.Context) {
 	//清理上传的文件
 	clearUpZipFile()
 	// 写入dedicated_server_mods_setup.lua
-	err = dstModsSetup()
+	err = DstModsSetup()
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})

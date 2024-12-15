@@ -395,6 +395,14 @@ func handleBackupRestore(c *gin.Context) {
 		return
 	}
 
+	// 写入dedicated_server_mods_setup.lua
+	err = setting.DstModsSetup()
+	if err != nil {
+		utils.Logger.Error("mod配置保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
 }
 

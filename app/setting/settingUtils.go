@@ -200,7 +200,7 @@ func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 	}
 }
 
-func dstModsSetup() error {
+func DstModsSetup() error {
 	L := lua.NewState()
 	defer L.Close()
 	if err := L.DoFile(utils.MasterModPath); err != nil {
