@@ -55,7 +55,7 @@ function check_glibc() {
             apt install -y libc6
         fi
     else
-        echo -e "\e[32m非Ubuntu系统，如GLIBC小于2.34，请手动升级(For systems other than Ubuntu, if the GLIBC version is less than 2.34, please upgrade manually) \e[0m"
+        echo -e "\e[31m非Ubuntu系统，如GLIBC小于2.34，请手动升级(For systems other than Ubuntu, if the GLIBC version is less than 2.34, please upgrade manually) \e[0m"
     fi
 }
 
