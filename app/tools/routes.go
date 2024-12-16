@@ -40,6 +40,8 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			//帮助页面替换steam so文件
 			//不想再开一个router了，就塞在tools里，后续官方修复后会删除
 			tools.POST("/replace_so", utils.MWtoken(), handleReplaceDSTSOFile)
+			//令牌
+			tools.POST("/token", utils.MWtoken(), handleCreateTokenPost)
 		}
 	}
 

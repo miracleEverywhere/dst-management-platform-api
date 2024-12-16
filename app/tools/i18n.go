@@ -19,6 +19,7 @@ func response(message string, lang string) string {
 		"replaceSuccess":         "替换成功",
 		"replaceFail":            "替换失败",
 		"saveFail":               "保存失败",
+		"createTokenSuccess":     "令牌创建成功",
 	}
 	responseEN := map[string]string{
 		"installing":             "Installing...",
@@ -38,6 +39,7 @@ func response(message string, lang string) string {
 		"replaceSuccess":         "Replace Success",
 		"replaceFail":            "Replace Fail",
 		"saveFail":               "Save Fail",
+		"createTokenSuccess":     "Create Token Success",
 	}
 
 	if lang == "zh" {

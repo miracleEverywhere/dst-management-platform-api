@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -555,4 +556,37 @@ func handleReplaceDSTSOFile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("replaceSuccess", langStr), "data": nil})
+}
+
+func handleCreateTokenPost(c *gin.Context) {
+	type ApiForm struct {
+		ExpiredTime int64 `json:"expiredTime"`
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var apiForm ApiForm
+	if err := c.ShouldBindJSON(&apiForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	now := time.Now()
+	nowTimestamp := now.UnixMilli()
+	hours := (apiForm.ExpiredTime - nowTimestamp) / (60 * 60 * 1000)
+
+	jwtSecret := []byte(config.JwtSecret)
+	token, _ := utils.GenerateJWT(config.Username, jwtSecret, int(hours))
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
 }
