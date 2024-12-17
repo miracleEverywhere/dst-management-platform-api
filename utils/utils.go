@@ -932,3 +932,23 @@ func GetServerPort(serverFile string) (int, error) {
 	}
 	return 0, fmt.Errorf("没有找到端口配置")
 }
+
+func Bool2String(b bool, lang string) string {
+	switch lang {
+	case "lua":
+		if b {
+			return "true"
+		} else {
+			return "false"
+		}
+	case "python":
+		if b {
+			return "True"
+		} else {
+			return "False"
+		}
+
+	default:
+		return "false"
+	}
+}
