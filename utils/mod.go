@@ -1,12 +1,12 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
 	"regexp"
+	"sort"
 	"strconv"
-	"strings"
+	"unicode"
 )
 
 type Option struct {
@@ -20,6 +20,14 @@ type ConfigurationOption struct {
 	Hover   string      `json:"hover"`
 	Options []Option    `json:"options"`
 	Default interface{} `json:"default"`
+}
+
+type ModFormattedData struct {
+	ID                   int                    `json:"id"`
+	Name                 string                 `json:"name"`
+	Enable               bool                   `json:"enable"`
+	ConfigurationOptions map[string]interface{} `json:"configurationOptions"`
+	PreviewUrl           string                 `json:"preview_url"`
 }
 
 type ModInfo struct {
@@ -187,64 +195,75 @@ func StringToBool(s string) (bool, error) {
 	return false, fmt.Errorf("无法转换字符串%s", s)
 }
 
-type ModConfig struct {
-	ID                int             `json:"id"`
-	Name              string          `json:"name"`
-	Enable            bool            `json:"enable"`
-	ConfigurationOpts map[string]bool `json:"configurationOptions"`
-	PreviewURL        string          `json:"preview_url"`
+func ParseToLua(data []ModFormattedData) string {
+	luaString := "return {\n"
+	modNum := len(data)
+	modCount := 1
+	var keys []string
+
+	for _, mod := range data {
+		modID := "workshop-" + strconv.Itoa(mod.ID)
+		luaString += "  [\"" + modID + "\"]={\n    configuration_options={\n"
+		configurationOptions := mod.ConfigurationOptions
+		keyNum := len(configurationOptions)
+		keyCount := 1
+		keys = []string{}
+
+		// keys为configurationOptions排序切片
+		for key := range configurationOptions {
+			keys = append(keys, key)
+		}
+		// 对键切片进行排序
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			value := configurationOptions[key]
+			var stringValue string
+			switch value.(type) {
+			case string:
+				stringValue = "\"" + value.(string) + "\""
+			case int:
+				stringValue = strconv.Itoa(value.(int))
+			case float64:
+				stringValue = strconv.FormatFloat(value.(float64), 'f', -1, 64)
+			case bool:
+				stringValue = fmt.Sprintf("%t", value)
+			}
+			if ContainsChinese(key) {
+				luaString += "      [\"" + key + "\"]=" + stringValue
+			} else {
+				luaString += "      " + key + "=" + stringValue
+			}
+
+			if keyCount == keyNum {
+				luaString += "\n"
+			} else {
+				luaString += ",\n"
+			}
+			keyCount++
+		}
+		luaString += "    },\n"
+		stat := mod.Enable
+		luaString += "    enabled=" + Bool2String(stat, "lua") + "\n"
+		if modCount == modNum {
+			luaString += "  }\n"
+		} else {
+			luaString += "  },\n"
+		}
+		modCount++
+	}
+	luaString += "}\n"
+
+	return luaString
 }
 
-type ModEntry struct {
-	ID                string
-	ConfigurationOpts map[string]bool
-	Enabled           bool
-}
-
-func JsonToLua(jsonStr string) (string, error) {
-	var mods []ModConfig
-	err := json.Unmarshal([]byte(jsonStr), &mods)
-	if err != nil {
-		return "", fmt.Errorf("Failed to parse JSON: %v", err)
-	}
-
-	luaTableEntries := make([]string, 0, len(mods))
-
-	for _, mod := range mods {
-		if !mod.Enable {
-			continue // Skip disabled mods
+func ContainsChinese(s string) bool {
+	for _, r := range s {
+		if unicode.In(r, unicode.Han) {
+			return true
 		}
-
-		configOpts := make(map[string]bool)
-		for k, v := range mod.ConfigurationOpts {
-			configOpts[k] = v
-		}
-
-		entry := ModEntry{
-			ID:                fmt.Sprintf("workshop-%d", mod.ID),
-			ConfigurationOpts: configOpts,
-			Enabled:           mod.Enable,
-		}
-
-		luaEntry := generateLuaEntry(entry)
-		luaTableEntries = append(luaTableEntries, luaEntry)
 	}
-
-	luaCode := "return {\n" + strings.Join(luaTableEntries, ",\n") + "\n}"
-
-	return luaCode, nil
-}
-
-func generateLuaEntry(entry ModEntry) string {
-	// Generate configuration_options table
-	var configOptsParts []string
-	for k, v := range entry.ConfigurationOpts {
-		configOptsParts = append(configOptsParts, fmt.Sprintf("%q = %t", k, v))
-	}
-	configOptsStr := "{ " + strings.Join(configOptsParts, ", ") + " }"
-
-	return fmt.Sprintf("[\"%s\"] = { configuration_options = %s, enabled = %t }",
-		entry.ID, configOptsStr, entry.Enabled)
+	return false
 }
 
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）
