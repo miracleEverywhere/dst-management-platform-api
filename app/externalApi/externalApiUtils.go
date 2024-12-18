@@ -171,12 +171,20 @@ type Tags struct {
 	Tag         string `json:"tag"`
 	DisplayName string `json:"display_name"`
 }
+type VoteData struct {
+	Score     float64 `json:"score"`
+	VotesUp   int     `json:"votes_up"`
+	VotesDown int     `json:"votes_down"`
+}
 type PublishedFileDetails struct {
-	ID         string `json:"publishedfileid"`
-	FileSize   string `json:"file_size"`
-	Title      string `json:"title"`
-	Tags       []Tags `json:"tags"`
-	PreviewUrl string `json:"preview_url"`
+	ID              string   `json:"publishedfileid"`
+	FileSize        string   `json:"file_size"`
+	FileDescription string   `json:"file_description"`
+	FileUrl         string   `json:"file_url"`
+	Title           string   `json:"title"`
+	Tags            []Tags   `json:"tags"`
+	PreviewUrl      string   `json:"preview_url"`
+	VoteData        VoteData `json:"vote_data"`
 }
 type Response struct {
 	Publishedfiledetails []PublishedFileDetails `json:"publishedfiledetails"`
@@ -185,16 +193,25 @@ type JSONResponse struct {
 	Response Response `json:"response"`
 }
 type ModInfo struct {
-	Name       string `json:"name"`
-	ID         int    `json:"id"`
-	Size       string `json:"size"`
-	Tags       []Tags `json:"tags"`
-	PreviewUrl string `json:"preview_url"`
+	Name            string   `json:"name"`
+	ID              int      `json:"id"`
+	Size            string   `json:"size"`
+	Tags            []Tags   `json:"tags"`
+	PreviewUrl      string   `json:"preview_url"`
+	FileDescription string   `json:"file_description"`
+	FileUrl         string   `json:"file_url"`
+	VoteData        VoteData `json:"vote_data"`
 }
 
-func GetModsInfo(luaScriptContent string) ([]ModInfo, error) {
+func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
+	var language int
+	if lang == "zh" {
+		language = 6
+	} else {
+		language = 0
+	}
 	mods := utils.ModOverridesToStruct(luaScriptContent)
-	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApi, 6, utils.SteamApiKey)
+	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.SteamApiKey)
 	for index, mod := range mods {
 		url = url + fmt.Sprintf("&publishedfileids[%d]=%d", index, mod.ID)
 	}
@@ -261,7 +278,7 @@ func GetModsInfo(luaScriptContent string) ([]ModInfo, error) {
 	//			go func(modID string) {
 	//				defer wg.Done()
 	//
-	//				url := fmt.Sprintf("%s?language=%d&publishedfileids[0]=%s&key=%s", utils.SteamApi, 6, modID, utils.SteamApiKey)
+	//				url := fmt.Sprintf("%s?language=%d&publishedfileids[0]=%s&key=%s", utils.SteamApiModDetail, 6, modID, utils.SteamApiKey)
 	//				client := &http.Client{
 	//					Timeout: 5 * time.Second, // 设置超时时间为5秒
 	//				}
@@ -305,4 +322,75 @@ func GetModsInfo(luaScriptContent string) ([]ModInfo, error) {
 	//
 	//wg.Wait()
 	//return modInfoList, nil
+}
+
+func SearchMod(page int, pageSize int, searchText string, lang string) ([]ModInfo, error) {
+	var (
+		language int
+		url      string
+	)
+	if lang == "zh" {
+		language = 6
+	} else {
+		language = 0
+	}
+	if searchText == "" {
+		url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&language=%d&key=%s&page=%d&numperpage=%d",
+			utils.SteamApiModSearch,
+			language,
+			utils.SteamApiKey,
+			page,
+			pageSize,
+		)
+	} else {
+		url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&language=%d&key=%s&page=%d&numperpage=%d&search_text=%s",
+			utils.SteamApiModSearch,
+			language,
+			utils.SteamApiKey,
+			page,
+			pageSize,
+			searchText,
+		)
+	}
+	fmt.Println(url)
+	client := &http.Client{
+		Timeout: 5 * time.Second, // 设置超时时间为5秒
+	}
+	httpResponse, err := client.Get(url)
+	if err != nil {
+		return []ModInfo{}, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			utils.Logger.Error("请求关闭失败", "err", err)
+		}
+	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+	// 检查 HTTP 状态码
+	if httpResponse.StatusCode != http.StatusOK {
+		return []ModInfo{}, err
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+		utils.Logger.Error("解析JSON失败", "err", err)
+		return []ModInfo{}, err
+	}
+
+	var modInfoList []ModInfo
+	for _, i := range jsonResp.Response.Publishedfiledetails {
+		modInfo := ModInfo{
+			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
+			Name:            i.Title,
+			Size:            i.FileSize,
+			Tags:            i.Tags,
+			PreviewUrl:      i.PreviewUrl,
+			FileDescription: i.FileDescription,
+			FileUrl:         i.FileUrl,
+			VoteData:        i.VoteData,
+		}
+		modInfoList = append(modInfoList, modInfo)
+	}
+
+	return modInfoList, nil
+
 }
