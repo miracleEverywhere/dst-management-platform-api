@@ -3,7 +3,6 @@ package mod
 import (
 	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -18,7 +17,7 @@ func handleModSettingFormatGet(c *gin.Context) {
 
 	luaScript, _ := utils.GetFileAllContent(utils.MasterModPath)
 
-	modInfo, err := externalApi.GetModsInfo(luaScript)
+	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
 	if err != nil {
 		utils.RespondWithError(c, 500, langStr)
 		return
@@ -104,18 +103,18 @@ func test(c *gin.Context) {
 	type ModFormattedDataForm struct {
 		ModFormattedData []utils.ModFormattedData `json:"modFormattedData"`
 	}
-	//lang, _ := c.Get("lang")
-	//langStr := "zh" // 默认语言
-	//if strLang, ok := lang.(string); ok {
-	//	langStr = strLang
-	//}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
 
-	//config, err := utils.ReadConfig()
-	//if err != nil {
-	//	utils.Logger.Error("配置文件读取失败", "err", err)
-	//	utils.RespondWithError(c, 500, langStr)
-	//	return
-	//}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
 	var modFormattedDataForm ModFormattedDataForm
 	if err := c.ShouldBindJSON(&modFormattedDataForm); err != nil {
@@ -125,24 +124,31 @@ func test(c *gin.Context) {
 	}
 
 	luaString := utils.ParseToLua(modFormattedDataForm.ModFormattedData)
-	fmt.Println(luaString)
-	//config.RoomSetting.Mod = luaString
-	//Master/modoverrides.lua
-	//err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-	//if err != nil {
-	//	utils.Logger.Error("MOD配置文件写入失败", "err", err)
-	//	utils.RespondWithError(c, 500, langStr)
-	//	return
-	//}
-	//if config.RoomSetting.Cave != "" {
-	//	//Caves/modoverrides.lua
-	//	err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
-	//	if err != nil {
-	//		utils.Logger.Error("MOD配置文件写入失败", "err", err)
-	//		utils.RespondWithError(c, 500, langStr)
-	//		return
-	//	}
-	//}
+
+	config.RoomSetting.Mod = luaString
+	// Master/modoverrides.lua
+	err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+	if err != nil {
+		utils.Logger.Error("MOD配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	if config.RoomSetting.Cave != "" {
+		//Caves/modoverrides.lua
+		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("MOD配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
 }
