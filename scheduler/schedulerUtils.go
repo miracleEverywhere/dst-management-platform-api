@@ -166,7 +166,7 @@ func updateTimeFix(timeStr string) string {
 func checkUpdate() {
 	dstVersion, err := externalApi.GetDSTVersion()
 	if err != nil {
-		utils.Logger.Error("解析时间字符串失败", "err", err)
+		utils.Logger.Error("获取饥荒版本失败，跳过自动更新", "err", err)
 		return
 	}
 	doAnnounce()
