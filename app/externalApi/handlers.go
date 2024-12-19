@@ -100,12 +100,12 @@ func handleModSearchGet(c *gin.Context) {
 		return
 	}
 
-	modInfoList, err := SearchMod(searchForm.Page, searchForm.PageSize, searchForm.SearchText, langStr)
+	data, err := SearchMod(searchForm.Page, searchForm.PageSize, searchForm.SearchText, langStr)
 	if err != nil {
 		utils.Logger.Error("获取mod信息失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modInfoList})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
