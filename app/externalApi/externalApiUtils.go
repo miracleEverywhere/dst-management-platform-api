@@ -187,6 +187,7 @@ type PublishedFileDetails struct {
 	VoteData        VoteData `json:"vote_data"`
 }
 type Response struct {
+	Total                int                    `json:"total"`
 	Publishedfiledetails []PublishedFileDetails `json:"publishedfiledetails"`
 }
 type JSONResponse struct {
@@ -201,6 +202,12 @@ type ModInfo struct {
 	FileDescription string   `json:"file_description"`
 	FileUrl         string   `json:"file_url"`
 	VoteData        VoteData `json:"vote_data"`
+}
+type Data struct {
+	Total    int       `json:"total"`
+	Page     int       `json:"page"`
+	PageSize int       `json:"pageSize"`
+	Rows     []ModInfo `json:"rows"`
 }
 
 func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
@@ -324,7 +331,7 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 	//return modInfoList, nil
 }
 
-func SearchMod(page int, pageSize int, searchText string, lang string) ([]ModInfo, error) {
+func SearchMod(page int, pageSize int, searchText string, lang string) (Data, error) {
 	var (
 		language int
 		url      string
@@ -358,7 +365,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) ([]ModInf
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
-		return []ModInfo{}, err
+		return Data{}, err
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -368,12 +375,12 @@ func SearchMod(page int, pageSize int, searchText string, lang string) ([]ModInf
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
 	if httpResponse.StatusCode != http.StatusOK {
-		return []ModInfo{}, err
+		return Data{}, err
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
 		utils.Logger.Error("解析JSON失败", "err", err)
-		return []ModInfo{}, err
+		return Data{}, err
 	}
 
 	var modInfoList []ModInfo
@@ -391,6 +398,13 @@ func SearchMod(page int, pageSize int, searchText string, lang string) ([]ModInf
 		modInfoList = append(modInfoList, modInfo)
 	}
 
-	return modInfoList, nil
+	data := Data{
+		Total:    jsonResp.Response.Total,
+		Page:     page,
+		PageSize: pageSize,
+		Rows:     modInfoList,
+	}
+
+	return data, nil
 
 }
