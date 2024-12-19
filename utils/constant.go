@@ -84,6 +84,8 @@ const ImportFileUploadPath = "/tmp/dst/"
 
 const ImportFileUnzipPath = ImportFileUploadPath + "unzip/"
 
-const ModUgcPath = "~/dst/ugc_mods/MyDediServer/Master/content/322330"
+const ModUgcPath = "dst/ugc_mods/MyDediServer/Master/content/322330"
 
-const ModNoUgcPath = "~/dst/mods"
+const ModNoUgcPath = "dst/mods"
+
+const ModDownloadPath = ".klei/DMP_MOD"
