@@ -541,3 +541,38 @@ func test(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
 }
+
+func handleModDownloadPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ModDownloadForm struct {
+		ID      int    `json:"id"`
+		FileURL string `json:"file_url"`
+	}
+	var modDownloadForm ModDownloadForm
+	if err := c.ShouldBindJSON(&modDownloadForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	go func() {
+		if modDownloadForm.FileURL == "" {
+			cmd := utils.GenerateModDownloadCMD(modDownloadForm.ID)
+			err := utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("MOD下载失败", "err", err)
+			}
+		} else {
+			err := externalApi.DownloadMod(modDownloadForm.FileURL, modDownloadForm.ID)
+			if err != nil {
+				utils.Logger.Error("MOD下载失败", "err", err)
+			}
+		}
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("downloading", langStr), "data": nil})
+}
