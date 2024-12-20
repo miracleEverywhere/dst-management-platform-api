@@ -88,4 +88,4 @@ const ModUgcPath = "dst/ugc_mods/MyDediServer/Master/content/322330"
 
 const ModNoUgcPath = "dst/mods"
 
-const ModDownloadPath = ".klei/DMP_MOD"
+const ModDownloadPath = "~/.klei/DMP_MOD"
