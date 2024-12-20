@@ -3,9 +3,11 @@ package utils
 import (
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -264,6 +266,24 @@ func ContainsChinese(s string) bool {
 		}
 	}
 	return false
+}
+
+func GenerateModDownloadCMD(id int) string {
+	filePath := ModDownloadPath
+	if strings.HasPrefix(filePath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return ""
+		}
+		filePath = strings.Replace(filePath, "~", homeDir, 1)
+	}
+	cmd := "steamcmd/steamcmd.sh +force_install_dir "
+	cmd += filePath + " +login anonymous"
+	cmd += " +workshop_download_item 322330 " + strconv.Itoa(id)
+	cmd += " +quit"
+
+	return cmd
 }
 
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）
