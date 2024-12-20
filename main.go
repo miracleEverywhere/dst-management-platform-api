@@ -66,6 +66,8 @@ func initialize() {
 	utils.CreateConfig()
 	//创建DST手动安装脚本
 	utils.CreateManualInstallScript()
+	//检查目录
+	utils.CheckDirs()
 	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()

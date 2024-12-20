@@ -264,6 +264,20 @@ func CreateManualInstallScript() {
 	}
 }
 
+func CheckDirs() {
+	var err error
+	err = EnsureDirExists(BackupPath)
+	if err != nil {
+		Logger.Error("创建备份目录失败", "err", err)
+	}
+	Logger.Info("备份目录检查完成")
+	err = EnsureDirExists(ModDownloadPath)
+	if err != nil {
+		Logger.Error("创建模组下载目录失败", "err", err)
+	}
+	Logger.Info("模组下载目录检查完成")
+}
+
 func BindFlags() {
 	flag.IntVar(&BindPort, "l", 80, "监听端口，如： -l 8080 (Listening Port, e.g. -l 8080)")
 	flag.StringVar(&ConfDir, "s", "./", "数据库文件目录，如： -s ./conf (Database Directory, e.g. -s ./conf)")
