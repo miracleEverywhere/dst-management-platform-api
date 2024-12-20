@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 	"unicode"
 )
 
@@ -269,15 +268,12 @@ func ContainsChinese(s string) bool {
 }
 
 func GenerateModDownloadCMD(id int) string {
-	filePath := ModDownloadPath
-	if strings.HasPrefix(filePath, "~") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			Logger.Error("无法获取 home 目录", "err", err)
-			return ""
-		}
-		filePath = strings.Replace(filePath, "~", homeDir, 1)
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		Logger.Error("无法获取 home 目录", "err", err)
+		return ""
 	}
+	filePath := homeDir + "/" + ModDownloadPath
 	cmd := "steamcmd/steamcmd.sh +force_install_dir "
 	cmd += filePath + " +login anonymous"
 	cmd += " +workshop_download_item 322330 " + strconv.Itoa(id)
