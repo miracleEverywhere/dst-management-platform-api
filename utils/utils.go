@@ -275,6 +275,14 @@ func CheckDirs() {
 	if err != nil {
 		Logger.Error("创建模组下载目录失败", "err", err)
 	}
+	err = EnsureDirExists(ModDownloadPath + "/ugc")
+	if err != nil {
+		Logger.Error("创建UGC模组下载目录失败", "err", err)
+	}
+	err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
+	if err != nil {
+		Logger.Error("创建非UGC模组下载目录失败", "err", err)
+	}
 	Logger.Info("模组下载目录检查完成")
 }
 
@@ -523,6 +531,14 @@ func RemoveFile(filePath string) error {
 
 // EnsureDirExists 检查目录是否存在，如果不存在则创建
 func EnsureDirExists(dirPath string) error {
+	if strings.HasPrefix(dirPath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return err
+		}
+		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+	}
 	// 检查目录是否存在
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		// 目录不存在，创建目录
