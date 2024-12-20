@@ -27,6 +27,7 @@ func response(message string, lang string) string {
 		"createNewServerFail": "创建新服务器文件失败",
 		"writeToDBFail":       "写入数据库失败",
 		"needDownload":        "请先下载模组",
+		"downloading":         "正在下载中，请稍后",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":         "Save Success",
@@ -54,6 +55,7 @@ func response(message string, lang string) string {
 		"createNewServerFail": "Failed to create new server files",
 		"writeToDBFail":       "Writing to database failed",
 		"needDownload":        "Please download MOD first",
+		"downloading":         "Downloading... Please wait",
 	}
 
 	if lang == "zh" {
