@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -108,4 +109,43 @@ func handleModSearchGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func handleDownloadedModInfoGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		utils.Logger.Error("无法获取 home 目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	modPathNoUgc := "/" + homeDir + "/.klei/DMP_MOD/steamapps/workshop/content/322330"
+	modsNoUgc, err := utils.GetDirs(modPathNoUgc)
+	if err != nil {
+		utils.Logger.Error("无法获取已下载的非UGC MOD目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	modPathUgc := "/" + homeDir + "/.klei/DMP_MOD/ugc"
+	modsUgc, err := utils.GetDirs(modPathUgc)
+	if err != nil {
+		utils.Logger.Error("无法获取已下载的非UGC MOD目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	mods := append(modsNoUgc, modsUgc...)
+
+	modInfo, err := GetDownloadedModInfo(mods, langStr)
+	if err != nil {
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modInfo})
 }

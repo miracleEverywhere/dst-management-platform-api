@@ -17,6 +17,8 @@ func RouteExternalApi(r *gin.Engine) *gin.Engine {
 			// 获取模组信息
 			externalApi.GET("/mod_info", utils.MWtoken(), handleModInfoGet)
 			externalApi.GET("/mod_search", utils.MWtoken(), handleModSearchGet)
+			// 已下载的模组信息
+			externalApi.GET("/downloaded/mod_info", utils.MWtoken(), handleDownloadedModInfoGet)
 		}
 	}
 

@@ -249,11 +249,14 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 	var modInfoList []ModInfo
 	for _, i := range jsonResp.Response.Publishedfiledetails {
 		modInfo := ModInfo{
-			ID:         func() int { id, _ := strconv.Atoi(i.ID); return id }(),
-			Name:       i.Title,
-			Size:       i.FileSize,
-			Tags:       i.Tags,
-			PreviewUrl: i.PreviewUrl,
+			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
+			Name:            i.Title,
+			Size:            i.FileSize,
+			Tags:            i.Tags,
+			PreviewUrl:      i.PreviewUrl,
+			FileDescription: i.FileDescription,
+			FileUrl:         i.FileUrl,
+			VoteData:        i.VoteData,
 		}
 		modInfoList = append(modInfoList, modInfo)
 	}
@@ -416,7 +419,7 @@ func DownloadMod(url string, id int) error {
 		utils.Logger.Error("无法获取 home 目录", "err", err)
 		return err
 	}
-	modPath := "/" + homeDir + "/.klei/DMP_MOD/steamapps/workshop/content/322330/" + modDir
+	modPath := "/" + homeDir + "/.klei/DMP_MOD/ugc/" + modDir
 	filename := modDir + ".zip"
 	filepath := modPath + "/" + filename
 
@@ -482,4 +485,62 @@ func DownloadMod(url string, id int) error {
 	}
 
 	return nil
+}
+
+func GetDownloadedModInfo(mods []string, lang string) ([]ModInfo, error) {
+	if len(mods) == 0 {
+		return []ModInfo{}, nil
+	}
+
+	var language int
+	if lang == "zh" {
+		language = 6
+	} else {
+		language = 0
+	}
+
+	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.SteamApiKey)
+	for index, modID := range mods {
+		url = url + fmt.Sprintf("&publishedfileids[%d]=%s", index, modID)
+	}
+
+	client := &http.Client{
+		Timeout: 5 * time.Second, // 设置超时时间为5秒
+	}
+	httpResponse, err := client.Get(url)
+	if err != nil {
+		return []ModInfo{}, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			utils.Logger.Error("请求关闭失败", "err", err)
+		}
+	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+	// 检查 HTTP 状态码
+	if httpResponse.StatusCode != http.StatusOK {
+		return []ModInfo{}, err
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+		utils.Logger.Error("解析JSON失败", "err", err)
+		return []ModInfo{}, err
+	}
+
+	var modInfoList []ModInfo
+	for _, i := range jsonResp.Response.Publishedfiledetails {
+		modInfo := ModInfo{
+			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
+			Name:            i.Title,
+			Size:            i.FileSize,
+			Tags:            i.Tags,
+			PreviewUrl:      i.PreviewUrl,
+			FileDescription: i.FileDescription,
+			FileUrl:         i.FileUrl,
+			VoteData:        i.VoteData,
+		}
+		modInfoList = append(modInfoList, modInfo)
+	}
+
+	return modInfoList, nil
 }
