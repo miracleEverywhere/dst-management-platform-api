@@ -408,3 +408,78 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	return data, nil
 
 }
+
+func DownloadMod(url string, id int) error {
+	modDir := strconv.Itoa(id)
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		utils.Logger.Error("无法获取 home 目录", "err", err)
+		return err
+	}
+	modPath := "/" + homeDir + "/.klei/DMP_MOD/steamapps/workshop/content/322330/" + modDir
+	filename := modDir + ".zip"
+	filepath := modPath + "/" + filename
+
+	err = utils.RemoveDir(modPath)
+	if err != nil {
+		utils.Logger.Warn("Mod目录删除失败", "err", err)
+	}
+
+	err = utils.EnsureDirExists(modPath)
+	if err != nil {
+		utils.Logger.Error("Mod目录创建失败", "err", err)
+		return err
+	}
+
+	// 创建目标文件
+	out, err := os.Create(filepath)
+	if err != nil {
+		utils.Logger.Error("创建文件失败", "err", err)
+		return err
+	}
+	defer func(out *os.File) {
+		err := out.Close()
+		if err != nil {
+			utils.Logger.Error("关闭文件失败", "err", err)
+		}
+	}(out)
+
+	// 发送HTTP GET请求
+	resp, err := http.Get(url)
+	if err != nil {
+		utils.Logger.Error("下载mod失败", "err", err)
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			utils.Logger.Error("关闭请求失败")
+		}
+	}(resp.Body)
+
+	// 检查HTTP响应状态码
+	if resp.StatusCode != http.StatusOK {
+		utils.Logger.Error("下载mod失败", "code", resp.Status)
+		return fmt.Errorf("下载mod失败，HTTP代码：" + resp.Status)
+	}
+	// 将响应体写入文件
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		utils.Logger.Error("下载mod失败", "err", err)
+		return fmt.Errorf("下载mod失败，HTTP代码：" + err.Error())
+	}
+
+	// 解压文件
+	err = utils.BashCMD("unzip -qo " + filepath + " -d " + modPath + "/")
+	if err != nil {
+		utils.Logger.Error("解压失败", "err", err)
+		return err
+	}
+
+	err = utils.RemoveFile(filepath)
+	if err != nil {
+		utils.Logger.Warn("Mod压缩文件删除失败", "err", err)
+	}
+
+	return nil
+}
