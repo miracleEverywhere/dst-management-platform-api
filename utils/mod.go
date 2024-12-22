@@ -282,6 +282,28 @@ func GenerateModDownloadCMD(id int) string {
 	return cmd
 }
 
+func GetModDefaultConfigs(id int) {
+
+}
+
+func SyncMods() error {
+	// 处理UGC模组
+	cmd := "cp -r " + ModUgcPath + "/* " + ModDownloadPath + "/ugc"
+	err := BashCMD(cmd)
+	if err != nil {
+		Logger.Error("同步UGC模组失败", "err", err)
+		return err
+	}
+	// 处理非UGC模组
+	cmd = "for dir in " + ModNoUgcPath + "/workshop-*; do [ -d \"$dir\" ] && cp -r \"$dir\" \"" + ModDownloadPath + "/steamapps/workshop/content/322330/$(basename \"$dir\" | sed 's/workshop-//')\"; done"
+	if err != nil {
+		Logger.Error("同步非UGC模组失败", "err", err)
+		return err
+	}
+
+	return nil
+}
+
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）
 //func getTableLength(table *lua.LTable) int {
 //	// 计算数组部分的元素个数

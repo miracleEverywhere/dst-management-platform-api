@@ -28,6 +28,8 @@ func response(message string, lang string) string {
 		"writeToDBFail":       "写入数据库失败",
 		"needDownload":        "请先下载模组",
 		"downloading":         "正在下载中，请稍后",
+		"syncModFail":         "同步失败",
+		"syncModSuccess":      "同步成功",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":         "Save Success",
@@ -56,6 +58,8 @@ func response(message string, lang string) string {
 		"writeToDBFail":       "Writing to database failed",
 		"needDownload":        "Please download MOD first",
 		"downloading":         "Downloading... Please wait",
+		"syncModFail":         "Sync Fail",
+		"syncModSuccess":      "Sync Success",
 	}
 
 	if lang == "zh" {
