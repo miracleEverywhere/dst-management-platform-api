@@ -534,22 +534,7 @@ func handleReplaceDSTSOFile(c *gin.Context) {
 		langStr = strLang
 	}
 
-	err := utils.BashCMD("mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak")
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-		return
-	}
-	err = utils.BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-		return
-	}
-	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-		return
-	}
-	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
+	err := ReplaceDSTSOFile()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
 		return
