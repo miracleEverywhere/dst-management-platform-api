@@ -69,24 +69,3 @@ func getBackupFiles() (FileInfoList, error) {
 
 	return fileInfoList, nil
 }
-
-func ReplaceDSTSOFile() error {
-	err := utils.BashCMD("mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak")
-	if err != nil {
-		return err
-	}
-	err = utils.BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
-	if err != nil {
-		return err
-	}
-	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
-	if err != nil {
-		return err
-	}
-	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

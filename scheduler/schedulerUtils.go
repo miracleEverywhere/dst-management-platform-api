@@ -3,7 +3,6 @@ package scheduler
 import (
 	"bufio"
 	"dst-management-platform-api/app/externalApi"
-	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
@@ -173,7 +172,7 @@ func checkUpdate() {
 	doAnnounce()
 	if dstVersion.Local != dstVersion.Server {
 		_ = doUpdate()
-		_ = tools.ReplaceDSTSOFile()
+		_ = utils.ReplaceDSTSOFile()
 	}
 	doRestart()
 }

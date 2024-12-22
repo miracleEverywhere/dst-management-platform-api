@@ -534,7 +534,7 @@ func handleReplaceDSTSOFile(c *gin.Context) {
 		langStr = strLang
 	}
 
-	err := ReplaceDSTSOFile()
+	err := utils.ReplaceDSTSOFile()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
 		return

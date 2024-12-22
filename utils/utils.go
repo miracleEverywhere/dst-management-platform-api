@@ -982,3 +982,24 @@ func Bool2String(b bool, lang string) string {
 		return "false"
 	}
 }
+
+func ReplaceDSTSOFile() error {
+	err := BashCMD("mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
