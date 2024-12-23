@@ -362,7 +362,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 			searchText,
 		)
 	}
-	fmt.Println(url)
+
 	client := &http.Client{
 		Timeout: 5 * time.Second, // 设置超时时间为5秒
 	}
