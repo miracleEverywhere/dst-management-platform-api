@@ -288,20 +288,31 @@ func GetModDefaultConfigs(id int) {
 
 func SyncMods() error {
 	// 处理UGC模组
-	cmd := "cp -r " + ModUgcPath + "/* " + ModDownloadPath + "/ugc"
+	cmd := "cp -r " + ModUgcPath + "/* " + ModDownloadPath + "/steamapps/workshop/content/322330"
 	err := BashCMD(cmd)
 	if err != nil {
 		Logger.Error("同步UGC模组失败", "err", err)
 		return err
 	}
 	// 处理非UGC模组
-	cmd = "for dir in " + ModNoUgcPath + "/workshop-*; do [ -d \"$dir\" ] && cp -r \"$dir\" \"" + ModDownloadPath + "/steamapps/workshop/content/322330/$(basename \"$dir\" | sed 's/workshop-//')\"; done"
+	cmd = "for dir in " + ModNoUgcPath + "/workshop-*; do [ -d \"$dir\" ] && cp -r \"$dir\" \"" + ModDownloadPath + "/not_ugc/$(basename \"$dir\" | sed 's/workshop-//')\"; done"
 	if err != nil {
 		Logger.Error("同步非UGC模组失败", "err", err)
 		return err
 	}
 
 	return nil
+}
+
+func DeleteDownloadedMod(isUgc bool, id int) error {
+	var err error
+	if isUgc {
+		err = RemoveDir(ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(id))
+	} else {
+		err = RemoveDir(ModDownloadPath + "/not_ugc/" + strconv.Itoa(id))
+	}
+
+	return err
 }
 
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）

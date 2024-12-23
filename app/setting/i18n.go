@@ -30,6 +30,8 @@ func response(message string, lang string) string {
 		"downloading":         "正在下载中，请稍后",
 		"syncModFail":         "同步失败",
 		"syncModSuccess":      "同步成功",
+		"deleteModFail":       "删除失败",
+		"deleteModSuccess":    "删除成功",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":         "Save Success",
@@ -60,6 +62,8 @@ func response(message string, lang string) string {
 		"downloading":         "Downloading... Please wait",
 		"syncModFail":         "Sync Fail",
 		"syncModSuccess":      "Sync Success",
+		"deleteModFail":       "Delete Fail",
+		"deleteModSuccess":    "Delete Success",
 	}
 
 	if lang == "zh" {

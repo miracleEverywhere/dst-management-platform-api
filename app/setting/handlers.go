@@ -476,7 +476,7 @@ func handleModConfigOptionsGet(c *gin.Context) {
 			return
 		}
 		if !exist {
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("needDownload", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("needDownload", langStr), "data": nil})
 			return
 		}
 	}
@@ -591,4 +591,33 @@ func handleSyncModPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("syncModSuccess", langStr), "data": nil})
+}
+
+func handleDeleteDownloadedModPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type DeleteForm struct {
+		ISUGC bool `json:"isUgc"`
+		ID    int  `json:"id"`
+	}
+
+	var deleteForm DeleteForm
+	if err := c.ShouldBindJSON(&deleteForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := utils.DeleteDownloadedMod(deleteForm.ISUGC, deleteForm.ID)
+	if err != nil {
+		utils.Logger.Error("删除已下载的MOD失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteModFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": nil})
 }
