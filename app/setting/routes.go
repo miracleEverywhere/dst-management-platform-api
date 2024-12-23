@@ -32,7 +32,9 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/mod/download", utils.MWtoken(), handleModDownloadPost)
 			setting.POST("/mod/sync", utils.MWtoken(), handleSyncModPost)
 			setting.POST("/mod/delete", utils.MWtoken(), handleDeleteDownloadedModPost)
-			setting.POST("/mod/test", utils.MWtoken(), test)
+			setting.POST("/mod/enable", utils.MWtoken(), handleEnableModPost)
+			setting.POST("/mod/disable", utils.MWtoken(), handleDisableModPost)
+			setting.POST("/mod/config/change", utils.MWtoken(), handleModConfigChangePost)
 		}
 	}
 

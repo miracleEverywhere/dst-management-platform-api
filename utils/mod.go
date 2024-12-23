@@ -23,17 +23,17 @@ type ConfigurationOption struct {
 	Default interface{} `json:"default"`
 }
 
+// ModFormattedData 下面这两个结构体其实可以合并，但是enable和enabled很烦， 前端也要改，直接用for互相转换一下吧，累了，毁灭吧
 type ModFormattedData struct {
 	ID                   int                    `json:"id"`
 	Name                 string                 `json:"name"`
 	Enable               bool                   `json:"enable"`
 	ConfigurationOptions map[string]interface{} `json:"configurationOptions"`
 	PreviewUrl           string                 `json:"preview_url"`
+	FileUrl              string                 `json:"file_url"`
 }
 
-type ModInfo struct {
-}
-
+// ModOverrides 下面这两个结构体其实可以合并，但是enable和enabled很烦， 前端也要改，直接用for互相转换一下吧，累了，毁灭吧
 type ModOverrides struct {
 	ID                   int                    `json:"id"`
 	Name                 string                 `json:"name"`
@@ -219,6 +219,7 @@ func ParseToLua(data []ModFormattedData) string {
 
 		for _, key := range keys {
 			value := configurationOptions[key]
+
 			var stringValue string
 			switch value.(type) {
 			case string:
@@ -230,12 +231,12 @@ func ParseToLua(data []ModFormattedData) string {
 			case bool:
 				stringValue = fmt.Sprintf("%t", value)
 			}
-			if ContainsChinese(key) {
+			if NeedDoubleQuotes(key) {
 				luaString += "      [\"" + key + "\"]=" + stringValue
 			} else {
 				luaString += "      " + key + "=" + stringValue
 			}
-
+			//fmt.Println(value, "---", stringValue)
 			if keyCount == keyNum {
 				luaString += "\n"
 			} else {
@@ -258,9 +259,15 @@ func ParseToLua(data []ModFormattedData) string {
 	return luaString
 }
 
-func ContainsChinese(s string) bool {
+func NeedDoubleQuotes(s string) bool {
+	if len(s) == 0 {
+		return true
+	}
 	for _, r := range s {
-		if unicode.In(r, unicode.Han) {
+		if unicode.In(r, unicode.Han) || unicode.In(r, unicode.Hiragana) || unicode.In(r, unicode.Katakana) {
+			return true
+		}
+		if unicode.IsSpace(r) {
 			return true
 		}
 	}
@@ -288,7 +295,7 @@ func GetModDefaultConfigs(id int) {
 
 func SyncMods() error {
 	// 处理UGC模组
-	cmd := "cp -r " + ModUgcPath + "/* " + ModDownloadPath + "/steamapps/workshop/content/322330"
+	cmd := "cp -r " + MasterModUgcPath + "/* " + ModDownloadPath + "/steamapps/workshop/content/322330"
 	err := BashCMD(cmd)
 	if err != nil {
 		Logger.Error("同步UGC模组失败", "err", err)
@@ -313,6 +320,24 @@ func DeleteDownloadedMod(isUgc bool, id int) error {
 	}
 
 	return err
+}
+
+func AddModDefaultConfig(newModLuaScript string, id int, langStr string) []ModOverrides {
+	var modDefaultConfig ModOverrides
+	modConfig := GetModConfigOptions(newModLuaScript, langStr)
+	modDefaultConfig.ID = id
+	modDefaultConfig.Enabled = true
+	modDefaultConfig.ConfigurationOptions = make(map[string]interface{})
+
+	for _, option := range modConfig {
+		modDefaultConfig.ConfigurationOptions[option.Name] = option.Default
+	}
+
+	modOverridesLuaScript, _ := GetFileAllContent(MasterModPath)
+	modOverrides := ModOverridesToStruct(modOverridesLuaScript)
+	modOverrides = append(modOverrides, modDefaultConfig)
+
+	return modOverrides
 }
 
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）

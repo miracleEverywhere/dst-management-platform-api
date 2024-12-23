@@ -32,6 +32,9 @@ func response(message string, lang string) string {
 		"syncModSuccess":      "同步成功",
 		"deleteModFail":       "删除失败",
 		"deleteModSuccess":    "删除成功",
+		"configUpdateSuccess": "修改成功",
+		"enableModSuccess":    "添加模组成功",
+		"disableModSuccess":   "禁用模组成功",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":         "Save Success",
@@ -64,6 +67,9 @@ func response(message string, lang string) string {
 		"syncModSuccess":      "Sync Success",
 		"deleteModFail":       "Delete Fail",
 		"deleteModSuccess":    "Delete Success",
+		"configUpdateSuccess": "Update Success",
+		"enableModSuccess":    "Add MOD Success",
+		"disableModSuccess":   "Disable MOD Success",
 	}
 
 	if lang == "zh" {
