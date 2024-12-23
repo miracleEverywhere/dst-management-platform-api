@@ -275,13 +275,13 @@ func CheckDirs() {
 	if err != nil {
 		Logger.Error("创建模组下载目录失败", "err", err)
 	}
-	err = EnsureDirExists(ModDownloadPath + "/ugc")
+	err = EnsureDirExists(ModDownloadPath + "/not_ugc")
 	if err != nil {
-		Logger.Error("创建UGC模组下载目录失败", "err", err)
+		Logger.Error("创建非UGC模组下载目录失败", "err", err)
 	}
 	err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
 	if err != nil {
-		Logger.Error("创建非UGC模组下载目录失败", "err", err)
+		Logger.Error("创建UGC模组下载目录失败", "err", err)
 	}
 	Logger.Info("模组下载目录检查完成")
 }

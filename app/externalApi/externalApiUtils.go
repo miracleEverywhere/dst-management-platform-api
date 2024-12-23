@@ -419,7 +419,7 @@ func DownloadMod(url string, id int) error {
 		utils.Logger.Error("无法获取 home 目录", "err", err)
 		return err
 	}
-	modPath := homeDir + "/" + utils.ModDownloadPath + "/ugc/" + modDir
+	modPath := homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + modDir
 	filename := modDir + ".zip"
 	filepath := modPath + "/" + filename
 
