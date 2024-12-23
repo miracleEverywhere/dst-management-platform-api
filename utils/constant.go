@@ -84,7 +84,9 @@ const ImportFileUploadPath = "/tmp/dst/"
 
 const ImportFileUnzipPath = ImportFileUploadPath + "unzip/"
 
-const ModUgcPath = "dst/ugc_mods/MyDediServer/Master/content/322330"
+const MasterModUgcPath = "dst/ugc_mods/MyDediServer/Master/content/322330"
+
+const CavesModUgcPath = "dst/ugc_mods/MyDediServer/Caves/content/322330"
 
 const ModNoUgcPath = "dst/mods"
 
