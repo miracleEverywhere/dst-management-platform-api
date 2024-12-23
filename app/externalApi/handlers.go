@@ -124,14 +124,14 @@ func handleDownloadedModInfoGet(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	modPathUgc := homeDir + "/.klei/DMP_MOD/steamapps/workshop/content/322330"
+	modPathUgc := homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330"
 	modsUgc, err := utils.GetDirs(modPathUgc)
 	if err != nil {
 		utils.Logger.Error("无法获取已下载的UGC MOD目录", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	modPathNotUgc := homeDir + "/.klei/DMP_MOD/not_ugc"
+	modPathNotUgc := homeDir + "/" + utils.ModDownloadPath + "/not_ugc"
 	modsNotUgc, err := utils.GetDirs(modPathNotUgc)
 	if err != nil {
 		utils.Logger.Error("无法获取已下载的非UGC MOD目录", "err", err)
