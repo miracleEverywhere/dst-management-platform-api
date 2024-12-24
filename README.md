@@ -65,13 +65,19 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ![home-zh](docs/images/home-zh.png)
   
 
-![home-en](docs/images/mobile-zh.png)
+![mobile-zh](docs/images/mobile-zh.png)
   
 
 ![room-zh](docs/images/room-zh.png)
   
 
 ![world-zh](docs/images/world-zh.png)
+
+
+![mod1-zh](docs/images/mod1-zh.jpg)
+
+
+![mod2-zh](docs/images/mod2-zh.jpg)
   
 
 ![player-zh](docs/images/player-zh.png)

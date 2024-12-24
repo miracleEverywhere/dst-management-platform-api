@@ -49,7 +49,8 @@ docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag```
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+```
 ---
 
 ## :grapes: Default username and password
@@ -63,13 +64,19 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag```
 ![home-en](docs/images/home-en.png)
   
 
-![home-zh](docs/images/mobile-en.png)
+![mobile-en](docs/images/mobile-en.png)
   
 
 ![room-en](docs/images/room-en.png)
 
 
 ![world-en](docs/images/world-en.png)
+
+
+![mod1-en](docs/images/mod1-en.jpg)
+
+
+![mod2-en](docs/images/mod2-en.jpg)
   
 
 ![player-en](docs/images/player-en.png)
