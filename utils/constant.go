@@ -18,9 +18,9 @@ const ClearScreenCMD = "screen -wipe"
 
 const UpdateGameCMD = "cd ~/steamcmd ; ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit"
 
-const PlayersListCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s\\\", 99999999, i-1, v.userid, v.name )) end$(printf \\\\r)\"\n"
+const PlayersListCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
 
-const PlayersListCavesCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s\\\", 99999999, i-1, v.userid, v.name )) end$(printf \\\\r)\"\n"
+const PlayersListCavesCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
 
 const MasterModPath = ServerPath + MasterName + "/modoverrides.lua"
 
@@ -74,10 +74,20 @@ const InternetIPApi2 = "https://qifu-api.baidubce.com/ip/local/geo/v1/district"
 
 const SteamApiKey = "1D15E021E1AB06D20F761C16525FFD40"
 
-const SteamApi = "http://api.steampowered.com/IPublishedFileService/GetDetails/v1/"
+const SteamApiModDetail = "http://api.steampowered.com/IPublishedFileService/GetDetails/v1/"
+
+const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/QueryFiles/v1/"
 
 const ProcessLogFile = "dmpProcess.log"
 
 const ImportFileUploadPath = "/tmp/dst/"
 
-const ImportFileUnzipPath = "/tmp/dst/unzip/"
+const ImportFileUnzipPath = ImportFileUploadPath + "unzip/"
+
+const MasterModUgcPath = "dst/ugc_mods/MyDediServer/Master/content/322330"
+
+const CavesModUgcPath = "dst/ugc_mods/MyDediServer/Caves/content/322330"
+
+const ModNoUgcPath = "dst/mods"
+
+const ModDownloadPath = ".klei/DMP_MOD"

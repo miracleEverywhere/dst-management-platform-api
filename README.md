@@ -38,11 +38,19 @@ nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 首先在package页面获取docker镜像tag
 ```shell
 # 绑定80端口
-docker run -p 80:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+docker run -itd --name dmp -p 80:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
 # 绑定8000端口
-docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+docker run -itd --name dmp -p 8000:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ---
 
@@ -57,13 +65,19 @@ docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/mi
 ![home-zh](docs/images/home-zh.png)
   
 
-![home-en](docs/images/mobile-zh.png)
+![mobile-zh](docs/images/mobile-zh.png)
   
 
 ![room-zh](docs/images/room-zh.png)
   
 
 ![world-zh](docs/images/world-zh.png)
+
+
+![mod1-zh](docs/images/mod1-zh.jpg)
+
+
+![mod2-zh](docs/images/mod2-zh.jpg)
   
 
 ![player-zh](docs/images/player-zh.png)

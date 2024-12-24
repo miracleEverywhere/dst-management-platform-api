@@ -29,6 +29,7 @@ func setPlayer2DB() {
 		uidNickName := strings.Split(p, ",")
 		player.UID = uidNickName[0]
 		player.NickName = uidNickName[1]
+		player.Prefab = uidNickName[2]
 		playerList = append(playerList, player)
 	}
 	//config.Players = playerList
@@ -108,7 +109,7 @@ func getPlayersList() ([]string, error) {
 	}
 
 	// 正则表达式匹配模式
-	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) (.+)`
+	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) (.+) (.+)?`
 	re := regexp.MustCompile(pattern)
 
 	var players []string
@@ -122,8 +123,9 @@ func getPlayersList() ([]string, error) {
 				uid = strings.ReplaceAll(uid, " ", "")
 				nickName := strings.ReplaceAll(matches[2], "\t", "")
 				nickName = strings.ReplaceAll(nickName, " ", "")
-
-				player := uid + "," + nickName
+				prefab := strings.ReplaceAll(matches[3], "\t", "")
+				prefab = strings.ReplaceAll(prefab, " ", "")
+				player := uid + "," + nickName + "," + prefab
 				players = append(players, player)
 			}
 		}
@@ -164,12 +166,13 @@ func updateTimeFix(timeStr string) string {
 func checkUpdate() {
 	dstVersion, err := externalApi.GetDSTVersion()
 	if err != nil {
-		utils.Logger.Error("解析时间字符串失败", "err", err)
+		utils.Logger.Error("获取饥荒版本失败，跳过自动更新", "err", err)
 		return
 	}
 	doAnnounce()
 	if dstVersion.Local != dstVersion.Server {
 		_ = doUpdate()
+		_ = utils.ReplaceDSTSOFile()
 	}
 	doRestart()
 }
@@ -295,17 +298,14 @@ func doKeepalive() {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		return
 	}
-	// 先执行命令
+
 	// 地面
 	err = utils.BashCMD(utils.PlayersListCMD)
 	if err != nil {
 		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCMD)
 	}
-	// 洞穴
-	err = utils.BashCMD(utils.PlayersListCavesCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCavesCMD)
-	}
+
+	time.Sleep(1 * time.Second)
 
 	masterLastTime, err := getWorldLastTime(utils.MasterLogPath)
 	if err != nil {
@@ -320,7 +320,15 @@ func doKeepalive() {
 		config.Keepalive.LastTime = masterLastTime
 	}
 
+	// 洞穴
 	if config.RoomSetting.Cave != "" {
+		err = utils.BashCMD(utils.PlayersListCavesCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCavesCMD)
+		}
+
+		time.Sleep(1 * time.Second)
+
 		cavesLastTime, err := getWorldLastTime(utils.CavesLogPath)
 		if err != nil {
 			utils.Logger.Error("获取日志信息失败", "err", err)

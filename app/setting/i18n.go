@@ -26,6 +26,15 @@ func response(message string, lang string) string {
 		"deleteOldServerFail": "删除旧服务器文件失败",
 		"createNewServerFail": "创建新服务器文件失败",
 		"writeToDBFail":       "写入数据库失败",
+		"needDownload":        "请先下载模组",
+		"downloading":         "正在下载中，请稍后",
+		"syncModFail":         "同步失败",
+		"syncModSuccess":      "同步成功",
+		"deleteModFail":       "删除失败",
+		"deleteModSuccess":    "删除成功",
+		"configUpdateSuccess": "修改成功",
+		"enableModSuccess":    "添加模组成功",
+		"disableModSuccess":   "禁用模组成功",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":         "Save Success",
@@ -52,6 +61,15 @@ func response(message string, lang string) string {
 		"deleteOldServerFail": "Failed to delete old server files",
 		"createNewServerFail": "Failed to create new server files",
 		"writeToDBFail":       "Writing to database failed",
+		"needDownload":        "Please download MOD first",
+		"downloading":         "Downloading... Please wait",
+		"syncModFail":         "Sync Fail",
+		"syncModSuccess":      "Sync Success",
+		"deleteModFail":       "Delete Fail",
+		"deleteModSuccess":    "Delete Success",
+		"configUpdateSuccess": "Update Success",
+		"enableModSuccess":    "Add MOD Success",
+		"disableModSuccess":   "Disable MOD Success",
 	}
 
 	if lang == "zh" {

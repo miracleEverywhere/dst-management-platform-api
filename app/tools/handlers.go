@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -395,6 +396,14 @@ func handleBackupRestore(c *gin.Context) {
 		return
 	}
 
+	// 写入dedicated_server_mods_setup.lua
+	err = setting.DstModsSetup()
+	if err != nil {
+		utils.Logger.Error("mod配置保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
 }
 
@@ -525,26 +534,44 @@ func handleReplaceDSTSOFile(c *gin.Context) {
 		langStr = strLang
 	}
 
-	err := utils.BashCMD("mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak")
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-		return
-	}
-	err = utils.BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-		return
-	}
-	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-		return
-	}
-	err = utils.BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
+	err := utils.ReplaceDSTSOFile()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("replaceSuccess", langStr), "data": nil})
+}
+
+func handleCreateTokenPost(c *gin.Context) {
+	type ApiForm struct {
+		ExpiredTime int64 `json:"expiredTime"`
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var apiForm ApiForm
+	if err := c.ShouldBindJSON(&apiForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	now := time.Now()
+	nowTimestamp := now.UnixMilli()
+	hours := (apiForm.ExpiredTime - nowTimestamp) / (60 * 60 * 1000)
+
+	jwtSecret := []byte(config.JwtSecret)
+	token, _ := utils.GenerateJWT(config.Username, jwtSecret, int(hours))
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
 }

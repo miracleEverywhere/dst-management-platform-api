@@ -77,6 +77,7 @@ type AutoBackup struct {
 type Players struct {
 	UID      string `json:"uid"`
 	NickName string `json:"nickName"`
+	Prefab   string `json:"prefab"`
 }
 
 type Statistics struct {
@@ -261,6 +262,28 @@ func CreateManualInstallScript() {
 	if err != nil {
 		Logger.Error("手动安装脚本添加执行权限失败", "err", err)
 	}
+}
+
+func CheckDirs() {
+	var err error
+	err = EnsureDirExists(BackupPath)
+	if err != nil {
+		Logger.Error("创建备份目录失败", "err", err)
+	}
+	Logger.Info("备份目录检查完成")
+	err = EnsureDirExists(ModDownloadPath)
+	if err != nil {
+		Logger.Error("创建模组下载目录失败", "err", err)
+	}
+	err = EnsureDirExists(ModDownloadPath + "/not_ugc")
+	if err != nil {
+		Logger.Error("创建非UGC模组下载目录失败", "err", err)
+	}
+	err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
+	if err != nil {
+		Logger.Error("创建UGC模组下载目录失败", "err", err)
+	}
+	Logger.Info("模组下载目录检查完成")
 }
 
 func BindFlags() {
@@ -508,6 +531,14 @@ func RemoveFile(filePath string) error {
 
 // EnsureDirExists 检查目录是否存在，如果不存在则创建
 func EnsureDirExists(dirPath string) error {
+	if strings.HasPrefix(dirPath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return err
+		}
+		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+	}
 	// 检查目录是否存在
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		// 目录不存在，创建目录
@@ -524,6 +555,15 @@ func EnsureDirExists(dirPath string) error {
 }
 
 func FileDirectoryExists(filePath string) (bool, error) {
+	// 如果路径中包含 ~，则将其替换为用户的 home 目录
+	if strings.HasPrefix(filePath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return false, err
+		}
+		filePath = strings.Replace(filePath, "~", homeDir, 1)
+	}
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false, nil
@@ -733,6 +773,15 @@ func GetTimestamp() int64 {
 }
 
 func GetFileAllContent(filePath string) (string, error) {
+	// 如果路径中包含 ~，则将其替换为用户的 home 目录
+	if strings.HasPrefix(filePath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return "", err
+		}
+		filePath = strings.Replace(filePath, "~", homeDir, 1)
+	}
 	// 打开文件
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -755,6 +804,47 @@ func GetFileAllContent(filePath string) (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+// GetDirs 获取指定目录下的目录，不包含子目录和文件
+func GetDirs(dirPath string) ([]string, error) {
+	var dirs []string
+	// 如果路径中包含 ~，则将其替换为用户的 home 目录
+	if strings.HasPrefix(dirPath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return []string{}, err
+		}
+		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+	}
+	// 打开目录
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		Logger.Error("打开目录失败", "err", err)
+		return []string{}, err
+	}
+	defer func(dir *os.File) {
+		err := dir.Close()
+		if err != nil {
+			Logger.Error("关闭目录失败", "err", err)
+		}
+	}(dir)
+
+	// 读取目录条目
+	entries, err := dir.Readdir(-1)
+	if err != nil {
+		Logger.Error("读取目录失败", "err", err)
+		return []string{}, err
+	}
+
+	// 遍历目录条目，只输出目录
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, entry.Name())
+		}
+	}
+	return dirs, nil
 }
 
 func GetRoomSettingBase() (RoomSettingBase, error) {
@@ -871,4 +961,45 @@ func GetServerPort(serverFile string) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("没有找到端口配置")
+}
+
+func Bool2String(b bool, lang string) string {
+	switch lang {
+	case "lua":
+		if b {
+			return "true"
+		} else {
+			return "false"
+		}
+	case "python":
+		if b {
+			return "True"
+		} else {
+			return "False"
+		}
+
+	default:
+		return "false"
+	}
+}
+
+func ReplaceDSTSOFile() error {
+	err := BashCMD("mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

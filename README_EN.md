@@ -38,11 +38,18 @@ nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 First, obtain the Docker image tag from the package page
 ```shell
 # Bing port 80
-docker run -p 80:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
-```
+docker run -itd --name dmp -p 80:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag```
 ```shell
 # Bing port 8000
-docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+docker run -itd --name dmp -p 8000:80 \
+-v /app/config:/root/config \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ---
 
@@ -57,13 +64,19 @@ docker run -p 8000:80 -v /app/dmp/config:/root/config --name dmp -itd ghcr.io/mi
 ![home-en](docs/images/home-en.png)
   
 
-![home-zh](docs/images/mobile-en.png)
+![mobile-en](docs/images/mobile-en.png)
   
 
 ![room-en](docs/images/room-en.png)
 
 
 ![world-en](docs/images/world-en.png)
+
+
+![mod1-en](docs/images/mod1-en.jpg)
+
+
+![mod2-en](docs/images/mod2-en.jpg)
   
 
 ![player-en](docs/images/player-en.png)
