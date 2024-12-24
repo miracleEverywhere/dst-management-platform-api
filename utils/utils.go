@@ -37,17 +37,21 @@ type Claims struct {
 }
 
 type RoomSettingBase struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	GameMode    string `json:"gameMode"`
-	PVP         bool   `json:"pvp"`
-	PlayerNum   int    `json:"playerNum"`
-	BackDays    int    `json:"backDays"`
-	Vote        bool   `json:"vote"`
-	Password    string `json:"password"`
-	Token       string `json:"token"`
-	MasterPort  int    `json:"masterPort"`
-	CavesPort   int    `json:"cavesPort"`
+	Name                    string `json:"name"`
+	Description             string `json:"description"`
+	GameMode                string `json:"gameMode"`
+	PVP                     bool   `json:"pvp"`
+	PlayerNum               int    `json:"playerNum"`
+	BackDays                int    `json:"backDays"`
+	Vote                    bool   `json:"vote"`
+	Password                string `json:"password"`
+	Token                   string `json:"token"`
+	MasterPort              int    `json:"masterPort"`
+	CavesPort               int    `json:"cavesPort"`
+	ShardMasterIp           string `json:"ShardMasterIp"`
+	ShardMasterPort         int    `json:"shardMasterPort"`
+	SteamMasterPort         int    `json:"steamMasterPort"`
+	SteamAuthenticationPort int    `json:"steamAuthenticationPort"`
 }
 
 type RoomSetting struct {
@@ -99,6 +103,7 @@ type Config struct {
 	Password     string         `json:"password"`
 	JwtSecret    string         `json:"jwtSecret"`
 	RoomSetting  RoomSetting    `json:"roomSetting"`
+	MultiHost    bool           `json:"multiHost"`
 	AutoUpdate   AutoUpdate     `json:"autoUpdate"`
 	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
 	AutoBackup   AutoBackup     `json:"autoBackup"`
