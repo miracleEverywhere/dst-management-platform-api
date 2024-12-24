@@ -12,6 +12,8 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 		{
 			// 设置
 			setting.GET("/room", utils.MWtoken(), handleRoomSettingGet)
+			setting.GET("/room/multihost", utils.MWtoken(), handleGetMultiHostGet)
+			setting.POST("/room/multihost", utils.MWtoken(), handleChangeMultiHostPost)
 			setting.POST("/room/save", utils.MWtoken(), handleRoomSettingSavePost)
 			setting.POST("/room/save_restart", utils.MWtoken(), handleRoomSettingSaveAndRestartPost)
 			setting.POST("/room/save_generate", utils.MWtoken(), handleRoomSettingSaveAndGeneratePost)

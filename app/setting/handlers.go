@@ -829,3 +829,49 @@ func handleDisableModPost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": newModOverridesLua})
 }
+
+func handleGetMultiHostGet(c *gin.Context) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.MultiHost})
+}
+
+func handleChangeMultiHostPost(c *gin.Context) {
+	type MultiHostForm struct {
+		MultiHost bool `json:"multiHost"`
+	}
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var multiHostForm MultiHostForm
+	if err := c.ShouldBindJSON(&multiHostForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config.MultiHost = multiHostForm.MultiHost
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
+}
