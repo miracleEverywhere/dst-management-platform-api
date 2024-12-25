@@ -406,6 +406,18 @@ func handleModSettingFormatGet(c *gin.Context) {
 		langStr = strLang
 	}
 
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Ground == "" && config.RoomSetting.Cave == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []utils.ModFormattedData{}})
+		return
+	}
+
 	luaScript, _ := utils.GetFileAllContent(utils.MasterModPath)
 
 	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
@@ -664,18 +676,36 @@ func handleEnableModPost(c *gin.Context) {
 		modDirPath       string
 		modFormattedData []utils.ModFormattedData
 	)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	if config.RoomSetting.Base.Name == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": nil})
+		return
+	}
+
+	// 复制mod文件至指定的dst目录
 	if enableForm.ISUGC {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
-		cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
-		cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
-		err := utils.BashCMD(cmdMaster)
-		if err != nil {
-			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+		if config.RoomSetting.Ground != "" {
+			cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
+			err := utils.BashCMD(cmdMaster)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+			}
 		}
-		err = utils.BashCMD(cmdCaves)
-		if err != nil {
-			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
+		if config.RoomSetting.Cave != "" {
+			cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
+			err = utils.BashCMD(cmdCaves)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
+			}
 		}
 	} else {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + strconv.Itoa(enableForm.ID)
@@ -686,6 +716,7 @@ func handleEnableModPost(c *gin.Context) {
 			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
 		}
 	}
+
 	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
 
 	// 获取新modoverrides.lua
@@ -705,12 +736,6 @@ func handleEnableModPost(c *gin.Context) {
 	modOverridesLua := utils.ParseToLua(b)
 
 	// 写入数据库
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
 	config.RoomSetting.Mod = modOverridesLua
 	err = utils.WriteConfig(config)
 	if err != nil {
@@ -718,13 +743,17 @@ func handleEnableModPost(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	//Master/modoverrides.lua
-	err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-	if err != nil {
-		utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
+
+	if config.RoomSetting.Ground != "" {
+		//Master/modoverrides.lua
+		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
 	}
+
 	if config.RoomSetting.Cave != "" {
 		//Caves/modoverrides.lua
 		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
@@ -740,8 +769,6 @@ func handleEnableModPost(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-
-	// 复制mod文件至指定的dst目录
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
 }
