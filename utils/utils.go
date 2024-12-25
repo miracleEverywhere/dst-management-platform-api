@@ -49,7 +49,7 @@ type RoomSettingBase struct {
 	MasterPort              int    `json:"masterPort"`
 	CavesPort               int    `json:"cavesPort"`
 	ClusterKey              string `json:"clusterKey"`
-	ShardMasterIp           string `json:"ShardMasterIp"`
+	ShardMasterIp           string `json:"shardMasterIp"`
 	ShardMasterPort         int    `json:"shardMasterPort"`
 	SteamMasterPort         int    `json:"steamMasterPort"`
 	SteamAuthenticationPort int    `json:"steamAuthenticationPort"`
@@ -277,6 +277,7 @@ func CheckDirs() {
 		Logger.Error("创建备份目录失败", "err", err)
 	}
 	Logger.Info("备份目录检查完成")
+
 	err = EnsureDirExists(ModDownloadPath)
 	if err != nil {
 		Logger.Error("创建模组下载目录失败", "err", err)
@@ -290,6 +291,18 @@ func CheckDirs() {
 		Logger.Error("创建UGC模组下载目录失败", "err", err)
 	}
 	Logger.Info("模组下载目录检查完成")
+
+	err = EnsureDirExists(ServerPath + MasterName)
+	if err != nil {
+		Logger.Error("创建Master目录失败", "err", err)
+	}
+	Logger.Info("Master目录检查完成")
+
+	err = EnsureDirExists(ServerPath + CavesName)
+	if err != nil {
+		Logger.Error("创建Caves目录失败", "err", err)
+	}
+	Logger.Info("Caves目录检查完成")
 }
 
 func BindFlags() {
