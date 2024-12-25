@@ -206,9 +206,6 @@ func CreateConfig() {
 	config.Keepalive.Enable = true
 	config.Keepalive.Frequency = 30
 
-	config.RoomSetting.Base.MasterPort = 11000
-	config.RoomSetting.Base.CavesPort = 11001
-
 	err = WriteConfig(config)
 	if err != nil {
 		Logger.Error("写入数据库失败", "err", err)
@@ -275,8 +272,9 @@ func CheckDirs() {
 	err = EnsureDirExists(BackupPath)
 	if err != nil {
 		Logger.Error("创建备份目录失败", "err", err)
+	} else {
+		Logger.Info("备份目录检查完成")
 	}
-	Logger.Info("备份目录检查完成")
 
 	err = EnsureDirExists(ModDownloadPath)
 	if err != nil {
@@ -285,24 +283,44 @@ func CheckDirs() {
 	err = EnsureDirExists(ModDownloadPath + "/not_ugc")
 	if err != nil {
 		Logger.Error("创建非UGC模组下载目录失败", "err", err)
+	} else {
+		err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
 	}
-	err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
+
 	if err != nil {
 		Logger.Error("创建UGC模组下载目录失败", "err", err)
+	} else {
+		Logger.Info("模组下载目录检查完成")
 	}
-	Logger.Info("模组下载目录检查完成")
 
 	err = EnsureDirExists(ServerPath + MasterName)
 	if err != nil {
 		Logger.Error("创建Master目录失败", "err", err)
+	} else {
+		Logger.Info("Master目录检查完成")
 	}
-	Logger.Info("Master目录检查完成")
 
 	err = EnsureDirExists(ServerPath + CavesName)
 	if err != nil {
 		Logger.Error("创建Caves目录失败", "err", err)
+	} else {
+		Logger.Info("Caves目录检查完成")
 	}
-	Logger.Info("Caves目录检查完成")
+
+	err = EnsureDirExists(MasterModUgcPath)
+	if err != nil {
+		Logger.Error("创建Master Mod目录失败", "err", err)
+	} else {
+		Logger.Info("Master Mod目录检查完成")
+	}
+
+	err = EnsureDirExists(CavesModUgcPath)
+	if err != nil {
+		Logger.Error("创建Caves Mod目录失败", "err", err)
+	} else {
+		Logger.Info("Caves Mod目录检查完成")
+	}
+
 }
 
 func BindFlags() {
