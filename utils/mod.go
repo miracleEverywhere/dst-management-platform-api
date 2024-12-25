@@ -113,6 +113,9 @@ func GetModConfigOptions(luaScript string, lang string) []ConfigurationOption {
 }
 
 func ModOverridesToStruct(luaScript string) []ModOverrides {
+	if luaScript == "" {
+		return []ModOverrides{}
+	}
 	L := lua.NewState()
 	defer L.Close()
 
@@ -332,8 +335,12 @@ func AddModDefaultConfig(newModLuaScript string, id int, langStr string) []ModOv
 	for _, option := range modConfig {
 		modDefaultConfig.ConfigurationOptions[option.Name] = option.Default
 	}
-
-	modOverridesLuaScript, _ := GetFileAllContent(MasterModPath)
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return []ModOverrides{}
+	}
+	modOverridesLuaScript := config.RoomSetting.Mod
 	modOverrides := ModOverridesToStruct(modOverridesLuaScript)
 	modOverrides = append(modOverrides, modDefaultConfig)
 
