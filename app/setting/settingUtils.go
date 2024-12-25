@@ -12,7 +12,14 @@ import (
 	"time"
 )
 
-func clusterTemplate(base utils.RoomSettingBase) string {
+func clusterTemplate(config utils.Config) string {
+	var bindIP string
+	if !config.MultiHost {
+		bindIP = "127.0.0.1"
+	} else {
+		bindIP = "0.0.0.0"
+	}
+	base := config.RoomSetting.Base
 	contents := `
 [GAMEPLAY]
 game_mode = ` + base.GameMode + `
@@ -34,7 +41,7 @@ max_snapshots = ` + strconv.Itoa(base.BackDays) + `
 
 [SHARD]
 shard_enabled = true
-bind_ip = 0.0.0.0
+bind_ip = ` + bindIP + `
 master_ip = ` + base.ShardMasterIp + `
 master_port = ` + strconv.Itoa(base.ShardMasterPort) + `
 cluster_key = ` + base.ClusterKey + `
@@ -42,7 +49,8 @@ cluster_key = ` + base.ClusterKey + `
 	return contents
 }
 
-func masterServerTemplate(base utils.RoomSettingBase) string {
+func masterServerTemplate(config utils.Config) string {
+	base := config.RoomSetting.Base
 	content := `
 [NETWORK]
 server_port = ` + strconv.Itoa(base.MasterPort) + `
@@ -57,7 +65,19 @@ authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
 	return content
 }
 
-func cavesServerTemplate(base utils.RoomSettingBase) string {
+func cavesServerTemplate(config utils.Config) string {
+	var (
+		SteamMasterPort         int
+		SteamAuthenticationPort int
+	)
+	if !config.MultiHost {
+		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort + 1
+		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort + 1
+	} else {
+		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort
+		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort
+	}
+	base := config.RoomSetting.Base
 	content := `
 [NETWORK]
 server_port = ` + strconv.Itoa(base.CavesPort) + `
@@ -67,14 +87,14 @@ is_master = false
 name = Caves
 
 [STEAM]
-master_server_port = ` + strconv.Itoa(base.SteamMasterPort) + `
-authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
+master_server_port = ` + strconv.Itoa(SteamMasterPort) + `
+authentication_port = ` + strconv.Itoa(SteamAuthenticationPort) + `
 `
 	return content
 }
 
 func saveSetting(config utils.Config) error {
-	clusterIniFileContent := clusterTemplate(config.RoomSetting.Base)
+	clusterIniFileContent := clusterTemplate(config)
 
 	//cluster.ini
 	err := utils.TruncAndWriteFile(utils.ServerSettingPath, clusterIniFileContent)
@@ -106,7 +126,7 @@ func saveSetting(config utils.Config) error {
 		}
 
 		//Master/server.ini
-		err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate(config.RoomSetting.Base))
+		err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate(config))
 		if err != nil {
 			return err
 		}
@@ -133,7 +153,7 @@ func saveSetting(config utils.Config) error {
 			return err
 		}
 		//Caves/server.ini
-		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate(config.RoomSetting.Base))
+		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate(config))
 		if err != nil {
 			return err
 		}
@@ -226,9 +246,10 @@ func DstModsSetup() error {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		return err
 	}
+
 	L := lua.NewState()
 	defer L.Close()
-	if err := L.DoFile(config.RoomSetting.Mod); err != nil {
+	if err := L.DoString(config.RoomSetting.Mod); err != nil {
 		utils.Logger.Error("加载 Lua 文件失败:", "err", err)
 		return err
 	}
