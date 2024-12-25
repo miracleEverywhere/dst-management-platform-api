@@ -18,7 +18,20 @@ func setPlayer2DB() {
 	//	return
 	//}
 
-	players, err := getPlayersList()
+	var players []string
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
+
+	if config.RoomSetting.Ground != "" {
+		players, err = getPlayersList("master")
+	}
+	if config.RoomSetting.Cave != "" {
+		players, err = getPlayersList("caves")
+	}
+
 	if err != nil {
 		utils.Logger.Error("获取玩家列表失败", "err", err)
 		return
@@ -56,19 +69,36 @@ func setPlayer2DB() {
 	//}
 }
 
-func getPlayersList() ([]string, error) {
-	// 先执行命令
-	err := utils.BashCMD(utils.PlayersListCMD)
-	if err != nil {
-		return nil, err
+func getPlayersList(world string) ([]string, error) {
+	var file *os.File
+	if world == "master" {
+		// 先执行命令
+		err := utils.BashCMD(utils.PlayersListMasterCMD)
+		if err != nil {
+			return nil, err
+		}
+		// 等待命令执行完毕
+		time.Sleep(time.Second * 2)
+		// 获取日志文件中的list
+		file, err = os.Open(utils.MasterLogPath)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// 先执行命令
+		err := utils.BashCMD(utils.PlayersListCavesCMD)
+		if err != nil {
+			return nil, err
+		}
+		// 等待命令执行完毕
+		time.Sleep(time.Second * 2)
+		// 获取日志文件中的list
+		file, err = os.Open(utils.CavesLogPath)
+		if err != nil {
+			return nil, err
+		}
 	}
-	// 等待命令执行完毕
-	time.Sleep(time.Second * 2)
-	// 获取日志文件中的list
-	file, err := os.Open(utils.MasterLogPath)
-	if err != nil {
-		return nil, err
-	}
+
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
@@ -299,25 +329,32 @@ func doKeepalive() {
 		return
 	}
 
-	// 地面
-	err = utils.BashCMD(utils.PlayersListCMD)
-	if err != nil {
-		utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCMD)
-	}
-
-	time.Sleep(1 * time.Second)
-
-	masterLastTime, err := getWorldLastTime(utils.MasterLogPath)
-	if err != nil {
-		utils.Logger.Error("获取日志信息失败", "err", err)
-	}
-
-	if config.Keepalive.LastTime == masterLastTime {
-		utils.Logger.Info("发现地面异常，执行重启任务")
-		doRestart()
+	if config.RoomSetting.Ground == "" && config.RoomSetting.Cave == "" {
 		return
-	} else {
-		config.Keepalive.LastTime = masterLastTime
+	}
+
+	// 地面
+	if config.RoomSetting.Ground != "" {
+
+		err = utils.BashCMD(utils.PlayersListMasterCMD)
+		if err != nil {
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListMasterCMD)
+		}
+
+		time.Sleep(1 * time.Second)
+
+		masterLastTime, err := getWorldLastTime(utils.MasterLogPath)
+		if err != nil {
+			utils.Logger.Error("获取日志信息失败", "err", err)
+		}
+
+		if config.Keepalive.LastTime == masterLastTime {
+			utils.Logger.Info("发现地面异常，执行重启任务")
+			doRestart()
+			return
+		} else {
+			config.Keepalive.LastTime = masterLastTime
+		}
 	}
 
 	// 洞穴
