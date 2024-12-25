@@ -48,6 +48,7 @@ type RoomSettingBase struct {
 	Token                   string `json:"token"`
 	MasterPort              int    `json:"masterPort"`
 	CavesPort               int    `json:"cavesPort"`
+	ClusterKey              string `json:"clusterKey"`
 	ShardMasterIp           string `json:"ShardMasterIp"`
 	ShardMasterPort         int    `json:"shardMasterPort"`
 	SteamMasterPort         int    `json:"steamMasterPort"`
@@ -646,9 +647,11 @@ func StartGame() error {
 		return err
 	}
 
-	err = BashCMD(StartMasterCMD)
-	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+	if config.RoomSetting.Ground != "" {
+		err = BashCMD(StartMasterCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = BashCMD(StartCavesCMD)
