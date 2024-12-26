@@ -167,34 +167,6 @@ func saveSetting(config utils.Config) error {
 	return nil
 }
 
-func restartWorld(c *gin.Context, config utils.Config, langStr string) {
-	var err error
-	//关闭Master进程
-	err = utils.BashCMD(utils.StopMasterCMD)
-	//关闭Caves进程
-	err = utils.BashCMD(utils.StopCavesCMD)
-	//等待3秒
-	time.Sleep(3 * time.Second)
-	//启动Master
-	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
-	err = cmdStartMaster.Run()
-	if err != nil {
-		utils.Logger.Error("启动地面失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
-	if config.RoomSetting.Cave != "" {
-		//启动Caves
-		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
-		err = cmdStartCaves.Run()
-		if err != nil {
-			utils.Logger.Error("启动洞穴失败", "err", err)
-			utils.RespondWithError(c, 500, langStr)
-			return
-		}
-	}
-}
-
 func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 	//关闭Master进程
 	cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
