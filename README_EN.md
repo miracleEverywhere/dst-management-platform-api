@@ -42,7 +42,8 @@ docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag```
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+```
 ```shell
 # Bing port 8000
 docker run -itd --name dmp -p 8000:80 \

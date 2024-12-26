@@ -37,17 +37,22 @@ type Claims struct {
 }
 
 type RoomSettingBase struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	GameMode    string `json:"gameMode"`
-	PVP         bool   `json:"pvp"`
-	PlayerNum   int    `json:"playerNum"`
-	BackDays    int    `json:"backDays"`
-	Vote        bool   `json:"vote"`
-	Password    string `json:"password"`
-	Token       string `json:"token"`
-	MasterPort  int    `json:"masterPort"`
-	CavesPort   int    `json:"cavesPort"`
+	Name                    string `json:"name"`
+	Description             string `json:"description"`
+	GameMode                string `json:"gameMode"`
+	PVP                     bool   `json:"pvp"`
+	PlayerNum               int    `json:"playerNum"`
+	BackDays                int    `json:"backDays"`
+	Vote                    bool   `json:"vote"`
+	Password                string `json:"password"`
+	Token                   string `json:"token"`
+	MasterPort              int    `json:"masterPort"`
+	CavesPort               int    `json:"cavesPort"`
+	ClusterKey              string `json:"clusterKey"`
+	ShardMasterIp           string `json:"shardMasterIp"`
+	ShardMasterPort         int    `json:"shardMasterPort"`
+	SteamMasterPort         int    `json:"steamMasterPort"`
+	SteamAuthenticationPort int    `json:"steamAuthenticationPort"`
 }
 
 type RoomSetting struct {
@@ -99,6 +104,7 @@ type Config struct {
 	Password     string         `json:"password"`
 	JwtSecret    string         `json:"jwtSecret"`
 	RoomSetting  RoomSetting    `json:"roomSetting"`
+	MultiHost    bool           `json:"multiHost"`
 	AutoUpdate   AutoUpdate     `json:"autoUpdate"`
 	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
 	AutoBackup   AutoBackup     `json:"autoBackup"`
@@ -200,9 +206,6 @@ func CreateConfig() {
 	config.Keepalive.Enable = true
 	config.Keepalive.Frequency = 30
 
-	config.RoomSetting.Base.MasterPort = 11000
-	config.RoomSetting.Base.CavesPort = 11001
-
 	err = WriteConfig(config)
 	if err != nil {
 		Logger.Error("写入数据库失败", "err", err)
@@ -269,8 +272,10 @@ func CheckDirs() {
 	err = EnsureDirExists(BackupPath)
 	if err != nil {
 		Logger.Error("创建备份目录失败", "err", err)
+	} else {
+		Logger.Info("备份目录检查完成")
 	}
-	Logger.Info("备份目录检查完成")
+
 	err = EnsureDirExists(ModDownloadPath)
 	if err != nil {
 		Logger.Error("创建模组下载目录失败", "err", err)
@@ -278,12 +283,44 @@ func CheckDirs() {
 	err = EnsureDirExists(ModDownloadPath + "/not_ugc")
 	if err != nil {
 		Logger.Error("创建非UGC模组下载目录失败", "err", err)
+	} else {
+		err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
 	}
-	err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
+
 	if err != nil {
 		Logger.Error("创建UGC模组下载目录失败", "err", err)
+	} else {
+		Logger.Info("模组下载目录检查完成")
 	}
-	Logger.Info("模组下载目录检查完成")
+
+	err = EnsureDirExists(ServerPath + MasterName)
+	if err != nil {
+		Logger.Error("创建Master目录失败", "err", err)
+	} else {
+		Logger.Info("Master目录检查完成")
+	}
+
+	err = EnsureDirExists(ServerPath + CavesName)
+	if err != nil {
+		Logger.Error("创建Caves目录失败", "err", err)
+	} else {
+		Logger.Info("Caves目录检查完成")
+	}
+
+	err = EnsureDirExists(MasterModUgcPath)
+	if err != nil {
+		Logger.Error("创建Master Mod目录失败", "err", err)
+	} else {
+		Logger.Info("Master Mod目录检查完成")
+	}
+
+	err = EnsureDirExists(CavesModUgcPath)
+	if err != nil {
+		Logger.Error("创建Caves Mod目录失败", "err", err)
+	} else {
+		Logger.Info("Caves Mod目录检查完成")
+	}
+
 }
 
 func BindFlags() {
@@ -641,9 +678,11 @@ func StartGame() error {
 		return err
 	}
 
-	err = BashCMD(StartMasterCMD)
-	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+	if config.RoomSetting.Ground != "" {
+		err = BashCMD(StartMasterCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = BashCMD(StartCavesCMD)

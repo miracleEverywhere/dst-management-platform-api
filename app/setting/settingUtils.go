@@ -12,7 +12,14 @@ import (
 	"time"
 )
 
-func clusterTemplate(base utils.RoomSettingBase) string {
+func clusterTemplate(config utils.Config) string {
+	var bindIP string
+	if !config.MultiHost {
+		bindIP = "127.0.0.1"
+	} else {
+		bindIP = "0.0.0.0"
+	}
+	base := config.RoomSetting.Base
 	contents := `
 [GAMEPLAY]
 game_mode = ` + base.GameMode + `
@@ -34,47 +41,60 @@ max_snapshots = ` + strconv.Itoa(base.BackDays) + `
 
 [SHARD]
 shard_enabled = true
-bind_ip = 127.0.0.1
-master_ip = 127.0.0.1
-master_port = 10889
-cluster_key = supersecretkey
+bind_ip = ` + bindIP + `
+master_ip = ` + base.ShardMasterIp + `
+master_port = ` + strconv.Itoa(base.ShardMasterPort) + `
+cluster_key = ` + base.ClusterKey + `
 `
 	return contents
 }
 
-func masterServerTemplate(port int) string {
+func masterServerTemplate(config utils.Config) string {
+	base := config.RoomSetting.Base
 	content := `
 [NETWORK]
-server_port = ` + strconv.Itoa(port) + `
+server_port = ` + strconv.Itoa(base.MasterPort) + `
 
 [SHARD]
 is_master = true
 
 [STEAM]
-master_server_port = 27018
-authentication_port = 8768
+master_server_port = ` + strconv.Itoa(base.SteamMasterPort) + `
+authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
 `
 	return content
 }
 
-func cavesServerTemplate(port int) string {
+func cavesServerTemplate(config utils.Config) string {
+	var (
+		SteamMasterPort         int
+		SteamAuthenticationPort int
+	)
+	if !config.MultiHost {
+		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort + 1
+		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort + 1
+	} else {
+		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort
+		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort
+	}
+	base := config.RoomSetting.Base
 	content := `
 [NETWORK]
-server_port = ` + strconv.Itoa(port) + `
+server_port = ` + strconv.Itoa(base.CavesPort) + `
 
 [SHARD]
 is_master = false
 name = Caves
 
 [STEAM]
-master_server_port = 27019
-authentication_port = 8769
+master_server_port = ` + strconv.Itoa(SteamMasterPort) + `
+authentication_port = ` + strconv.Itoa(SteamAuthenticationPort) + `
 `
 	return content
 }
 
 func saveSetting(config utils.Config) error {
-	clusterIniFileContent := clusterTemplate(config.RoomSetting.Base)
+	clusterIniFileContent := clusterTemplate(config)
 
 	//cluster.ini
 	err := utils.TruncAndWriteFile(utils.ServerSettingPath, clusterIniFileContent)
@@ -88,26 +108,41 @@ func saveSetting(config utils.Config) error {
 		return err
 	}
 
-	//Master/leveldataoverride.lua
-	err = utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
-	if err != nil {
-		return err
-	}
+	if config.RoomSetting.Ground != "" {
+		err = utils.EnsureDirExists(utils.ServerPath + utils.MasterName)
+		if err != nil {
+			utils.Logger.Error("创建Master目录失败", "err", err)
+		}
+		//Master/leveldataoverride.lua
+		err = utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
+		if err != nil {
+			return err
+		}
 
-	//Master/modoverrides.lua
-	err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-	if err != nil {
-		return err
-	}
+		//Master/modoverrides.lua
+		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+		if err != nil {
+			return err
+		}
 
-	//Master/server.ini
-	err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate(config.RoomSetting.Base.MasterPort))
-	if err != nil {
-		return err
+		//Master/server.ini
+		err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate(config))
+		if err != nil {
+			return err
+		}
+	} else {
+		err = utils.RemoveDir(utils.ServerPath + utils.MasterName)
+		if err != nil {
+			utils.Logger.Error("删除目录下文件失败", "err", err)
+		}
 	}
 
 	if config.RoomSetting.Cave != "" {
 		//Caves/leveldataoverride.lua
+		err = utils.EnsureDirExists(utils.ServerPath + utils.CavesName)
+		if err != nil {
+			utils.Logger.Error("创建Caves目录失败", "err", err)
+		}
 		err = utils.TruncAndWriteFile(utils.CavesSettingPath, config.RoomSetting.Cave)
 		if err != nil {
 			return err
@@ -118,41 +153,18 @@ func saveSetting(config utils.Config) error {
 			return err
 		}
 		//Caves/server.ini
-		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate(config.RoomSetting.Base.CavesPort))
+		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate(config))
 		if err != nil {
 			return err
+		}
+	} else {
+		err = utils.RemoveDir(utils.ServerPath + utils.CavesName)
+		if err != nil {
+			utils.Logger.Error("删除目录下文件失败", "err", err)
 		}
 	}
 
 	return nil
-}
-
-func restartWorld(c *gin.Context, config utils.Config, langStr string) {
-	var err error
-	//关闭Master进程
-	err = utils.BashCMD(utils.StopMasterCMD)
-	//关闭Caves进程
-	err = utils.BashCMD(utils.StopCavesCMD)
-	//等待3秒
-	time.Sleep(3 * time.Second)
-	//启动Master
-	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
-	err = cmdStartMaster.Run()
-	if err != nil {
-		utils.Logger.Error("启动地面失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
-	if config.RoomSetting.Cave != "" {
-		//启动Caves
-		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
-		err = cmdStartCaves.Run()
-		if err != nil {
-			utils.Logger.Error("启动洞穴失败", "err", err)
-			utils.RespondWithError(c, 500, langStr)
-			return
-		}
-	}
 }
 
 func generateWorld(c *gin.Context, config utils.Config, langStr string) {
@@ -201,9 +213,15 @@ func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 }
 
 func DstModsSetup() error {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
 	L := lua.NewState()
 	defer L.Close()
-	if err := L.DoFile(utils.MasterModPath); err != nil {
+	if err := L.DoString(config.RoomSetting.Mod); err != nil {
 		utils.Logger.Error("加载 Lua 文件失败:", "err", err)
 		return err
 	}

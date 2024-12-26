@@ -4,6 +4,7 @@ func Success(message string, lang string) string {
 	successZH := map[string]string{
 		"rollbackSuccess":     "回档成功",
 		"restartSuccess":      "重启成功",
+		"restartFail":         "重启失败",
 		"shutdownSuccess":     "关闭成功",
 		"startupSuccess":      "开启成功",
 		"updating":            "正在更新中，请耐心等待",
@@ -20,6 +21,7 @@ func Success(message string, lang string) string {
 	successEN := map[string]string{
 		"rollbackSuccess":     "Rollback Success",
 		"restartSuccess":      "Restart Success",
+		"restartFail":         "Restart Fail",
 		"shutdownSuccess":     "Shutdown Success",
 		"startupSuccess":      "Startup Success",
 		"updating":            "Updating, please wait patiently",

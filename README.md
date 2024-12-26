@@ -29,7 +29,7 @@ nohup ./dmp -c > dmp.log 2>&1 &
 # 修改端口为8888
 nohup ./dmp -c -l 8888 > dmp.log 2>&1 &
 ```
-也可以指定数据库文件的存储目录(You can also specify the storage directory for the database file)  
+也可以指定数据库文件的存储目录  
 ```shell
 # 开启控制台输出，监听8899端口，DstMP.sdb的存储位置为 ./config/DstMP.sdb
 nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &

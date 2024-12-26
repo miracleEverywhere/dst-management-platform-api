@@ -18,7 +18,7 @@ const ClearScreenCMD = "screen -wipe"
 
 const UpdateGameCMD = "cd ~/steamcmd ; ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit"
 
-const PlayersListCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
+const PlayersListMasterCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
 
 const PlayersListCavesCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s %s %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
 
@@ -46,7 +46,9 @@ const MasterLogPath = ServerPath + MasterName + "/server_log.txt"
 
 const CavesLogPath = ServerPath + CavesName + "/server_log.txt"
 
-const ChatLogPath = ServerPath + MasterName + "/server_chat_log.txt"
+const MasterChatLogPath = ServerPath + MasterName + "/server_chat_log.txt"
+
+const CavesChatLogPath = ServerPath + CavesName + "/server_chat_log.txt"
 
 const DMPLogPath = "./dmp.log"
 

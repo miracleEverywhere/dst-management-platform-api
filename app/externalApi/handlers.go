@@ -51,11 +51,22 @@ func handleConnectionCodeGet(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	var connectionCode string
-	if config.RoomSetting.Base.Password != "" {
-		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(config.RoomSetting.Base.MasterPort) + ", '" + config.RoomSetting.Base.Password + "')"
+
+	var (
+		connectionCode string
+		port           int
+	)
+
+	if config.RoomSetting.Ground != "" {
+		port = config.RoomSetting.Base.MasterPort
 	} else {
-		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(config.RoomSetting.Base.MasterPort) + ")"
+		port = config.RoomSetting.Base.CavesPort
+	}
+
+	if config.RoomSetting.Base.Password != "" {
+		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(port) + ", '" + config.RoomSetting.Base.Password + "')"
+	} else {
+		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(port) + ")"
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})

@@ -49,6 +49,16 @@ func handleRoomSettingSavePost(c *gin.Context) {
 		return
 	}
 	config.RoomSetting = roomSetting
+
+	// 配置单服务器节点数据库
+	if !config.MultiHost {
+		config.RoomSetting.Base.ShardMasterIp = "127.0.0.1"
+		config.RoomSetting.Base.ShardMasterPort = 10888
+		config.RoomSetting.Base.ClusterKey = "supersecretkey"
+		config.RoomSetting.Base.SteamMasterPort = 27018
+		config.RoomSetting.Base.SteamAuthenticationPort = 8768
+	}
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
@@ -104,7 +114,15 @@ func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 	}
-	restartWorld(c, config, langStr)
+
+	err = utils.StopGame()
+	if err != nil {
+		utils.Logger.Error("关闭游戏失败", "err", err)
+	}
+	err = utils.StartGame()
+	if err != nil {
+		utils.Logger.Error("启动游戏失败", "err", err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
 }
@@ -406,6 +424,18 @@ func handleModSettingFormatGet(c *gin.Context) {
 		langStr = strLang
 	}
 
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Ground == "" && config.RoomSetting.Cave == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+		return
+	}
+
 	luaScript, _ := utils.GetFileAllContent(utils.MasterModPath)
 
 	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
@@ -664,28 +694,59 @@ func handleEnableModPost(c *gin.Context) {
 		modDirPath       string
 		modFormattedData []utils.ModFormattedData
 	)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	if config.RoomSetting.Base.Name == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": []string{}})
+		return
+	}
+
+	// 复制mod文件至指定的dst目录
 	if enableForm.ISUGC {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
-		cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
-		cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
-		err := utils.BashCMD(cmdMaster)
-		if err != nil {
-			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+		if config.RoomSetting.Ground != "" {
+			err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+			}
+			cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
+			err := utils.BashCMD(cmdMaster)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+			}
 		}
-		err = utils.BashCMD(cmdCaves)
-		if err != nil {
-			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
+		if config.RoomSetting.Cave != "" {
+			err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+			}
+			cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
+			err = utils.BashCMD(cmdCaves)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
+			}
 		}
 	} else {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
+		err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID))
+		if err != nil {
+			utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+		}
 		cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID)
 		err = utils.BashCMD(cmd)
 		if err != nil {
 			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
 		}
 	}
+
 	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
 
 	// 获取新modoverrides.lua
@@ -705,12 +766,6 @@ func handleEnableModPost(c *gin.Context) {
 	modOverridesLua := utils.ParseToLua(b)
 
 	// 写入数据库
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
 	config.RoomSetting.Mod = modOverridesLua
 	err = utils.WriteConfig(config)
 	if err != nil {
@@ -718,13 +773,17 @@ func handleEnableModPost(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	//Master/modoverrides.lua
-	err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-	if err != nil {
-		utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
+
+	if config.RoomSetting.Ground != "" {
+		//Master/modoverrides.lua
+		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
 	}
+
 	if config.RoomSetting.Cave != "" {
 		//Caves/modoverrides.lua
 		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
@@ -740,8 +799,6 @@ func handleEnableModPost(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-
-	// 复制mod文件至指定的dst目录
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
 }
@@ -828,4 +885,50 @@ func handleDisableModPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": newModOverridesLua})
+}
+
+func handleGetMultiHostGet(c *gin.Context) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.MultiHost})
+}
+
+func handleChangeMultiHostPost(c *gin.Context) {
+	type MultiHostForm struct {
+		MultiHost bool `json:"multiHost"`
+	}
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var multiHostForm MultiHostForm
+	if err := c.ShouldBindJSON(&multiHostForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config.MultiHost = multiHostForm.MultiHost
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
 }

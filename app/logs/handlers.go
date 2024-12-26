@@ -9,6 +9,11 @@ import (
 )
 
 func handleLogGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
 	type LogForm struct {
 		Line int    `form:"line" json:"line"`
 		Type string `form:"type" json:"type"`
@@ -37,7 +42,19 @@ func handleLogGet(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
 	case "chat":
-		logsValue, err := getLastNLines(utils.ChatLogPath, logForm.Line)
+		config, err := utils.ReadConfig()
+		if err != nil {
+			utils.Logger.Error("配置文件读取失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+		var logsValue []string
+		if config.RoomSetting.Ground != "" {
+			logsValue, err = getLastNLines(utils.MasterChatLogPath, logForm.Line)
+		} else {
+			logsValue, err = getLastNLines(utils.CavesChatLogPath, logForm.Line)
+		}
+
 		if err != nil {
 			utils.Logger.Error("读取日志失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})

@@ -121,22 +121,29 @@ func handleExecPost(c *gin.Context) {
 		}
 		masterStatus := getProcessStatus(utils.MasterScreenName)
 		cavesStatus := getProcessStatus(utils.CavesScreenName)
-		if masterStatus == 0 {
-			err = utils.BashCMD(utils.StartMasterCMD)
-			if err != nil {
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartMasterCMD)
+
+		config, err := utils.ReadConfig()
+		if err != nil {
+			utils.Logger.Error("读取配置文件失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		if config.RoomSetting.Ground != "" {
+			if masterStatus == 0 {
+				err = utils.BashCMD(utils.StartMasterCMD)
+				if err != nil {
+					utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartMasterCMD)
+				}
 			}
 		}
-		if cavesStatus == 0 {
-			config, err := utils.ReadConfig()
-			if err != nil {
-				utils.Logger.Error("读取配置文件失败", "err", err)
-				utils.RespondWithError(c, 500, langStr)
-				return
-			}
-			if config.RoomSetting.Cave != "" {
-				err = utils.BashCMD(utils.StartCavesCMD)
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartCavesCMD)
+
+		if config.RoomSetting.Cave != "" {
+			if cavesStatus == 0 {
+				if config.RoomSetting.Cave != "" {
+					err = utils.BashCMD(utils.StartCavesCMD)
+					utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartCavesCMD)
+				}
 			}
 		}
 
@@ -153,120 +160,28 @@ func handleExecPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("rollbackSuccess", langStr), "data": nil})
 
 	case "shutdown":
-		cmd := "c_shutdown()"
-		err := utils.ScreenCMD(cmd, utils.MasterName)
+		err := utils.StopGame()
 		if err != nil {
-			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-		}
-		err = utils.ScreenCMD(cmd, utils.CavesName)
-		if err != nil {
-			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-		}
-		time.Sleep(2 * time.Second)
-		err = utils.BashCMD(utils.StopMasterCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StopMasterCMD)
-		}
-		err = utils.BashCMD(utils.StopCavesCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StopCavesCMD)
-		}
-		err = utils.BashCMD(utils.ClearScreenCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
+			utils.Logger.Error("关闭游戏失败", "err", err)
 		}
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
 
 	case "restart":
-		config, err := utils.ReadConfig()
+		err := utils.StopGame()
 		if err != nil {
-			utils.Logger.Error("读取配置文件失败", "err", err)
-			utils.RespondWithError(c, 500, langStr)
-			return
+			utils.Logger.Error("关闭游戏失败", "err", err)
 		}
-		cmd := "c_shutdown()"
-		err = utils.ScreenCMD(cmd, utils.MasterName)
+		err = utils.StartGame()
 		if err != nil {
-			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.ScreenCMD(cmd, utils.CavesName)
-			if err != nil {
-				utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-			}
-		}
-
-		time.Sleep(2 * time.Second)
-		err = utils.BashCMD(utils.StopMasterCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.BashCMD(utils.StopCavesCMD)
-			if err != nil {
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-			}
-		}
-
-		time.Sleep(1 * time.Second)
-		err = utils.BashCMD(utils.KillDST)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.KillDST)
-		}
-		err = utils.BashCMD(utils.ClearScreenCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-		}
-		err = utils.BashCMD(utils.StartMasterCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartMasterCMD)
-		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.BashCMD(utils.StartCavesCMD)
-			if err != nil {
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartCavesCMD)
-			}
+			utils.Logger.Error("启动游戏失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("restartFail", langStr), "data": nil})
 		}
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("restartSuccess", langStr), "data": nil})
 
 	case "update":
-		config, err := utils.ReadConfig()
+		err := utils.StopGame()
 		if err != nil {
-			utils.Logger.Error("读取配置文件失败", "err", err)
-			utils.RespondWithError(c, 500, langStr)
-			return
-		}
-		cmd := "c_shutdown()"
-		err = utils.ScreenCMD(cmd, utils.MasterName)
-		if err != nil {
-			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.ScreenCMD(cmd, utils.CavesName)
-			if err != nil {
-				utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-			}
-		}
-
-		time.Sleep(2 * time.Second)
-		err = utils.BashCMD(utils.StopMasterCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StopMasterCMD)
-		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.BashCMD(utils.StopCavesCMD)
-			if err != nil {
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StopCavesCMD)
-			}
-		}
-		time.Sleep(1 * time.Second)
-		err = utils.BashCMD(utils.KillDST)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.KillDST)
-		}
-		err = utils.BashCMD(utils.ClearScreenCMD)
-		if err != nil {
-			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
+			utils.Logger.Error("关闭游戏失败", "err", err)
 		}
 
 		go func() {
@@ -274,15 +189,9 @@ func handleExecPost(c *gin.Context) {
 			if err != nil {
 				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.UpdateGameCMD)
 			}
-			err = utils.BashCMD(utils.StartMasterCMD)
+			err = utils.StartGame()
 			if err != nil {
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartMasterCMD)
-			}
-			if config.RoomSetting.Cave != "" {
-				err = utils.BashCMD(utils.StartCavesCMD)
-				if err != nil {
-					utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StartCavesCMD)
-				}
+				utils.Logger.Error("启动游戏失败", "err", err)
 			}
 		}()
 
@@ -299,6 +208,13 @@ func handleExecPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("resetSuccess", langStr), "data": nil})
 
 	case "delete":
+		err := utils.StopGame()
+		if err != nil {
+			utils.Logger.Error("关闭游戏失败", "err", err)
+		}
+
+		time.Sleep(2 * time.Second)
+
 		errMaster := utils.RemoveDir(utils.MasterSavePath)
 		errCaves := utils.RemoveDir(utils.CavesSavePath)
 		if errMaster != nil {
@@ -421,7 +337,21 @@ func handleAnnouncementPost(c *gin.Context) {
 	}
 
 	cmd := "c_announce('" + announcementForm.Message + "')"
-	cmdErr := utils.ScreenCMD(cmd, utils.MasterName)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	var cmdErr error
+	if config.RoomSetting.Ground != "" {
+		cmdErr = utils.ScreenCMD(cmd, utils.MasterName)
+	} else {
+		cmdErr = utils.ScreenCMD(cmd, utils.CavesName)
+	}
+
 	if cmdErr != nil {
 		utils.Logger.Error("ScreenCMD执行失败", "err", cmdErr, "cmd", cmd)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("announceFail", langStr), "data": nil})
