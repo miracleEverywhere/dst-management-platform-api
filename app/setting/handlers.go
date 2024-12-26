@@ -704,6 +704,10 @@ func handleEnableModPost(c *gin.Context) {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
 		if config.RoomSetting.Ground != "" {
+			err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+			}
 			cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
 			err := utils.BashCMD(cmdMaster)
 			if err != nil {
@@ -711,6 +715,10 @@ func handleEnableModPost(c *gin.Context) {
 			}
 		}
 		if config.RoomSetting.Cave != "" {
+			err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+			}
 			cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
 			err = utils.BashCMD(cmdCaves)
 			if err != nil {
@@ -720,6 +728,10 @@ func handleEnableModPost(c *gin.Context) {
 	} else {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
+		err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID))
+		if err != nil {
+			utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+		}
 		cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID)
 		err = utils.BashCMD(cmd)
 		if err != nil {
