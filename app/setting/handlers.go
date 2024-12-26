@@ -114,7 +114,15 @@ func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 	}
-	restartWorld(c, config, langStr)
+
+	err = utils.StopGame()
+	if err != nil {
+		utils.Logger.Error("关闭游戏失败", "err", err)
+	}
+	err = utils.StartGame()
+	if err != nil {
+		utils.Logger.Error("启动游戏失败", "err", err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
 }
