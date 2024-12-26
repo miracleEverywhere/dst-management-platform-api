@@ -337,7 +337,21 @@ func handleAnnouncementPost(c *gin.Context) {
 	}
 
 	cmd := "c_announce('" + announcementForm.Message + "')"
-	cmdErr := utils.ScreenCMD(cmd, utils.MasterName)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	var cmdErr error
+	if config.RoomSetting.Ground != "" {
+		cmdErr = utils.ScreenCMD(cmd, utils.MasterName)
+	} else {
+		cmdErr = utils.ScreenCMD(cmd, utils.CavesName)
+	}
+
 	if cmdErr != nil {
 		utils.Logger.Error("ScreenCMD执行失败", "err", cmdErr, "cmd", cmd)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("announceFail", langStr), "data": nil})
