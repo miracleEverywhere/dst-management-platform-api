@@ -208,6 +208,13 @@ func handleExecPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("resetSuccess", langStr), "data": nil})
 
 	case "delete":
+		err := utils.StopGame()
+		if err != nil {
+			utils.Logger.Error("关闭游戏失败", "err", err)
+		}
+
+		time.Sleep(2 * time.Second)
+
 		errMaster := utils.RemoveDir(utils.MasterSavePath)
 		errCaves := utils.RemoveDir(utils.CavesSavePath)
 		if errMaster != nil {
