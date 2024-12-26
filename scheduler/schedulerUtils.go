@@ -12,12 +12,6 @@ import (
 )
 
 func setPlayer2DB() {
-	//config, err := utils.ReadConfig()
-	//if err != nil {
-	//	utils.Logger.Error("配置文件读取失败", "err", err)
-	//	return
-	//}
-
 	var players []string
 	config, err := utils.ReadConfig()
 	if err != nil {
@@ -168,8 +162,18 @@ func getPlayersList(world string) ([]string, error) {
 }
 
 func execAnnounce(content string) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
 	cmd := "c_announce('" + content + "')"
-	err := utils.ScreenCMD(cmd, utils.MasterName)
+	if config.RoomSetting.Ground != "" {
+		err = utils.ScreenCMD(cmd, utils.MasterName)
+	} else {
+		err = utils.ScreenCMD(cmd, utils.CavesName)
+	}
+
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
@@ -208,33 +212,44 @@ func checkUpdate() {
 }
 
 func doAnnounce() {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
+	var world string
+	if config.RoomSetting.Ground != "" {
+		world = utils.MasterName
+	} else {
+		world = utils.CavesName
+	}
 	// 重启前进行宣告
 	cmd := "c_announce('将在30分钟后自动重启服务器(The server will automatically restart in 30 minutes)')"
-	err := utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, world)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(10 * time.Minute)
 	cmd = "c_announce('将在20分钟后自动重启服务器(The server will automatically restart in 20 minutes)')"
-	err = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, world)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(10 * time.Minute)
 	cmd = "c_announce('将在10分钟后自动重启服务器(The server will automatically restart in 10 minutes)')"
-	err = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, world)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(5 * time.Minute)
 	cmd = "c_announce('将在5分钟后自动重启服务器(The server will automatically restart in 5 minutes)')"
-	err = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, world)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(4 * time.Minute)
 	cmd = "c_announce('将在1分钟后自动重启服务器(The server will automatically restart in 1 minute)')"
-	err = utils.ScreenCMD(cmd, utils.MasterName)
+	err = utils.ScreenCMD(cmd, world)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
