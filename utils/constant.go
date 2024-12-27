@@ -50,6 +50,10 @@ const MasterChatLogPath = ServerPath + MasterName + "/server_chat_log.txt"
 
 const CavesChatLogPath = ServerPath + CavesName + "/server_chat_log.txt"
 
+const MasterBackupChatLogPath = ServerPath + MasterName + "/backup/server_chat_log"
+
+const CavesBackupChatLogPath = ServerPath + CavesName + "/backup/server_chat_log"
+
 const DMPLogPath = "./dmp.log"
 
 const AdminListPath = ServerPath + "adminlist.txt"
