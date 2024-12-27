@@ -3,6 +3,7 @@ package logs
 import (
 	"dst-management-platform-api/utils"
 	"encoding/base64"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -111,4 +112,89 @@ func handleProcessLogPost(c *gin.Context) {
 
 	fileContentBase64 := base64.StdEncoding.EncodeToString(fileData)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": fileContentBase64})
+}
+
+func handleHistoricalLogFileGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	type LogForm struct {
+		Type string `form:"type" json:"type"`
+	}
+	type LogFileData struct {
+		Label string `json:"label"`
+		Value string `json:"value"`
+	}
+	var logForm LogForm
+	if err := c.ShouldBindQuery(&logForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	switch logForm.Type {
+	case "chat":
+		var (
+			logFiles []string
+			logPath  string
+		)
+		if config.RoomSetting.Ground != "" {
+			logPath = utils.MasterBackupChatLogPath
+		} else {
+			logPath = utils.CavesBackupChatLogPath
+		}
+		logFiles, err = utils.GetFiles(logPath)
+		if err != nil {
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		var data []LogFileData
+
+		for _, i := range logFiles {
+			var logFileData LogFileData
+			logFileData.Label = i
+			logFileData.Value = logPath + "/" + i
+			data = append(data, logFileData)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+	}
+}
+
+func handleHistoricalLogGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type LogForm struct {
+		File string `json:"file"`
+	}
+	var logForm LogForm
+	if err := c.ShouldBindQuery(&logForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fmt.Println(1, logForm.File)
+
+	data, err := utils.GetFileAllContent(logForm.File)
+	if err != nil {
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
