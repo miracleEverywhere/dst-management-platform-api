@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"io"
+	"io/fs"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -591,6 +592,24 @@ func EnsureDirExists(dirPath string) error {
 	return nil
 }
 
+// CheckDir 检查目录是否存在
+func CheckDir(dirPath string) bool {
+	if strings.HasPrefix(dirPath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			Logger.Error("无法获取 home 目录", "err", err)
+			return false
+		}
+		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+	}
+	_, err := os.Stat(dirPath)
+	if err != nil {
+		return false
+	} else {
+		return true
+	}
+}
+
 func FileDirectoryExists(filePath string) (bool, error) {
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
 	if strings.HasPrefix(filePath, "~") {
@@ -884,6 +903,27 @@ func GetDirs(dirPath string) ([]string, error) {
 		}
 	}
 	return dirs, nil
+}
+
+// GetFiles 递归地获取指定目录下的所有文件名
+func GetFiles(dirPath string) ([]string, error) {
+	var fileNames []string
+
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			fileNames = append(fileNames, d.Name())
+		}
+		return nil
+	})
+
+	if err != nil {
+		return []string{}, err
+	}
+
+	return fileNames, nil
 }
 
 func GetRoomSettingBase() (RoomSettingBase, error) {
