@@ -99,6 +99,16 @@ func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
 		return
 	}
 	config.RoomSetting = roomSetting
+
+	// 配置单服务器节点数据库
+	if !config.MultiHost {
+		config.RoomSetting.Base.ShardMasterIp = "127.0.0.1"
+		config.RoomSetting.Base.ShardMasterPort = 10888
+		config.RoomSetting.Base.ClusterKey = "supersecretkey"
+		config.RoomSetting.Base.SteamMasterPort = 27018
+		config.RoomSetting.Base.SteamAuthenticationPort = 8768
+	}
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
@@ -146,6 +156,16 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 		return
 	}
 	config.RoomSetting = roomSetting
+
+	// 配置单服务器节点数据库
+	if !config.MultiHost {
+		config.RoomSetting.Base.ShardMasterIp = "127.0.0.1"
+		config.RoomSetting.Base.ShardMasterPort = 10888
+		config.RoomSetting.Base.ClusterKey = "supersecretkey"
+		config.RoomSetting.Base.SteamMasterPort = 27018
+		config.RoomSetting.Base.SteamAuthenticationPort = 8768
+	}
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
