@@ -3,7 +3,6 @@ package logs
 import (
 	"dst-management-platform-api/utils"
 	"encoding/base64"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -166,20 +165,48 @@ func handleHistoricalLogFileGet(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	case "ground":
+		logFiles, err := utils.GetFiles(utils.MasterBackupLogPath)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []LogFileData{}})
+			return
+		}
+
+		var data []LogFileData
+
+		for _, i := range logFiles {
+			var logFileData LogFileData
+			logFileData.Label = i
+			logFileData.Value = utils.MasterBackupLogPath + "/" + i
+			data = append(data, logFileData)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	case "caves":
+		logFiles, err := utils.GetFiles(utils.CavesBackupLogPath)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []LogFileData{}})
+			return
+		}
+
+		var data []LogFileData
+
+		for _, i := range logFiles {
+			var logFileData LogFileData
+			logFileData.Label = i
+			logFileData.Value = utils.CavesBackupLogPath + "/" + i
+			data = append(data, logFileData)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 	}
 }
 
 func handleHistoricalLogGet(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-
 	type LogForm struct {
-		File string `json:"file"`
+		File string `form:"file" json:"file"`
 	}
 	var logForm LogForm
 	if err := c.ShouldBindQuery(&logForm); err != nil {
@@ -188,12 +215,13 @@ func handleHistoricalLogGet(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(1, logForm.File)
-
 	data, err := utils.GetFileAllContent(logForm.File)
 	if err != nil {
-		utils.RespondWithError(c, 500, langStr)
-		return
+		if err != nil {
+			utils.Logger.Error("读取日志失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": ""})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
