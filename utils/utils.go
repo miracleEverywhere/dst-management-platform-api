@@ -112,6 +112,7 @@ type Config struct {
 	Players      []Players      `json:"players"`
 	Statistics   []Statistics   `json:"statistics"`
 	Keepalive    Keepalive      `json:"keepalive"`
+	AnnouncedID  int            `json:"announcedID"`
 }
 
 type OSInfo struct {

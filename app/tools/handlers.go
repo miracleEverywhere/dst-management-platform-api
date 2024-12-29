@@ -575,3 +575,41 @@ func handleCreateTokenPost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
 }
+
+func handleAnnouncedGet(c *gin.Context) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": 0})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": config.AnnouncedID})
+}
+
+func handleAnnouncedPost(c *gin.Context) {
+	type AnnouncedForm struct {
+		ID int `json:"id"`
+	}
+	var announcedForm AnnouncedForm
+	if err := c.ShouldBindJSON(&announcedForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": err, "data": nil})
+		return
+	}
+
+	config.AnnouncedID = announcedForm.ID
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": err, "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "", "data": nil})
+}
