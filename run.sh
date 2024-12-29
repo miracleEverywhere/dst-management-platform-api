@@ -52,6 +52,7 @@ function check_glibc() {
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
         if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34; then
+            apt update
             apt install -y libc6
         fi
     else
