@@ -31,7 +31,15 @@ func handleRoomInfoGet(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("读取mod数量失败", "err", err)
 	}
-	filePath, err := findLatestMetaFile(utils.MetaPath)
+
+	var filePath string
+
+	if config.RoomSetting.Ground != "" {
+		filePath, err = findLatestMetaFile(utils.MasterMetaPath)
+	} else {
+		filePath, err = findLatestMetaFile(utils.CavesMetaPath)
+	}
+
 	if err != nil {
 		utils.Logger.Error("查询session-meta文件失败", "err", err)
 	}
