@@ -68,7 +68,9 @@ const WhiteListPath = ServerPath + "whitelist.txt"
 
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
-const MetaPath = ServerPath + MasterName + "/save/session"
+const MasterMetaPath = ServerPath + MasterName + "/save/session"
+
+const CavesMetaPath = ServerPath + CavesName + "/save/session"
 
 const DSTLocalVersionPath = "dst/version.txt"
 
