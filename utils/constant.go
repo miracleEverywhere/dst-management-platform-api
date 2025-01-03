@@ -103,3 +103,5 @@ const CavesModUgcPath = "dst/ugc_mods/MyDediServer/Caves/content/322330"
 const ModNoUgcPath = "dst/mods"
 
 const ModDownloadPath = ".klei/DMP_MOD"
+
+const NicknameUIDPath = ServerPath + "uid_map.json"
