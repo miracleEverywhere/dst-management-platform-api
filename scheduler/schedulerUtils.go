@@ -402,3 +402,34 @@ func doKeepalive() {
 		}
 	}
 }
+
+func maintainUidMap() {
+	uidMap, err := utils.ReadUidMap()
+	if err != nil {
+		return
+	}
+
+	if len(utils.STATISTICS) < 2 {
+		return
+	}
+
+	currentPlaylist := utils.STATISTICS[len(utils.STATISTICS)-1].Players
+
+	for _, i := range currentPlaylist {
+		uid := i.UID
+		nickname := i.NickName
+
+		value, exists := uidMap[uid]
+		if exists {
+			if value != nickname {
+				uidMap[uid] = nickname
+			}
+		} else {
+			uidMap[uid] = nickname
+		}
+	}
+
+	fmt.Println(uidMap)
+
+	_ = utils.WriteUidMap(uidMap)
+}
