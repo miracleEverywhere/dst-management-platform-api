@@ -25,7 +25,7 @@ import (
 
 var (
 	STATISTICS []Statistics
-	// flag绑定的变量
+	// BindPort flag绑定的变量
 	BindPort      int
 	ConsoleOutput bool
 	VersionShow   bool
@@ -257,6 +257,43 @@ func WriteConfig(config Config) error {
 	return nil
 }
 
+func ReadUidMap() (map[string]interface{}, error) {
+	uidMap := make(map[string]interface{})
+	content, err := os.ReadFile(NicknameUIDPath)
+	if err != nil {
+		return uidMap, err
+	}
+	jsonData := string(content)
+	err = json.Unmarshal([]byte(jsonData), &uidMap)
+	if err != nil {
+		return uidMap, fmt.Errorf("解析 JSON 失败: %w", err)
+	}
+	return uidMap, nil
+}
+
+func WriteUidMap(uidMap map[string]interface{}) error {
+	data, err := json.MarshalIndent(uidMap, "", "    ") // 格式化输出
+	if err != nil {
+		return fmt.Errorf("Error marshalling JSON:" + err.Error())
+	}
+	file, err := os.OpenFile(NicknameUIDPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return fmt.Errorf("Error opening file:" + err.Error())
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file) // 在函数结束时关闭文件
+	// 写入 JSON 数据到文件
+	_, err = file.Write(data)
+	if err != nil {
+		return fmt.Errorf("Error writing to file:" + err.Error())
+	}
+	return nil
+}
+
 func CreateManualInstallScript() {
 	//创建手动安装脚本
 	err := TruncAndWriteFile("manual_install.sh", ManualInstall)
@@ -321,6 +358,34 @@ func CheckDirs() {
 		Logger.Error("创建Caves Mod目录失败", "err", err)
 	} else {
 		Logger.Info("Caves Mod目录检查完成")
+	}
+
+}
+
+func CheckFiles() {
+	var (
+		err   error
+		exist bool
+	)
+	exist, err = FileDirectoryExists(NicknameUIDPath)
+	if err != nil {
+		Logger.Error("检查uid_map.json文件失败")
+		return
+	} else {
+		if exist {
+			return
+		} else {
+			err = EnsureFileExists(NicknameUIDPath)
+			if err != nil {
+				Logger.Error("创建uid_map.json文件失败")
+			} else {
+				err = TruncAndWriteFile(NicknameUIDPath, "{}")
+				if err != nil {
+					Logger.Error("初始化uid_map.json文件失败")
+				}
+				Logger.Info("uid_map.json文件检查完成")
+			}
+		}
 	}
 
 }
@@ -536,6 +601,7 @@ func BashCMD(cmd string) error {
 	return nil
 }
 
+// UniqueSliceKeepOrderString 从一个字符串切片中移除重复的元素，并保持元素的原始顺序
 func UniqueSliceKeepOrderString(slice []string) []string {
 	encountered := map[string]bool{}
 	var result []string
@@ -588,6 +654,28 @@ func EnsureDirExists(dirPath string) error {
 	} else if err != nil {
 		// 其他错误
 		return fmt.Errorf("检查目录时出错: %w", err)
+	}
+
+	return nil
+}
+
+// EnsureFileExists 检查文件是否存在，如果不存在则创建空文件
+func EnsureFileExists(filePath string) error {
+	// 检查文件是否存在
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		// 文件不存在，创建一个空文件
+		file, err := os.Create(filePath)
+		if err != nil {
+			return err
+		}
+		err = file.Close()
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		// 其他错误
+		return err
 	}
 
 	return nil
