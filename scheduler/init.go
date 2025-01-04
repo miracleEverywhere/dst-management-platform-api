@@ -14,6 +14,14 @@ func InitTasks() {
 	_, _ = Scheduler.Every(30).Seconds().Do(setPlayer2DB)
 	utils.Logger.Info("玩家列表定时任务已配置")
 
+	// 维护UID字典
+	_, _ = Scheduler.Every(5).Minute().Do(maintainUidMap)
+	utils.Logger.Info("UID字典定时维护任务已配置")
+
+	// 系统监控
+	_, _ = Scheduler.Every(30).Seconds().Do(getSysMetrics)
+	utils.Logger.Info("系统监控定时任务已配置")
+
 	//初始化定时通知
 	config, err := utils.ReadConfig()
 	if err != nil {

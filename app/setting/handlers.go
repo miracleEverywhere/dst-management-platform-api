@@ -189,10 +189,11 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 
 func handlePlayerListGet(c *gin.Context) {
 	type PlayerList struct {
-		Players   []utils.Players `json:"players"`
-		AdminList []string        `json:"adminList"`
-		BlockList []string        `json:"blockList"`
-		WhiteList []string        `json:"whiteList"`
+		Players   []utils.Players        `json:"players"`
+		AdminList []string               `json:"adminList"`
+		BlockList []string               `json:"blockList"`
+		WhiteList []string               `json:"whiteList"`
+		UidMap    map[string]interface{} `json:"uidMap"`
 	}
 
 	//config, err := utils.ReadConfig()
@@ -205,12 +206,15 @@ func handlePlayerListGet(c *gin.Context) {
 	blockList := getList(utils.BlockListPath)
 	whiteList := getList(utils.WhiteListPath)
 
+	uidMap, _ := utils.ReadUidMap()
+
 	var playList PlayerList
 	//playList.Players = config.Players
 	playList.Players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
 	playList.AdminList = adminList
 	playList.BlockList = blockList
 	playList.WhiteList = whiteList
+	playList.UidMap = uidMap
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playList})
 }

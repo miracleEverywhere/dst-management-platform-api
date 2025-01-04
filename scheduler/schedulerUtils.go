@@ -402,3 +402,64 @@ func doKeepalive() {
 		}
 	}
 }
+
+func maintainUidMap() {
+	uidMap, err := utils.ReadUidMap()
+	if err != nil {
+		return
+	}
+
+	if len(utils.STATISTICS) < 2 {
+		return
+	}
+
+	currentPlaylist := utils.STATISTICS[len(utils.STATISTICS)-1].Players
+
+	for _, i := range currentPlaylist {
+		uid := i.UID
+		nickname := i.NickName
+
+		value, exists := uidMap[uid]
+		if exists {
+			if value != nickname {
+				uidMap[uid] = nickname
+			}
+		} else {
+			uidMap[uid] = nickname
+		}
+	}
+
+	fmt.Println(uidMap)
+
+	_ = utils.WriteUidMap(uidMap)
+}
+
+func getSysMetrics() {
+	cpu, err := utils.CpuUsage()
+	if err != nil {
+		return
+	}
+	mem, err := utils.MemoryUsage()
+	if err != nil {
+		return
+	}
+	netUplink, netDownlink, err := utils.NetStatus()
+	if err != nil {
+		return
+	}
+	currentTime := utils.GetTimestamp()
+
+	var metrics utils.SysMetrics
+	metrics.Timestamp = currentTime
+	metrics.Cpu = cpu
+	metrics.Memory = mem
+	metrics.NetUplink = netUplink
+	metrics.NetDownlink = netDownlink
+
+	metricsLength := len(utils.SYS_METRICS)
+
+	if metricsLength > 720 {
+		utils.SYS_METRICS = append(utils.SYS_METRICS[:0], utils.SYS_METRICS[1:]...)
+	}
+	utils.SYS_METRICS = append(utils.SYS_METRICS, metrics)
+}

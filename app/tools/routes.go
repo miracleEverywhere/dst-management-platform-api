@@ -30,21 +30,23 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.DELETE("/backup/multi", utils.MWtoken(), handleMultiDelete)
 			tools.POST("/backup/restore", utils.MWtoken(), handleBackupRestore)
 			tools.POST("/backup/download", utils.MWtoken(), handleBackupDownload)
-			//MOD
+			// MOD
 			//tools.POST("/mod/install/all", utils.MWtoken(), handleDownloadModManualPost)
 			// 统计信息
 			tools.GET("/statistics", utils.MWtoken(), handleStatisticsGet)
 			// 自动保活
 			tools.GET("/keepalive", utils.MWtoken(), handleKeepaliveGet)
 			tools.PUT("/keepalive", utils.MWtoken(), handleKeepalivePut)
-			//帮助页面替换steam so文件
-			//不想再开一个router了，就塞在tools里，后续官方修复后会删除
+			// 帮助页面替换steam so文件
+			// 不想再开一个router了，就塞在tools里，后续官方修复后会删除
 			tools.POST("/replace_so", utils.MWtoken(), handleReplaceDSTSOFile)
-			//令牌
+			// 令牌
 			tools.POST("/token", utils.MWtoken(), handleCreateTokenPost)
-			//已读messageID
+			// 已读messageID
 			tools.GET("/announced_id", utils.MWtoken(), handleAnnouncedGet)
 			tools.POST("/announced_id", utils.MWtoken(), handleAnnouncedPost)
+			// 监控
+			tools.GET("/metrics", utils.MWtoken(), handleMetricsGet)
 		}
 	}
 

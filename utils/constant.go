@@ -68,7 +68,9 @@ const WhiteListPath = ServerPath + "whitelist.txt"
 
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
-const MetaPath = ServerPath + MasterName + "/save/session"
+const MasterMetaPath = ServerPath + MasterName + "/save/session"
+
+const CavesMetaPath = ServerPath + CavesName + "/save/session"
 
 const DSTLocalVersionPath = "dst/version.txt"
 
@@ -101,3 +103,5 @@ const CavesModUgcPath = "dst/ugc_mods/MyDediServer/Caves/content/322330"
 const ModNoUgcPath = "dst/mods"
 
 const ModDownloadPath = ".klei/DMP_MOD"
+
+const NicknameUIDPath = ServerPath + "uid_map.json"
