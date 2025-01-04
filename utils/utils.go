@@ -11,6 +11,7 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/net"
 	"io"
 	"io/fs"
 	"math/rand"
@@ -24,7 +25,10 @@ import (
 )
 
 var (
+	// STATISTICS 玩家统计
 	STATISTICS []Statistics
+	// SYS_METRICS 系统监控
+	SYS_METRICS []SysMetrics
 	// BindPort flag绑定的变量
 	BindPort      int
 	ConsoleOutput bool
@@ -90,6 +94,14 @@ type Statistics struct {
 	Timestamp int64     `json:"timestamp"`
 	Num       int       `json:"num"`
 	Players   []Players `json:"players"`
+}
+
+type SysMetrics struct {
+	Timestamp   int64   `json:"timestamp"`
+	Cpu         float64 `json:"cpu"`
+	Memory      float64 `json:"memory"`
+	NetUplink   float64 `json:"netUplink"`
+	NetDownlink float64 `json:"netDownlink"`
 }
 
 type Keepalive struct {
@@ -513,6 +525,54 @@ func MemoryUsage() (float64, error) {
 		return 0, fmt.Errorf("error getting virtual memory info: %w", err)
 	}
 	return vmStat.UsedPercent, nil
+}
+
+func NetStatus() (float64, float64, error) {
+	// 获取初始的网络统计信息
+	initialCounters, err := net.IOCounters(true)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error getting initial network counters: %v", err)
+	}
+
+	// 记录初始时间
+	initialTime := time.Now()
+
+	// 等待0.5秒
+	time.Sleep(500 * time.Millisecond)
+
+	// 获取新的网络统计信息
+	newCounters, err := net.IOCounters(true)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error getting new network counters: %v", err)
+	}
+
+	// 记录新时间
+	newTime := time.Now()
+
+	// 计算时间差（秒）
+	timeDiff := newTime.Sub(initialTime).Seconds()
+
+	// 计算所有接口的总数据
+	var (
+		totalSentBytes float64
+		totalRecvBytes float64
+	)
+	for i, counter := range newCounters {
+		if i < len(initialCounters) {
+			sentBytes := float64(counter.BytesSent - initialCounters[i].BytesSent)
+			recvBytes := float64(counter.BytesRecv - initialCounters[i].BytesRecv)
+			totalSentBytes += sentBytes
+			totalRecvBytes += recvBytes
+		}
+	}
+
+	// 计算总数据速率（KB/s）
+	totalSentKB := totalSentBytes / 1024.0
+	totalUplinkKBps := totalSentKB / timeDiff
+	totalRecvKB := totalRecvBytes / 1024.0
+	totalDownlinkKBps := totalRecvKB / timeDiff
+
+	return totalUplinkKBps, totalDownlinkKBps, nil
 }
 
 func DiskUsage() (float64, error) {
