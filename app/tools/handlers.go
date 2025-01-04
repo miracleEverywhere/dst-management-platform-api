@@ -613,3 +613,44 @@ func handleAnnouncedPost(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "", "data": nil})
 }
+
+func handleMetricsGet(c *gin.Context) {
+	type MetricsForm struct {
+		// TimeRange 必须是分钟数
+		TimeRange int `form:"timeRange" json:"timeRange"`
+	}
+	var metricsForm MetricsForm
+	if err := c.ShouldBindQuery(&metricsForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	metricsLength := len(utils.SYS_METRICS)
+	var metrics []utils.SysMetrics
+
+	switch metricsForm.TimeRange {
+	case 30:
+		if metricsLength <= 60 {
+			metrics = utils.SYS_METRICS
+		} else {
+			metrics = utils.SYS_METRICS[len(utils.SYS_METRICS)-60:]
+		}
+	case 60:
+		if metricsLength <= 120 {
+			metrics = utils.SYS_METRICS
+		} else {
+			metrics = utils.SYS_METRICS[len(utils.SYS_METRICS)-120:]
+		}
+	case 180:
+		if metricsLength <= 360 {
+			metrics = utils.SYS_METRICS
+		} else {
+			metrics = utils.SYS_METRICS[len(utils.SYS_METRICS)-360:]
+		}
+	default:
+		metrics = utils.SYS_METRICS
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": metrics})
+}
