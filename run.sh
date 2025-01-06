@@ -210,7 +210,7 @@ while true; do
         get_current_version
         get_latest_version
         if [[ "$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | head -n1)" == "$CURRENT_VERSION" && "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
-			echo -e "\e[33m当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version) \e[0m"
+            echo -e "\e[33m当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version) \e[0m"
             stop_dmp
             clear_dmp
             check_glibc
