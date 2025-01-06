@@ -206,7 +206,7 @@ while true; do
         echo -e "\e[32m重启成功 (Restart Success) \e[0m"
         break
         ;;
-	 4)
+    4)
 		get_current_version
 		get_latest_version
 		if [[ "$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | head -n1)" == "$CURRENT_VERSION" && "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
