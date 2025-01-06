@@ -21,6 +21,34 @@ if [[ "${USER}" != "root" ]]; then
     exit 1
 fi
 
+#设置虚拟内存
+settingSwap() {
+# 创建一个2GB的交换文件
+SWAPFILE=/swapfile
+SWAPSIZE=2G
+
+# 检查是否已经存在交换文件
+if [ -f $SWAPFILE ]; then
+    echo "交换文件已存在，跳过创建步骤。"
+else
+    echo "创建交换文件..."
+    sudo fallocate -l $SWAPSIZE $SWAPFILE
+    sudo chmod 600 $SWAPFILE
+    sudo mkswap $SWAPFILE
+    sudo swapon $SWAPFILE
+    echo "交换文件创建并启用成功。"
+fi
+
+# 添加到 /etc/fstab 以便开机启动
+if ! grep -q "$SWAPFILE" /etc/fstab; then
+    echo "将交换文件添加到 /etc/fstab..."
+    echo "$SWAPFILE none swap sw 0 0" | sudo tee -a /etc/fstab
+    echo "交换文件已添加到开机启动。"
+else
+    echo "交换文件已在 /etc/fstab 中，跳过添加步骤。"
+fi
+}
+
 # 定义一个函数来提示用户输入
 function prompt_user() {
     echo -e "\e[33m请输入需要执行的操作(Please enter the operation to be performed): \e[0m"
@@ -30,6 +58,7 @@ function prompt_user() {
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
     echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
     echo -e "\e[32m[5]: 强制更新(Mandatory update) \e[0m"
+    echo -e "\e[32m[6]: 设置虚拟内存(Set up swap) \e[0m"
 }
 
 # 检查jq
@@ -233,8 +262,12 @@ while true; do
         echo -e "\e[32m强制更新完成 (Reinstallation completed) \e[0m"
         break
         ;;
+    6)
+        settingSwap  # 调用设置虚拟内存的函数
+        break
+        ;;
     *)
-        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4, 5 (Invalid input, please enter 0, 1, 2, 3, 4, 5) \e[0m"
+        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4, 5, 6 (Invalid input, please enter 0, 1, 2, 3, 4, 5, 6) \e[0m"
         continue
         ;;
     esac

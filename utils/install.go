@@ -82,6 +82,8 @@ cd $STEAM_DIR
 ./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit
 
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
+# 修复MOD更新bug
+cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/
 # 初始化一些目录和文件
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
