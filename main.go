@@ -17,7 +17,7 @@ import (
 	"runtime"
 )
 
-const VERSION string = "1.1.2"
+const VERSION string = "1.1.3"
 
 //go:embed dist
 var EmbedFS embed.FS
