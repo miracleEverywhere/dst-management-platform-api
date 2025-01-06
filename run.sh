@@ -230,7 +230,7 @@ while true; do
         install_dmp
         start_dmp
         check_dmp
-        echo -e "\e[32m重装完成 (Reinstallation completed) \e[0m"
+        echo -e "\e[32m强制更新完成 (Reinstallation completed) \e[0m"
         break
         ;;
     *)
