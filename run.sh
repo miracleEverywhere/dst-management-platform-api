@@ -21,34 +21,6 @@ if [[ "${USER}" != "root" ]]; then
     exit 1
 fi
 
-#设置虚拟内存
-settingSwap() {
-# 创建一个2GB的交换文件
-SWAPFILE=/swapfile
-SWAPSIZE=2G
-
-# 检查是否已经存在交换文件
-if [ -f $SWAPFILE ]; then
-    echo "交换文件已存在，跳过创建步骤。"
-else
-    echo "创建交换文件..."
-    sudo fallocate -l $SWAPSIZE $SWAPFILE
-    sudo chmod 600 $SWAPFILE
-    sudo mkswap $SWAPFILE
-    sudo swapon $SWAPFILE
-    echo "交换文件创建并启用成功。"
-fi
-
-# 添加到 /etc/fstab 以便开机启动
-if ! grep -q "$SWAPFILE" /etc/fstab; then
-    echo "将交换文件添加到 /etc/fstab..."
-    echo "$SWAPFILE none swap sw 0 0" | sudo tee -a /etc/fstab
-    echo "交换文件已添加到开机启动。"
-else
-    echo "交换文件已在 /etc/fstab 中，跳过添加步骤。"
-fi
-}
-
 # 定义一个函数来提示用户输入
 function prompt_user() {
     echo -e "\e[33m请输入需要执行的操作(Please enter the operation to be performed): \e[0m"
@@ -160,8 +132,6 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
-    echo -e "\e[33m请输入dmp暴露端口，即网页打开时所用的端口 (Please enter the port for dmp, which is the port used to access the webpage): \e[0m"
-    read -r PORT
     if [ -e "$ExeFile" ]; then
         nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     else
@@ -198,6 +168,34 @@ function get_latest_version() {
     if [[ -z "$LATEST_VERSION" ]]; then
         echo -e "\e[31m无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API) \e[0m"
         exit 1
+    fi
+}
+
+#设置虚拟内存
+function set_swap() {
+    # 创建一个2GB的交换文件
+    SWAPFILE=/swapfile
+    SWAPSIZE=2G
+
+    # 检查是否已经存在交换文件
+    if [ -f $SWAPFILE ]; then
+        echo -e "\e[32m交换文件已存在，跳过创建步骤 \e[0m"
+    else
+        echo -e "\e[36m创建交换文件... \e[0m"
+        sudo fallocate -l $SWAPSIZE $SWAPFILE
+        sudo chmod 600 $SWAPFILE
+        sudo mkswap $SWAPFILE
+        sudo swapon $SWAPFILE
+        echo -e "\e[32m交换文件创建并启用成功 \e[0m"
+    fi
+
+    # 添加到 /etc/fstab 以便开机启动
+    if ! grep -q "$SWAPFILE" /etc/fstab; then
+        echo -e "\e[36m将交换文件添加到 /etc/fstab  \e[0m"
+        echo "$SWAPFILE none swap sw 0 0" | sudo tee -a /etc/fstab
+        echo -e "\e[32m交换文件已添加到开机启动 \e[0m"
+    else
+        echo -e "\e[32m交换文件已在 /etc/fstab 中，跳过添加步骤 \e[0m"
     fi
 }
 
@@ -259,11 +257,11 @@ while true; do
         install_dmp
         start_dmp
         check_dmp
-        echo -e "\e[32m强制更新完成 (Reinstallation completed) \e[0m"
+        echo -e "\e[32m强制更新完成 (Force update completed) \e[0m"
         break
         ;;
     6)
-        settingSwap  # 调用设置虚拟内存的函数
+        set_swap # 调用设置虚拟内存的函数
         break
         ;;
     *)
