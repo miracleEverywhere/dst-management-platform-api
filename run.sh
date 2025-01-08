@@ -48,6 +48,20 @@ function check_jq() {
     fi
 }
 
+function check_curl() {
+    echo -e "\e[36m正在检查curl命令(Checking curl command) \e[0m"
+    if ! curl --version >/dev/null 2>&1; then
+            OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+            if [[ ${OS} == "ubuntu" ]]; then
+                apt install -y curl
+            else
+                if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+                    yum install -y curl
+                fi
+            fi
+        fi
+}
+
 # Ubuntu检查GLIBC, rhel需要下载文件手动安装
 function check_glibc() {
     echo -e "\e[36m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
@@ -76,6 +90,7 @@ function download() {
 # 安装主程序
 function install_dmp() {
     check_jq
+    check_curl
     # 原GitHub下载链接
     GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
@@ -132,6 +147,7 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
+    check_glibc
     if [ -e "$ExeFile" ]; then
         nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     else
@@ -209,14 +225,12 @@ while true; do
     case $command in
     0)
         clear_dmp
-        check_glibc
         install_dmp
         start_dmp
         check_dmp
         break
         ;;
     1)
-        check_glibc
         start_dmp
         check_dmp
         break
@@ -227,7 +241,6 @@ while true; do
         ;;
     3)
         stop_dmp
-        check_glibc
         start_dmp
         check_dmp
         echo -e "\e[32m重启成功 (Restart Success) \e[0m"
@@ -240,7 +253,6 @@ while true; do
             echo -e "\e[33m当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version) \e[0m"
             stop_dmp
             clear_dmp
-            check_glibc
             install_dmp
             start_dmp
             check_dmp
@@ -253,7 +265,6 @@ while true; do
     5)
         stop_dmp
         clear_dmp
-        check_glibc
         install_dmp
         start_dmp
         check_dmp
