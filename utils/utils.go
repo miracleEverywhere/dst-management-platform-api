@@ -143,6 +143,7 @@ type Config struct {
 	Keepalive    Keepalive      `json:"keepalive"`
 	AnnouncedID  int            `json:"announcedID"`
 	SysSetting   SysSetting     `json:"sysSetting"`
+	Bit64        bool           `json:"bit64"`
 }
 
 type OSInfo struct {
