@@ -31,6 +31,7 @@ vote_kick_enabled = ` + strconv.FormatBool(base.Vote) + `
 
 [NETWORK]
 cluster_description = ` + base.Description + `
+whitelist_slots = 0
 cluster_name = ` + base.Name + `
 cluster_password = ` + base.Password + `
 cluster_language = zh
@@ -250,7 +251,7 @@ func getList(filepath string) []string {
 	// 预留位 黑名单 管理员
 	al, err := readLines(filepath)
 	if err != nil {
-		utils.Logger.Error("获取失败", "err", err, "file", filepath)
+		utils.Logger.Error("读取文件失败", "err", err, "file", filepath)
 		return []string{}
 	}
 	var uidList []string
@@ -457,4 +458,53 @@ func clearUpZipFile() {
 	if err != nil {
 		utils.Logger.Error("清理导入的压缩文件失败", "err", err)
 	}
+}
+
+func changeWhitelistSlots() error {
+	err := utils.EnsureFileExists(utils.WhiteListPath)
+	if err != nil {
+		utils.Logger.Error("打开白名单失败")
+		return err
+	}
+
+	fileContent, err := readLines(utils.WhiteListPath)
+	if err != nil {
+		utils.Logger.Error("读取白名单失败")
+		return err
+	}
+
+	var whiteList []string
+	for _, i := range fileContent {
+		uid := strings.TrimSpace(i)
+		if uid != "" {
+			whiteList = append(whiteList, uid)
+		}
+	}
+
+	clusterIniContent, err := readLines(utils.ServerSettingPath)
+	if err != nil {
+		utils.Logger.Error("读取cluster.ini失败")
+		return err
+	}
+
+	var newClusterIni []string
+
+	for _, i := range clusterIniContent {
+		line := strings.TrimSpace(i)
+		if strings.HasPrefix(line, "cluster_name") {
+			newClusterIni = append(newClusterIni, "whitelist_slots = "+strconv.Itoa(len(whiteList)))
+		}
+		if strings.HasPrefix(line, "whitelist_slots") {
+			continue
+		}
+		newClusterIni = append(newClusterIni, line)
+	}
+
+	err = writeLines(utils.ServerSettingPath, newClusterIni)
+	if err != nil {
+		utils.Logger.Error("写入cluster.ini失败")
+		return err
+	}
+
+	return nil
 }

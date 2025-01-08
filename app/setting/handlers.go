@@ -279,6 +279,13 @@ func handleWhiteAddPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
 		return
 	}
+	err = changeWhitelistSlots()
+	if err != nil {
+		utils.Logger.Error("添加白名单失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhite", langStr), "data": nil})
 }
 
@@ -342,6 +349,13 @@ func handleWhiteDeletePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteWhiteFail", langStr), "data": nil})
 		return
 	}
+	err = changeWhitelistSlots()
+	if err != nil {
+		utils.Logger.Error("删除白名单失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteWhite", langStr), "data": nil})
 }
 
@@ -436,6 +450,10 @@ func handleImportFileUploadPost(c *gin.Context) {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
 		return
+	}
+	err = changeWhitelistSlots()
+	if err != nil {
+		utils.Logger.Error("配置白名单失败", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
