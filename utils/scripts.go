@@ -110,10 +110,24 @@ do
 done
 
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
+
+# 解决无法自动下载MOD的问题
+# 备份
+mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak
+mv ~/dst/steamclient.so ~/dst/steamclient.so.bak
+# 替换
+cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so
+cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so
+
 # 初始化一些目录和文件
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
 mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
+mkdir -p ${DST_SETTING_DIR}/DMP_MOD/not_ugc
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Master/content/322330
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Caves/content/322330
+# UID MAP
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/uid_map.json
 # 管理员
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
 # 黑名单

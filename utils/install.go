@@ -95,6 +95,11 @@ cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
 mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
+mkdir -p ${DST_SETTING_DIR}/DMP_MOD/not_ugc
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Master/content/322330
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Caves/content/322330
+# UID MAP
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/uid_map.json
 # 管理员
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
 # 黑名单
