@@ -974,3 +974,21 @@ func handleChangeMultiHostPost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
 }
+
+func handleSystemSettingGet(c *gin.Context) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var data SystemSettingForm
+	data.SysMetricsGet = config.SysSetting.SchedulerSetting.SysMetricsGet
+	data.PlayerGetFrequency = config.SysSetting.SchedulerSetting.PlayerGetFrequency
+	data.UIDMaintain = config.SysSetting.SchedulerSetting.UIDMaintain
+	data.KeepaliveFrequency = config.Keepalive.Frequency
+	data.Bit64 = config.Bit64
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}

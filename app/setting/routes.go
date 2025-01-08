@@ -37,6 +37,8 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/mod/enable", utils.MWtoken(), handleEnableModPost)
 			setting.POST("/mod/disable", utils.MWtoken(), handleDisableModPost)
 			setting.POST("/mod/config/change", utils.MWtoken(), handleModConfigChangePost)
+			// System
+			setting.GET("/system/setting", utils.MWtoken(), handleSystemSettingGet)
 		}
 	}
 

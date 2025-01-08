@@ -508,3 +508,11 @@ func changeWhitelistSlots() error {
 
 	return nil
 }
+
+type SystemSettingForm struct {
+	KeepaliveFrequency int                        `json:"keepaliveFrequency"`
+	PlayerGetFrequency int                        `json:"playerGetFrequency"`
+	UIDMaintain        utils.SchedulerSettingItem `json:"UIDMaintain"`
+	SysMetricsGet      utils.SchedulerSettingItem `json:"sysMetricsGet"`
+	Bit64              bool                       `json:"bit64"`
+}
