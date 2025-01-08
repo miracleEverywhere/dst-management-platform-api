@@ -346,7 +346,7 @@ func handleMenu(c *gin.Context) {
 		{
 			MenuId:      10207,
 			MenuName:    "系统监控",
-			EnName:      "Token",
+			EnName:      "Metrics",
 			ParentId:    102,
 			MenuType:    "2",
 			Path:        "/tools/metrics",
