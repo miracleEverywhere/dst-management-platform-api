@@ -37,7 +37,7 @@ function install_ubuntu() {
 function install_rhel() {
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686
     yum -y install screen
-	yum install -y unzip 2>&1 > /dev/null
+	yum install -y unzip
     ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
 }
 
