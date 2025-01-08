@@ -206,8 +206,8 @@ func CreateConfig() {
 			Logger.Info("设置UID字典定时维护任务默认频率")
 			config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
 		}
-		if config.Keepalive.Frequency != 30 {
-			Logger.Info("执行数据库检查中，自动保活设置为30秒")
+		if config.Keepalive.Frequency == 0 {
+			Logger.Info("设置U自动保活任务默认频率")
 			config.Keepalive.Frequency = 30
 		}
 
