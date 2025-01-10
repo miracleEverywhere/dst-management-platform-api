@@ -2,8 +2,16 @@
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
-# Please execute the following command according to the system prompts, enter the input and press Enter.
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
+# Please execute the following command to download the script.
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
+```
+```shell
+# Customize the startup port to 8082.
+sed -i 's/^PORT=.*/PORT=8082/' run.sh
+```
+```shell
+# According to the system prompts, enter the input and press Enter.
+./run.sh
 ```
 **Update**
 ```shell
@@ -17,7 +25,9 @@ Input 4 according to the prompt
 # [1]: 启动服务(Start the service) 
 # [2]: 关闭服务(Stop the service) 
 # [3]: 重启服务(Restart the service) 
-# [4]: 更新服务(Update the service)
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update) 
+# [6]: 设置虚拟内存(Setup swap)
 ```
 If the release-version bin-file has been downloaded, execute the following command:
 ```shell
