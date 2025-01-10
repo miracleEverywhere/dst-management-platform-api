@@ -6,7 +6,7 @@
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
 ```
 ```shell
-# Customize the startup port to 8082.
+# Customize the startup port.(Change 8082 to the port you want to use)
 sed -i 's/^PORT=.*/PORT=8082/' run.sh
 ```
 ```shell
