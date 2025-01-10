@@ -1022,6 +1022,10 @@ func handleSystemSettingPut(c *gin.Context) {
 	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
 	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
 
+	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
+		utils.SYS_METRICS = []utils.SysMetrics{}
+	}
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
