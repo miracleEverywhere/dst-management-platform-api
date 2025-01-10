@@ -6,7 +6,7 @@
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
 ```
 ```shell
-# 自定义启动端口为8082
+# 自定义启动端口（8082改为你要用的端口）
 sed -i 's/^PORT=.*/PORT=8082/' run.sh
 ```
 ```shell
