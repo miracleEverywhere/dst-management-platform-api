@@ -2,8 +2,16 @@
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
-# 执行以下命令，根据系统提示输入并回车
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
+# 执行以下命令，下载脚本
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
+```
+```shell
+# 自定义启动端口为8082
+sed -i 's/^PORT=.*/PORT=8082/' run.sh
+```
+```shell
+# 根据系统提示输入并回车
+./run.sh
 ```
 **更新方法**
 ```shell
@@ -17,7 +25,9 @@ cd ~ && ./run.sh
 # [1]: 启动服务(Start the service) 
 # [2]: 关闭服务(Stop the service) 
 # [3]: 重启服务(Restart the service) 
-# [4]: 更新服务(Update the service)
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update) 
+# [6]: 设置虚拟内存(Setup swap)
 ```
 如果下载了发行版，则执行以下命令：
 ```shell
