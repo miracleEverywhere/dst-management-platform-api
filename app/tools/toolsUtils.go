@@ -1,19 +1,11 @@
 package tools
 
 import (
-	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"os"
 	"sort"
 	"time"
 )
-
-func reloadScheduler() {
-	scheduler.Scheduler.Stop()
-	scheduler.Scheduler.Clear()
-	scheduler.InitTasks()
-	go scheduler.Scheduler.StartAsync()
-}
 
 // FileInfo 结构体，包含文件名和创建时间
 type FileInfo struct {

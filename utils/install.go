@@ -37,7 +37,7 @@ function install_ubuntu() {
 function install_rhel() {
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686
     yum -y install screen
-	yum install -y unzip 2>&1 > /dev/null
+	yum install -y unzip
     ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
 }
 
@@ -82,10 +82,24 @@ cd $STEAM_DIR
 ./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit
 
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
+
+# 解决无法自动下载MOD的问题
+# 备份
+mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak
+mv ~/dst/steamclient.so ~/dst/steamclient.so.bak
+# 替换
+cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so
+cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so
+
 # 初始化一些目录和文件
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
 mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
+mkdir -p ${DST_SETTING_DIR}/DMP_MOD/not_ugc
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Master/content/322330
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Caves/content/322330
+# UID MAP
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/uid_map.json
 # 管理员
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
 # 黑名单

@@ -9,7 +9,7 @@ cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod 
 ```shell
 cd ~ && ./run.sh
 ```
-_根据提示输入4_
+根据提示输入4
 ```shell
 # root@VM-0-16-ubuntu:~# cd ~ && ./run.sh
 # 请输入需要执行的操作(Please enter the operation to be performed): 
@@ -55,8 +55,9 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ---
 
 ## :grapes: 默认用户名密码
->登录后请尽快修改密码
+>登录后请尽快到右上角用户名-个人中心页面修改密码
 >
+>>初始密码：
 >>admin/123456
 
 ---

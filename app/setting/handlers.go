@@ -2,6 +2,7 @@ package setting
 
 import (
 	"dst-management-platform-api/app/externalApi"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -279,6 +280,13 @@ func handleWhiteAddPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
 		return
 	}
+	err = changeWhitelistSlots()
+	if err != nil {
+		utils.Logger.Error("添加白名单失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhite", langStr), "data": nil})
 }
 
@@ -342,6 +350,13 @@ func handleWhiteDeletePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteWhiteFail", langStr), "data": nil})
 		return
 	}
+	err = changeWhitelistSlots()
+	if err != nil {
+		utils.Logger.Error("删除白名单失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteWhite", langStr), "data": nil})
 }
 
@@ -436,6 +451,10 @@ func handleImportFileUploadPost(c *gin.Context) {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
 		return
+	}
+	err = changeWhitelistSlots()
+	if err != nil {
+		utils.Logger.Error("配置白名单失败", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
@@ -947,6 +966,62 @@ func handleChangeMultiHostPost(c *gin.Context) {
 	}
 
 	config.MultiHost = multiHostForm.MultiHost
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
+}
+
+func handleSystemSettingGet(c *gin.Context) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var data SystemSettingForm
+	data.SysMetricsGet = config.SysSetting.SchedulerSetting.SysMetricsGet
+	data.PlayerGetFrequency = config.SysSetting.SchedulerSetting.PlayerGetFrequency
+	data.UIDMaintain = config.SysSetting.SchedulerSetting.UIDMaintain
+	data.KeepaliveFrequency = config.Keepalive.Frequency
+	data.Bit64 = config.Bit64
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func handleSystemSettingPut(c *gin.Context) {
+	defer scheduler.ReloadScheduler()
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var systemSettingForm SystemSettingForm
+	if err := c.ShouldBindJSON(&systemSettingForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config.SysSetting.SchedulerSetting.SysMetricsGet.Disable = systemSettingForm.SysMetricsGet.Disable
+	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = systemSettingForm.UIDMaintain.Frequency
+	config.SysSetting.SchedulerSetting.UIDMaintain.Disable = systemSettingForm.UIDMaintain.Disable
+	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
+	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)

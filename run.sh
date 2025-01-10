@@ -29,6 +29,8 @@ function prompt_user() {
     echo -e "\e[32m[2]: 关闭服务(Stop the service) \e[0m"
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
     echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
+    echo -e "\e[32m[5]: 强制更新(Mandatory update) \e[0m"
+    echo -e "\e[32m[6]: 设置虚拟内存(Setup swap) \e[0m"
 }
 
 # 检查jq
@@ -44,6 +46,20 @@ function check_jq() {
             fi
         fi
     fi
+}
+
+function check_curl() {
+    echo -e "\e[36m正在检查curl命令(Checking curl command) \e[0m"
+    if ! curl --version >/dev/null 2>&1; then
+            OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+            if [[ ${OS} == "ubuntu" ]]; then
+                apt install -y curl
+            else
+                if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+                    yum install -y curl
+                fi
+            fi
+        fi
 }
 
 # Ubuntu检查GLIBC, rhel需要下载文件手动安装
@@ -74,6 +90,7 @@ function download() {
 # 安装主程序
 function install_dmp() {
     check_jq
+    check_curl
     # 原GitHub下载链接
     GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
@@ -130,6 +147,7 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
+    check_glibc
     if [ -e "$ExeFile" ]; then
         nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     else
@@ -151,6 +169,52 @@ function clear_dmp() {
     rm -f dmp*
 }
 
+# 检查当前版本号
+function get_current_version() {
+    if [ -e "$ExeFile" ]; then
+        CURRENT_VERSION=$("$ExeFile" -v | head -n1) # 获取输出的第一行作为版本号
+    else
+        CURRENT_VERSION="0.0.0"
+    fi
+}
+
+# 获取GitHub最新版本号
+function get_latest_version() {
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name | grep -oP '(\d+\.)+\d+')
+    if [[ -z "$LATEST_VERSION" ]]; then
+        echo -e "\e[31m无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API) \e[0m"
+        exit 1
+    fi
+}
+
+#设置虚拟内存
+function set_swap() {
+    # 创建一个2GB的交换文件
+    SWAPFILE=/swapfile
+    SWAPSIZE=2G
+
+    # 检查是否已经存在交换文件
+    if [ -f $SWAPFILE ]; then
+        echo -e "\e[32m交换文件已存在，跳过创建步骤 \e[0m"
+    else
+        echo -e "\e[36m创建交换文件... \e[0m"
+        sudo fallocate -l $SWAPSIZE $SWAPFILE
+        sudo chmod 600 $SWAPFILE
+        sudo mkswap $SWAPFILE
+        sudo swapon $SWAPFILE
+        echo -e "\e[32m交换文件创建并启用成功 \e[0m"
+    fi
+
+    # 添加到 /etc/fstab 以便开机启动
+    if ! grep -q "$SWAPFILE" /etc/fstab; then
+        echo -e "\e[36m将交换文件添加到 /etc/fstab  \e[0m"
+        echo "$SWAPFILE none swap sw 0 0" | sudo tee -a /etc/fstab
+        echo -e "\e[32m交换文件已添加到开机启动 \e[0m"
+    else
+        echo -e "\e[32m交换文件已在 /etc/fstab 中，跳过添加步骤 \e[0m"
+    fi
+}
+
 # 使用无限循环让用户输入命令
 while true; do
     # 提示用户输入
@@ -161,14 +225,12 @@ while true; do
     case $command in
     0)
         clear_dmp
-        check_glibc
         install_dmp
         start_dmp
         check_dmp
         break
         ;;
     1)
-        check_glibc
         start_dmp
         check_dmp
         break
@@ -179,24 +241,42 @@ while true; do
         ;;
     3)
         stop_dmp
-        check_glibc
         start_dmp
         check_dmp
         echo -e "\e[32m重启成功 (Restart Success) \e[0m"
         break
         ;;
     4)
+        get_current_version
+        get_latest_version
+        if [[ "$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | head -n1)" == "$CURRENT_VERSION" && "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
+            echo -e "\e[33m当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version) \e[0m"
+            stop_dmp
+            clear_dmp
+            install_dmp
+            start_dmp
+            check_dmp
+            echo -e "\e[32m更新完成 (Update completed) \e[0m"
+        else
+            echo -e "\e[32m当前版本 ($CURRENT_VERSION) 已是最新版本 ($LATEST_VERSION)，无需更新 (No update needed) \e[0m"
+        fi
+        break
+        ;;
+    5)
         stop_dmp
         clear_dmp
-        check_glibc
         install_dmp
         start_dmp
         check_dmp
-        echo -e "\e[32m更新成功 (Restart Success) \e[0m"
+        echo -e "\e[32m强制更新完成 (Force update completed) \e[0m"
+        break
+        ;;
+    6)
+        set_swap # 调用设置虚拟内存的函数
         break
         ;;
     *)
-        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4 (Invalid input, please enter 0, 1, 2, 3, 4) \e[0m"
+        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4, 5, 6 (Invalid input, please enter 0, 1, 2, 3, 4, 5, 6) \e[0m"
         continue
         ;;
     esac

@@ -3,6 +3,7 @@ package tools
 import (
 	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/app/setting"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"encoding/base64"
 	"github.com/gin-gonic/gin"
@@ -108,7 +109,7 @@ func handleAnnounceGet(c *gin.Context) {
 }
 
 func handleAnnouncePost(c *gin.Context) {
-	defer reloadScheduler()
+	defer scheduler.ReloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -143,7 +144,7 @@ func handleAnnouncePost(c *gin.Context) {
 }
 
 func handleAnnounceDelete(c *gin.Context) {
-	defer reloadScheduler()
+	defer scheduler.ReloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -178,7 +179,7 @@ func handleAnnounceDelete(c *gin.Context) {
 }
 
 func handleAnnouncePut(c *gin.Context) {
-	defer reloadScheduler()
+	defer scheduler.ReloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -231,7 +232,7 @@ func handleUpdateGet(c *gin.Context) {
 }
 
 func handleUpdatePut(c *gin.Context) {
-	defer reloadScheduler()
+	defer scheduler.ReloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -312,7 +313,7 @@ func handleBackupPost(c *gin.Context) {
 }
 
 func handleBackupPut(c *gin.Context) {
-	defer reloadScheduler()
+	defer scheduler.ReloadScheduler()
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -495,7 +496,7 @@ func handleKeepaliveGet(c *gin.Context) {
 }
 
 func handleKeepalivePut(c *gin.Context) {
-	defer reloadScheduler()
+	defer scheduler.ReloadScheduler()
 	type UpdateForm struct {
 		Enable bool `json:"enable"`
 	}

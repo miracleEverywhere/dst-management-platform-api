@@ -463,3 +463,10 @@ func getSysMetrics() {
 	}
 	utils.SYS_METRICS = append(utils.SYS_METRICS, metrics)
 }
+
+func ReloadScheduler() {
+	Scheduler.Stop()
+	Scheduler.Clear()
+	InitTasks()
+	go Scheduler.StartAsync()
+}

@@ -10,24 +10,29 @@ var Scheduler = gocron.NewScheduler(time.Local)
 
 // InitTasks 初始化定时任务
 func InitTasks() {
-	// 获取当前玩家
-	_, _ = Scheduler.Every(30).Seconds().Do(setPlayer2DB)
-	utils.Logger.Info("玩家列表定时任务已配置")
-
-	// 维护UID字典
-	_, _ = Scheduler.Every(5).Minute().Do(maintainUidMap)
-	utils.Logger.Info("UID字典定时维护任务已配置")
-
-	// 系统监控
-	_, _ = Scheduler.Every(30).Seconds().Do(getSysMetrics)
-	utils.Logger.Info("系统监控定时任务已配置")
-
-	//初始化定时通知
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		return
 	}
+
+	// 获取当前玩家
+	_, _ = Scheduler.Every(config.SysSetting.SchedulerSetting.PlayerGetFrequency).Seconds().Do(setPlayer2DB)
+	utils.Logger.Info("玩家列表定时任务已配置")
+
+	// 维护UID字典
+	if !config.SysSetting.SchedulerSetting.UIDMaintain.Disable {
+		_, _ = Scheduler.Every(config.SysSetting.SchedulerSetting.UIDMaintain.Frequency).Minute().Do(maintainUidMap)
+		utils.Logger.Info("UID字典定时维护任务已配置")
+	}
+
+	// 系统监控
+	if !config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
+		_, _ = Scheduler.Every(30).Seconds().Do(getSysMetrics)
+		utils.Logger.Info("系统监控定时任务已配置")
+	}
+
+	// 定时通知
 	for _, announce := range config.AutoAnnounce {
 		if announce.Enable {
 			_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(execAnnounce, announce.Content)

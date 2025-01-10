@@ -111,6 +111,23 @@ type Keepalive struct {
 	CavesLastTime string `json:"cavesLastTime"`
 }
 
+type SchedulerSettingItem struct {
+	// disable的原因是1.1.3版本之前都是默认打开的，新增配置后应该也是默认打开
+	// 所以 disable=false
+	Disable   bool `json:"disable"`
+	Frequency int  `json:"frequency"`
+}
+
+type SchedulerSetting struct {
+	PlayerGetFrequency int                  `json:"playerGetFrequency"`
+	UIDMaintain        SchedulerSettingItem `json:"UIDMaintain"`
+	SysMetricsGet      SchedulerSettingItem `json:"sysMetricsGet"`
+}
+
+type SysSetting struct {
+	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
+}
+
 type Config struct {
 	Username     string         `json:"username"`
 	Nickname     string         `json:"nickname"`
@@ -125,6 +142,8 @@ type Config struct {
 	Statistics   []Statistics   `json:"statistics"`
 	Keepalive    Keepalive      `json:"keepalive"`
 	AnnouncedID  int            `json:"announcedID"`
+	SysSetting   SysSetting     `json:"sysSetting"`
+	Bit64        bool           `json:"bit64"`
 }
 
 type OSInfo struct {
@@ -180,12 +199,19 @@ func CreateConfig() {
 			Logger.Error("执行数据库检查中，打开数据库文件失败", "err", err)
 			return
 		}
-		if config.Keepalive.Frequency == 30 && config.Statistics == nil && config.Players == nil {
-			Logger.Info("数据库检查完成")
-			return
+		if config.SysSetting.SchedulerSetting.PlayerGetFrequency == 0 {
+			Logger.Info("设置玩家列表定时任务默认频率")
+			config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
 		}
-		Logger.Info("执行数据库检查中，自动保活设置为30秒")
-		config.Keepalive.Frequency = 30
+		if config.SysSetting.SchedulerSetting.UIDMaintain.Frequency == 0 {
+			Logger.Info("设置UID字典定时维护任务默认频率")
+			config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
+		}
+		if config.Keepalive.Frequency == 0 {
+			Logger.Info("设置U自动保活任务默认频率")
+			config.Keepalive.Frequency = 30
+		}
+
 		Logger.Info("执行数据库检查中，清除历史脏数据")
 		config.Statistics = nil
 		config.Players = nil
@@ -219,6 +245,9 @@ func CreateConfig() {
 
 	config.Keepalive.Enable = true
 	config.Keepalive.Frequency = 30
+
+	config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
+	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
 
 	err = WriteConfig(config)
 	if err != nil {
@@ -742,22 +771,22 @@ func EnsureFileExists(filePath string) error {
 }
 
 // CheckDir 检查目录是否存在
-func CheckDir(dirPath string) bool {
-	if strings.HasPrefix(dirPath, "~") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			Logger.Error("无法获取 home 目录", "err", err)
-			return false
-		}
-		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
-	}
-	_, err := os.Stat(dirPath)
-	if err != nil {
-		return false
-	} else {
-		return true
-	}
-}
+//func CheckDir(dirPath string) bool {
+//	if strings.HasPrefix(dirPath, "~") {
+//		homeDir, err := os.UserHomeDir()
+//		if err != nil {
+//			Logger.Error("无法获取 home 目录", "err", err)
+//			return false
+//		}
+//		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+//	}
+//	_, err := os.Stat(dirPath)
+//	if err != nil {
+//		return false
+//	} else {
+//		return true
+//	}
+//}
 
 func FileDirectoryExists(filePath string) (bool, error) {
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
