@@ -479,7 +479,13 @@ func handleModSettingFormatGet(c *gin.Context) {
 		return
 	}
 
-	luaScript, _ := utils.GetFileAllContent(utils.MasterModPath)
+	var luaScript string
+
+	if config.RoomSetting.Ground == "" {
+		luaScript, _ = utils.GetFileAllContent(utils.CavesModPath)
+	} else {
+		luaScript, _ = utils.GetFileAllContent(utils.MasterModPath)
+	}
 
 	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
 	if err != nil {
