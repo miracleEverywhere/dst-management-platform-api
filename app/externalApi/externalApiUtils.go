@@ -409,7 +409,68 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	}
 
 	return data, nil
+}
 
+func SearchModById(id int, lang string) (Data, error) {
+	var (
+		language int
+		url      string
+	)
+	if lang == "zh" {
+		language = 6
+	} else {
+		language = 0
+	}
+
+	url = fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.SteamApiKey)
+	url = url + fmt.Sprintf("&publishedfileids[0]=%d", id)
+
+	client := &http.Client{
+		Timeout: 5 * time.Second, // 设置超时时间为5秒
+	}
+	httpResponse, err := client.Get(url)
+	if err != nil {
+		return Data{}, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			utils.Logger.Error("请求关闭失败", "err", err)
+		}
+	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+	// 检查 HTTP 状态码
+	if httpResponse.StatusCode != http.StatusOK {
+		return Data{}, err
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+		utils.Logger.Error("解析JSON失败", "err", err)
+		return Data{}, err
+	}
+
+	var modInfoList []ModInfo
+	for _, i := range jsonResp.Response.Publishedfiledetails {
+		modInfo := ModInfo{
+			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
+			Name:            i.Title,
+			Size:            i.FileSize,
+			Tags:            i.Tags,
+			PreviewUrl:      i.PreviewUrl,
+			FileDescription: i.FileDescription,
+			FileUrl:         i.FileUrl,
+			VoteData:        i.VoteData,
+		}
+		modInfoList = append(modInfoList, modInfo)
+	}
+
+	data := Data{
+		Total:    1,
+		Page:     1,
+		PageSize: 1,
+		Rows:     modInfoList,
+	}
+
+	return data, nil
 }
 
 func DownloadMod(url string, id int) error {
