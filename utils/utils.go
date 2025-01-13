@@ -34,7 +34,6 @@ var (
 	ConsoleOutput bool
 	VersionShow   bool
 	ConfDir       string
-	DockerDeploy  bool
 )
 
 type Claims struct {
@@ -437,7 +436,6 @@ func BindFlags() {
 	flag.StringVar(&ConfDir, "s", "./", "数据库文件目录，如： -s ./conf (Database Directory, e.g. -s ./conf)")
 	flag.BoolVar(&ConsoleOutput, "c", false, "开启控制台日志输出，如： -c (Enable console log output, e.g. -c)")
 	flag.BoolVar(&VersionShow, "v", false, "查看版本，如： -v (Check version, e.g. -v)")
-	flag.BoolVar(&DockerDeploy, "d", false, "是否为docker部署")
 	flag.Parse()
 }
 
@@ -1261,62 +1259,4 @@ func ReplaceDSTSOFile() error {
 	}
 
 	return nil
-}
-
-func CheckDockerDependency() {
-	if !DockerDeploy {
-		return
-	}
-
-	config, err := ReadConfig()
-	if err != nil {
-		return
-	}
-
-	var content []byte
-	scriptPath := "check_dependency.sh"
-
-	// 检查文件是否存在，如果存在则删除
-	if _, err := os.Stat(scriptPath); err == nil {
-		err := os.Remove(scriptPath)
-		if err != nil {
-			Logger.Error("删除文件失败", "err", err)
-			return
-		}
-	}
-
-	// 创建或打开文件
-	file, err := os.OpenFile(scriptPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0775)
-	if err != nil {
-		Logger.Error("打开文件失败", "err", err)
-		return
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			Logger.Error("关闭文件失败", "err", err)
-		}
-	}(file)
-
-	// 写入内容
-	if config.Bit64 {
-		content = []byte(ShCheck64Dependency)
-	} else {
-		content = []byte(ShCheck32Dependency)
-	}
-
-	_, err = file.Write(content)
-	if err != nil {
-		Logger.Error("写入文件失败", "err", err)
-		return
-	}
-
-	// 异步执行脚本
-	go func() {
-		cmd := exec.Command("/bin/bash", scriptPath) // 使用 /bin/bash 执行脚本
-		e := cmd.Run()
-		if e != nil {
-			Logger.Error("执行安装脚本失败", "err", e)
-		}
-	}()
 }
