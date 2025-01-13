@@ -66,6 +66,8 @@ func initialize() {
 	utils.CreateConfig()
 	//创建DST手动安装脚本
 	utils.CreateManualInstallScript()
+	//Docker依赖检查
+	utils.CheckDockerDependency()
 	//检查目录
 	utils.CheckDirs()
 	//检查文件
