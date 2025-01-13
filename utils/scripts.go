@@ -144,3 +144,10 @@ rm -f $0
 # 安装完成
 echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
 `
+
+const ShCheck32Dependency = `
+#!/bin/bash
+
+`
+
+const ShCheck64Dependency = ``
