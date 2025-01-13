@@ -8,5 +8,5 @@ apt update
 apt install -y wget unzip
 
 cd $DMP_HOME || exit
-# shellcheck disable=SC2069
-exec ./dmp -c -s -d ./config 2>&1 > $DMP_HOME/dmp.log
+
+exec ./dmp -c -s -d ./config > $DMP_HOME/dmp.log 2>&1
