@@ -109,3 +109,9 @@ const ModNoUgcPath = "dst/mods"
 const ModDownloadPath = ".klei/DMP_MOD"
 
 const NicknameUIDPath = ServerPath + "uid_map.json"
+
+/*以下是MacOS常量*/
+
+const MacStartMasterCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + MasterName + "  ;"
+
+const MacStartCavesCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + CavesName + "  ;"
