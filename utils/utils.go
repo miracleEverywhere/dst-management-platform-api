@@ -144,6 +144,7 @@ type Config struct {
 	AnnouncedID  int            `json:"announcedID"`
 	SysSetting   SysSetting     `json:"sysSetting"`
 	Bit64        bool           `json:"bit64"`
+	Platform     string         `json:"platform"`
 }
 
 type OSInfo struct {
@@ -429,6 +430,29 @@ func CheckFiles() {
 		}
 	}
 
+}
+
+func CheckPlatform() {
+	osInfo, err := GetOSInfo()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取系统信息失败", "err", err)
+		panic(err)
+	}
+
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取数据库失败", "err", err)
+		panic(err)
+	}
+	config.Platform = osInfo.Platform
+
+	err = WriteConfig(config)
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：写入数据库失败", "err", err)
+		panic(err)
+	}
+
+	Logger.Info("平台检查通过")
 }
 
 func BindFlags() {
