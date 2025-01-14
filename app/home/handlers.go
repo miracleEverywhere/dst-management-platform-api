@@ -139,15 +139,22 @@ func handleExecPost(c *gin.Context) {
 
 		if config.RoomSetting.Ground != "" {
 			if masterStatus == 0 {
-				var cmd string
-				if config.Bit64 {
-					cmd = utils.StartMaster64CMD
+				if config.Platform == "darwin" {
+					err = utils.BashCMD(utils.MacStartMasterCMD)
+					if err != nil {
+						utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.MacStartMasterCMD)
+					}
 				} else {
-					cmd = utils.StartMasterCMD
-				}
-				err = utils.BashCMD(cmd)
-				if err != nil {
-					utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
+					var cmd string
+					if config.Bit64 {
+						cmd = utils.StartMaster64CMD
+					} else {
+						cmd = utils.StartMasterCMD
+					}
+					err = utils.BashCMD(cmd)
+					if err != nil {
+						utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
+					}
 				}
 			}
 		}
@@ -155,14 +162,23 @@ func handleExecPost(c *gin.Context) {
 		if config.RoomSetting.Cave != "" {
 			if cavesStatus == 0 {
 				if config.RoomSetting.Cave != "" {
-					var cmd string
-					if config.Bit64 {
-						cmd = utils.StartCaves64CMD
+					if config.Platform == "darwin" {
+						err = utils.BashCMD(utils.MacStartCavesCMD)
+						if err != nil {
+							utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.MacStartCavesCMD)
+						}
 					} else {
-						cmd = utils.StartCavesCMD
+						var cmd string
+						if config.Bit64 {
+							cmd = utils.StartCaves64CMD
+						} else {
+							cmd = utils.StartCavesCMD
+						}
+						err = utils.BashCMD(cmd)
+						if err != nil {
+							utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
+						}
 					}
-					err = utils.BashCMD(cmd)
-					utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
 				}
 			}
 		}
@@ -307,14 +323,18 @@ func handleExecPost(c *gin.Context) {
 			}
 			time.Sleep(1 * time.Second)
 			var cmd string
-			if config.Bit64 {
-				cmd = utils.StartMaster64CMD
+			if config.Platform == "darwin" {
+				cmd = utils.MacStartMasterCMD
 			} else {
-				cmd = utils.StartMasterCMD
+				if config.Bit64 {
+					cmd = utils.StartMaster64CMD
+				} else {
+					cmd = utils.StartMasterCMD
+				}
 			}
 			err = utils.BashCMD(cmd)
 			if err != nil {
-				utils.Logger.Error("启动游戏失败", "err", err)
+				utils.Logger.Error("启动游戏失败", "err", err, "cmd", cmd)
 				c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("startupFail", langStr), "data": nil})
 			}
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("startupSuccess", langStr), "data": nil})
@@ -357,10 +377,14 @@ func handleExecPost(c *gin.Context) {
 			time.Sleep(1 * time.Second)
 
 			var cmd string
-			if config.Bit64 {
-				cmd = utils.StartCaves64CMD
+			if config.Platform == "darwin" {
+				cmd = utils.MacStartCavesCMD
 			} else {
-				cmd = utils.StartCavesCMD
+				if config.Bit64 {
+					cmd = utils.StartCaves64CMD
+				} else {
+					cmd = utils.StartCavesCMD
+				}
 			}
 			err = utils.BashCMD(cmd)
 			if err != nil {

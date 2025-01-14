@@ -64,14 +64,14 @@ func initialize() {
 	utils.BindFlags()
 	//数据库检查
 	utils.CreateConfig()
-	//创建DST手动安装脚本
-	utils.CreateManualInstallScript()
 	//检查平台
 	utils.CheckPlatform()
 	//检查目录
 	utils.CheckDirs()
 	//检查文件
 	utils.CheckFiles()
+	//创建DST手动安装脚本
+	utils.CreateManualInstallScript()
 	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()

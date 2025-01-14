@@ -337,8 +337,21 @@ func WriteUidMap(uidMap map[string]interface{}) error {
 }
 
 func CreateManualInstallScript() {
+	var manualInstallScript string
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取数据库失败", "err", err)
+		panic(err)
+	}
+
+	if config.Platform == "darwin" {
+		manualInstallScript = ManualInstallMac
+	} else {
+		manualInstallScript = ManualInstall
+	}
+
 	//创建手动安装脚本
-	err := TruncAndWriteFile("manual_install.sh", ManualInstall)
+	err = TruncAndWriteFile("manual_install.sh", manualInstallScript)
 	if err != nil {
 		Logger.Error("手动安装脚本创建失败", "err", err)
 	}
@@ -856,9 +869,11 @@ func StopGame() error {
 	}
 
 	cmd := "c_shutdown()"
-	err = ScreenCMD(cmd, MasterName)
-	if err != nil {
-		Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	if config.RoomSetting.Ground != "" {
+		err = ScreenCMD(cmd, MasterName)
+		if err != nil {
+			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = ScreenCMD(cmd, CavesName)
@@ -868,9 +883,11 @@ func StopGame() error {
 	}
 
 	time.Sleep(2 * time.Second)
-	err = BashCMD(StopMasterCMD)
-	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+	if config.RoomSetting.Ground != "" {
+		err = BashCMD(StopMasterCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = BashCMD(StopCavesCMD)
@@ -882,11 +899,11 @@ func StopGame() error {
 	time.Sleep(1 * time.Second)
 	err = BashCMD(KillDST)
 	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", KillDST)
+		Logger.Warn("执行BashCMD失败", "err", err, "cmd", KillDST)
 	}
 	err = BashCMD(ClearScreenCMD)
 	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
+		Logger.Warn("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
 	}
 
 	return nil
@@ -899,31 +916,45 @@ func StartGame() error {
 		return err
 	}
 
-	if config.RoomSetting.Ground != "" {
-		var cmd string
-		if config.Bit64 {
-			cmd = StartMaster64CMD
-		} else {
-			cmd = StartMasterCMD
+	if config.Platform == "darwin" {
+		if config.RoomSetting.Ground != "" {
+			err = BashCMD(MacStartMasterCMD)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
+			}
 		}
-		err = BashCMD(cmd)
-		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
+		if config.RoomSetting.Cave != "" {
+			err = BashCMD(MacStartCavesCMD)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartCavesCMD)
+			}
+		}
+	} else {
+		if config.RoomSetting.Ground != "" {
+			var cmd string
+			if config.Bit64 {
+				cmd = StartMaster64CMD
+			} else {
+				cmd = StartMasterCMD
+			}
+			err = BashCMD(cmd)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
+			}
+		}
+		if config.RoomSetting.Cave != "" {
+			var cmd string
+			if config.Bit64 {
+				cmd = StartCaves64CMD
+			} else {
+				cmd = StartCavesCMD
+			}
+			err = BashCMD(cmd)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
+			}
 		}
 	}
-	if config.RoomSetting.Cave != "" {
-		var cmd string
-		if config.Bit64 {
-			cmd = StartCaves64CMD
-		} else {
-			cmd = StartCavesCMD
-		}
-		err = BashCMD(cmd)
-		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
-		}
-	}
-
 	return nil
 }
 
