@@ -257,20 +257,20 @@ func doAnnounce() {
 }
 
 func doUpdate() error {
-	config, err := utils.ReadConfig()
+	/*config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		return err
-	}
+	}*/
 
 	_ = utils.StopGame()
 
 	go func() {
-		err = utils.BashCMD(utils.UpdateGameCMD)
+		err := utils.BashCMD(utils.UpdateGameCMD)
 		if err != nil {
 			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.UpdateGameCMD)
 		}
-		err = utils.BashCMD(utils.StartMasterCMD)
+		/*err = utils.BashCMD(utils.StartMasterCMD)
 		if err != nil {
 			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartMasterCMD)
 		}
@@ -279,7 +279,7 @@ func doUpdate() error {
 			if err != nil {
 				utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartCavesCMD)
 			}
-		}
+		}*/
 	}()
 	return nil
 }
@@ -428,8 +428,6 @@ func maintainUidMap() {
 			uidMap[uid] = nickname
 		}
 	}
-
-	fmt.Println(uidMap)
 
 	_ = utils.WriteUidMap(uidMap)
 }
