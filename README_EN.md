@@ -45,23 +45,32 @@ You can also specify the storage directory for the database file
 nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 ```
 **Docker deployment**  
-First, obtain the Docker image tag from the package page
+First, obtain the Docker image tag from the package page  
+It is recommended to map the config、dst and .klei directories
 ```shell
-# Bing port 80
+# Bing port 80, mapping to /app directory
 docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
-# Bing port 8000
+# Bing port 8000, mapping to /app directory
 docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
+**Docker image update**  
+Stop the old version container, pull the new version image, and start using the above command.  
+If the config, dst, and .klei directories are mapped, there is no need to reinstall the game or perform other operations.  
+
 ---
 
 ## :grapes: Default username and password

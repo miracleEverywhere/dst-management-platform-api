@@ -45,23 +45,33 @@ nohup ./dmp -c -l 8888 > dmp.log 2>&1 &
 nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 ```
 **docker部署方式**  
-首先在package页面获取docker镜像tag
+首先在package页面获取docker镜像tag  
+建议映射config、dst和.klei目录  
+
 ```shell
-# 绑定80端口
+# 绑定80端口 映射到/app目录下
 docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
-# 绑定8000端口
+# 绑定8000端口 映射到/app目录下
 docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
+**docker更新**  
+停止旧版本容器，拉取新版本镜像，使用上述启动命令启动即可  
+如果有映射config、dst和.klei目录，则无需重复安装游戏等操作  
+
 ---
 
 ## :grapes: 默认用户名密码
