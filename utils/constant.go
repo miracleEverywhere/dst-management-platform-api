@@ -110,7 +110,7 @@ const ModDownloadPath = ".klei/DMP_MOD"
 
 const NicknameUIDPath = ServerPath + "uid_map.json"
 
-/*以下是MacOS常量*/
+/* 以下是MacOS常量 Linux交叉编译：CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
 
 const MacStartMasterCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + MasterName + "  ;"
 
