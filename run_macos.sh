@@ -116,7 +116,7 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
-    check_glibc
+    check_brew
     if [ -e "$ExeFile" ]; then
         nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     else
