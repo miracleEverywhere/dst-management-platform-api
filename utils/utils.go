@@ -876,15 +876,27 @@ func StartGame() error {
 	}
 
 	if config.RoomSetting.Ground != "" {
-		err = BashCMD(StartMasterCMD)
+		var cmd string
+		if config.Bit64 {
+			cmd = StartMaster64CMD
+		} else {
+			cmd = StartMasterCMD
+		}
+		err = BashCMD(cmd)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
 		}
 	}
 	if config.RoomSetting.Cave != "" {
-		err = BashCMD(StartCavesCMD)
+		var cmd string
+		if config.Bit64 {
+			cmd = StartCaves64CMD
+		} else {
+			cmd = StartCavesCMD
+		}
+		err = BashCMD(cmd)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartCavesCMD)
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
 		}
 	}
 
@@ -1259,4 +1271,46 @@ func ReplaceDSTSOFile() error {
 	}
 
 	return nil
+}
+
+// ExecBashScript 异步执行脚本
+func ExecBashScript(scriptPath string, scriptContent string) {
+	// 检查文件是否存在，如果存在则删除
+	if _, err := os.Stat(scriptPath); err == nil {
+		err := os.Remove(scriptPath)
+		if err != nil {
+			Logger.Error("删除文件失败", "err", err)
+			return
+		}
+	}
+
+	// 创建或打开文件
+	file, err := os.OpenFile(scriptPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0775)
+	if err != nil {
+		Logger.Error("打开文件失败", "err", err)
+		return
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
+
+	// 写入内容
+	content := []byte(scriptContent)
+	_, err = file.Write(content)
+	if err != nil {
+		Logger.Error("写入文件失败", "err", err)
+		return
+	}
+
+	// 异步执行脚本
+	go func() {
+		cmd := exec.Command("/bin/bash", scriptPath) // 使用 /bin/bash 执行脚本
+		e := cmd.Run()
+		if e != nil {
+			Logger.Error("执行安装脚本失败", "err", e)
+		}
+	}()
 }
