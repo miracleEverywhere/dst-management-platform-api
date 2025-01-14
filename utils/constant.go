@@ -10,6 +10,10 @@ const StartMasterCMD = "cd ~/dst/bin/ && screen -d -m -S \"" + MasterScreenName 
 
 const StartCavesCMD = "cd ~/dst/bin/ && screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + CavesName + "  ;"
 
+const StartMaster64CMD = "cd ~/dst/bin64/ && screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster MyDediServer -shard " + MasterName + "  ;"
+
+const StartCaves64CMD = "cd ~/dst/bin64/ && screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster MyDediServer -shard " + CavesName + "  ;"
+
 const StopMasterCMD = "screen -S " + MasterScreenName + " -X quit"
 
 const StopCavesCMD = "screen -S " + CavesScreenName + " -X quit"
