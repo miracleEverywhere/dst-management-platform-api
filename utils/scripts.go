@@ -144,3 +144,74 @@ rm -f $0
 # 安装完成
 echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
 `
+
+const Install32Dependency = `
+#!/bin/bash
+
+function install_ubuntu() {
+	dpkg --add-architecture i386
+	apt update
+    apt install -y lib32gcc1     
+	apt install -y lib32gcc-s1
+    apt install -y libcurl4-gnutls-dev:i386
+    apt install -y screen
+	apt install -y unzip
+}
+
+function install_rhel() {
+	yum update
+    yum -y install glibc.i686 libstdc++.i686 libcurl.i686
+    yum -y install screen
+	yum install -y unzip
+    ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
+}
+
+# 安装依赖
+OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+if [[ ${OS} == "ubuntu" ]]; then
+    install_ubuntu
+else
+    OS_LIKE=$(grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel)
+    if (($? == 0)); then
+        install_rhel
+    else
+        echo -e "系统不支持\tSystem not supported"
+        exit 1
+    fi
+fi
+
+rm -f $0
+`
+
+const Install64Dependency = `
+#!/bin/bash
+
+function install_ubuntu() {
+	apt update
+    apt install -y lib32gcc1     
+	apt install -y lib32gcc-s1
+    apt install -y libcurl4-gnutls-dev
+}
+
+function install_rhel() {
+	yum update
+    yum -y install glibc libstdc++ libcurl
+    ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
+}
+
+# 安装依赖
+OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+if [[ ${OS} == "ubuntu" ]]; then
+    install_ubuntu
+else
+    OS_LIKE=$(grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel)
+    if (($? == 0)); then
+        install_rhel
+    else
+        echo -e "系统不支持\tSystem not supported"
+        exit 1
+    fi
+fi
+
+rm -f $0
+`
