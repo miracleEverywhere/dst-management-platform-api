@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 ########################################################
 # 用户自定义设置请修改下方变量，其他变量请不要修改
@@ -14,6 +14,12 @@ CONFIG_DIR="./"
 # 下方变量请不要修改，否则可能会出现异常
 ExeFile="$HOME/dmp"
 
+if ! brew --version >/dev/null 2>&1; then
+    echo -e "\e[31mbrew未安装 (brew NOT installed) \e[0m"
+    exit 1
+fi
+
+
 # 定义一个函数来提示用户输入
 function prompt_user() {
     echo -e "\e[33m请输入需要执行的操作(Please enter the operation to be performed): \e[0m"
@@ -22,27 +28,28 @@ function prompt_user() {
     echo -e "\e[32m[2]: 关闭服务(Stop the service) \e[0m"
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
     echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
+    echo -e "\e[32m[5]: 强制更新(Mandatory update) \e[0m"
 }
 
-function check_brew() {
-    echo -e "\e[36m正在检查brew命令(Checking brew command) \e[0m"
-    if ! brew --version  >/dev/null 2>&1; then
-        echo -e "\e[33m在弹出框中点击安装(Please click install button): \e[0m"
-        /bin/zsh -c "$(curl -fsSL https://gitee.com/cunkai/HomebrewCN/raw/master/Homebrew.sh)"
-        export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"
-        brew update
-        export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"
-        for tap in core cask command-not-found; do
-            brew tap --custom-remote --force-auto-update "homebrew/${tap}" "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-${tap}.git"
-        done
-        brew update
-        test -r ~/.bash_profile && echo 'export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"' >> ~/.bash_profile  # bash
-        test -r ~/.bash_profile && echo 'export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"' >> ~/.bash_profile
-        test -r ~/.profile && echo 'export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"' >> ~/.profile
-        test -r ~/.profile && echo 'export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"' >> ~/.profile
+# 检查jq
+function check_jq() {
+    echo -e "\e[36m正在检查jq命令(Checking jq command) \e[0m"
+    if ! jq --version >/dev/null 2>&1; then
+        brew install jq
+    fi
+}
 
-        test -r ~/.zprofile && echo 'export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"' >> ~/.zprofile  # zsh
-        test -r ~/.zprofile && echo 'export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"' >> ~/.zprofile
+function check_curl() {
+    echo -e "\e[36m正在检查curl命令(Checking curl command) \e[0m"
+    if ! curl --version >/dev/null 2>&1; then
+        brew install curl
+    fi
+}
+
+function check_wget() {
+    echo -e "\e[36m正在检查curl命令(Checking wget command) \e[0m"
+    if ! wget --version >/dev/null 2>&1; then
+        brew install wget
     fi
 }
 
@@ -52,15 +59,18 @@ function download() {
     local tries="$2"
     local timeout="$3"
 
-    curl --retry "$tries" --connect-timeout "$timeout" "$download_url"
+    wget -q --show-progress --tries="$tries" --timeout="$timeout" "$download_url"
 
-    return $? # 返回 curl 的退出状态
+    return $? # 返回 wget 的退出状态
 }
 
 # 安装主程序
 function install_dmp() {
+    check_jq
+    check_curl
+    check_wget
     # 原GitHub下载链接
-    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r ".assets[0].browser_download_url")
+    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .assets[1].browser_download_url)
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
     PRIMARY_PROXY="https://ghproxy.cc/"   # 主加速站点
     SECONDARY_PROXY="https://ghproxy.cn/" # 备用加速站点
@@ -78,7 +88,7 @@ function install_dmp() {
         else
             echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?, 尝试从 Gitee 下载\e[0m"
             # Gitee下载链接
-            GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r ".assets[0].browser_download_url")
+            GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r .assets[1].browser_download_url)
             # 尝试从 Gitee 下载
             echo -e "\e[36m尝试通过国内站点下载 Gitee\e[0m"
             if download "$GITEE_URL" 5 10; then
@@ -115,7 +125,7 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
-    check_brew
+    check_glibc
     if [ -e "$ExeFile" ]; then
         nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     else
@@ -148,7 +158,7 @@ function get_current_version() {
 
 # 获取GitHub最新版本号
 function get_latest_version() {
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r ".tag_name" | grep -oP '(\d+\.)+\d+')
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name | grep -oP '(\d+\.)+\d+')
     if [[ -z "$LATEST_VERSION" ]]; then
         echo -e "\e[31m无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API) \e[0m"
         exit 1
@@ -203,8 +213,17 @@ while true; do
         fi
         break
         ;;
+    5)
+        stop_dmp
+        clear_dmp
+        install_dmp
+        start_dmp
+        check_dmp
+        echo -e "\e[32m强制更新完成 (Force update completed) \e[0m"
+        break
+        ;;
     *)
-        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4 (Invalid input, please enter 0, 1, 2, 3, 4) \e[0m"
+        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4, 5 (Invalid input, please enter 0, 1, 2, 3, 4, 5) \e[0m"
         continue
         ;;
     esac
