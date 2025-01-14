@@ -141,7 +141,9 @@ tar zxvf steamcmd_osx.tar.gz -C steamcmd
 cd $STEAM_DIR
 ./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit
 
+
 # 初始化一些目录和文件
+mkdir -p $HOME/Documents/Klei
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
 mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
@@ -156,6 +158,7 @@ mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Caves/content/322330
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/blocklist.txt
 # 预留位
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/whitelist.txt
+cd $HOME/Documents/Klei && ln -s ${DST_SETTING_DIR}/DoNotStarveTogether .
 
 # 清理
 cd ~
