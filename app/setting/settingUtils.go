@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	lua "github.com/yuin/gopher-lua"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -170,7 +169,7 @@ func saveSetting(config utils.Config) error {
 
 func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 	//关闭Master进程
-	cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
+	/*cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
 	err := cmdStopMaster.Run()
 	if err != nil {
 		utils.Logger.Error("关闭地面失败", "err", err)
@@ -180,6 +179,10 @@ func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 	err = cmdStopCaves.Run()
 	if err != nil {
 		utils.Logger.Error("关闭洞穴失败", "err", err)
+	}*/
+	err := utils.StopGame()
+	if err != nil {
+		utils.Logger.Error("关闭游戏失败", "err", err)
 	}
 	//删除Master/save目录
 	err = utils.DeleteDir(utils.MasterSavePath)
@@ -189,7 +192,7 @@ func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 	//等待3秒
 	time.Sleep(3 * time.Second)
 	//启动Master
-	cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
+	/*cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
 	err = cmdStartMaster.Run()
 	if err != nil {
 		utils.Logger.Error("启动地面失败", "err", err)
@@ -210,6 +213,10 @@ func generateWorld(c *gin.Context, config utils.Config, langStr string) {
 			utils.RespondWithError(c, 500, langStr)
 			return
 		}
+	}*/
+	err = utils.StartGame()
+	if err != nil {
+		utils.Logger.Error("启动游戏失败", "err", err)
 	}
 }
 
