@@ -452,7 +452,7 @@ func CheckPlatform() {
 		panic(err)
 	}
 
-	Logger.Info("平台检查通过")
+	Logger.Info("系统检查通过")
 }
 
 func BindFlags() {
