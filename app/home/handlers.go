@@ -290,18 +290,22 @@ func handleExecPost(c *gin.Context) {
 
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
 		} else {
-			//开启服务器
-			err := utils.BashCMD(utils.ClearScreenCMD)
-			if err != nil {
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-			}
-			time.Sleep(1 * time.Second)
 			config, err := utils.ReadConfig()
 			if err != nil {
 				utils.Logger.Error("读取配置文件失败", "err", err)
 				utils.RespondWithError(c, 500, langStr)
 				return
 			}
+			if config.RoomSetting.Ground == "" {
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": "no master", "data": nil})
+				return
+			}
+			//开启服务器
+			err = utils.BashCMD(utils.ClearScreenCMD)
+			if err != nil {
+				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
+			}
+			time.Sleep(1 * time.Second)
 			var cmd string
 			if config.Bit64 {
 				cmd = utils.StartMaster64CMD
@@ -335,18 +339,23 @@ func handleExecPost(c *gin.Context) {
 
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
 		} else {
-			//开启服务器
-			err := utils.BashCMD(utils.ClearScreenCMD)
-			if err != nil {
-				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-			}
-			time.Sleep(1 * time.Second)
 			config, err := utils.ReadConfig()
 			if err != nil {
 				utils.Logger.Error("读取配置文件失败", "err", err)
 				utils.RespondWithError(c, 500, langStr)
 				return
 			}
+			if config.RoomSetting.Cave == "" {
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": "no caves", "data": nil})
+				return
+			}
+			//开启服务器
+			err = utils.BashCMD(utils.ClearScreenCMD)
+			if err != nil {
+				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
+			}
+			time.Sleep(1 * time.Second)
+
 			var cmd string
 			if config.Bit64 {
 				cmd = utils.StartCaves64CMD
