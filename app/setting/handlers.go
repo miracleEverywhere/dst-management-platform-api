@@ -1032,6 +1032,17 @@ func handleSystemSettingPut(c *gin.Context) {
 		utils.SYS_METRICS = []utils.SysMetrics{}
 	}
 
+	if config.Bit64 != systemSettingForm.Bit64 {
+		config.Bit64 = systemSettingForm.Bit64
+		if config.Bit64 {
+			// 安装64位依赖
+			go utils.ExecBashScript("tmp.sh", utils.Install64Dependency)
+		} else {
+			// 安装32位依赖
+			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
+		}
+	}
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
