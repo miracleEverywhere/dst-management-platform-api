@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -725,6 +726,25 @@ func BashCMD(cmd string) error {
 		return err
 	}
 	return nil
+}
+
+func BashCMDOutput(cmd string) (string, string, error) {
+	// 定义要执行的命令和参数
+	cmdExec := exec.Command("/bin/bash", "-c", cmd)
+
+	// 使用 bytes.Buffer 捕获命令的输出
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmdExec.Stdout = &stdout
+	cmdExec.Stderr = &stderr
+
+	// 执行命令
+	err := cmdExec.Run()
+	if err != nil {
+		return "", stderr.String(), err
+	}
+
+	return stdout.String(), "", nil
 }
 
 // UniqueSliceKeepOrderString 从一个字符串切片中移除重复的元素，并保持元素的原始顺序
