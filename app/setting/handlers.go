@@ -760,39 +760,46 @@ func handleEnableModPost(c *gin.Context) {
 	if enableForm.ISUGC {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
-		if config.RoomSetting.Ground != "" {
-			err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
-			if err != nil {
-				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+		// MacOS 不执行复制
+		if config.Platform != "darwin" {
+			if config.RoomSetting.Ground != "" {
+				err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+				if err != nil {
+					utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+				}
+				cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
+				err := utils.BashCMD(cmdMaster)
+				if err != nil {
+					utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+				}
 			}
-			cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
-			err := utils.BashCMD(cmdMaster)
-			if err != nil {
-				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+			if config.RoomSetting.Cave != "" {
+				err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+				if err != nil {
+					utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+				}
+				cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
+				err = utils.BashCMD(cmdCaves)
+				if err != nil {
+					utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
+				}
 			}
 		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
-			if err != nil {
-				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
-			}
-			cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
-			err = utils.BashCMD(cmdCaves)
-			if err != nil {
-				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
-			}
-		}
+
 	} else {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
-		err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID))
-		if err != nil {
-			utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
-		}
-		cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID)
-		err = utils.BashCMD(cmd)
-		if err != nil {
-			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
+		// MacOS 不执行复制
+		if config.Platform != "darwin" {
+			err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+			}
+			cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID)
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
+			}
 		}
 	}
 
@@ -841,6 +848,12 @@ func handleEnableModPost(c *gin.Context) {
 			utils.RespondWithError(c, 500, langStr)
 			return
 		}
+	}
+
+	// MacOS 不修改mod自动下载配置
+	if config.Platform == "darwin" {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
+		return
 	}
 
 	err = DstModsSetup()
