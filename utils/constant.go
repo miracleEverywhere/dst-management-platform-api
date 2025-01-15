@@ -119,3 +119,5 @@ const MacStartCavesCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Co
 const MacGameModSettingPath = "dst/dontstarve_dedicated_server_nullrenderer.app/Contents/mods/dedicated_server_mods_setup.lua"
 
 const MacModExportPath = "$HOME/Desktop/dmp_exported_mod"
+
+const MacDSTVersionCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && strings dontstarve_dedicated_server_nullrenderer | grep -A 1 PRODUCTION | grep -E '\\d+'"
