@@ -72,6 +72,22 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 停止旧版本容器，拉取新版本镜像，使用上述启动命令启动即可  
 如果有映射config、dst和.klei目录，则无需重复安装游戏等操作  
 
+**MacOS安装**  
+```shell
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
+# 请输入需要执行的操作(Please enter the operation to be performed): 
+# [0]: 下载并启动服务(Download and start the service) 
+# [1]: 启动服务(Start the service) 
+# [2]: 关闭服务(Stop the service) 
+# [3]: 重启服务(Restart the service) 
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update)
+```
+选择0下载并启动，启动完成后运行manual_install.sh脚本安装游戏，无法在页面进行安装
+```shell
+./manual_install.sh
+```
+>注意：MacOS由于系统原因，模组配置暂不可用，需要点击设置-模组-添加模组页面的导出按钮，点击后会在桌面生成名为dmp_exported_mod的目录，用户需使用访达将改目录中的模组复制到~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods目录下。更新模组需要在设置-模组-添加模组页面删除对应要更新的模组，然后重新下载该模组，执行导出和复制操作后，重启游戏服务器。
 ---
 
 ## :grapes: 默认用户名密码

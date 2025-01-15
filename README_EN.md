@@ -71,6 +71,22 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 Stop the old version container, pull the new version image, and start using the above command.  
 If the config, dst, and .klei directories are mapped, there is no need to reinstall the game or perform other operations.  
 
+**MacOS Installation**
+```shell
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
+# 请输入需要执行的操作(Please enter the operation to be performed): 
+# [0]: 下载并启动服务(Download and start the service) 
+# [1]: 启动服务(Start the service) 
+# [2]: 关闭服务(Stop the service) 
+# [3]: 重启服务(Restart the service) 
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update)
+```
+Enter 0 to download and start, after startup is complete, run the manual_install.sh script to install the game, cannot install on the page
+```shell
+./manual_install.sh
+```
+>Note: Due to system limitations on macOS, mod configuration is temporarily unavailable. You need to click the “Export” button on the Settings > Mods > Add Mods page. After clicking, a directory named dmp_exported_mod will be generated on the desktop. Users must use Finder to copy the mods from this directory to the ~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods directory. To update a mod, you need to delete the corresponding mod on the Settings > Mods > Add Mods page, then re-download the mod, perform the export and copy operations, and restart the game server
 ---
 
 ## :grapes: Default username and password
