@@ -2,8 +2,16 @@
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
-# 执行以下命令，根据系统提示输入并回车
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
+# 执行以下命令，下载脚本
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
+```
+```shell
+# 自定义启动端口（8082改为你要用的端口）
+sed -i 's/^PORT=.*/PORT=8082/' run.sh
+```
+```shell
+# 根据系统提示输入并回车
+./run.sh
 ```
 **更新方法**
 ```shell
@@ -17,7 +25,9 @@ cd ~ && ./run.sh
 # [1]: 启动服务(Start the service) 
 # [2]: 关闭服务(Stop the service) 
 # [3]: 重启服务(Restart the service) 
-# [4]: 更新服务(Update the service)
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update) 
+# [6]: 设置虚拟内存(Setup swap)
 ```
 如果下载了发行版，则执行以下命令：
 ```shell
@@ -35,23 +45,49 @@ nohup ./dmp -c -l 8888 > dmp.log 2>&1 &
 nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 ```
 **docker部署方式**  
-首先在package页面获取docker镜像tag
+首先在package页面获取docker镜像tag  
+建议映射config、dst和.klei目录  
+
 ```shell
-# 绑定80端口
+# 绑定80端口 映射到/app目录下
 docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
-# 绑定8000端口
+# 绑定8000端口 映射到/app目录下
 docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
+**docker更新**  
+停止旧版本容器，拉取新版本镜像，使用上述启动命令启动即可  
+如果有映射config、dst和.klei目录，则无需重复安装游戏等操作  
+
+**MacOS安装**  
+```shell
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
+# 请输入需要执行的操作(Please enter the operation to be performed): 
+# [0]: 下载并启动服务(Download and start the service) 
+# [1]: 启动服务(Start the service) 
+# [2]: 关闭服务(Stop the service) 
+# [3]: 重启服务(Restart the service) 
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update)
+```
+选择0下载并启动，启动完成后运行manual_install.sh脚本安装游戏，无法在页面进行安装
+```shell
+./manual_install.sh
+```
+>注意：MacOS由于系统原因，模组配置暂不可用，需要点击设置-模组-添加模组页面的导出按钮，点击后会在桌面生成名为dmp_exported_mod的目录，用户需使用访达将改目录中的模组复制到~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods目录下。更新模组需要在设置-模组-添加模组页面删除对应要更新的模组，然后重新下载该模组，执行导出和复制操作后，重启游戏服务器。
 ---
 
 ## :grapes: 默认用户名密码

@@ -10,6 +10,10 @@ const StartMasterCMD = "cd ~/dst/bin/ && screen -d -m -S \"" + MasterScreenName 
 
 const StartCavesCMD = "cd ~/dst/bin/ && screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + CavesName + "  ;"
 
+const StartMaster64CMD = "cd ~/dst/bin64/ && screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster MyDediServer -shard " + MasterName + "  ;"
+
+const StartCaves64CMD = "cd ~/dst/bin64/ && screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster MyDediServer -shard " + CavesName + "  ;"
+
 const StopMasterCMD = "screen -S " + MasterScreenName + " -X quit"
 
 const StopCavesCMD = "screen -S " + CavesScreenName + " -X quit"
@@ -105,3 +109,15 @@ const ModNoUgcPath = "dst/mods"
 const ModDownloadPath = ".klei/DMP_MOD"
 
 const NicknameUIDPath = ServerPath + "uid_map.json"
+
+/* 以下是MacOS常量 Linux交叉编译：CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
+
+const MacStartMasterCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/steamcmd && screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + MasterName + "  ;"
+
+const MacStartCavesCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/steamcmd && screen -d -m -S \"" + CavesScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + CavesName + "  ;"
+
+const MacGameModSettingPath = "dst/dontstarve_dedicated_server_nullrenderer.app/Contents/mods/dedicated_server_mods_setup.lua"
+
+const MacModExportPath = "$HOME/Desktop/dmp_exported_mod"
+
+const MacDSTVersionCMD = "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && strings dontstarve_dedicated_server_nullrenderer | grep -A 1 PRODUCTION | grep -E '\\d+'"

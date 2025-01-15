@@ -17,7 +17,7 @@ import (
 	"runtime"
 )
 
-const VERSION string = "1.1.3"
+const VERSION string = "1.1.4"
 
 //go:embed dist
 var EmbedFS embed.FS
@@ -64,12 +64,14 @@ func initialize() {
 	utils.BindFlags()
 	//数据库检查
 	utils.CreateConfig()
-	//创建DST手动安装脚本
-	utils.CreateManualInstallScript()
+	//检查平台
+	utils.CheckPlatform()
 	//检查目录
 	utils.CheckDirs()
 	//检查文件
 	utils.CheckFiles()
+	//创建DST手动安装脚本
+	utils.CreateManualInstallScript()
 	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()

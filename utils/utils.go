@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -144,6 +145,7 @@ type Config struct {
 	AnnouncedID  int            `json:"announcedID"`
 	SysSetting   SysSetting     `json:"sysSetting"`
 	Bit64        bool           `json:"bit64"`
+	Platform     string         `json:"platform"`
 }
 
 type OSInfo struct {
@@ -336,8 +338,21 @@ func WriteUidMap(uidMap map[string]interface{}) error {
 }
 
 func CreateManualInstallScript() {
+	var manualInstallScript string
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取数据库失败", "err", err)
+		panic(err)
+	}
+
+	if config.Platform == "darwin" {
+		manualInstallScript = ManualInstallMac
+	} else {
+		manualInstallScript = ManualInstall
+	}
+
 	//创建手动安装脚本
-	err := TruncAndWriteFile("manual_install.sh", ManualInstall)
+	err = TruncAndWriteFile("manual_install.sh", manualInstallScript)
 	if err != nil {
 		Logger.Error("手动安装脚本创建失败", "err", err)
 	}
@@ -429,6 +444,29 @@ func CheckFiles() {
 		}
 	}
 
+}
+
+func CheckPlatform() {
+	osInfo, err := GetOSInfo()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取系统信息失败", "err", err)
+		panic(err)
+	}
+
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取数据库失败", "err", err)
+		panic(err)
+	}
+	config.Platform = osInfo.Platform
+
+	err = WriteConfig(config)
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：写入数据库失败", "err", err)
+		panic(err)
+	}
+
+	Logger.Info("系统检查通过")
 }
 
 func BindFlags() {
@@ -690,6 +728,25 @@ func BashCMD(cmd string) error {
 	return nil
 }
 
+func BashCMDOutput(cmd string) (string, string, error) {
+	// 定义要执行的命令和参数
+	cmdExec := exec.Command("/bin/bash", "-c", cmd)
+
+	// 使用 bytes.Buffer 捕获命令的输出
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmdExec.Stdout = &stdout
+	cmdExec.Stderr = &stderr
+
+	// 执行命令
+	err := cmdExec.Run()
+	if err != nil {
+		return "", stderr.String(), err
+	}
+
+	return stdout.String(), "", nil
+}
+
 // UniqueSliceKeepOrderString 从一个字符串切片中移除重复的元素，并保持元素的原始顺序
 func UniqueSliceKeepOrderString(slice []string) []string {
 	encountered := map[string]bool{}
@@ -832,9 +889,11 @@ func StopGame() error {
 	}
 
 	cmd := "c_shutdown()"
-	err = ScreenCMD(cmd, MasterName)
-	if err != nil {
-		Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	if config.RoomSetting.Ground != "" {
+		err = ScreenCMD(cmd, MasterName)
+		if err != nil {
+			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = ScreenCMD(cmd, CavesName)
@@ -844,9 +903,11 @@ func StopGame() error {
 	}
 
 	time.Sleep(2 * time.Second)
-	err = BashCMD(StopMasterCMD)
-	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+	if config.RoomSetting.Ground != "" {
+		err = BashCMD(StopMasterCMD)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = BashCMD(StopCavesCMD)
@@ -858,11 +919,11 @@ func StopGame() error {
 	time.Sleep(1 * time.Second)
 	err = BashCMD(KillDST)
 	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", KillDST)
+		Logger.Warn("执行BashCMD失败", "err", err, "cmd", KillDST)
 	}
 	err = BashCMD(ClearScreenCMD)
 	if err != nil {
-		Logger.Error("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
+		Logger.Warn("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
 	}
 
 	return nil
@@ -875,19 +936,45 @@ func StartGame() error {
 		return err
 	}
 
-	if config.RoomSetting.Ground != "" {
-		err = BashCMD(StartMasterCMD)
-		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartMasterCMD)
+	if config.Platform == "darwin" {
+		if config.RoomSetting.Ground != "" {
+			err = BashCMD(MacStartMasterCMD)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
+			}
+		}
+		if config.RoomSetting.Cave != "" {
+			err = BashCMD(MacStartCavesCMD)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartCavesCMD)
+			}
+		}
+	} else {
+		if config.RoomSetting.Ground != "" {
+			var cmd string
+			if config.Bit64 {
+				cmd = StartMaster64CMD
+			} else {
+				cmd = StartMasterCMD
+			}
+			err = BashCMD(cmd)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
+			}
+		}
+		if config.RoomSetting.Cave != "" {
+			var cmd string
+			if config.Bit64 {
+				cmd = StartCaves64CMD
+			} else {
+				cmd = StartCavesCMD
+			}
+			err = BashCMD(cmd)
+			if err != nil {
+				Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
+			}
 		}
 	}
-	if config.RoomSetting.Cave != "" {
-		err = BashCMD(StartCavesCMD)
-		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StartCavesCMD)
-		}
-	}
-
 	return nil
 }
 
@@ -1259,4 +1346,46 @@ func ReplaceDSTSOFile() error {
 	}
 
 	return nil
+}
+
+// ExecBashScript 异步执行脚本
+func ExecBashScript(scriptPath string, scriptContent string) {
+	// 检查文件是否存在，如果存在则删除
+	if _, err := os.Stat(scriptPath); err == nil {
+		err := os.Remove(scriptPath)
+		if err != nil {
+			Logger.Error("删除文件失败", "err", err)
+			return
+		}
+	}
+
+	// 创建或打开文件
+	file, err := os.OpenFile(scriptPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0775)
+	if err != nil {
+		Logger.Error("打开文件失败", "err", err)
+		return
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
+
+	// 写入内容
+	content := []byte(scriptContent)
+	_, err = file.Write(content)
+	if err != nil {
+		Logger.Error("写入文件失败", "err", err)
+		return
+	}
+
+	// 异步执行脚本
+	go func() {
+		cmd := exec.Command("/bin/bash", scriptPath) // 使用 /bin/bash 执行脚本
+		e := cmd.Run()
+		if e != nil {
+			Logger.Error("执行安装脚本失败", "err", e)
+		}
+	}()
 }

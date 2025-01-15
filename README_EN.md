@@ -2,8 +2,16 @@
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
-# Please execute the following command according to the system prompts, enter the input and press Enter.
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh && ./run.sh
+# Please execute the following command to download the script.
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
+```
+```shell
+# Customize the startup port.(Change 8082 to the port you want to use)
+sed -i 's/^PORT=.*/PORT=8082/' run.sh
+```
+```shell
+# According to the system prompts, enter the input and press Enter.
+./run.sh
 ```
 **Update**
 ```shell
@@ -17,7 +25,9 @@ Input 4 according to the prompt
 # [1]: 启动服务(Start the service) 
 # [2]: 关闭服务(Stop the service) 
 # [3]: 重启服务(Restart the service) 
-# [4]: 更新服务(Update the service)
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update) 
+# [6]: 设置虚拟内存(Setup swap)
 ```
 If the release-version bin-file has been downloaded, execute the following command:
 ```shell
@@ -35,23 +45,48 @@ You can also specify the storage directory for the database file
 nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 ```
 **Docker deployment**  
-First, obtain the Docker image tag from the package page
+First, obtain the Docker image tag from the package page  
+It is recommended to map the config、dst and .klei directories
 ```shell
-# Bing port 80
+# Bing port 80, mapping to /app directory
 docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
-# Bing port 8000
+# Bing port 8000, mapping to /app directory
 docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
+**Docker image update**  
+Stop the old version container, pull the new version image, and start using the above command.  
+If the config, dst, and .klei directories are mapped, there is no need to reinstall the game or perform other operations.  
+
+**MacOS Installation**
+```shell
+cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
+# 请输入需要执行的操作(Please enter the operation to be performed): 
+# [0]: 下载并启动服务(Download and start the service) 
+# [1]: 启动服务(Start the service) 
+# [2]: 关闭服务(Stop the service) 
+# [3]: 重启服务(Restart the service) 
+# [4]: 更新服务(Update the service) 
+# [5]: 强制更新(Mandatory update)
+```
+Enter 0 to download and start, after startup is complete, run the manual_install.sh script to install the game, cannot install on the page
+```shell
+./manual_install.sh
+```
+>Note: Due to system limitations on macOS, mod configuration is temporarily unavailable. You need to click the “Export” button on the Settings > Mods > Add Mods page. After clicking, a directory named dmp_exported_mod will be generated on the desktop. Users must use Finder to copy the mods from this directory to the ~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods directory. To update a mod, you need to delete the corresponding mod on the Settings > Mods > Add Mods page, then re-download the mod, perform the export and copy operations, and restart the game server
 ---
 
 ## :grapes: Default username and password

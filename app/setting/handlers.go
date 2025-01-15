@@ -479,7 +479,13 @@ func handleModSettingFormatGet(c *gin.Context) {
 		return
 	}
 
-	luaScript, _ := utils.GetFileAllContent(utils.MasterModPath)
+	var luaScript string
+
+	if config.RoomSetting.Ground == "" {
+		luaScript, _ = utils.GetFileAllContent(utils.CavesModPath)
+	} else {
+		luaScript, _ = utils.GetFileAllContent(utils.MasterModPath)
+	}
 
 	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
 	if err != nil {
@@ -754,39 +760,46 @@ func handleEnableModPost(c *gin.Context) {
 	if enableForm.ISUGC {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
-		if config.RoomSetting.Ground != "" {
-			err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
-			if err != nil {
-				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+		// MacOS 不执行复制
+		if config.Platform != "darwin" {
+			if config.RoomSetting.Ground != "" {
+				err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+				if err != nil {
+					utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+				}
+				cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
+				err := utils.BashCMD(cmdMaster)
+				if err != nil {
+					utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+				}
 			}
-			cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
-			err := utils.BashCMD(cmdMaster)
-			if err != nil {
-				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+			if config.RoomSetting.Cave != "" {
+				err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
+				if err != nil {
+					utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+				}
+				cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
+				err = utils.BashCMD(cmdCaves)
+				if err != nil {
+					utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
+				}
 			}
 		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
-			if err != nil {
-				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
-			}
-			cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
-			err = utils.BashCMD(cmdCaves)
-			if err != nil {
-				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
-			}
-		}
+
 	} else {
 		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + strconv.Itoa(enableForm.ID)
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
-		err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID))
-		if err != nil {
-			utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
-		}
-		cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID)
-		err = utils.BashCMD(cmd)
-		if err != nil {
-			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
+		// MacOS 不执行复制
+		if config.Platform != "darwin" {
+			err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+			}
+			cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID)
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
+			}
 		}
 	}
 
@@ -835,6 +848,12 @@ func handleEnableModPost(c *gin.Context) {
 			utils.RespondWithError(c, 500, langStr)
 			return
 		}
+	}
+
+	// MacOS 不修改mod自动下载配置
+	if config.Platform == "darwin" {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
+		return
 	}
 
 	err = DstModsSetup()
@@ -1022,6 +1041,21 @@ func handleSystemSettingPut(c *gin.Context) {
 	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
 	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
 
+	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
+		utils.SYS_METRICS = []utils.SysMetrics{}
+	}
+
+	if config.Bit64 != systemSettingForm.Bit64 {
+		config.Bit64 = systemSettingForm.Bit64
+		if config.Bit64 {
+			// 安装64位依赖
+			go utils.ExecBashScript("tmp.sh", utils.Install64Dependency)
+		} else {
+			// 安装32位依赖
+			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
+		}
+	}
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
@@ -1030,4 +1064,65 @@ func handleSystemSettingPut(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
+}
+
+func handleMacOSModExportPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		utils.Logger.Error("无法获取 home 目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	err = utils.RemoveDir(utils.MacModExportPath)
+	if err != nil {
+		utils.Logger.Error("删除目录失败", "err", err, "dir", utils.MacModExportPath)
+	}
+
+	var cpCmds []string
+
+	modPathUgc := homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330"
+	modsUgc, err := utils.GetDirs(modPathUgc)
+	if err != nil {
+		utils.Logger.Error("无法获取已下载的UGC MOD目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	for _, i := range modsUgc {
+		cmd := "cp -r " + modPathUgc + "/" + i + " " + utils.MacModExportPath + "/workshop-" + i
+		cpCmds = append(cpCmds, cmd)
+	}
+
+	modPathNotUgc := homeDir + "/" + utils.ModDownloadPath + "/not_ugc"
+	modsNotUgc, err := utils.GetDirs(modPathNotUgc)
+	if err != nil {
+		utils.Logger.Error("无法获取已下载的非UGC MOD目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	for _, i := range modsNotUgc {
+		cmd := "cp -r " + modPathNotUgc + "/" + i + " " + utils.MacModExportPath + "/workshop-" + i
+		cpCmds = append(cpCmds, cmd)
+	}
+
+	err = utils.BashCMD("mkdir -p " + utils.MacModExportPath)
+	if err != nil {
+		utils.Logger.Error("创建mod导出目录失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	for _, cmd := range cpCmds {
+		err = utils.BashCMD(cmd)
+		if err != nil {
+			utils.Logger.Error("复制mod失败", "err", err)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("exportSuccess", langStr), "data": nil})
 }

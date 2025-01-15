@@ -101,6 +101,7 @@ func handleModSearchGet(c *gin.Context) {
 	}
 
 	type SearchForm struct {
+		SearchType string `form:"searchType" json:"searchType"`
 		SearchText string `form:"searchText" json:"searchText"`
 		Page       int    `form:"page" json:"page"`
 		PageSize   int    `form:"pageSize" json:"pageSize"`
@@ -112,14 +113,35 @@ func handleModSearchGet(c *gin.Context) {
 		return
 	}
 
-	data, err := SearchMod(searchForm.Page, searchForm.PageSize, searchForm.SearchText, langStr)
-	if err != nil {
-		utils.Logger.Error("获取mod信息失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
+	if searchForm.SearchType == "id" {
+		id, err := strconv.Atoi(searchForm.SearchText)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("invalidModID", langStr), "data": nil})
+			return
+		}
+		data, err := SearchModById(id, langStr)
+		if err != nil {
+			utils.Logger.Error("获取mod信息失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+		return
+	}
+	if searchForm.SearchType == "text" {
+		data, err := SearchMod(searchForm.Page, searchForm.PageSize, searchForm.SearchText, langStr)
+		if err != nil {
+			utils.Logger.Error("获取mod信息失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 }
 
 func handleDownloadedModInfoGet(c *gin.Context) {

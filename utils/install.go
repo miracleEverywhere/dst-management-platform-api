@@ -35,6 +35,7 @@ function install_ubuntu() {
 }
 
 function install_rhel() {
+	yum update
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686
     yum -y install screen
 	yum install -y unzip
@@ -114,4 +115,56 @@ rm -f $STEAM_DIR/install.log
 
 # 安装完成
 echo -e "安装完成\tInstallation completed"
+`
+
+const ManualInstallMac = `
+#!/bin/zsh
+
+if ! brew --version >/dev/null 2>&1; then
+    echo -e "\e[31mbrew未安装 (brew NOT installed) \e[0m"
+    exit 1
+fi
+
+# 定义变量
+STEAM_DIR="$HOME/steamcmd"
+DST_DIR="$HOME/dst"
+DST_SETTING_DIR="$HOME/.klei"
+
+# 安装依赖
+brew install unzip wget screen curl
+
+mkdir $STEAM_DIR
+curl -O "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_osx.tar.gz"
+tar zxvf steamcmd_osx.tar.gz -C steamcmd
+
+# 安装DST
+cd $STEAM_DIR
+./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit
+
+
+# 初始化一些目录和文件
+mkdir -p $HOME/Documents/Klei/DoNotStarveTogether
+mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
+mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
+mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
+mkdir -p ${DST_SETTING_DIR}/DMP_MOD/not_ugc
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Master/content/322330
+mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Caves/content/322330
+# UID MAP
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/uid_map.json
+# 管理员
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
+# 黑名单
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/blocklist.txt
+# 预留位
+> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/whitelist.txt
+cd $HOME/Documents/Klei/DoNotStarveTogether
+ln -s ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer .
+cd $HOME/Documents/Klei
+ln -s ${DST_SETTING_DIR}/DMP_BACKUP .
+ln -s ${DST_SETTING_DIR}/DMP_MOD .
+
+# 清理
+cd ~
+rm -f steamcmd_osx.tar.gz
 `

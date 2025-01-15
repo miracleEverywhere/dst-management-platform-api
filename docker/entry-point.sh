@@ -2,11 +2,33 @@
 
 # 定义变量
 DMP_HOME="/root"
+DMP_DB="./config/DstMP.sdb"
 
-# 由于install.go里没有安装wget，在启动容器的时候安装；或者在install.go进行安装
+# 安装必要的依赖
 apt update
-apt install -y wget unzip
+apt install -y wget unzip jq screen
 
 cd $DMP_HOME || exit
-# shellcheck disable=SC2069
-exec ./dmp -c -s ./config 2>&1 > $DMP_HOME/dmp.log
+
+# 检查是否为64位启动
+if [ -e "$DMP_DB" ]; then
+	bit64=$(jq -r .bit64 "$DMP_DB")
+else
+	bit64="false"
+fi
+
+#安装对应的DST依赖
+if [[ "$bit64" == "true" ]]; then
+    apt install -y lib32gcc1
+    apt install -y lib32gcc-s1
+    apt install -y libcurl4-gnutls-dev
+else
+    dpkg --add-architecture i386
+    apt update
+    apt install -y lib32gcc1
+    apt install -y lib32gcc-s1
+    apt install -y libcurl4-gnutls-dev:i386
+fi
+
+#启动dmp
+exec ./dmp -c -s ./config > $DMP_HOME/dmp.log 2>&1
