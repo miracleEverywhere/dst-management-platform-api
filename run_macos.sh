@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 ########################################################
 # 用户自定义设置请修改下方变量，其他变量请不要修改
@@ -157,6 +157,8 @@ function get_current_version() {
 
 # 获取GitHub最新版本号
 function get_latest_version() {
+    check_curl
+    check_jq
     LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name | grep -oP '(\d+\.)+\d+')
     if [[ -z "$LATEST_VERSION" ]]; then
         echo -e "\e[31m无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API) \e[0m"
