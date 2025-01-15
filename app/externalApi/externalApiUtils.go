@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,31 +22,25 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 	var dstVersion DSTVersion
 	dstVersion.Server = -1
 	dstVersion.Local = -1
-	file, err := os.Open(utils.DSTLocalVersionPath)
+
+	config, err := utils.ReadConfig()
 	if err != nil {
+		utils.Logger.Error("打开配置文件失败", "err", err)
 		return dstVersion, err
 	}
-	defer func(file *os.File) {
-		err := file.Close()
+
+	if config.Platform == "darwin" {
+		out, _, err := utils.BashCMDOutput(utils.MacDSTVersionCMD)
 		if err != nil {
-			utils.Logger.Error("关闭文件失败", "err", err)
-		}
-	}(file) // 确保文件在函数结束时关闭
-
-	// 创建一个扫描器来读取文件内容
-	scanner := bufio.NewScanner(file)
-
-	// 扫描文件的第一行
-	if scanner.Scan() {
-		// 读取第一行的文本
-		line := scanner.Text()
-
-		// 将字符串转换为整数
-		number, err := strconv.Atoi(line)
-		if err != nil {
+			utils.Logger.Error("获取饥荒版本失败", "err", err)
 			return dstVersion, err
 		}
-		dstVersion.Local = number
+		out = strings.TrimSpace(out)
+		localV, err := strconv.Atoi(out)
+		if err != nil {
+			utils.Logger.Error("非法版本号", "err", err, "local-version", localV)
+			return dstVersion, err
+		}
 		// 获取服务端版本
 		// 发送 HTTP GET 请求
 		response, err := http.Get(utils.DSTServerVersionApi)
@@ -76,22 +71,83 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 			return dstVersion, err
 		}
 
+		dstVersion.Local = localV
 		dstVersion.Server = serverVersion
 
 		return dstVersion, nil
-	}
+	} else {
+		file, err := os.Open(utils.DSTLocalVersionPath)
+		if err != nil {
+			return dstVersion, err
+		}
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				utils.Logger.Error("关闭文件失败", "err", err)
+			}
+		}(file) // 确保文件在函数结束时关闭
 
-	// 如果扫描器遇到错误，返回错误
-	if err := scanner.Err(); err != nil {
+		// 创建一个扫描器来读取文件内容
+		scanner := bufio.NewScanner(file)
+
+		// 扫描文件的第一行
+		if scanner.Scan() {
+			// 读取第一行的文本
+			line := scanner.Text()
+
+			// 将字符串转换为整数
+			number, err := strconv.Atoi(line)
+			if err != nil {
+				return dstVersion, err
+			}
+			dstVersion.Local = number
+			// 获取服务端版本
+			// 发送 HTTP GET 请求
+			response, err := http.Get(utils.DSTServerVersionApi)
+			if err != nil {
+				return dstVersion, err
+			}
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					utils.Logger.Error("关闭文件失败", "err", err)
+				}
+			}(response.Body) // 确保在函数结束时关闭响应体
+
+			// 检查 HTTP 状态码
+			if response.StatusCode != http.StatusOK {
+				return dstVersion, fmt.Errorf("HTTP 请求失败，状态码: %d", response.StatusCode)
+			}
+
+			// 读取响应体内容
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				return dstVersion, err
+			}
+
+			// 将字节数组转换为字符串并返回
+			serverVersion, err := strconv.Atoi(string(body))
+			if err != nil {
+				return dstVersion, err
+			}
+
+			dstVersion.Server = serverVersion
+
+			return dstVersion, nil
+		}
+
+		// 如果扫描器遇到错误，返回错误
+		if err := scanner.Err(); err != nil {
+			dstVersion.Server = -1
+			dstVersion.Local = -1
+			return dstVersion, err
+		}
+
+		// 如果文件为空，返回错误
 		dstVersion.Server = -1
 		dstVersion.Local = -1
-		return dstVersion, err
+		return dstVersion, fmt.Errorf("文件为空")
 	}
-
-	// 如果文件为空，返回错误
-	dstVersion.Server = -1
-	dstVersion.Local = -1
-	return dstVersion, fmt.Errorf("文件为空")
 }
 
 func GetInternetIP1() (string, error) {
