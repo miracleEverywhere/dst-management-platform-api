@@ -244,9 +244,15 @@ func DstModsSetup() error {
 				fileContent = fileContent + "ServerModSetup(\"" + workshopID + "\")\n"
 			}
 		})
-		err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+		var modFilePath string
+		if config.Platform == "darwin" {
+			modFilePath = utils.MacGameModSettingPath
+		} else {
+			modFilePath = utils.GameModSettingPath
+		}
+		err := utils.TruncAndWriteFile(modFilePath, fileContent)
 		if err != nil {
-			utils.Logger.Error("mod配置文件写入失败", "err", err, "file", utils.GameModSettingPath)
+			utils.Logger.Error("mod配置文件写入失败", "err", err, "file", modFilePath)
 			return err
 		}
 	}

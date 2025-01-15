@@ -1052,3 +1052,64 @@ func handleSystemSettingPut(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
 }
+
+func handleMacOSModExportPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		utils.Logger.Error("无法获取 home 目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	err = utils.RemoveDir(utils.MacModExportPath)
+	if err != nil {
+		utils.Logger.Error("删除目录失败", "err", err, "dir", utils.MacModExportPath)
+	}
+
+	var cpCmds []string
+
+	modPathUgc := homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330"
+	modsUgc, err := utils.GetDirs(modPathUgc)
+	if err != nil {
+		utils.Logger.Error("无法获取已下载的UGC MOD目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	for _, i := range modsUgc {
+		cmd := "cp -r " + modPathUgc + "/" + i + " " + utils.MacModExportPath + "/workshop-" + i
+		cpCmds = append(cpCmds, cmd)
+	}
+
+	modPathNotUgc := homeDir + "/" + utils.ModDownloadPath + "/not_ugc"
+	modsNotUgc, err := utils.GetDirs(modPathNotUgc)
+	if err != nil {
+		utils.Logger.Error("无法获取已下载的非UGC MOD目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	for _, i := range modsNotUgc {
+		cmd := "cp -r " + modPathNotUgc + "/" + i + " " + utils.MacModExportPath + "/workshop-" + i
+		cpCmds = append(cpCmds, cmd)
+	}
+
+	err = utils.BashCMD("mkdir -p " + utils.MacModExportPath)
+	if err != nil {
+		utils.Logger.Error("创建mod导出目录失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	for _, cmd := range cpCmds {
+		err = utils.BashCMD(cmd)
+		if err != nil {
+			utils.Logger.Error("复制mod失败", "err", err)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("exportSuccess", langStr), "data": nil})
+}

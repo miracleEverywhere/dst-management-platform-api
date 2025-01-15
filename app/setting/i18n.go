@@ -36,6 +36,7 @@ func response(message string, lang string) string {
 		"enableModSuccess":     "添加模组成功",
 		"disableModSuccess":    "禁用模组成功",
 		"gameServerNotCreated": "未发现游戏配置，请前往设置-房间页面进行创建",
+		"exportSuccess":        "模组导出成功",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":          "Save Success",
@@ -72,6 +73,7 @@ func response(message string, lang string) string {
 		"enableModSuccess":     "Add MOD Success",
 		"disableModSuccess":    "Disable MOD Success",
 		"gameServerNotCreated": "Room Setting Not Found, Please go to the Settings - Room page to create",
+		"exportSuccess":        "MOD Export Success",
 	}
 
 	if lang == "zh" {
