@@ -118,7 +118,7 @@ echo -e "安装完成\tInstallation completed"
 `
 
 const ManualInstallMac = `
-#!/bin/bash
+#!/bin/zsh
 
 if ! brew --version >/dev/null 2>&1; then
     echo -e "\e[31mbrew未安装 (brew NOT installed) \e[0m"
@@ -143,7 +143,7 @@ cd $STEAM_DIR
 
 
 # 初始化一些目录和文件
-mkdir -p $HOME/Documents/Klei
+mkdir -p $HOME/Documents/Klei/DoNotStarveTogether
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
 mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
 mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
@@ -158,7 +158,11 @@ mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Caves/content/322330
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/blocklist.txt
 # 预留位
 > ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/whitelist.txt
-cd $HOME/Documents/Klei && ln -s ${DST_SETTING_DIR}/DoNotStarveTogether .
+cd $HOME/Documents/Klei/DoNotStarveTogether
+ln -s ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer .
+cd $HOME/Documents/Klei
+ln -s ${DST_SETTING_DIR}/DMP_BACKUP .
+ln -s ${DST_SETTING_DIR}/DMP_MOD .
 
 # 清理
 cd ~
