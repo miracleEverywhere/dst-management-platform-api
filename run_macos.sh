@@ -108,8 +108,8 @@ function install_dmp() {
         fi
     fi
 
-    tar zxvf dmp.tgz
-    rm -f dmp.tgz
+    tar zxvf dmp_darwin.tgz
+    rm -f dmp_darwin.tgz
     chmod +x "$ExeFile"
 }
 
