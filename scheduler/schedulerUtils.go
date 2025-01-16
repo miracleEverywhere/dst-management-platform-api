@@ -3,6 +3,7 @@ package scheduler
 import (
 	"bufio"
 	"dst-management-platform-api/app/externalApi"
+	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
@@ -66,6 +67,10 @@ func setPlayer2DB() {
 func getPlayersList(world string) ([]string, error) {
 	var file *os.File
 	if world == "master" {
+		masterStatus := home.GetProcessStatus(utils.MasterScreenName)
+		if masterStatus == 0 {
+			return nil, fmt.Errorf("地面未开启")
+		}
 		// 先执行命令
 		err := utils.BashCMD(utils.PlayersListMasterCMD)
 		if err != nil {
@@ -79,6 +84,10 @@ func getPlayersList(world string) ([]string, error) {
 			return nil, err
 		}
 	} else {
+		cavesStatus := home.GetProcessStatus(utils.CavesScreenName)
+		if cavesStatus == 0 {
+			return nil, fmt.Errorf("洞穴未开启")
+		}
 		// 先执行命令
 		err := utils.BashCMD(utils.PlayersListCavesCMD)
 		if err != nil {
