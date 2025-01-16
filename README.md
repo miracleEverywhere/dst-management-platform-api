@@ -6,7 +6,7 @@
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
 ```
 ```shell
-# 自定义启动端口（8082改为你要用的端口）
+# 自定义启动端口（8082改为你要用的端口），请手动修改run.sh文件或者
 sed -i 's/^PORT=.*/PORT=8082/' run.sh
 ```
 ```shell
@@ -54,6 +54,7 @@ docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
@@ -64,6 +65,19 @@ docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+```
+```shell
+# 使用host网络，并绑定8080端口
+docker run -itd --name dmp --net=host \
+-e DMP_PORT=8080
+-v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
