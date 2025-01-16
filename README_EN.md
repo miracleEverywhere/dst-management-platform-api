@@ -100,7 +100,7 @@ Enter 0 to download and start, after startup is complete, run the manual_install
 ```shell
 ./manual_install.sh
 ```
->Note: Due to system limitations on macOS, mod configuration is temporarily unavailable. You need to click the “Export” button on the Settings > Mods > Add Mods page. After clicking, a directory named dmp_exported_mod will be generated on the desktop. Users must use Finder to copy the mods from this directory to the ~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods directory. To update a mod, you need to delete the corresponding mod on the Settings > Mods > Add Mods page, then re-download the mod, perform the export and copy operations, and restart the game server
+>Note: Due to system limitations on macOS, mod configuration is temporarily unavailable. You need to click the “Export” button on the Settings > Mods > Add Mods page. After clicking, a directory named dmp_exported_mod will be generated on the desktop. Users must use **Finder** to copy the mods from this directory to the ~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods directory. To update a mod, you need to delete the corresponding mod on the Settings > Mods > Add Mods page, then re-download the mod, perform the export and copy operations, and restart the game server
 ---
 
 ## :grapes: Default username and password
