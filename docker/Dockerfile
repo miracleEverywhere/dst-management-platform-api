@@ -32,6 +32,9 @@ RUN chmod +x /root/entry-point.sh
 RUN mkdir /root/config
 RUN mkdir /root/.klei
 
+# 环境变量
+# - 平台暴露端口，默认为80
+ENV DMP_PORT=${DMP_PORT:-80}
 
 # web端口
 EXPOSE 80/tcp
