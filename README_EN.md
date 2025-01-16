@@ -72,7 +72,7 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```shell
 # bind port 8000, use host network, and map directories to /app
 docker run -itd --name dmp --net=host \
--e DMP_PORT=8080
+-e DMP_PORT=8080 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \

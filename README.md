@@ -73,7 +73,7 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```shell
 # 使用host网络，并绑定8080端口
 docker run -itd --name dmp --net=host \
--e DMP_PORT=8080
+-e DMP_PORT=8080 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
