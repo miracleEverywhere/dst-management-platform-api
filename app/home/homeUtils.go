@@ -195,7 +195,7 @@ func getMetaInfo(path string) (metaInfo, error) {
 	return seasonInfo, nil
 }
 
-func getProcessStatus(screenName string) int {
+func GetProcessStatus(screenName string) int {
 	cmd := "ps -ef | grep " + screenName + " | grep -v grep"
 	err := utils.BashCMD(cmd)
 	if err != nil {

@@ -31,4 +31,4 @@ else
 fi
 
 #启动dmp
-exec ./dmp -c -s ./config > $DMP_HOME/dmp.log 2>&1
+exec ./dmp -l "$DMP_PORT" -c -s ./config > $DMP_HOME/dmp.log 2>&1

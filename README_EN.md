@@ -6,7 +6,7 @@
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
 ```
 ```shell
-# Customize the startup port.(Change 8082 to the port you want to use)
+# Customize the startup port.(Change 8082 to the port you want to use)，please change PORT manually, or
 sed -i 's/^PORT=.*/PORT=8082/' run.sh
 ```
 ```shell
@@ -48,21 +48,35 @@ nohup ./dmp -c -l 8899 -s ./config > dmp.log 2>&1 &
 First, obtain the Docker image tag from the package page  
 It is recommended to map the config、dst and .klei directories
 ```shell
-# Bing port 80, mapping to /app directory
+# bind port 80, and map directories to /app
 docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 ```
 ```shell
-# Bing port 8000, mapping to /app directory
+# bind port 8000, and map directories to /app
 docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+```
+```shell
+# bind port 8000, use host network, and map directories to /app
+docker run -itd --name dmp --net=host \
+-e DMP_PORT=8080 \
+-v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
@@ -86,7 +100,7 @@ Enter 0 to download and start, after startup is complete, run the manual_install
 ```shell
 ./manual_install.sh
 ```
->Note: Due to system limitations on macOS, mod configuration is temporarily unavailable. You need to click the “Export” button on the Settings > Mods > Add Mods page. After clicking, a directory named dmp_exported_mod will be generated on the desktop. Users must use Finder to copy the mods from this directory to the ~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods directory. To update a mod, you need to delete the corresponding mod on the Settings > Mods > Add Mods page, then re-download the mod, perform the export and copy operations, and restart the game server
+>Note: Due to system limitations on macOS, mod configuration is temporarily unavailable. You need to click the “Export” button on the Settings > Mods > Add Mods page. After clicking, a directory named dmp_exported_mod will be generated on the desktop. Users must use **Finder** to copy the mods from this directory to the ~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods directory. To update a mod, you need to delete the corresponding mod on the Settings > Mods > Add Mods page, then re-download the mod, perform the export and copy operations, and restart the game server
 ---
 
 ## :grapes: Default username and password

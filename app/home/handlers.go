@@ -94,8 +94,8 @@ func handleSystemInfoGet(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("获取内存使用率失败", "err", err)
 	}
-	response.Data.Master = getProcessStatus(utils.MasterScreenName)
-	response.Data.Caves = getProcessStatus(utils.CavesScreenName)
+	response.Data.Master = GetProcessStatus(utils.MasterScreenName)
+	response.Data.Caves = GetProcessStatus(utils.CavesScreenName)
 	c.JSON(http.StatusOK, response)
 }
 
@@ -127,8 +127,8 @@ func handleExecPost(c *gin.Context) {
 		if err != nil {
 			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
 		}
-		masterStatus := getProcessStatus(utils.MasterScreenName)
-		cavesStatus := getProcessStatus(utils.CavesScreenName)
+		masterStatus := GetProcessStatus(utils.MasterScreenName)
+		cavesStatus := GetProcessStatus(utils.CavesScreenName)
 
 		config, err := utils.ReadConfig()
 		if err != nil {

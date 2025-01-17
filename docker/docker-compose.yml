@@ -29,6 +29,8 @@ services:
     volumes:
       - ./.klei:/root/.klei
       - ./config:/root/config
+      - ./dst:/root/dst
+      - ./steamcmd:/root/steamcmd
     network_mode: bridge
 
     # restart: unless-stopped #选择是否开机自启
@@ -36,4 +38,5 @@ services:
       - TZ=Asia/Shanghai
       - PGID=$(id -g)
       - PUID=$(id -u)
+      - DMP_PORT=80
 

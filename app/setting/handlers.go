@@ -765,7 +765,7 @@ func handleEnableModPost(c *gin.Context) {
 			if config.RoomSetting.Ground != "" {
 				err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
 				if err != nil {
-					utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+					utils.Logger.Error("删除旧MOD文件失败", "err", err)
 				}
 				cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
 				err := utils.BashCMD(cmdMaster)
@@ -776,7 +776,7 @@ func handleEnableModPost(c *gin.Context) {
 			if config.RoomSetting.Cave != "" {
 				err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
 				if err != nil {
-					utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+					utils.Logger.Error("删除旧MOD文件失败", "err", err)
 				}
 				cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
 				err = utils.BashCMD(cmdCaves)
@@ -1125,4 +1125,121 @@ func handleMacOSModExportPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("exportSuccess", langStr), "data": nil})
+}
+
+func handleModUpdatePost(c *gin.Context) {
+	// 同步阻塞接口，耗时较长
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type UpdateForm struct {
+		ID      int    `json:"id"`
+		ISUGC   bool   `json:"isUgc"`
+		FileURL string `json:"fileURL"`
+	}
+
+	var updateForm UpdateForm
+	if err := c.ShouldBindJSON(&updateForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		utils.Logger.Error("无法获取 home 目录", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	// 删除，非UGC会在下载前自动删除
+	var modDirPath string
+	if updateForm.ISUGC {
+		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(updateForm.ID)
+	}
+
+	err = utils.RemoveDir(modDirPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteModFail", langStr), "data": nil})
+		return
+	}
+
+	// 下载
+	if updateForm.ISUGC {
+		cmd := utils.GenerateModDownloadCMD(updateForm.ID)
+		err := utils.BashCMD(cmd)
+		if err != nil {
+			utils.Logger.Error("MOD下载失败，MOD更新终止", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+			return
+		}
+	} else {
+		err := externalApi.DownloadMod(updateForm.FileURL, updateForm.ID)
+		if err != nil {
+			utils.Logger.Error("MOD下载失败，MOD更新终止", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+			return
+		}
+	}
+
+	// 删除 dst mod，复制新 mod 文件
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败，MOD更新终止", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+		return
+	}
+	if updateForm.ISUGC {
+		if config.RoomSetting.Ground != "" {
+			err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(updateForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+				return
+			}
+			cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
+			err := utils.BashCMD(cmdMaster)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+				return
+			}
+		}
+		if config.RoomSetting.Cave != "" {
+			err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(updateForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+				return
+			}
+			cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
+			err = utils.BashCMD(cmdCaves)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+				return
+			}
+		}
+	} else {
+		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + strconv.Itoa(updateForm.ID)
+		err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(updateForm.ID))
+		if err != nil {
+			utils.Logger.Error("删除旧MOD文件失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+			return
+		}
+		cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(updateForm.ID)
+		err = utils.BashCMD(cmd)
+		if err != nil {
+			utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateModFail", langStr), "data": nil})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateModSuccess", langStr), "data": nil})
+
 }

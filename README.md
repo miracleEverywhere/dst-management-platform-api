@@ -6,7 +6,7 @@
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
 ```
 ```shell
-# 自定义启动端口（8082改为你要用的端口）
+# 自定义启动端口（8082改为你要用的端口），请手动修改run.sh文件或者
 sed -i 's/^PORT=.*/PORT=8082/' run.sh
 ```
 ```shell
@@ -54,6 +54,7 @@ docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
@@ -64,6 +65,19 @@ docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
+-v /etc/localtime:/etc/localtime:ro \
+-v /etc/timezone:/etc/timezone:ro \
+ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+```
+```shell
+# 使用host网络，并绑定8080端口
+docker run -itd --name dmp --net=host \
+-e DMP_PORT=8080 \
+-v /app/config:/root/config \
+-v /app/dst:/root/dst \
+-v /app/.klei:/root/.klei \
+-v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
 ghcr.io/miracleeverywhere/dst-management-platform-api:tag
@@ -87,7 +101,7 @@ cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && 
 ```shell
 ./manual_install.sh
 ```
->注意：MacOS由于系统原因，模组配置暂不可用，需要点击设置-模组-添加模组页面的导出按钮，点击后会在桌面生成名为dmp_exported_mod的目录，用户需使用访达将改目录中的模组复制到~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods目录下。更新模组需要在设置-模组-添加模组页面删除对应要更新的模组，然后重新下载该模组，执行导出和复制操作后，重启游戏服务器。
+>注意：MacOS由于系统原因，模组配置暂不可用，需要点击设置-模组-添加模组页面的导出按钮，点击后会在桌面生成名为dmp_exported_mod的目录，用户需使用 **访达** 将改目录中的模组复制到~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods目录下。更新模组需要在设置-模组-添加模组页面删除对应要更新的模组，然后重新下载该模组，执行导出和复制操作后，重启游戏服务器。
 ---
 
 ## :grapes: 默认用户名密码

@@ -38,6 +38,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/mod/disable", utils.MWtoken(), handleDisableModPost)
 			setting.POST("/mod/config/change", utils.MWtoken(), handleModConfigChangePost)
 			setting.POST("/mod/export/macos", utils.MWtoken(), handleMacOSModExportPost)
+			setting.POST("/mod/update", utils.MWtoken(), handleModUpdatePost)
 			// System
 			setting.GET("/system/setting", utils.MWtoken(), handleSystemSettingGet)
 			setting.PUT("/system/setting", utils.MWtoken(), handleSystemSettingPut)
