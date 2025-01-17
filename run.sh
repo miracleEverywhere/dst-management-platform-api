@@ -23,13 +23,18 @@ fi
 
 # 定义一个函数来提示用户输入
 function prompt_user() {
+    echo -e "\e[32m饥荒管理平台(DMP) \e[0m"
+    echo -e "\e[32m--- https://github.com/miracleEverywhere/dst-management-platform-api --- \e[0m"
     echo -e "\e[33m请输入需要执行的操作(Please enter the operation to be performed): \e[0m"
     echo -e "\e[32m[0]: 下载并启动服务(Download and start the service) \e[0m"
+    echo -e "\e[33m————————————————- \e[0m"
     echo -e "\e[32m[1]: 启动服务(Start the service) \e[0m"
     echo -e "\e[32m[2]: 关闭服务(Stop the service) \e[0m"
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
+    echo -e "\e[33m————————————————- \e[0m"
     echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
     echo -e "\e[32m[5]: 强制更新(Mandatory update) \e[0m"
+    echo -e "\e[33m————————————————- \e[0m"
     echo -e "\e[32m[6]: 设置虚拟内存(Setup swap) \e[0m"
 }
 
