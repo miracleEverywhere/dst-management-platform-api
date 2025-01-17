@@ -33,7 +33,7 @@ function prompt_user() {
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
     echo -e "\e[33m————————————————- \e[0m"
     echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
-    echo -e "\e[32m[5]: 强制更新(Mandatory update) \e[0m"
+    echo -e "\e[32m[5]: 强制更新(Force update) \e[0m"
     echo -e "\e[33m————————————————- \e[0m"
     echo -e "\e[32m[6]: 设置虚拟内存(Setup swap) \e[0m"
 }
