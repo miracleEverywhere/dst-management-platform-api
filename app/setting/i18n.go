@@ -30,13 +30,15 @@ func response(message string, lang string) string {
 		"downloading":          "正在下载中，请稍后",
 		"syncModFail":          "同步失败",
 		"syncModSuccess":       "同步成功",
-		"deleteModFail":        "删除失败",
-		"deleteModSuccess":     "删除成功",
+		"deleteModFail":        "删除模组失败",
+		"deleteModSuccess":     "删除模组成功",
 		"configUpdateSuccess":  "修改成功",
 		"enableModSuccess":     "添加模组成功",
 		"disableModSuccess":    "禁用模组成功",
 		"gameServerNotCreated": "未发现游戏配置，请前往设置-房间页面进行创建",
 		"exportSuccess":        "模组导出成功",
+		"updateModSuccess":     "模组更新成功",
+		"updateModFail":        "模组更新失败",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":          "Save Success",
@@ -67,13 +69,15 @@ func response(message string, lang string) string {
 		"downloading":          "Downloading... Please wait",
 		"syncModFail":          "Sync Fail",
 		"syncModSuccess":       "Sync Success",
-		"deleteModFail":        "Delete Fail",
-		"deleteModSuccess":     "Delete Success",
+		"deleteModFail":        "Delete Mod Fail",
+		"deleteModSuccess":     "Delete Mod Success",
 		"configUpdateSuccess":  "Update Success",
 		"enableModSuccess":     "Add MOD Success",
 		"disableModSuccess":    "Disable MOD Success",
 		"gameServerNotCreated": "Room Setting Not Found, Please go to the Settings - Room page to create",
 		"exportSuccess":        "MOD Export Success",
+		"updateModSuccess":     "Mod Update Success",
+		"updateModFail":        "Mod Update Fail",
 	}
 
 	if lang == "zh" {
