@@ -25,17 +25,20 @@ fi
 function prompt_user() {
     echo -e "\e[32m饥荒管理平台(DMP) \e[0m"
     echo -e "\e[32m--- https://github.com/miracleEverywhere/dst-management-platform-api --- \e[0m"
-    echo -e "\e[33m请输入需要执行的操作(Please enter the operation to be performed): \e[0m"
     echo -e "\e[32m[0]: 下载并启动服务(Download and start the service) \e[0m"
     echo -e "\e[33m————————————————- \e[0m"
     echo -e "\e[32m[1]: 启动服务(Start the service) \e[0m"
     echo -e "\e[32m[2]: 关闭服务(Stop the service) \e[0m"
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
     echo -e "\e[33m————————————————- \e[0m"
-    echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
-    echo -e "\e[32m[5]: 强制更新(Force update) \e[0m"
+    echo -e "\e[32m[4]: 更新管理平台(Update management platform) \e[0m"
+    echo -e "\e[32m[5]: 强制更新平台(Force update platform) \e[0m"
+    echo -e "\e[32m[6]: 更新启动脚本(Update startup script) \e[0m"
     echo -e "\e[33m————————————————- \e[0m"
-    echo -e "\e[32m[6]: 设置虚拟内存(Setup swap) \e[0m"
+    echo -e "\e[32m[7]: 设置虚拟内存(Setup swap) \e[0m"
+    echo -e "\e[32m[8]: 退出脚本(Exit script) \e[0m"
+
+    echo -e "\e[33m请输入选择(Please enter your selection) [0-8]:  \e[0m"
 }
 
 # 检查jq
@@ -192,7 +195,32 @@ function get_latest_version() {
     fi
 }
 
-#设置虚拟内存
+# 更新启动脚本
+update_script() {
+    echo "> 正在更新脚本..."
+    TEMP_FILE="/tmp/run.sh"
+    URL_GitHub="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
+    URL_Gitee="https://gitee.com/s763483966/dst-management-platform-api/raw/master/run.sh"
+
+    # 尝试从 GitHub 下载
+    if curl -sL "$URL_GitHub" -o "$TEMP_FILE"; then
+        echo "> 从 GitHub 下载成功！"
+    # 如果失败，尝试从 Gitee 下载
+    elif curl -sL "$URL_Gitee" -o "$TEMP_FILE"; then
+        echo "> 从 Gitee 下载成功！"
+    else
+        echo "> 更新脚本失败：无法从GitHub或Gitee下载脚本。" >&2
+        exit 1
+    fi
+
+    # 替换当前脚本
+    mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
+    echo "> 脚本更新完成，3 秒后重新启动..."
+    sleep 3
+    exec "$0"
+}
+
+# 设置虚拟内存
 function set_swap() {
     # 创建一个2GB的交换文件
     SWAPFILE=/swapfile
@@ -277,11 +305,19 @@ while true; do
         break
         ;;
     6)
+        update_script
+        break
+        ;;
+    7)
         set_swap # 调用设置虚拟内存的函数
         break
         ;;
+    8)
+        exit 0
+        break
+        ;;
     *)
-        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4, 5, 6 (Invalid input, please enter 0, 1, 2, 3, 4, 5, 6) \e[0m"
+        echo -e "\e[31m请输入正确的数字 [0-8](Please enter the correct number [0-8]) \e[0m"
         continue
         ;;
     esac
