@@ -246,6 +246,13 @@ function set_swap() {
     else
         echo -e "\e[32m交换文件已在 /etc/fstab 中，跳过添加步骤 \e[0m"
     fi
+
+    # 更改swap配置并持久化
+    sysctl -w vm.swappiness=20
+    sysctl -w vm.min_free_kbytes=100000
+    echo -e 'vm.swappiness = 20\nvm.min_free_kbytes = 100000\n' > /etc/sysctl.d/dmp_swap.conf
+
+    echo -e "\e[32m系统swap设置成功 (System swap setting completed) \e[0m"
 }
 
 # 使用无限循环让用户输入命令
