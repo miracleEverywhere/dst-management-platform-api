@@ -22,9 +22,13 @@ func setPlayer2DB() {
 
 	if config.RoomSetting.Ground != "" {
 		players, err = getPlayersList("master")
-	}
-	if config.RoomSetting.Cave != "" {
-		players, err = getPlayersList("caves")
+	} else {
+		if config.RoomSetting.Cave != "" {
+			players, err = getPlayersList("caves")
+		} else {
+			// 没有配置地面和洞穴，直接return
+			return
+		}
 	}
 
 	if err != nil {
