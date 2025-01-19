@@ -38,7 +38,7 @@ func setPlayer2DB() {
 	var playerList []utils.Players
 	for _, p := range players {
 		var player utils.Players
-		uidNickName := strings.Split(p, ",")
+		uidNickName := strings.Split(p, "<-@dmp@->")
 		player.UID = uidNickName[0]
 		player.NickName = uidNickName[1]
 		player.Prefab = uidNickName[2]
@@ -146,7 +146,7 @@ func getPlayersList(world string) ([]string, error) {
 	}
 
 	// 正则表达式匹配模式
-	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) (.+) (.+)?`
+	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`
 	re := regexp.MustCompile(pattern)
 
 	var players []string
@@ -157,12 +157,12 @@ func getPlayersList(world string) ([]string, error) {
 			// 检查是否包含 [Host]
 			if !regexp.MustCompile(`\[Host\]`).MatchString(line) {
 				uid := strings.ReplaceAll(matches[1], "\t", "")
-				uid = strings.ReplaceAll(uid, " ", "")
+				//uid = strings.ReplaceAll(uid, " ", "")
 				nickName := strings.ReplaceAll(matches[2], "\t", "")
-				nickName = strings.ReplaceAll(nickName, " ", "")
+				//nickName = strings.ReplaceAll(nickName, " ", "")
 				prefab := strings.ReplaceAll(matches[3], "\t", "")
-				prefab = strings.ReplaceAll(prefab, " ", "")
-				player := uid + "," + nickName + "," + prefab
+				//prefab = strings.ReplaceAll(prefab, " ", "")
+				player := uid + "<-@dmp@->" + nickName + "<-@dmp@->" + prefab
 				players = append(players, player)
 			}
 		}
