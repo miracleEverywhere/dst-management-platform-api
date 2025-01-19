@@ -59,19 +59,35 @@ function check_jq() {
 function check_curl() {
     echo -e "\e[36m正在检查curl命令(Checking curl command) \e[0m"
     if ! curl --version >/dev/null 2>&1; then
-            OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-            if [[ ${OS} == "ubuntu" ]]; then
-                apt install -y curl
-            else
-                if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
-                    yum install -y curl
-                fi
+        OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+        if [[ ${OS} == "ubuntu" ]]; then
+            apt install -y curl
+        else
+            if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+                yum install -y curl
             fi
         fi
+    fi
+}
+
+function check_strings() {
+    echo -e "\e[36m正在检查strings命令(Checking curl command) \e[0m"
+    if ! strings --version >/dev/null 2>&1; then
+        OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+        if [[ ${OS} == "ubuntu" ]]; then
+            apt install -y binutils
+        else
+            if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+                yum install -y binutils
+            fi
+        fi
+    fi
+
 }
 
 # Ubuntu检查GLIBC, rhel需要下载文件手动安装
 function check_glibc() {
+    check_strings
     echo -e "\e[36m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
