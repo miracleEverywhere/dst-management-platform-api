@@ -189,8 +189,14 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 }
 
 func handlePlayerListGet(c *gin.Context) {
+	type PlayersInfo struct {
+		UID      string `json:"uid"`
+		NickName string `json:"nickName"`
+		Prefab   string `json:"prefab"`
+		Age      int    `json:"age"`
+	}
 	type PlayerList struct {
-		Players   []utils.Players        `json:"players"`
+		Players   []PlayersInfo          `json:"players"`
 		AdminList []string               `json:"adminList"`
 		BlockList []string               `json:"blockList"`
 		WhiteList []string               `json:"whiteList"`
@@ -211,7 +217,38 @@ func handlePlayerListGet(c *gin.Context) {
 
 	var playList PlayerList
 	//playList.Players = config.Players
-	playList.Players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
+	players := utils.STATISTICS[len(utils.STATISTICS)-1].Players
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var world string
+
+	if config.RoomSetting.Ground != "" {
+		world = "Master"
+	} else {
+		world = "Caves"
+	}
+
+	for _, player := range players {
+		uid := player.UID
+		age, err := GetPlayerAge(uid, world)
+		if err != nil {
+			utils.Logger.Error("玩家游戏时长获取失败")
+		}
+		var playerInfo PlayersInfo
+		playerInfo.UID = uid
+		playerInfo.NickName = player.NickName
+		playerInfo.Prefab = player.Prefab
+		playerInfo.Age = age
+
+		playList.Players = append(playList.Players, playerInfo)
+	}
+
 	playList.AdminList = adminList
 	playList.BlockList = blockList
 	playList.WhiteList = whiteList
