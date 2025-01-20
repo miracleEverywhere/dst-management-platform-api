@@ -25,19 +25,20 @@ fi
 function prompt_user() {
     echo -e "\e[32m饥荒管理平台(DMP) \e[0m"
     echo -e "\e[32m--- https://github.com/miracleEverywhere/dst-management-platform-api --- \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
     echo -e "\e[32m[0]: 下载并启动服务(Download and start the service) \e[0m"
-    echo -e "\e[33m—————————————————————————————— \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
     echo -e "\e[32m[1]: 启动服务(Start the service) \e[0m"
     echo -e "\e[32m[2]: 关闭服务(Stop the service) \e[0m"
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
-    echo -e "\e[33m—————————————————————————————— \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
     echo -e "\e[32m[4]: 更新管理平台(Update management platform) \e[0m"
     echo -e "\e[32m[5]: 强制更新平台(Force update platform) \e[0m"
     echo -e "\e[32m[6]: 更新启动脚本(Update startup script) \e[0m"
-    echo -e "\e[33m—————————————————————————————— \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
     echo -e "\e[32m[7]: 设置虚拟内存(Setup swap) \e[0m"
     echo -e "\e[32m[8]: 退出脚本(Exit script) \e[0m"
-
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
     echo -e "\e[33m请输入选择(Please enter your selection) [0-8]:  \e[0m"
 }
 
