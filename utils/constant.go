@@ -1,5 +1,7 @@
 package utils
 
+const VERSION string = "1.1.6"
+
 const MasterName = "Master"
 const CavesName = "Caves"
 const MasterScreenName = "DST_MASTER"
