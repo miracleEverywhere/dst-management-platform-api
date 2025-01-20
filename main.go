@@ -17,8 +17,6 @@ import (
 	"runtime"
 )
 
-const VERSION string = "1.1.6"
-
 //go:embed dist
 var EmbedFS embed.FS
 
@@ -30,7 +28,7 @@ func main() {
 		gin.DefaultWriter = io.Discard
 	}
 	if utils.VersionShow {
-		fmt.Println(VERSION + "\n" + runtime.Version())
+		fmt.Println(utils.VERSION + "\n" + runtime.Version())
 		return
 	}
 	r := gin.Default()
