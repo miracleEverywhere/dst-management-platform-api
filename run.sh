@@ -26,15 +26,15 @@ function prompt_user() {
     echo -e "\e[32m饥荒管理平台(DMP) \e[0m"
     echo -e "\e[32m--- https://github.com/miracleEverywhere/dst-management-platform-api --- \e[0m"
     echo -e "\e[32m[0]: 下载并启动服务(Download and start the service) \e[0m"
-    echo -e "\e[33m————————————————- \e[0m"
+    echo -e "\e[33m—————————————————————————————— \e[0m"
     echo -e "\e[32m[1]: 启动服务(Start the service) \e[0m"
     echo -e "\e[32m[2]: 关闭服务(Stop the service) \e[0m"
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
-    echo -e "\e[33m————————————————- \e[0m"
+    echo -e "\e[33m—————————————————————————————— \e[0m"
     echo -e "\e[32m[4]: 更新管理平台(Update management platform) \e[0m"
     echo -e "\e[32m[5]: 强制更新平台(Force update platform) \e[0m"
     echo -e "\e[32m[6]: 更新启动脚本(Update startup script) \e[0m"
-    echo -e "\e[33m————————————————- \e[0m"
+    echo -e "\e[33m—————————————————————————————— \e[0m"
     echo -e "\e[32m[7]: 设置虚拟内存(Setup swap) \e[0m"
     echo -e "\e[32m[8]: 退出脚本(Exit script) \e[0m"
 
@@ -213,25 +213,25 @@ function get_latest_version() {
 
 # 更新启动脚本
 update_script() {
-    echo "> 正在更新脚本..."
+    echo -e "\e[36m正在更新脚本... \e[0m"
     TEMP_FILE="/tmp/run.sh"
     URL_GitHub="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
     URL_Gitee="https://gitee.com/s763483966/dst-management-platform-api/raw/master/run.sh"
 
     # 尝试从 GitHub 下载
-    if curl -sL "$URL_GitHub" -o "$TEMP_FILE"; then
-        echo "> 从 GitHub 下载成功！"
+    if curl --connect-timeout 10 -sL "$URL_GitHub" -o "$TEMP_FILE"; then
+        echo -e "\e[32m从 GitHub 下载成功！ \e[0m"
     # 如果失败，尝试从 Gitee 下载
-    elif curl -sL "$URL_Gitee" -o "$TEMP_FILE"; then
-        echo "> 从 Gitee 下载成功！"
+    elif curl --connect-timeout 10 -sL "$URL_Gitee" -o "$TEMP_FILE"; then
+        echo -e "\e[32m从 Gitee 下载成功！ \e[0m"
     else
-        echo "> 更新脚本失败：无法从GitHub或Gitee下载脚本。" >&2
+        echo -e "\e[31m更新脚本失败：无法从GitHub或Gitee下载脚本 \e[0m" >&2
         exit 1
     fi
 
     # 替换当前脚本
     mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
-    echo "> 脚本更新完成，3 秒后重新启动..."
+    echo -e "\e[32m脚本更新完成，3 秒后重新启动... \e[0m"
     sleep 3
     exec "$0"
 }
