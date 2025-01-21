@@ -655,3 +655,7 @@ func handleMetricsGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": metrics})
 }
+
+func handleVersionGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.VERSION})
+}

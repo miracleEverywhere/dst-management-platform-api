@@ -47,6 +47,8 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.POST("/announced_id", utils.MWtoken(), handleAnnouncedPost)
 			// 监控
 			tools.GET("/metrics", utils.MWtoken(), handleMetricsGet)
+			// 版本
+			tools.GET("/version", utils.MWtoken(), handleVersionGet)
 		}
 	}
 
