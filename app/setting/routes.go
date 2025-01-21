@@ -19,6 +19,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/room/save_generate", utils.MWtoken(), handleRoomSettingSaveAndGeneratePost)
 			// Player
 			setting.GET("/player/list", utils.MWtoken(), handlePlayerListGet)
+			setting.GET("/player/list/history", utils.MWtoken(), handleHistoryPlayerGet)
 			setting.POST("/player/add/admin", utils.MWtoken(), handleAdminAddPost)
 			setting.POST("/player/add/block", utils.MWtoken(), handleBlockAddPost)
 			setting.POST("/player/add/white", utils.MWtoken(), handleWhiteAddPost)

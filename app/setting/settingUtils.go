@@ -531,32 +531,38 @@ type SystemSettingForm struct {
 	Bit64              bool                       `json:"bit64"`
 }
 
-func GetPlayerAge(uid string, world string) (int, error) {
+func GetPlayerAgePrefab(uid string, world string) (int, string, error) {
 	cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
 	stdout, _, err := utils.BashCMDOutput(cmd)
 	if err != nil || stdout == "" {
 		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
-		return 0, err
+		return 0, "", err
 	}
 
 	path := stdout[:len(stdout)-6]
-	cmd = "grep -aoP 'age={age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $3}'"
-	stdout, _, err = utils.BashCMDOutput(cmd)
+	cmdAge := "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	stdout, _, err = utils.BashCMDOutput(cmdAge)
 	if err != nil || stdout == "" {
-		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
-		return 0, err
+		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdAge)
+		return 0, "", err
 	}
 
 	stdout = strings.TrimSpace(stdout)
-	ageFloat, err := strconv.ParseFloat(stdout, 64)
+	age, err := strconv.ParseFloat(stdout, 64)
 	if err != nil {
-		utils.Logger.Error("玩家游戏时长获取失败", "err", err)
-		return 0, err
+		utils.Logger.Error("玩家游戏时长转换失败", "err", err)
+		age = 0
 	}
+	age = age / 480
+	ageInt := int(math.Round(age))
 
-	age := ageFloat / 480
+	cmdPrefab := "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	stdout, _, err = utils.BashCMDOutput(cmdPrefab)
+	if err != nil || stdout == "" {
+		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdPrefab)
+		return ageInt, "", nil
+	}
+	prefab := strings.TrimSpace(stdout)
 
-	roundedAge := int(math.Round(age)) + 1
-
-	return roundedAge, nil
+	return ageInt, prefab, nil
 }
