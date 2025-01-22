@@ -216,20 +216,23 @@ function get_latest_version() {
 update_script() {
     echo -e "\e[36m正在更新脚本... \e[0m"
     TEMP_FILE="/tmp/run.sh"
-    URL_GitHub="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
-    URL_Gitee="https://gitee.com/s763483966/dst-management-platform-api/raw/master/run.sh"
-
+    SCRIPT_GITHUB="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
+    SCRIPT_GITEE="https://gitee.com/s763483966/dst-management-platform-api/raw/master/run.sh"
+    # 读取旧脚本中的 PORT 值
+    OLD_PORT=$(grep "^PORT=" "$0" | cut -d'=' -f2)
     # 尝试从 GitHub 下载
-    if curl --connect-timeout 10 -sL "$URL_GitHub" -o "$TEMP_FILE"; then
+    if curl --connect-timeout 10 -sL "$SCRIPT_GITHUB" -o "$TEMP_FILE"; then
         echo -e "\e[32m从 GitHub 下载成功！ \e[0m"
     # 如果失败，尝试从 Gitee 下载
-    elif curl --connect-timeout 10 -sL "$URL_Gitee" -o "$TEMP_FILE"; then
+    elif curl --connect-timeout 10 -sL "$SCRIPT_GITEE" -o "$TEMP_FILE"; then
         echo -e "\e[32m从 Gitee 下载成功！ \e[0m"
     else
         echo -e "\e[31m更新脚本失败：无法从GitHub或Gitee下载脚本 \e[0m" >&2
         exit 1
     fi
 
+    # 将旧 PORT 值写入新脚本
+    sed -i "s/^PORT=.*/PORT=${OLD_PORT}/" "$TEMP_FILE"
     # 替换当前脚本
     mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
     echo -e "\e[32m脚本更新完成，3 秒后重新启动... \e[0m"
