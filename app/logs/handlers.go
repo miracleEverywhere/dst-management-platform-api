@@ -226,3 +226,41 @@ func handleHistoricalLogGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
+
+func handleGetLogInfoGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var (
+		logInfos []LogInfo
+		world    string
+	)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Ground != "" {
+		if config.RoomSetting.Cave != "" {
+			world = "both"
+		} else {
+			world = "ground"
+		}
+	} else {
+		world = "cave"
+	}
+
+	logInfos = append(logInfos, getGroundLogsInfo(langStr))
+	logInfos = append(logInfos, getCaveLogsInfo(langStr))
+	logInfos = append(logInfos, getChatLogsInfo(world, langStr))
+	logInfos = append(logInfos, getAccessLogsInfo(langStr))
+	logInfos = append(logInfos, getRuntimeLogsInfo(langStr))
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logInfos})
+}

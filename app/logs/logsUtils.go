@@ -34,3 +34,150 @@ func getLastNLines(filename string, n int) ([]string, error) {
 
 	return lines, nil
 }
+
+type LogInfo struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+	Num  int    `json:"num"`
+}
+
+func getGroundLogsInfo(lang string) LogInfo {
+	size, err := utils.GetDirSize(utils.MasterBackupLogPath)
+	if err != nil {
+		utils.Logger.Error("计算日志大小失败", "err", err)
+	}
+	count, err := utils.CountFiles(utils.MasterBackupLogPath)
+	if err != nil {
+		utils.Logger.Error("计算日志数量失败", "err", err)
+	}
+
+	var logInfo LogInfo
+	if lang == "zh" {
+		logInfo.Name = "地面日志"
+	} else {
+		logInfo.Name = "Ground"
+	}
+	logInfo.Size = size
+	logInfo.Num = count
+
+	return logInfo
+}
+
+func getCaveLogsInfo(lang string) LogInfo {
+	size, err := utils.GetDirSize(utils.CavesBackupLogPath)
+	if err != nil {
+		utils.Logger.Error("计算日志大小失败", "err", err)
+	}
+	count, err := utils.CountFiles(utils.CavesBackupLogPath)
+	if err != nil {
+		utils.Logger.Error("计算日志数量失败", "err", err)
+	}
+
+	var logInfo LogInfo
+	if lang == "zh" {
+		logInfo.Name = "洞穴日志"
+	} else {
+		logInfo.Name = "Cave"
+	}
+	logInfo.Size = size
+	logInfo.Num = count
+
+	return logInfo
+}
+
+func getChatLogsInfo(world string, lang string) LogInfo {
+	var (
+		size  int64
+		count int
+		err   error
+	)
+	if world == "ground" {
+		size, err = utils.GetDirSize(utils.MasterBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志大小失败", "err", err)
+		}
+		count, err = utils.CountFiles(utils.MasterBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志数量失败", "err", err)
+		}
+	}
+	if world == "cave" {
+		size, err = utils.GetDirSize(utils.CavesBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志大小失败", "err", err)
+		}
+		count, err = utils.CountFiles(utils.CavesBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志数量失败", "err", err)
+		}
+	}
+	if world == "both" {
+		sizeMaster, err := utils.GetDirSize(utils.MasterBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志大小失败", "err", err)
+		}
+		countMaster, err := utils.CountFiles(utils.MasterBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志数量失败", "err", err)
+		}
+
+		sizeCave, err := utils.GetDirSize(utils.CavesBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志大小失败", "err", err)
+		}
+		countCave, err := utils.CountFiles(utils.CavesBackupChatLogPath)
+		if err != nil {
+			utils.Logger.Error("计算日志数量失败", "err", err)
+		}
+
+		size = sizeMaster + sizeCave
+		count = countMaster + countCave
+	}
+
+	var logInfo LogInfo
+	if lang == "zh" {
+		logInfo.Name = "聊天日志"
+	} else {
+		logInfo.Name = "Chat"
+	}
+	logInfo.Size = size
+	logInfo.Num = count
+
+	return logInfo
+}
+
+func getAccessLogsInfo(lang string) LogInfo {
+	size, err := utils.GetFileSize(utils.DMPLogPath)
+	if err != nil {
+		utils.Logger.Error("计算日志大小失败", "err", err)
+	}
+
+	var logInfo LogInfo
+	if lang == "zh" {
+		logInfo.Name = "请求日志"
+	} else {
+		logInfo.Name = "Access"
+	}
+	logInfo.Size = size
+	logInfo.Num = 1
+
+	return logInfo
+}
+
+func getRuntimeLogsInfo(lang string) LogInfo {
+	size, err := utils.GetFileSize(utils.ProcessLogFile)
+	if err != nil {
+		utils.Logger.Error("计算日志大小失败", "err", err)
+	}
+
+	var logInfo LogInfo
+	if lang == "zh" {
+		logInfo.Name = "运行日志"
+	} else {
+		logInfo.Name = "Runtime"
+	}
+	logInfo.Size = size
+	logInfo.Num = 1
+
+	return logInfo
+}
