@@ -20,14 +20,23 @@ cd ~ && ./run.sh
 根据提示输入4
 ```shell
 # root@VM-0-16-ubuntu:~# cd ~ && ./run.sh
-# 请输入需要执行的操作(Please enter the operation to be performed): 
-# [0]: 下载并启动服务(Download and start the service) 
-# [1]: 启动服务(Start the service) 
-# [2]: 关闭服务(Stop the service) 
-# [3]: 重启服务(Restart the service) 
-# [4]: 更新服务(Update the service) 
-# [5]: 强制更新(Mandatory update) 
-# [6]: 设置虚拟内存(Setup swap)
+饥荒管理平台(DMP)
+--- https://github.com/miracleEverywhere/dst-management-platform-api ---
+————————————————————————————————————————————————————————————
+[0]: 下载并启动服务(Download and start the service)
+————————————————————————————————————————————————————————————
+[1]: 启动服务(Start the service)
+[2]: 关闭服务(Stop the service)
+[3]: 重启服务(Restart the service)
+————————————————————————————————————————————————————————————
+[4]: 更新管理平台(Update management platform)
+[5]: 强制更新平台(Force update platform)
+[6]: 更新启动脚本(Update startup script)
+————————————————————————————————————————————————————————————
+[7]: 设置虚拟内存(Setup swap)
+[8]: 退出脚本(Exit script)
+————————————————————————————————————————————————————————————
+请输入选择(Please enter your selection) [0-8]:
 ```
 如果下载了发行版，则执行以下命令：
 ```shell
@@ -87,6 +96,7 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 如果有映射config、dst和.klei目录，则无需重复安装游戏等操作  
 
 **MacOS安装**  
+> 只支持M系列CPU的Mac
 ```shell
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
 # 请输入需要执行的操作(Please enter the operation to be performed): 
@@ -95,7 +105,6 @@ cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && 
 # [2]: 关闭服务(Stop the service) 
 # [3]: 重启服务(Restart the service) 
 # [4]: 更新服务(Update the service) 
-# [5]: 强制更新(Mandatory update)
 ```
 选择0下载并启动，启动完成后运行manual_install.sh脚本安装游戏，无法在页面进行安装
 ```shell

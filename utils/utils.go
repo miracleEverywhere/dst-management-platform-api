@@ -1389,3 +1389,52 @@ func ExecBashScript(scriptPath string, scriptContent string) {
 		}
 	}()
 }
+
+// GetDirSize 计算目录大小
+func GetDirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
+}
+
+// GetFileSize 文件大小
+func GetFileSize(filePath string) (int64, error) {
+	// 使用 os.Stat 获取文件信息
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return 0, err
+	}
+
+	// 获取文件大小
+	fileSize := fileInfo.Size()
+
+	return fileSize, nil
+}
+
+// CountFiles 递归统计目录中的文件数量
+func CountFiles(path string) (int, error) {
+	var fileCount int
+
+	// 使用 filepath.Walk 遍历目录
+	err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 如果是文件而不是目录，增加计数器
+		if !info.IsDir() {
+			fileCount++
+		}
+		return nil
+	})
+
+	return fileCount, err
+}

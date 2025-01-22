@@ -30,7 +30,7 @@ type metaInfo struct {
 	SeasonLength seasonLength `json:"seasonLength"`
 }
 
-func findLatestMetaFile(directory string) (string, error) {
+func FindLatestMetaFile(directory string) (string, error) {
 	// 检查指定目录是否存在
 	_, err := os.Stat(directory)
 	if os.IsNotExist(err) {

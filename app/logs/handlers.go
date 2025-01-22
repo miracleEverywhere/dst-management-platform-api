@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func handleLogGet(c *gin.Context) {
@@ -225,4 +226,146 @@ func handleHistoricalLogGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func handleGetLogInfoGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var (
+		logInfos []LogInfo
+		world    string
+	)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Ground != "" {
+		if config.RoomSetting.Cave != "" {
+			world = "both"
+		} else {
+			world = "ground"
+		}
+	} else {
+		world = "cave"
+	}
+
+	logInfos = append(logInfos, getGroundLogsInfo(langStr))
+	logInfos = append(logInfos, getCaveLogsInfo(langStr))
+	logInfos = append(logInfos, getChatLogsInfo(world, langStr))
+	logInfos = append(logInfos, getAccessLogsInfo(langStr))
+	logInfos = append(logInfos, getRuntimeLogsInfo(langStr))
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logInfos})
+}
+
+func handleCleanLogsPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type CleanLogsForm struct {
+		LogTypes []string `json:"logTypes"`
+	}
+	var cleanLogsForm CleanLogsForm
+	if err := c.ShouldBindJSON(&cleanLogsForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	var (
+		code       int
+		messagesZh []string
+		messagesEn []string
+	)
+	for _, logType := range cleanLogsForm.LogTypes {
+		switch logType {
+		case "Ground":
+			cmd := "rm -rf " + utils.MasterBackupLogPath + "/*"
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("地面日志删除失败", "err", err)
+				messagesZh = append(messagesZh, "地面日志删除失败")
+				messagesEn = append(messagesEn, "Clean Ground Logs Fail")
+				code = 201
+			}
+		case "Cave":
+			cmd := "rm -rf " + utils.CavesBackupLogPath + "/*"
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("洞穴日志删除失败", "err", err)
+				messagesZh = append(messagesZh, "洞穴日志删除失败")
+				messagesEn = append(messagesEn, "Clean Cave Logs Fail")
+				code = 201
+			}
+		case "Chat":
+			if config.RoomSetting.Ground != "" {
+				cmd := "rm -rf " + utils.MasterBackupChatLogPath + "/*"
+				err = utils.BashCMD(cmd)
+				if err != nil {
+					utils.Logger.Error("地面聊天日志删除失败", "err", err)
+					messagesZh = append(messagesZh, "地面聊天日志删除失败")
+					messagesEn = append(messagesEn, "Clean Ground Chat Logs Fail")
+					code = 201
+				}
+			}
+			if config.RoomSetting.Cave != "" {
+				cmd := "rm -rf " + utils.CavesBackupChatLogPath + "/*"
+				err = utils.BashCMD(cmd)
+				if err != nil {
+					utils.Logger.Error("洞穴聊天日志删除失败", "err", err)
+					messagesZh = append(messagesZh, "洞穴聊天日志删除失败")
+					messagesEn = append(messagesEn, "Clean Cave Chat Logs Fail")
+					code = 201
+				}
+			}
+		case "Access":
+			cmd := "> " + utils.DMPLogPath
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("请求日志删除失败", "err", err)
+				messagesZh = append(messagesZh, "请求日志删除失败")
+				messagesEn = append(messagesEn, "Clean Access Logs Fail")
+				code = 201
+			}
+		case "Runtime":
+			cmd := "> " + utils.ProcessLogFile
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("运行日志删除失败", "err", err)
+				messagesZh = append(messagesZh, "运行日志删除失败")
+				messagesEn = append(messagesEn, "Clean Runtime Logs Fail")
+				code = 201
+			}
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+	}
+
+	if code != 201 {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("cleanSuccess", langStr), "data": nil})
+	} else {
+		var message string
+		if langStr == "zh" {
+			message = strings.Join(messagesZh, "，")
+		} else {
+			message = strings.Join(messagesEn, ", ")
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message, "data": nil})
+	}
 }

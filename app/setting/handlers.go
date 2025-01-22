@@ -189,8 +189,14 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 }
 
 func handlePlayerListGet(c *gin.Context) {
+	type PlayersInfo struct {
+		UID      string `json:"uid"`
+		NickName string `json:"nickName"`
+		Prefab   string `json:"prefab"`
+		Age      int    `json:"age"`
+	}
 	type PlayerList struct {
-		Players   []utils.Players        `json:"players"`
+		Players   []PlayersInfo          `json:"players"`
 		AdminList []string               `json:"adminList"`
 		BlockList []string               `json:"blockList"`
 		WhiteList []string               `json:"whiteList"`
@@ -211,13 +217,89 @@ func handlePlayerListGet(c *gin.Context) {
 
 	var playList PlayerList
 	//playList.Players = config.Players
-	playList.Players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
+	players := utils.STATISTICS[len(utils.STATISTICS)-1].Players
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var world string
+
+	if config.RoomSetting.Ground != "" {
+		world = "Master"
+	} else {
+		world = "Caves"
+	}
+
+	for _, player := range players {
+		uid := player.UID
+		age, _, err := GetPlayerAgePrefab(uid, world)
+		if err != nil {
+			utils.Logger.Error("玩家游戏时长获取失败")
+		}
+		var playerInfo PlayersInfo
+		playerInfo.UID = uid
+		playerInfo.NickName = player.NickName
+		playerInfo.Prefab = player.Prefab
+		playerInfo.Age = age
+
+		playList.Players = append(playList.Players, playerInfo)
+	}
+
 	playList.AdminList = adminList
 	playList.BlockList = blockList
 	playList.WhiteList = whiteList
 	playList.UidMap = uidMap
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playList})
+}
+
+func handleHistoryPlayerGet(c *gin.Context) {
+	type Player struct {
+		UID      string      `json:"uid"`
+		Nickname interface{} `json:"nickname"`
+		Prefab   string      `json:"prefab"`
+		Age      int         `json:"age"`
+	}
+
+	uidMap, _ := utils.ReadUidMap()
+	if len(uidMap) == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []Player{}})
+		return
+	}
+
+	var world string
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	if config.RoomSetting.Ground != "" {
+		world = "Master"
+	} else {
+		world = "Caves"
+	}
+
+	var playerList []Player
+	for uid, nickname := range uidMap {
+		age, prefab, err := GetPlayerAgePrefab(uid, world)
+		if err != nil {
+			utils.Logger.Error("获取历史玩家信息失败", "err", err, "UID", uid)
+		}
+		var player Player
+		player.UID = uid
+		player.Nickname = nickname
+		player.Age = age
+		player.Prefab = prefab
+		playerList = append(playerList, player)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playerList})
 }
 
 func handleAdminAddPost(c *gin.Context) {

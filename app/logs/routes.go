@@ -15,6 +15,9 @@ func RouteLogs(r *gin.Engine) *gin.Engine {
 			logs.POST("/process_log", utils.MWtoken(), handleProcessLogPost)
 			logs.GET("/historical/log_file", utils.MWtoken(), handleHistoricalLogFileGet)
 			logs.GET("/historical/log", utils.MWtoken(), handleHistoricalLogGet)
+			// 日志清理
+			logs.GET("/status", utils.MWtoken(), handleGetLogInfoGet)
+			logs.POST("/clean", utils.MWtoken(), handleCleanLogsPost)
 		}
 	}
 

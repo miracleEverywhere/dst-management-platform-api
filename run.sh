@@ -23,14 +23,23 @@ fi
 
 # 定义一个函数来提示用户输入
 function prompt_user() {
-    echo -e "\e[33m请输入需要执行的操作(Please enter the operation to be performed): \e[0m"
+    echo -e "\e[32m饥荒管理平台(DMP) \e[0m"
+    echo -e "\e[32m--- https://github.com/miracleEverywhere/dst-management-platform-api --- \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
     echo -e "\e[32m[0]: 下载并启动服务(Download and start the service) \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
     echo -e "\e[32m[1]: 启动服务(Start the service) \e[0m"
     echo -e "\e[32m[2]: 关闭服务(Stop the service) \e[0m"
     echo -e "\e[32m[3]: 重启服务(Restart the service) \e[0m"
-    echo -e "\e[32m[4]: 更新服务(Update the service) \e[0m"
-    echo -e "\e[32m[5]: 强制更新(Mandatory update) \e[0m"
-    echo -e "\e[32m[6]: 设置虚拟内存(Setup swap) \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
+    echo -e "\e[32m[4]: 更新管理平台(Update management platform) \e[0m"
+    echo -e "\e[32m[5]: 强制更新平台(Force update platform) \e[0m"
+    echo -e "\e[32m[6]: 更新启动脚本(Update startup script) \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
+    echo -e "\e[32m[7]: 设置虚拟内存(Setup swap) \e[0m"
+    echo -e "\e[32m[8]: 退出脚本(Exit script) \e[0m"
+    echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
+    echo -e "\e[33m请输入选择(Please enter your selection) [0-8]:  \e[0m"
 }
 
 # 检查jq
@@ -51,19 +60,35 @@ function check_jq() {
 function check_curl() {
     echo -e "\e[36m正在检查curl命令(Checking curl command) \e[0m"
     if ! curl --version >/dev/null 2>&1; then
-            OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-            if [[ ${OS} == "ubuntu" ]]; then
-                apt install -y curl
-            else
-                if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
-                    yum install -y curl
-                fi
+        OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+        if [[ ${OS} == "ubuntu" ]]; then
+            apt install -y curl
+        else
+            if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+                yum install -y curl
             fi
         fi
+    fi
+}
+
+function check_strings() {
+    echo -e "\e[36m正在检查strings命令(Checking curl command) \e[0m"
+    if ! strings --version >/dev/null 2>&1; then
+        OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+        if [[ ${OS} == "ubuntu" ]]; then
+            apt install -y binutils
+        else
+            if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+                yum install -y binutils
+            fi
+        fi
+    fi
+
 }
 
 # Ubuntu检查GLIBC, rhel需要下载文件手动安装
 function check_glibc() {
+    check_strings
     echo -e "\e[36m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
@@ -187,7 +212,32 @@ function get_latest_version() {
     fi
 }
 
-#设置虚拟内存
+# 更新启动脚本
+update_script() {
+    echo -e "\e[36m正在更新脚本... \e[0m"
+    TEMP_FILE="/tmp/run.sh"
+    URL_GitHub="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
+    URL_Gitee="https://gitee.com/s763483966/dst-management-platform-api/raw/master/run.sh"
+
+    # 尝试从 GitHub 下载
+    if curl --connect-timeout 10 -sL "$URL_GitHub" -o "$TEMP_FILE"; then
+        echo -e "\e[32m从 GitHub 下载成功！ \e[0m"
+    # 如果失败，尝试从 Gitee 下载
+    elif curl --connect-timeout 10 -sL "$URL_Gitee" -o "$TEMP_FILE"; then
+        echo -e "\e[32m从 Gitee 下载成功！ \e[0m"
+    else
+        echo -e "\e[31m更新脚本失败：无法从GitHub或Gitee下载脚本 \e[0m" >&2
+        exit 1
+    fi
+
+    # 替换当前脚本
+    mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
+    echo -e "\e[32m脚本更新完成，3 秒后重新启动... \e[0m"
+    sleep 3
+    exec "$0"
+}
+
+# 设置虚拟内存
 function set_swap() {
     # 创建一个2GB的交换文件
     SWAPFILE=/swapfile
@@ -213,6 +263,13 @@ function set_swap() {
     else
         echo -e "\e[32m交换文件已在 /etc/fstab 中，跳过添加步骤 \e[0m"
     fi
+
+    # 更改swap配置并持久化
+    sysctl -w vm.swappiness=20
+    sysctl -w vm.min_free_kbytes=100000
+    echo -e 'vm.swappiness = 20\nvm.min_free_kbytes = 100000\n' > /etc/sysctl.d/dmp_swap.conf
+
+    echo -e "\e[32m系统swap设置成功 (System swap setting completed) \e[0m"
 }
 
 # 使用无限循环让用户输入命令
@@ -272,11 +329,19 @@ while true; do
         break
         ;;
     6)
+        update_script
+        break
+        ;;
+    7)
         set_swap # 调用设置虚拟内存的函数
         break
         ;;
+    8)
+        exit 0
+        break
+        ;;
     *)
-        echo -e "\e[31m无效输入，请输入 0, 1, 2, 3, 4, 5, 6 (Invalid input, please enter 0, 1, 2, 3, 4, 5, 6) \e[0m"
+        echo -e "\e[31m请输入正确的数字 [0-8](Please enter the correct number [0-8]) \e[0m"
         continue
         ;;
     esac

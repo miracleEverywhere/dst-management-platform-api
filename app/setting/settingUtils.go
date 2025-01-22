@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	lua "github.com/yuin/gopher-lua"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -528,4 +529,40 @@ type SystemSettingForm struct {
 	UIDMaintain        utils.SchedulerSettingItem `json:"UIDMaintain"`
 	SysMetricsGet      utils.SchedulerSettingItem `json:"sysMetricsGet"`
 	Bit64              bool                       `json:"bit64"`
+}
+
+func GetPlayerAgePrefab(uid string, world string) (int, string, error) {
+	cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
+	stdout, _, err := utils.BashCMDOutput(cmd)
+	if err != nil || stdout == "" {
+		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
+		return 0, "", err
+	}
+
+	path := stdout[:len(stdout)-6]
+	cmdAge := "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	stdout, _, err = utils.BashCMDOutput(cmdAge)
+	if err != nil || stdout == "" {
+		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdAge)
+		return 0, "", err
+	}
+
+	stdout = strings.TrimSpace(stdout)
+	age, err := strconv.ParseFloat(stdout, 64)
+	if err != nil {
+		utils.Logger.Error("玩家游戏时长转换失败", "err", err)
+		age = 0
+	}
+	age = age / 480
+	ageInt := int(math.Round(age))
+
+	cmdPrefab := "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	stdout, _, err = utils.BashCMDOutput(cmdPrefab)
+	if err != nil || stdout == "" {
+		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdPrefab)
+		return ageInt, "", nil
+	}
+	prefab := strings.TrimSpace(stdout)
+
+	return ageInt, prefab, nil
 }

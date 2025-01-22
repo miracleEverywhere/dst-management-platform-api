@@ -35,9 +35,9 @@ func handleRoomInfoGet(c *gin.Context) {
 	var filePath string
 
 	if config.RoomSetting.Ground != "" {
-		filePath, err = findLatestMetaFile(utils.MasterMetaPath)
+		filePath, err = FindLatestMetaFile(utils.MasterMetaPath)
 	} else {
-		filePath, err = findLatestMetaFile(utils.CavesMetaPath)
+		filePath, err = FindLatestMetaFile(utils.CavesMetaPath)
 	}
 
 	if err != nil {
