@@ -14,8 +14,8 @@ on:
           - nightly
 
 env:
-  REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
-
+  # REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
+  REGISTRY_SERVER_ADDRESS: ghcr.io/${{ github.repository }}
 jobs:
   build:
     runs-on: ubuntu-latest
