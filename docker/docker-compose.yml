@@ -2,7 +2,9 @@ services:
 
   dmp:
     # image: ghcr.io/harelive/dst-management-platform-api:latest # 测试用
-    image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest
+    # image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest #原地址
+    image: ghcr.nju.edu.cn/miracleeverywhere/dst-management-platform-api:latest #加速地址
+    
     container_name: dmp
 
     ports:
@@ -25,17 +27,20 @@ services:
       - 8769:8769/udp
       - 8769:8769/tcp
 
-    # 新建一个文件夹存Dockerfile
+    # 新建一个文件夹存docker-compose.yml,映射文件与docker-compose.yml同一级
     volumes:
       - ./.klei:/root/.klei
       - ./config:/root/config
       - ./dst:/root/dst
       - ./steamcmd:/root/steamcmd
+      # 同步宿主机时间(linux内核)
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     network_mode: bridge
 
-    # restart: unless-stopped #选择是否开机自启
+    # restart: unless-stopped #开机自启
     environment:
-      - TZ=Asia/Shanghai
+      # - TZ=Asia/Shanghai #宿主机非Linux内核使用
       - PGID=$(id -g)
       - PUID=$(id -u)
       - DMP_PORT=80
