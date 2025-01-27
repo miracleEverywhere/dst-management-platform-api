@@ -719,6 +719,43 @@ func ScreenCMD(cmd string, world string) error {
 	return nil
 }
 
+func ScreenCMDOutput(cmd string, cmdIdentifier string, world string) (string, error) {
+	var (
+		totalCMD string
+		logPath  string
+	)
+
+	if world == MasterName {
+		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
+		logPath = MasterLogPath
+	}
+	if world == CavesName {
+		totalCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
+		logPath = CavesLogPath
+	}
+
+	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
+	err := cmdExec.Run()
+	if err != nil {
+		return "", err
+	}
+
+	logCmd := "tail -1000 " + logPath
+	out, _, err := BashCMDOutput(logCmd)
+	if err != nil {
+		return "", err
+	}
+
+	for _, i := range strings.Split(out, "\n") {
+		if strings.Contains(i, cmdIdentifier+"DMPSCREENCMD") {
+			result := strings.Split(i, "DMPSCREENCMD")
+			return strings.TrimSpace(result[1]), nil
+		}
+	}
+
+	return "", fmt.Errorf("在日志中未找到对应输出")
+}
+
 func BashCMD(cmd string) error {
 	cmdExec := exec.Command("/bin/bash", "-c", cmd)
 	err := cmdExec.Run()

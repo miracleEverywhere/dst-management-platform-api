@@ -532,16 +532,44 @@ type SystemSettingForm struct {
 }
 
 func GetPlayerAgePrefab(uid string, world string) (int, string, error) {
-	cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
-	stdout, _, err := utils.BashCMDOutput(cmd)
-	if err != nil || stdout == "" {
-		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
+	userPathEncode, err := utils.ScreenCMDOutput(utils.UserDataEncode, uid+"UserDataEncode", world)
+	print(userPathEncode)
+	if err != nil {
 		return 0, "", err
 	}
 
-	path := stdout[:len(stdout)-6]
+	var path string
+
+	if userPathEncode == "true" {
+		sessionFileCmd := "TheNet:GetUserSessionFile(ShardGameIndex:GetSession(), '" + uid + "')"
+		userSessionFile, err := utils.ScreenCMDOutput(sessionFileCmd, uid+"UserSessionFile", world)
+		if err != nil {
+			return 0, "", err
+		}
+
+		if world == "Master" {
+			path = utils.MasterSavePath + "/" + userSessionFile
+		} else {
+			path = utils.CavesSavePath + "/" + userSessionFile
+		}
+
+		ok, _ := utils.FileDirectoryExists(path)
+		if !ok {
+			return 0, "", err
+		}
+
+	} else {
+		cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
+		stdout, _, err := utils.BashCMDOutput(cmd)
+		if err != nil || stdout == "" {
+			utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
+			return 0, "", err
+		}
+		path = stdout[:len(stdout)-6]
+	}
+
 	cmdAge := "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
-	stdout, _, err = utils.BashCMDOutput(cmdAge)
+	stdout, _, err := utils.BashCMDOutput(cmdAge)
 	if err != nil || stdout == "" {
 		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdAge)
 		return 0, "", err
