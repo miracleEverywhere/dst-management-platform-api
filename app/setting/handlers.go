@@ -630,9 +630,27 @@ func handleModConfigOptionsGet(c *gin.Context) {
 		ID            int                         `json:"id"`
 		ConfigOptions []utils.ConfigurationOption `json:"configOptions"`
 	}
-	var modConfig ModConfig
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	var (
+		modConfig      ModConfig
+		modInfoLuaFile string
+	)
+
 	modID := modConfigurationsForm.ID
-	modInfoLuaFile := utils.MasterModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
+
+	if config.RoomSetting.Ground != "" {
+		modInfoLuaFile = utils.MasterModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
+	} else {
+		modInfoLuaFile = utils.CavesModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
+	}
+
 	isUgcMod, err := utils.FileDirectoryExists(modInfoLuaFile)
 	if err != nil {
 		utils.RespondWithError(c, 500, langStr)
