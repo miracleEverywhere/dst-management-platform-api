@@ -14,6 +14,7 @@ func handleRoomInfoGet(c *gin.Context) {
 		RoomSettingBase utils.RoomSettingBase `json:"roomSettingBase"`
 		SeasonInfo      metaInfo              `json:"seasonInfo"`
 		ModsCount       int                   `json:"modsCount"`
+		PlayerNum       int                   `json:"playerNum"`
 	}
 	type Response struct {
 		Code    int    `json:"code"`
@@ -55,10 +56,19 @@ func handleRoomInfoGet(c *gin.Context) {
 		}
 	}
 
+	var playerNum int
+	if len(utils.STATISTICS) > 0 {
+		players := utils.STATISTICS[len(utils.STATISTICS)-1].Players
+		playerNum = len(players)
+	} else {
+		playerNum = 0
+	}
+
 	data := Data{
 		RoomSettingBase: config.RoomSetting.Base,
 		SeasonInfo:      seasonInfo,
 		ModsCount:       modsCount,
+		PlayerNum:       playerNum,
 	}
 
 	response := Response{
