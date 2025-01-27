@@ -1369,15 +1369,16 @@ func ReplaceDSTSOFile() error {
 	if err != nil {
 		return err
 	}
-	err = BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
-	if err != nil {
-		return err
-	}
 	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
 	if err != nil {
 		return err
 	}
-	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
+
+	err = BashCMD("mv ~/dst/bin64/lib64/steamclient.so ~/dst/bin64/lib64/steamclient.so.bak")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("cp ~/steamcmd/linux64/steamclient.so ~/dst/bin64/lib64/steamclient.so")
 	if err != nil {
 		return err
 	}
