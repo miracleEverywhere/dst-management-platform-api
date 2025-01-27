@@ -221,7 +221,7 @@ func handlePlayerListGet(c *gin.Context) {
 	)
 
 	//playList.Players = config.Players
-	if len(utils.STATISTICS) < 1 {
+	if len(utils.STATISTICS) > 0 {
 		players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
 	}
 	config, err := utils.ReadConfig()
