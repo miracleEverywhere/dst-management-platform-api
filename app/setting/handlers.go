@@ -215,10 +215,15 @@ func handlePlayerListGet(c *gin.Context) {
 
 	uidMap, _ := utils.ReadUidMap()
 
-	var playList PlayerList
-	//playList.Players = config.Players
-	players := utils.STATISTICS[len(utils.STATISTICS)-1].Players
+	var (
+		playList PlayerList
+		players  []utils.Players
+	)
 
+	//playList.Players = config.Players
+	if len(utils.STATISTICS) < 1 {
+		players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
+	}
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("读取配置文件失败", "err", err)
