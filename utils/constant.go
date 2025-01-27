@@ -8,6 +8,10 @@ const MasterScreenName = "DST_MASTER"
 const CavesScreenName = "DST_CAVES"
 const ServerPath = ".klei/DoNotStarveTogether/MyDediServer/"
 
+const MasterPath = ServerPath + MasterName
+
+const CavesPath = ServerPath + CavesName
+
 const MasterModPath = ServerPath + MasterName + "/modoverrides.lua"
 
 const CavesModPath = ServerPath + CavesName + "/modoverrides.lua"

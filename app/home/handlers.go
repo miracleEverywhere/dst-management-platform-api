@@ -183,7 +183,7 @@ func handleExecPost(c *gin.Context) {
 			}
 		}
 
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("startupSuccess", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
 
 	case "rollback":
 		cmd := "c_rollback(" + strconv.Itoa(execFrom.Info) + ")"
@@ -193,14 +193,14 @@ func handleExecPost(c *gin.Context) {
 			utils.RespondWithError(c, 511, langStr)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("rollbackSuccess", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("rollbackSuccess", langStr), "data": nil})
 
 	case "shutdown":
 		err := utils.StopGame()
 		if err != nil {
 			utils.Logger.Error("关闭游戏失败", "err", err)
 		}
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
 
 	case "restart":
 		err := utils.StopGame()
@@ -210,10 +210,10 @@ func handleExecPost(c *gin.Context) {
 		err = utils.StartGame()
 		if err != nil {
 			utils.Logger.Error("启动游戏失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("restartFail", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restartFail", langStr), "data": nil})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("restartSuccess", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
 
 	case "update":
 		err := utils.StopGame()
@@ -232,17 +232,17 @@ func handleExecPost(c *gin.Context) {
 			}
 		}()
 
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("updating", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updating", langStr), "data": nil})
 
 	case "reset":
 		cmd := "c_regenerateworld()"
 		err := utils.ScreenCMD(cmd, utils.MasterName)
 		if err != nil {
 			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("execFail", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("execFail", langStr), "data": nil})
 		}
 
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("resetSuccess", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("resetSuccess", langStr), "data": nil})
 
 	case "delete":
 		err := utils.StopGame()
@@ -252,39 +252,47 @@ func handleExecPost(c *gin.Context) {
 
 		time.Sleep(2 * time.Second)
 
-		errMaster := utils.RemoveDir(utils.MasterSavePath)
-		errCaves := utils.RemoveDir(utils.CavesSavePath)
-		if errMaster != nil {
-			utils.Logger.Error("删除地面失败")
-			if errCaves != nil {
-				utils.Logger.Error("删除洞穴失败")
-				c.JSON(http.StatusOK, gin.H{
-					"code":    201,
-					"message": Success("deleteGroundFail", langStr) + ", " + Success("deleteCavesFail", langStr),
-					"data":    nil,
-				})
-			} else {
-				c.JSON(http.StatusOK, gin.H{
-					"code":    201,
-					"message": Success("deleteGroundFail", langStr) + ", " + Success("deleteCavesSuccess", langStr),
-					"data":    nil,
-				})
+		config, err := utils.ReadConfig()
+		if err != nil {
+			utils.Logger.Error("读取配置文件失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		var (
+			cmd    string
+			master bool
+			caves  bool
+		)
+		if config.RoomSetting.Ground != "" {
+			cmd = "rm -rf " + utils.MasterPath + "/*"
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("删除地面失败", "err", err)
 			}
+			master = true
+		}
+		if config.RoomSetting.Cave != "" {
+			cmd = "rm -rf " + utils.CavesPath + "/*"
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("删除洞穴失败", "err", err)
+			}
+			caves = true
+		}
+
+		if !master && !caves {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    201,
+				"message": response("deleteFail", langStr),
+				"data":    nil,
+			})
 		} else {
-			if errCaves != nil {
-				utils.Logger.Error("删除洞穴失败")
-				c.JSON(http.StatusOK, gin.H{
-					"code":    201,
-					"message": Success("deleteGroundSuccess", langStr) + ", " + Success("deleteCavesFail", langStr),
-					"data":    nil,
-				})
-			} else {
-				c.JSON(http.StatusOK, gin.H{
-					"code":    200,
-					"message": Success("deleteGroundSuccess", langStr) + ", " + Success("deleteCavesSuccess", langStr),
-					"data":    nil,
-				})
-			}
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response("deleteSuccess", langStr),
+				"data":    nil,
+			})
 		}
 
 	case "masterSwitch":
@@ -304,7 +312,7 @@ func handleExecPost(c *gin.Context) {
 				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
 			}
 
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
 		} else {
 			config, err := utils.ReadConfig()
 			if err != nil {
@@ -335,9 +343,9 @@ func handleExecPost(c *gin.Context) {
 			err = utils.BashCMD(cmd)
 			if err != nil {
 				utils.Logger.Error("启动游戏失败", "err", err, "cmd", cmd)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("startupFail", langStr), "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
 			}
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("startupSuccess", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
 		}
 
 	case "cavesSwitch":
@@ -357,7 +365,7 @@ func handleExecPost(c *gin.Context) {
 				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
 			}
 
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("shutdownSuccess", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
 		} else {
 			config, err := utils.ReadConfig()
 			if err != nil {
@@ -389,10 +397,10 @@ func handleExecPost(c *gin.Context) {
 			err = utils.BashCMD(cmd)
 			if err != nil {
 				utils.Logger.Error("启动游戏失败", "err", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("startupFail", langStr), "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("startupSuccess", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
 		}
 
 	default:
@@ -435,11 +443,11 @@ func handleAnnouncementPost(c *gin.Context) {
 
 	if cmdErr != nil {
 		utils.Logger.Error("ScreenCMD执行失败", "err", cmdErr, "cmd", cmd)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("announceFail", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("announceFail", langStr), "data": nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("announceSuccess", langStr), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("announceSuccess", langStr), "data": nil})
 }
 
 func handleConsolePost(c *gin.Context) {
@@ -463,21 +471,21 @@ func handleConsolePost(c *gin.Context) {
 		err := utils.ScreenCMD(cmd, utils.MasterName)
 		if err != nil {
 			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("execFail", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("execFail", langStr), "data": nil})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("execSuccess", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("execSuccess", langStr), "data": nil})
 		return
 	}
 	if consoleForm.World == "caves" {
 		err := utils.ScreenCMD(cmd, utils.CavesName)
 		if err != nil {
 			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": Success("execFail", langStr), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("execFail", langStr), "data": nil})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("execSuccess", langStr), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("execSuccess", langStr), "data": nil})
 		return
 	}
 
