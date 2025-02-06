@@ -347,6 +347,36 @@ func AddModDefaultConfig(newModLuaScript string, id int, langStr string) []ModOv
 	return modOverrides
 }
 
+func CheckModDownloadedReady(ugc bool, modID int, modSize string) (bool, error) {
+	var (
+		modPath string
+	)
+
+	if !ugc {
+		// not ugc
+		modPath = ModDownloadPath + "/not_ugc/" + strconv.Itoa(modID)
+	} else {
+		// ugc
+		modPath = ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(modID)
+	}
+
+	realSize, err := GetDirSize(modPath)
+	if err != nil {
+		return false, err
+	}
+
+	correctSize, err := strconv.Atoi(modSize)
+	diffSize := int64(correctSize) - realSize
+
+	fmt.Println(diffSize)
+
+	if diffSize != 0 {
+		return false, nil
+	} else {
+		return true, nil
+	}
+}
+
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）
 //func getTableLength(table *lua.LTable) int {
 //	// 计算数组部分的元素个数

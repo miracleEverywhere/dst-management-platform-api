@@ -258,6 +258,7 @@ type ModInfo struct {
 	FileDescription string   `json:"file_description"`
 	FileUrl         string   `json:"file_url"`
 	VoteData        VoteData `json:"vote_data"`
+	DownloadedReady bool     `json:"downloadedReady"`
 }
 type Data struct {
 	Total    int       `json:"total"`
@@ -314,6 +315,7 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 			FileUrl:         i.FileUrl,
 			VoteData:        i.VoteData,
 		}
+
 		modInfoList = append(modInfoList, modInfo)
 	}
 
@@ -656,6 +658,20 @@ func GetDownloadedModInfo(mods []string, lang string) ([]ModInfo, error) {
 			FileUrl:         i.FileUrl,
 			VoteData:        i.VoteData,
 		}
+		var ugc bool
+		if modInfo.FileUrl != "" {
+			ugc = false
+		} else {
+			ugc = true
+		}
+
+		ready, err := utils.CheckModDownloadedReady(ugc, modInfo.ID, modInfo.Size)
+		if err != nil {
+			utils.Logger.Error("模组大小检查失败", "err", err)
+		}
+
+		modInfo.DownloadedReady = ready
+
 		modInfoList = append(modInfoList, modInfo)
 	}
 
