@@ -1148,7 +1148,14 @@ func handleSystemSettingPut(c *gin.Context) {
 	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
 	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
 	config.Keepalive.Enable = !systemSettingForm.KeepaliveDisable
-	config.TickRate = systemSettingForm.TickRate
+
+	if config.TickRate != systemSettingForm.TickRate {
+		config.TickRate = systemSettingForm.TickRate
+		err = saveSetting(config)
+		if err != nil {
+			utils.Logger.Error("设置Tick Rate失败", "err", err)
+		}
+	}
 
 	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
 		utils.SYS_METRICS = []utils.SysMetrics{}

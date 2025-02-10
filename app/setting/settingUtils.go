@@ -35,6 +35,7 @@ whitelist_slots = 0
 cluster_name = ` + base.Name + `
 cluster_password = ` + base.Password + `
 cluster_language = zh
+tick_rate = ` + strconv.Itoa(config.TickRate) + `
 
 [MISC]
 console_enabled = true
