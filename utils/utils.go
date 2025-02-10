@@ -929,13 +929,13 @@ func StopGame() error {
 	if config.RoomSetting.Ground != "" {
 		err = ScreenCMD(cmd, MasterName)
 		if err != nil {
-			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
 		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = ScreenCMD(cmd, CavesName)
 		if err != nil {
-			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
 		}
 	}
 
@@ -943,24 +943,25 @@ func StopGame() error {
 	if config.RoomSetting.Ground != "" {
 		err = BashCMD(StopMasterCMD)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+			Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopMasterCMD)
 		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = BashCMD(StopCavesCMD)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopCavesCMD)
+			Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopCavesCMD)
 		}
 	}
 
 	time.Sleep(1 * time.Second)
+
 	err = BashCMD(KillDST)
 	if err != nil {
-		Logger.Warn("执行BashCMD失败", "err", err, "cmd", KillDST)
+		Logger.Info("执行BashCMD失败", "msg", err, "cmd", KillDST)
 	}
 	err = BashCMD(ClearScreenCMD)
 	if err != nil {
-		Logger.Warn("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
+		Logger.Info("执行BashCMD失败", "msg", err, "cmd", ClearScreenCMD)
 	}
 
 	return nil
