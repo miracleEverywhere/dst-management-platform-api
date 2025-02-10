@@ -524,11 +524,13 @@ func changeWhitelistSlots() error {
 }
 
 type SystemSettingForm struct {
+	KeepaliveDisable   bool                       `json:"keepaliveDisable"`
 	KeepaliveFrequency int                        `json:"keepaliveFrequency"`
 	PlayerGetFrequency int                        `json:"playerGetFrequency"`
 	UIDMaintain        utils.SchedulerSettingItem `json:"UIDMaintain"`
 	SysMetricsGet      utils.SchedulerSettingItem `json:"sysMetricsGet"`
 	Bit64              bool                       `json:"bit64"`
+	TickRate           int                        `json:"tickRate"`
 }
 
 func GetPlayerAgePrefab(uid string, world string) (int, string, error) {

@@ -1110,10 +1110,12 @@ func handleSystemSettingGet(c *gin.Context) {
 
 	var data SystemSettingForm
 	data.SysMetricsGet = config.SysSetting.SchedulerSetting.SysMetricsGet
+	data.KeepaliveDisable = !config.Keepalive.Enable
 	data.PlayerGetFrequency = config.SysSetting.SchedulerSetting.PlayerGetFrequency
 	data.UIDMaintain = config.SysSetting.SchedulerSetting.UIDMaintain
 	data.KeepaliveFrequency = config.Keepalive.Frequency
 	data.Bit64 = config.Bit64
+	data.TickRate = config.TickRate
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
@@ -1145,6 +1147,8 @@ func handleSystemSettingPut(c *gin.Context) {
 	config.SysSetting.SchedulerSetting.UIDMaintain.Disable = systemSettingForm.UIDMaintain.Disable
 	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
 	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
+	config.Keepalive.Enable = !systemSettingForm.KeepaliveDisable
+	config.TickRate = systemSettingForm.TickRate
 
 	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
 		utils.SYS_METRICS = []utils.SysMetrics{}

@@ -146,6 +146,7 @@ type Config struct {
 	SysSetting   SysSetting     `json:"sysSetting"`
 	Bit64        bool           `json:"bit64"`
 	Platform     string         `json:"platform"`
+	TickRate     int            `json:"tickRate"`
 }
 
 type OSInfo struct {
@@ -210,8 +211,12 @@ func CreateConfig() {
 			config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
 		}
 		if config.Keepalive.Frequency == 0 {
-			Logger.Info("设置U自动保活任务默认频率")
+			Logger.Info("设置自动保活任务默认频率")
 			config.Keepalive.Frequency = 30
+		}
+		if config.TickRate == 0 {
+			Logger.Info("设置默认TickRate")
+			config.TickRate = 15
 		}
 
 		Logger.Info("执行数据库检查中，清除历史脏数据")
@@ -250,6 +255,8 @@ func CreateConfig() {
 
 	config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
 	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
+
+	config.TickRate = 15
 
 	err = WriteConfig(config)
 	if err != nil {
