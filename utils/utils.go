@@ -740,6 +740,9 @@ func ScreenCMDOutput(cmd string, cmdIdentifier string, world string) (string, er
 		return "", err
 	}
 
+	// 等待日志打印
+	time.Sleep(50 * time.Millisecond)
+
 	logCmd := "tail -1000 " + logPath
 	out, _, err := BashCMDOutput(logCmd)
 	if err != nil {

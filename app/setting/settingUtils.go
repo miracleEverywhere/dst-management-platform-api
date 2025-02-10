@@ -533,7 +533,6 @@ type SystemSettingForm struct {
 
 func GetPlayerAgePrefab(uid string, world string) (int, string, error) {
 	userPathEncode, err := utils.ScreenCMDOutput(utils.UserDataEncode, uid+"UserDataEncode", world)
-	print(userPathEncode)
 	if err != nil {
 		return 0, "", err
 	}
