@@ -345,7 +345,7 @@ func handleMenu(c *gin.Context) {
 		//},
 		{
 			MenuId:      10206,
-			MenuName:    "数据统计",
+			MenuName:    "玩家统计",
 			EnName:      "Statistics",
 			ParentId:    102,
 			MenuType:    "2",
