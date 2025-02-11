@@ -726,6 +726,8 @@ func ScreenCMD(cmd string, world string) error {
 	return nil
 }
 
+// ScreenCMDOutput 执行screen命令，并从日志中获取输出
+// 自动添加print命令，cmdIdentifier是该命令在日志中输出的唯一标识符
 func ScreenCMDOutput(cmd string, cmdIdentifier string, world string) (string, error) {
 	var (
 		totalCMD string

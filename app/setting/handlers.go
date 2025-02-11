@@ -239,9 +239,11 @@ func handlePlayerListGet(c *gin.Context) {
 		world = "Caves"
 	}
 
+	userPathEncode, _ := GetUserDataEncodeStatus("KU_12345678", world)
+
 	for _, player := range players {
 		uid := player.UID
-		age, _, err := GetPlayerAgePrefab(uid, world)
+		age, _, err := GetPlayerAgePrefab(uid, world, userPathEncode)
 		if err != nil {
 			utils.Logger.Error("玩家游戏时长获取失败")
 		}
@@ -290,9 +292,11 @@ func handleHistoryPlayerGet(c *gin.Context) {
 		world = "Caves"
 	}
 
+	userPathEncode, _ := GetUserDataEncodeStatus("KU_12345678", world)
+
 	var playerList []Player
 	for uid, nickname := range uidMap {
-		age, prefab, err := GetPlayerAgePrefab(uid, world)
+		age, prefab, err := GetPlayerAgePrefab(uid, world, userPathEncode)
 		if err != nil {
 			utils.Logger.Error("获取历史玩家信息失败", "err", err, "UID", uid)
 		}

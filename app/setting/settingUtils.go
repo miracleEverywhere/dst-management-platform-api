@@ -534,15 +534,22 @@ type SystemSettingForm struct {
 	TickRate           int                        `json:"tickRate"`
 }
 
-func GetPlayerAgePrefab(uid string, world string) (int, string, error) {
+func GetUserDataEncodeStatus(uid string, world string) (bool, error) {
 	userPathEncode, err := utils.ScreenCMDOutput(utils.UserDataEncode, uid+"UserDataEncode", world)
 	if err != nil {
-		return 0, "", err
+		return false, err
 	}
+	if userPathEncode == "true" {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
 
+func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, string, error) {
 	var path string
 
-	if userPathEncode == "true" {
+	if userPathEncode {
 		sessionFileCmd := "TheNet:GetUserSessionFile(ShardGameIndex:GetSession(), '" + uid + "')"
 		userSessionFile, err := utils.ScreenCMDOutput(sessionFileCmd, uid+"UserSessionFile", world)
 		if err != nil {
