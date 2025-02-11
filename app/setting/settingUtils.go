@@ -3,7 +3,6 @@ package setting
 import (
 	"bufio"
 	"dst-management-platform-api/utils"
-	"github.com/gin-gonic/gin"
 	lua "github.com/yuin/gopher-lua"
 	"math"
 	"os"
@@ -169,7 +168,7 @@ func saveSetting(config utils.Config) error {
 	return nil
 }
 
-func generateWorld(c *gin.Context, config utils.Config, langStr string) {
+func generateWorld() {
 	//关闭Master进程
 	/*cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
 	err := cmdStopMaster.Run()
@@ -547,7 +546,11 @@ func GetUserDataEncodeStatus(uid string, world string) (bool, error) {
 }
 
 func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, string, error) {
-	var path string
+	var (
+		path      string
+		cmdAge    string
+		cmdPrefab string
+	)
 
 	if userPathEncode {
 		sessionFileCmd := "TheNet:GetUserSessionFile(ShardGameIndex:GetSession(), '" + uid + "')"
@@ -577,7 +580,12 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 		path = stdout[:len(stdout)-6]
 	}
 
-	cmdAge := "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	if utils.PLATFORM == "darwin" {
+		cmdAge = "ggrep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	} else {
+		cmdAge = "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	}
+
 	stdout, _, err := utils.BashCMDOutput(cmdAge)
 	if err != nil || stdout == "" {
 		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdAge)
@@ -593,7 +601,12 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 	age = age / 480
 	ageInt := int(math.Round(age))
 
-	cmdPrefab := "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	if utils.PLATFORM == "darwin" {
+		cmdPrefab = "ggrep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	} else {
+		cmdPrefab = "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	}
+
 	stdout, _, err = utils.BashCMDOutput(cmdPrefab)
 	if err != nil || stdout == "" {
 		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdPrefab)

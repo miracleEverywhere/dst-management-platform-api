@@ -182,7 +182,7 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 	}
-	generateWorld(c, config, langStr)
+	generateWorld()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
 

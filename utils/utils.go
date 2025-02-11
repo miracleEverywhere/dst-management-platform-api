@@ -35,6 +35,7 @@ var (
 	ConsoleOutput bool
 	VersionShow   bool
 	ConfDir       string
+	PLATFORM      string
 )
 
 type Claims struct {
@@ -466,6 +467,8 @@ func CheckPlatform() {
 		panic(err)
 	}
 	config.Platform = osInfo.Platform
+
+	PLATFORM = osInfo.Platform
 
 	err = WriteConfig(config)
 	if err != nil {
