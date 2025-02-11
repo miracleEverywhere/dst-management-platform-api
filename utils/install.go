@@ -131,7 +131,7 @@ DST_DIR="$HOME/dst"
 DST_SETTING_DIR="$HOME/.klei"
 
 # 安装依赖
-brew install unzip wget screen curl
+brew install unzip wget screen curl grep
 
 mkdir $STEAM_DIR
 curl -O "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_osx.tar.gz"
