@@ -114,6 +114,7 @@ function install_dmp() {
 
 # 检查进程状态
 function check_dmp() {
+    sleep 1
     if pgrep dmp >/dev/null; then
         echo -e "\e[32m启动成功 (Startup Success) \e[0m"
     else
