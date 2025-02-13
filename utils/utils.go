@@ -35,6 +35,7 @@ var (
 	ConsoleOutput bool
 	VersionShow   bool
 	ConfDir       string
+	PLATFORM      string
 )
 
 type Claims struct {
@@ -146,6 +147,7 @@ type Config struct {
 	SysSetting   SysSetting     `json:"sysSetting"`
 	Bit64        bool           `json:"bit64"`
 	Platform     string         `json:"platform"`
+	TickRate     int            `json:"tickRate"`
 }
 
 type OSInfo struct {
@@ -210,8 +212,12 @@ func CreateConfig() {
 			config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
 		}
 		if config.Keepalive.Frequency == 0 {
-			Logger.Info("设置U自动保活任务默认频率")
+			Logger.Info("设置自动保活任务默认频率")
 			config.Keepalive.Frequency = 30
+		}
+		if config.TickRate == 0 {
+			Logger.Info("设置默认TickRate")
+			config.TickRate = 15
 		}
 
 		Logger.Info("执行数据库检查中，清除历史脏数据")
@@ -250,6 +256,8 @@ func CreateConfig() {
 
 	config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
 	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
+
+	config.TickRate = 15
 
 	err = WriteConfig(config)
 	if err != nil {
@@ -459,6 +467,8 @@ func CheckPlatform() {
 		panic(err)
 	}
 	config.Platform = osInfo.Platform
+
+	PLATFORM = osInfo.Platform
 
 	err = WriteConfig(config)
 	if err != nil {
@@ -719,6 +729,48 @@ func ScreenCMD(cmd string, world string) error {
 	return nil
 }
 
+// ScreenCMDOutput 执行screen命令，并从日志中获取输出
+// 自动添加print命令，cmdIdentifier是该命令在日志中输出的唯一标识符
+func ScreenCMDOutput(cmd string, cmdIdentifier string, world string) (string, error) {
+	var (
+		totalCMD string
+		logPath  string
+	)
+
+	if world == MasterName {
+		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
+		logPath = MasterLogPath
+	}
+	if world == CavesName {
+		totalCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
+		logPath = CavesLogPath
+	}
+
+	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
+	err := cmdExec.Run()
+	if err != nil {
+		return "", err
+	}
+
+	// 等待日志打印
+	time.Sleep(50 * time.Millisecond)
+
+	logCmd := "tail -1000 " + logPath
+	out, _, err := BashCMDOutput(logCmd)
+	if err != nil {
+		return "", err
+	}
+
+	for _, i := range strings.Split(out, "\n") {
+		if strings.Contains(i, cmdIdentifier+"DMPSCREENCMD") {
+			result := strings.Split(i, "DMPSCREENCMD")
+			return strings.TrimSpace(result[1]), nil
+		}
+	}
+
+	return "", fmt.Errorf("在日志中未找到对应输出")
+}
+
 func BashCMD(cmd string) error {
 	cmdExec := exec.Command("/bin/bash", "-c", cmd)
 	err := cmdExec.Run()
@@ -892,13 +944,13 @@ func StopGame() error {
 	if config.RoomSetting.Ground != "" {
 		err = ScreenCMD(cmd, MasterName)
 		if err != nil {
-			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
 		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = ScreenCMD(cmd, CavesName)
 		if err != nil {
-			Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
 		}
 	}
 
@@ -906,24 +958,25 @@ func StopGame() error {
 	if config.RoomSetting.Ground != "" {
 		err = BashCMD(StopMasterCMD)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopMasterCMD)
+			Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopMasterCMD)
 		}
 	}
 	if config.RoomSetting.Cave != "" {
 		err = BashCMD(StopCavesCMD)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", StopCavesCMD)
+			Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopCavesCMD)
 		}
 	}
 
 	time.Sleep(1 * time.Second)
+
 	err = BashCMD(KillDST)
 	if err != nil {
-		Logger.Warn("执行BashCMD失败", "err", err, "cmd", KillDST)
+		Logger.Info("执行BashCMD失败", "msg", err, "cmd", KillDST)
 	}
 	err = BashCMD(ClearScreenCMD)
 	if err != nil {
-		Logger.Warn("执行BashCMD失败", "err", err, "cmd", ClearScreenCMD)
+		Logger.Info("执行BashCMD失败", "msg", err, "cmd", ClearScreenCMD)
 	}
 
 	return nil
@@ -1332,15 +1385,16 @@ func ReplaceDSTSOFile() error {
 	if err != nil {
 		return err
 	}
-	err = BashCMD("mv ~/dst/steamclient.so ~/dst/steamclient.so.bak")
-	if err != nil {
-		return err
-	}
 	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so")
 	if err != nil {
 		return err
 	}
-	err = BashCMD("cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so")
+
+	err = BashCMD("mv ~/dst/bin64/lib64/steamclient.so ~/dst/bin64/lib64/steamclient.so.bak")
+	if err != nil {
+		return err
+	}
+	err = BashCMD("cp ~/steamcmd/linux64/steamclient.so ~/dst/bin64/lib64/steamclient.so")
 	if err != nil {
 		return err
 	}

@@ -182,7 +182,7 @@ func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Error("mod配置保存失败", "err", err)
 	}
-	generateWorld(c, config, langStr)
+	generateWorld()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
 
@@ -215,10 +215,15 @@ func handlePlayerListGet(c *gin.Context) {
 
 	uidMap, _ := utils.ReadUidMap()
 
-	var playList PlayerList
-	//playList.Players = config.Players
-	players := utils.STATISTICS[len(utils.STATISTICS)-1].Players
+	var (
+		playList PlayerList
+		players  []utils.Players
+	)
 
+	//playList.Players = config.Players
+	if len(utils.STATISTICS) > 0 {
+		players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
+	}
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("读取配置文件失败", "err", err)
@@ -234,9 +239,11 @@ func handlePlayerListGet(c *gin.Context) {
 		world = "Caves"
 	}
 
+	userPathEncode, _ := GetUserDataEncodeStatus("KU_12345678", world)
+
 	for _, player := range players {
 		uid := player.UID
-		age, _, err := GetPlayerAgePrefab(uid, world)
+		age, _, err := GetPlayerAgePrefab(uid, world, userPathEncode)
 		if err != nil {
 			utils.Logger.Error("玩家游戏时长获取失败")
 		}
@@ -285,9 +292,11 @@ func handleHistoryPlayerGet(c *gin.Context) {
 		world = "Caves"
 	}
 
+	userPathEncode, _ := GetUserDataEncodeStatus("KU_12345678", world)
+
 	var playerList []Player
 	for uid, nickname := range uidMap {
-		age, prefab, err := GetPlayerAgePrefab(uid, world)
+		age, prefab, err := GetPlayerAgePrefab(uid, world, userPathEncode)
 		if err != nil {
 			utils.Logger.Error("获取历史玩家信息失败", "err", err, "UID", uid)
 		}
@@ -630,9 +639,27 @@ func handleModConfigOptionsGet(c *gin.Context) {
 		ID            int                         `json:"id"`
 		ConfigOptions []utils.ConfigurationOption `json:"configOptions"`
 	}
-	var modConfig ModConfig
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	var (
+		modConfig      ModConfig
+		modInfoLuaFile string
+	)
+
 	modID := modConfigurationsForm.ID
-	modInfoLuaFile := utils.MasterModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
+
+	if config.RoomSetting.Ground != "" {
+		modInfoLuaFile = utils.MasterModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
+	} else {
+		modInfoLuaFile = utils.CavesModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
+	}
+
 	isUgcMod, err := utils.FileDirectoryExists(modInfoLuaFile)
 	if err != nil {
 		utils.RespondWithError(c, 500, langStr)
@@ -1087,10 +1114,12 @@ func handleSystemSettingGet(c *gin.Context) {
 
 	var data SystemSettingForm
 	data.SysMetricsGet = config.SysSetting.SchedulerSetting.SysMetricsGet
+	data.KeepaliveDisable = !config.Keepalive.Enable
 	data.PlayerGetFrequency = config.SysSetting.SchedulerSetting.PlayerGetFrequency
 	data.UIDMaintain = config.SysSetting.SchedulerSetting.UIDMaintain
 	data.KeepaliveFrequency = config.Keepalive.Frequency
 	data.Bit64 = config.Bit64
+	data.TickRate = config.TickRate
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
@@ -1122,6 +1151,15 @@ func handleSystemSettingPut(c *gin.Context) {
 	config.SysSetting.SchedulerSetting.UIDMaintain.Disable = systemSettingForm.UIDMaintain.Disable
 	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
 	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
+	config.Keepalive.Enable = !systemSettingForm.KeepaliveDisable
+
+	if config.TickRate != systemSettingForm.TickRate {
+		config.TickRate = systemSettingForm.TickRate
+		err = saveSetting(config)
+		if err != nil {
+			utils.Logger.Error("设置Tick Rate失败", "err", err)
+		}
+	}
 
 	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
 		utils.SYS_METRICS = []utils.SysMetrics{}

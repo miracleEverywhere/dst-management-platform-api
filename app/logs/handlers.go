@@ -334,8 +334,7 @@ func handleCleanLogsPost(c *gin.Context) {
 				}
 			}
 		case "Access":
-			cmd := "> " + utils.DMPLogPath
-			err = utils.BashCMD(cmd)
+			err = utils.TruncAndWriteFile(utils.DMPLogPath, "")
 			if err != nil {
 				utils.Logger.Error("请求日志删除失败", "err", err)
 				messagesZh = append(messagesZh, "请求日志删除失败")
@@ -343,8 +342,7 @@ func handleCleanLogsPost(c *gin.Context) {
 				code = 201
 			}
 		case "Runtime":
-			cmd := "> " + utils.ProcessLogFile
-			err = utils.BashCMD(cmd)
+			err = utils.TruncAndWriteFile(utils.ProcessLogFile, "")
 			if err != nil {
 				utils.Logger.Error("运行日志删除失败", "err", err)
 				messagesZh = append(messagesZh, "运行日志删除失败")

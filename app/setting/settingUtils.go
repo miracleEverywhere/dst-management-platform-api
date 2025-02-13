@@ -3,7 +3,6 @@ package setting
 import (
 	"bufio"
 	"dst-management-platform-api/utils"
-	"github.com/gin-gonic/gin"
 	lua "github.com/yuin/gopher-lua"
 	"math"
 	"os"
@@ -35,6 +34,7 @@ whitelist_slots = 0
 cluster_name = ` + base.Name + `
 cluster_password = ` + base.Password + `
 cluster_language = zh
+tick_rate = ` + strconv.Itoa(config.TickRate) + `
 
 [MISC]
 console_enabled = true
@@ -168,7 +168,7 @@ func saveSetting(config utils.Config) error {
 	return nil
 }
 
-func generateWorld(c *gin.Context, config utils.Config, langStr string) {
+func generateWorld() {
 	//关闭Master进程
 	/*cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
 	err := cmdStopMaster.Run()
@@ -524,24 +524,69 @@ func changeWhitelistSlots() error {
 }
 
 type SystemSettingForm struct {
+	KeepaliveDisable   bool                       `json:"keepaliveDisable"`
 	KeepaliveFrequency int                        `json:"keepaliveFrequency"`
 	PlayerGetFrequency int                        `json:"playerGetFrequency"`
 	UIDMaintain        utils.SchedulerSettingItem `json:"UIDMaintain"`
 	SysMetricsGet      utils.SchedulerSettingItem `json:"sysMetricsGet"`
 	Bit64              bool                       `json:"bit64"`
+	TickRate           int                        `json:"tickRate"`
 }
 
-func GetPlayerAgePrefab(uid string, world string) (int, string, error) {
-	cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
-	stdout, _, err := utils.BashCMDOutput(cmd)
-	if err != nil || stdout == "" {
-		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
-		return 0, "", err
+func GetUserDataEncodeStatus(uid string, world string) (bool, error) {
+	userPathEncode, err := utils.ScreenCMDOutput(utils.UserDataEncode, uid+"UserDataEncode", world)
+	if err != nil {
+		return false, err
+	}
+	if userPathEncode == "true" {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, string, error) {
+	var (
+		path      string
+		cmdAge    string
+		cmdPrefab string
+	)
+
+	if userPathEncode {
+		sessionFileCmd := "TheNet:GetUserSessionFile(ShardGameIndex:GetSession(), '" + uid + "')"
+		userSessionFile, err := utils.ScreenCMDOutput(sessionFileCmd, uid+"UserSessionFile", world)
+		if err != nil {
+			return 0, "", err
+		}
+
+		if world == "Master" {
+			path = utils.MasterSavePath + "/" + userSessionFile
+		} else {
+			path = utils.CavesSavePath + "/" + userSessionFile
+		}
+
+		ok, _ := utils.FileDirectoryExists(path)
+		if !ok {
+			return 0, "", err
+		}
+
+	} else {
+		cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
+		stdout, _, err := utils.BashCMDOutput(cmd)
+		if err != nil || stdout == "" {
+			utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
+			return 0, "", err
+		}
+		path = stdout[:len(stdout)-6]
 	}
 
-	path := stdout[:len(stdout)-6]
-	cmdAge := "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
-	stdout, _, err = utils.BashCMDOutput(cmdAge)
+	if utils.PLATFORM == "darwin" {
+		cmdAge = "ggrep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	} else {
+		cmdAge = "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	}
+
+	stdout, _, err := utils.BashCMDOutput(cmdAge)
 	if err != nil || stdout == "" {
 		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdAge)
 		return 0, "", err
@@ -556,7 +601,12 @@ func GetPlayerAgePrefab(uid string, world string) (int, string, error) {
 	age = age / 480
 	ageInt := int(math.Round(age))
 
-	cmdPrefab := "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	if utils.PLATFORM == "darwin" {
+		cmdPrefab = "ggrep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	} else {
+		cmdPrefab = "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	}
+
 	stdout, _, err = utils.BashCMDOutput(cmdPrefab)
 	if err != nil || stdout == "" {
 		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdPrefab)
