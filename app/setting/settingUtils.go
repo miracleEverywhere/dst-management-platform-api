@@ -580,7 +580,7 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 		cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
 		stdout, _, err := utils.BashCMDOutput(cmd)
 		if err != nil || stdout == "" {
-			utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
+			utils.Logger.Warn("Bash命令执行失败", "err", err, "cmd", cmd)
 			return 0, "", err
 		}
 		path = stdout[:len(stdout)-6]
