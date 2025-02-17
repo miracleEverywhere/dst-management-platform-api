@@ -62,6 +62,9 @@ is_master = true
 [STEAM]
 master_server_port = ` + strconv.Itoa(base.SteamMasterPort) + `
 authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
+
+[ACCOUNT]
+encode_user_path = true
 `
 	return content
 }
@@ -90,6 +93,9 @@ name = Caves
 [STEAM]
 master_server_port = ` + strconv.Itoa(SteamMasterPort) + `
 authentication_port = ` + strconv.Itoa(SteamAuthenticationPort) + `
+
+[ACCOUNT]
+encode_user_path = true
 `
 	return content
 }
