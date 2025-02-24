@@ -22,6 +22,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.GET("/player/list/history", utils.MWtoken(), handleHistoryPlayerGet)
 			setting.POST("/player/add/admin", utils.MWtoken(), handleAdminAddPost)
 			setting.POST("/player/add/block", utils.MWtoken(), handleBlockAddPost)
+			setting.POST("/player/add/block/upload", utils.MWtoken(), handleBlockUpload)
 			setting.POST("/player/add/white", utils.MWtoken(), handleWhiteAddPost)
 			setting.POST("/player/delete/admin", utils.MWtoken(), handleAdminDeletePost)
 			setting.POST("/player/delete/block", utils.MWtoken(), handleBlockDeletePost)

@@ -6,9 +6,11 @@ import (
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/tealeg/xlsx"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func handleRoomSettingGet(c *gin.Context) {
@@ -351,6 +353,55 @@ func handleBlockAddPost(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlock", langStr), "data": nil})
+}
+
+func handleBlockUpload(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+	//保存文件
+	savePath := utils.ImportFileUploadPath + file.Filename
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.Logger.Error("文件保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+
+	// 打开Excel文件
+	xlsFile, err := xlsx.OpenFile(savePath)
+	if err != nil {
+		utils.Logger.Error("无法打开文件: %s", err)
+	}
+
+	blockList := getList(utils.BlockListPath)
+
+	// 遍历所有工作表
+	for _, sheet := range xlsFile.Sheets {
+		// 遍历工作表中的所有行
+		for _, row := range sheet.Rows {
+			// 获取A列（索引为0）的单元格
+			if len(row.Cells) > 0 {
+				cell := row.Cells[0]
+				// 将单元格的值添加到字符串切片中
+				blockList = append(blockList, cell.String())
+			}
+		}
+	}
+
+	blockList = utils.UniqueSliceKeepOrderString(blockList)
+	str := strings.Join(blockList, "\n")
+	err = utils.TruncAndWriteFile(utils.BlockListPath, str)
+
+	_ = utils.BashCMD("rm -f " + savePath)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
 }
 
 func handleWhiteAddPost(c *gin.Context) {
