@@ -705,6 +705,13 @@ func handleModConfigOptionsGet(c *gin.Context) {
 
 	modID := modConfigurationsForm.ID
 
+	if modID == 1 {
+		// 禁用客户端模组配置
+		modConfig.ID = 1
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
+		return
+	}
+
 	if config.RoomSetting.Ground != "" {
 		modInfoLuaFile = utils.MasterModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
 	} else {
@@ -1413,4 +1420,88 @@ func handleModUpdatePost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateModSuccess", langStr), "data": nil})
 
+}
+
+func handleAddClientModsDisabledConfig(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Base.Name == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": nil})
+		return
+	}
+
+	if config.RoomSetting.Ground != "" {
+		//Master/modoverrides.lua
+		modFileLines, err := readLines(utils.MasterModPath)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua读取失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		var newModFileLines []string
+		newModFileLines = append(newModFileLines, modFileLines[0])
+		newModFileLines = append(newModFileLines, "  client_mods_disabled={configuration_options={}, enabled=true},")
+		newModFileLines = append(newModFileLines, modFileLines[1:]...)
+
+		config.RoomSetting.Mod = strings.Join(newModFileLines, "\n")
+
+		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	if config.RoomSetting.Cave != "" {
+		//Caves/modoverrides.lua
+		modFileLines, err := readLines(utils.CavesModPath)
+		if err != nil {
+			utils.Logger.Error("洞穴modoverrides.lua读取失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		var newModFileLines []string
+		newModFileLines = append(newModFileLines, modFileLines[0])
+		newModFileLines = append(newModFileLines, "  client_mods_disabled={configuration_options={}, enabled=true},")
+		newModFileLines = append(newModFileLines, modFileLines[1:]...)
+
+		config.RoomSetting.Mod = strings.Join(newModFileLines, "\n")
+
+		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("洞穴modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
 }

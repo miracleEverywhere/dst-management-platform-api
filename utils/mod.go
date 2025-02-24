@@ -140,8 +140,13 @@ func ModOverridesToStruct(luaScript string) []ModOverrides {
 		// k是workshop-xxx, v是configuration_options和enabled
 		var modOverridesItem ModOverrides
 		modOverridesItem.Name = k.String()
-		re := regexp.MustCompile(`\d+`)
-		modOverridesItem.ID, _ = strconv.Atoi(re.FindAllString(k.String(), -1)[0])
+
+		if modOverridesItem.Name == "client_mods_disabled" {
+			modOverridesItem.ID = 1
+		} else {
+			re := regexp.MustCompile(`\d+`)
+			modOverridesItem.ID, _ = strconv.Atoi(re.FindAllString(k.String(), -1)[0])
+		}
 		if v.Type() == lua.LTTable {
 			v.(*lua.LTable).ForEach(func(key lua.LValue, value lua.LValue) {
 				// key是configuration_options和enabled
@@ -183,6 +188,7 @@ func ModOverridesToStruct(luaScript string) []ModOverrides {
 			})
 		}
 		modOverrides = append(modOverrides, modOverridesItem)
+
 	})
 
 	return modOverrides
@@ -206,48 +212,54 @@ func ParseToLua(data []ModFormattedData) string {
 	var keys []string
 
 	for _, mod := range data {
-		modID := "workshop-" + strconv.Itoa(mod.ID)
-		luaString += "  [\"" + modID + "\"]={\n    configuration_options={\n"
-		configurationOptions := mod.ConfigurationOptions
-		keyNum := len(configurationOptions)
-		keyCount := 1
-		keys = []string{}
+		if mod.ID == 1 {
+			luaString += "  client_mods_disabled={\n    configuration_options={\n"
+			luaString += "    },\n"
+		} else {
+			modID := "workshop-" + strconv.Itoa(mod.ID)
+			luaString += "  [\"" + modID + "\"]={\n    configuration_options={\n"
+			configurationOptions := mod.ConfigurationOptions
+			keyNum := len(configurationOptions)
+			keyCount := 1
+			keys = []string{}
 
-		// keys为configurationOptions排序切片
-		for key := range configurationOptions {
-			keys = append(keys, key)
+			// keys为configurationOptions排序切片
+			for key := range configurationOptions {
+				keys = append(keys, key)
+			}
+			// 对键切片进行排序
+			sort.Strings(keys)
+
+			for _, key := range keys {
+				value := configurationOptions[key]
+
+				var stringValue string
+				switch value.(type) {
+				case string:
+					stringValue = "\"" + value.(string) + "\""
+				case int:
+					stringValue = strconv.Itoa(value.(int))
+				case float64:
+					stringValue = strconv.FormatFloat(value.(float64), 'f', -1, 64)
+				case bool:
+					stringValue = fmt.Sprintf("%t", value)
+				}
+				if NeedDoubleQuotes(key) {
+					luaString += "      [\"" + key + "\"]=" + stringValue
+				} else {
+					luaString += "      " + key + "=" + stringValue
+				}
+				//fmt.Println(value, "---", stringValue)
+				if keyCount == keyNum {
+					luaString += "\n"
+				} else {
+					luaString += ",\n"
+				}
+				keyCount++
+			}
+			luaString += "    },\n"
 		}
-		// 对键切片进行排序
-		sort.Strings(keys)
 
-		for _, key := range keys {
-			value := configurationOptions[key]
-
-			var stringValue string
-			switch value.(type) {
-			case string:
-				stringValue = "\"" + value.(string) + "\""
-			case int:
-				stringValue = strconv.Itoa(value.(int))
-			case float64:
-				stringValue = strconv.FormatFloat(value.(float64), 'f', -1, 64)
-			case bool:
-				stringValue = fmt.Sprintf("%t", value)
-			}
-			if NeedDoubleQuotes(key) {
-				luaString += "      [\"" + key + "\"]=" + stringValue
-			} else {
-				luaString += "      " + key + "=" + stringValue
-			}
-			//fmt.Println(value, "---", stringValue)
-			if keyCount == keyNum {
-				luaString += "\n"
-			} else {
-				luaString += ",\n"
-			}
-			keyCount++
-		}
-		luaString += "    },\n"
 		stat := mod.Enable
 		luaString += "    enabled=" + Bool2String(stat, "lua") + "\n"
 		if modCount == modNum {
