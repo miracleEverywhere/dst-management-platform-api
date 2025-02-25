@@ -459,6 +459,8 @@ func WriteDatabase() error {
 		return err
 	}
 
+	utils.SetInitInfo()
+
 	config.RoomSetting.Base = baseSetting
 	config.RoomSetting.Ground = ground
 	config.RoomSetting.Cave = caves
