@@ -22,6 +22,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.GET("/player/list/history", utils.MWtoken(), handleHistoryPlayerGet)
 			setting.POST("/player/add/admin", utils.MWtoken(), handleAdminAddPost)
 			setting.POST("/player/add/block", utils.MWtoken(), handleBlockAddPost)
+			setting.POST("/player/add/block/upload", utils.MWtoken(), handleBlockUpload)
 			setting.POST("/player/add/white", utils.MWtoken(), handleWhiteAddPost)
 			setting.POST("/player/delete/admin", utils.MWtoken(), handleAdminDeletePost)
 			setting.POST("/player/delete/block", utils.MWtoken(), handleBlockDeletePost)
@@ -40,6 +41,8 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/mod/config/change", utils.MWtoken(), handleModConfigChangePost)
 			setting.POST("/mod/export/macos", utils.MWtoken(), handleMacOSModExportPost)
 			setting.POST("/mod/update", utils.MWtoken(), handleModUpdatePost)
+			setting.POST("/mod/add/clint_mods_disabled", utils.MWtoken(), handleAddClientModsDisabledConfig)
+			setting.POST("/mod/delete/clint_mods_disabled", utils.MWtoken(), handleDeleteClientModsDisabledConfig)
 			// System
 			setting.GET("/system/setting", utils.MWtoken(), handleSystemSettingGet)
 			setting.PUT("/system/setting", utils.MWtoken(), handleSystemSettingPut)

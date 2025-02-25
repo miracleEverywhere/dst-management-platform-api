@@ -6,9 +6,12 @@ import (
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/tealeg/xlsx"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
 func handleRoomSettingGet(c *gin.Context) {
@@ -353,6 +356,55 @@ func handleBlockAddPost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlock", langStr), "data": nil})
 }
 
+func handleBlockUpload(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+	//保存文件
+	savePath := utils.ImportFileUploadPath + file.Filename
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.Logger.Error("文件保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+
+	// 打开Excel文件
+	xlsFile, err := xlsx.OpenFile(savePath)
+	if err != nil {
+		utils.Logger.Error("无法打开文件: %s", err)
+	}
+
+	blockList := getList(utils.BlockListPath)
+
+	// 遍历所有工作表
+	for _, sheet := range xlsFile.Sheets {
+		// 遍历工作表中的所有行
+		for _, row := range sheet.Rows {
+			// 获取A列（索引为0）的单元格
+			if len(row.Cells) > 0 {
+				cell := row.Cells[0]
+				// 将单元格的值添加到字符串切片中
+				blockList = append(blockList, cell.String())
+			}
+		}
+	}
+
+	blockList = utils.UniqueSliceKeepOrderString(blockList)
+	str := strings.Join(blockList, "\n")
+	err = utils.TruncAndWriteFile(utils.BlockListPath, str)
+
+	_ = utils.BashCMD("rm -f " + savePath)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
+}
+
 func handleWhiteAddPost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -653,6 +705,13 @@ func handleModConfigOptionsGet(c *gin.Context) {
 	)
 
 	modID := modConfigurationsForm.ID
+
+	if modID == 1 {
+		// 禁用客户端模组配置
+		modConfig.ID = 1
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
+		return
+	}
 
 	if config.RoomSetting.Ground != "" {
 		modInfoLuaFile = utils.MasterModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
@@ -1120,6 +1179,7 @@ func handleSystemSettingGet(c *gin.Context) {
 	data.KeepaliveFrequency = config.Keepalive.Frequency
 	data.Bit64 = config.Bit64
 	data.TickRate = config.TickRate
+	data.EncodeUserPath = config.EncodeUserPath
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
@@ -1173,6 +1233,21 @@ func handleSystemSettingPut(c *gin.Context) {
 		} else {
 			// 安装32位依赖
 			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
+		}
+	}
+
+	if config.EncodeUserPath.Ground != systemSettingForm.EncodeUserPath.Ground {
+		config.EncodeUserPath.Ground = systemSettingForm.EncodeUserPath.Ground
+		err = saveSetting(config)
+		if err != nil {
+			utils.Logger.Error("生成游戏配置文件失败", "err", err)
+		}
+	}
+	if config.EncodeUserPath.Cave != systemSettingForm.EncodeUserPath.Cave {
+		config.EncodeUserPath.Cave = systemSettingForm.EncodeUserPath.Cave
+		err = saveSetting(config)
+		if err != nil {
+			utils.Logger.Error("生成游戏配置文件失败", "err", err)
 		}
 	}
 
@@ -1361,5 +1436,169 @@ func handleModUpdatePost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateModSuccess", langStr), "data": nil})
+
+}
+
+func handleAddClientModsDisabledConfig(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Base.Name == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": nil})
+		return
+	}
+
+	if config.RoomSetting.Ground != "" {
+		//Master/modoverrides.lua
+		modFileLines, err := readLines(utils.MasterModPath)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua读取失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		var newModFileLines []string
+		newModFileLines = append(newModFileLines, modFileLines[0])
+		newModFileLines = append(newModFileLines, "  client_mods_disabled={configuration_options={}, enabled=true},")
+		newModFileLines = append(newModFileLines, modFileLines[1:]...)
+
+		config.RoomSetting.Mod = strings.Join(newModFileLines, "\n")
+
+		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	if config.RoomSetting.Cave != "" {
+		//Caves/modoverrides.lua
+		modFileLines, err := readLines(utils.CavesModPath)
+		if err != nil {
+			utils.Logger.Error("洞穴modoverrides.lua读取失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		var newModFileLines []string
+		newModFileLines = append(newModFileLines, modFileLines[0])
+		newModFileLines = append(newModFileLines, "  client_mods_disabled={configuration_options={}, enabled=true},")
+		newModFileLines = append(newModFileLines, modFileLines[1:]...)
+
+		config.RoomSetting.Mod = strings.Join(newModFileLines, "\n")
+
+		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("洞穴modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
+}
+
+func handleDeleteClientModsDisabledConfig(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Base.Name == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": nil})
+		return
+	}
+	// 定义正则表达式来匹配目标内容
+	re := regexp.MustCompile(`\s*client_mods_disabled=\s*\{(\s*configuration_options=\s*\{(\s*)*\},?\s*enabled=true\s*)\},?`)
+
+	if config.RoomSetting.Ground != "" {
+		//Master/modoverrides.lua
+		luaScript, err := utils.GetFileAllContent(utils.MasterModPath)
+		if err != nil {
+			utils.Logger.Error("获取地面模组配置文件失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+		// 删除匹配到的内容
+		luaScript = re.ReplaceAllString(luaScript, "")
+
+		config.RoomSetting.Mod = luaScript
+		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	if config.RoomSetting.Cave != "" {
+		//Caves/modoverrides.lua
+		luaScript, err := utils.GetFileAllContent(utils.CavesModPath)
+		if err != nil {
+			utils.Logger.Error("获取洞穴模组配置文件失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+		// 删除匹配到的内容
+		luaScript = re.ReplaceAllString(luaScript, "")
+
+		config.RoomSetting.Mod = luaScript
+
+		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("洞穴modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("disableModSuccess", langStr), "data": nil})
 
 }

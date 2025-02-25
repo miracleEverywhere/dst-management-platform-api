@@ -62,6 +62,9 @@ is_master = true
 [STEAM]
 master_server_port = ` + strconv.Itoa(base.SteamMasterPort) + `
 authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
+
+[ACCOUNT]
+encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Ground) + `
 `
 	return content
 }
@@ -90,6 +93,9 @@ name = Caves
 [STEAM]
 master_server_port = ` + strconv.Itoa(SteamMasterPort) + `
 authentication_port = ` + strconv.Itoa(SteamAuthenticationPort) + `
+
+[ACCOUNT]
+encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Cave) + `
 `
 	return content
 }
@@ -453,6 +459,8 @@ func WriteDatabase() error {
 		return err
 	}
 
+	utils.SetInitInfo()
+
 	config.RoomSetting.Base = baseSetting
 	config.RoomSetting.Ground = ground
 	config.RoomSetting.Cave = caves
@@ -531,6 +539,7 @@ type SystemSettingForm struct {
 	SysMetricsGet      utils.SchedulerSettingItem `json:"sysMetricsGet"`
 	Bit64              bool                       `json:"bit64"`
 	TickRate           int                        `json:"tickRate"`
+	EncodeUserPath     utils.EncodeUserPath       `json:"encodeUserPath"`
 }
 
 func GetUserDataEncodeStatus(uid string, world string) (bool, error) {
@@ -574,7 +583,7 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 		cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
 		stdout, _, err := utils.BashCMDOutput(cmd)
 		if err != nil || stdout == "" {
-			utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmd)
+			utils.Logger.Warn("Bash命令执行失败", "err", err, "cmd", cmd)
 			return 0, "", err
 		}
 		path = stdout[:len(stdout)-6]

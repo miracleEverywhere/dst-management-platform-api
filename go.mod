@@ -8,6 +8,7 @@ require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/soulteary/gin-static v0.2.3
+	github.com/tealeg/xlsx v1.0.5
 	github.com/yuin/gopher-lua v1.1.1
 )
 

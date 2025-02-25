@@ -130,24 +130,30 @@ type SysSetting struct {
 	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
 }
 
+type EncodeUserPath struct {
+	Ground bool `json:"ground"`
+	Cave   bool `json:"cave"`
+}
+
 type Config struct {
-	Username     string         `json:"username"`
-	Nickname     string         `json:"nickname"`
-	Password     string         `json:"password"`
-	JwtSecret    string         `json:"jwtSecret"`
-	RoomSetting  RoomSetting    `json:"roomSetting"`
-	MultiHost    bool           `json:"multiHost"`
-	AutoUpdate   AutoUpdate     `json:"autoUpdate"`
-	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
-	AutoBackup   AutoBackup     `json:"autoBackup"`
-	Players      []Players      `json:"players"`
-	Statistics   []Statistics   `json:"statistics"`
-	Keepalive    Keepalive      `json:"keepalive"`
-	AnnouncedID  int            `json:"announcedID"`
-	SysSetting   SysSetting     `json:"sysSetting"`
-	Bit64        bool           `json:"bit64"`
-	Platform     string         `json:"platform"`
-	TickRate     int            `json:"tickRate"`
+	Username       string         `json:"username"`
+	Nickname       string         `json:"nickname"`
+	Password       string         `json:"password"`
+	JwtSecret      string         `json:"jwtSecret"`
+	RoomSetting    RoomSetting    `json:"roomSetting"`
+	MultiHost      bool           `json:"multiHost"`
+	AutoUpdate     AutoUpdate     `json:"autoUpdate"`
+	AutoAnnounce   []AutoAnnounce `json:"autoAnnounce"`
+	AutoBackup     AutoBackup     `json:"autoBackup"`
+	Players        []Players      `json:"players"`
+	Statistics     []Statistics   `json:"statistics"`
+	Keepalive      Keepalive      `json:"keepalive"`
+	AnnouncedID    int            `json:"announcedID"`
+	SysSetting     SysSetting     `json:"sysSetting"`
+	Bit64          bool           `json:"bit64"`
+	Platform       string         `json:"platform"`
+	TickRate       int            `json:"tickRate"`
+	EncodeUserPath EncodeUserPath `json:"encodeUserPath"`
 }
 
 type OSInfo struct {
@@ -477,6 +483,58 @@ func CheckPlatform() {
 	}
 
 	Logger.Info("系统检查通过")
+}
+
+func SetInitInfo() {
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("读取配置文件失败", "err", err)
+		return
+	}
+
+	if config.RoomSetting.Base.Name == "" {
+		return
+	}
+
+	if config.RoomSetting.Ground != "" {
+		cmd := "grep encode_user_path " + MasterServerPath + " | awk -F'=' '{print $2}'"
+		out, _, err := BashCMDOutput(cmd)
+		if err != nil {
+			Logger.Warn("获取地面encode_user_path失败，跳过", "err", err)
+			goto doCave
+		}
+		out = strings.TrimSpace(out)
+		result, err := strconv.ParseBool(out)
+		if err != nil {
+			Logger.Warn("获取地面encode_user_path失败，跳过", "err", err)
+			goto doCave
+		}
+		config.EncodeUserPath.Ground = result
+		err = WriteConfig(config)
+		if err != nil {
+			Logger.Error("写入配置文件失败", "err", err)
+		}
+	}
+doCave:
+	if config.RoomSetting.Cave != "" {
+		cmd := "grep encode_user_path " + CavesServerPath + " | awk -F'=' '{print $2}'"
+		out, _, err := BashCMDOutput(cmd)
+		if err != nil {
+			Logger.Warn("获取洞穴encode_user_path失败，跳过", "err", err)
+			return
+		}
+		out = strings.TrimSpace(out)
+		result, err := strconv.ParseBool(out)
+		if err != nil {
+			Logger.Warn("获取洞穴encode_user_path失败，跳过", "err", err)
+			return
+		}
+		config.EncodeUserPath.Cave = result
+		err = WriteConfig(config)
+		if err != nil {
+			Logger.Error("写入配置文件失败", "err", err)
+		}
+	}
 }
 
 func BindFlags() {
@@ -879,24 +937,6 @@ func EnsureFileExists(filePath string) error {
 	return nil
 }
 
-// CheckDir 检查目录是否存在
-//func CheckDir(dirPath string) bool {
-//	if strings.HasPrefix(dirPath, "~") {
-//		homeDir, err := os.UserHomeDir()
-//		if err != nil {
-//			Logger.Error("无法获取 home 目录", "err", err)
-//			return false
-//		}
-//		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
-//	}
-//	_, err := os.Stat(dirPath)
-//	if err != nil {
-//		return false
-//	} else {
-//		return true
-//	}
-//}
-
 func FileDirectoryExists(filePath string) (bool, error) {
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
 	if strings.HasPrefix(filePath, "~") {
@@ -1083,63 +1123,6 @@ func RecoveryGame(backupFile string) error {
 
 	return nil
 }
-
-//func GetModList() ([]string, error) {
-//	var modList []string
-//	L := lua.NewState()
-//	defer L.Close()
-//	if err := L.DoFile(MasterModPath); err != nil {
-//		return []string{}, fmt.Errorf("加载 Lua 文件失败: %w", err)
-//	}
-//	modsTable := L.Get(-1)
-//	if tbl, ok := modsTable.(*lua.LTable); ok {
-//		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-//			// 检查键是否是字符串，并且以 "workshop-" 开头
-//			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
-//				// 提取 "workshop-" 后面的数字
-//				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
-//				modList = append(modList, workshopID)
-//			}
-//		})
-//	}
-//	return modList, nil
-//}
-//
-//func DownloadMod(modList []string) error {
-//	if len(modList) == 0 {
-//		return nil
-//	}
-//	err := TruncAndWriteFile(GameModSettingPath, "")
-//	if err != nil {
-//		return err
-//	}
-//
-//	downloadCMD := "steamcmd/steamcmd.sh +force_install_dir dl +login anonymous"
-//	for _, mod := range modList {
-//		downloadCMD = downloadCMD + " +workshop_download_item 322330 " + mod
-//	}
-//	downloadCMD = downloadCMD + " +quit"
-//	err = BashCMD(downloadCMD)
-//	if err != nil {
-//		return err
-//	}
-//
-//	for _, mod := range modList {
-//		mvCMD := "mv ~/steamcmd/dl/steamapps/workshop/content/322330/" + mod + " ~/dst/mods/workshop-" + mod
-//		err = BashCMD(mvCMD)
-//		if err != nil {
-//			return err
-//		}
-//	}
-//
-//	rmCMD := "rm -rf ~/dl"
-//	err = BashCMD(rmCMD)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
 
 func GetTimestamp() int64 {
 	now := time.Now()
