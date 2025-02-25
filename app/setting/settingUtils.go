@@ -64,7 +64,7 @@ master_server_port = ` + strconv.Itoa(base.SteamMasterPort) + `
 authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
 
 [ACCOUNT]
-encode_user_path = true
+encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Ground) + `
 `
 	return content
 }
@@ -95,7 +95,7 @@ master_server_port = ` + strconv.Itoa(SteamMasterPort) + `
 authentication_port = ` + strconv.Itoa(SteamAuthenticationPort) + `
 
 [ACCOUNT]
-encode_user_path = true
+encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Cave) + `
 `
 	return content
 }
@@ -537,6 +537,7 @@ type SystemSettingForm struct {
 	SysMetricsGet      utils.SchedulerSettingItem `json:"sysMetricsGet"`
 	Bit64              bool                       `json:"bit64"`
 	TickRate           int                        `json:"tickRate"`
+	EncodeUserPath     utils.EncodeUserPath       `json:"encodeUserPath"`
 }
 
 func GetUserDataEncodeStatus(uid string, world string) (bool, error) {

@@ -1178,6 +1178,7 @@ func handleSystemSettingGet(c *gin.Context) {
 	data.KeepaliveFrequency = config.Keepalive.Frequency
 	data.Bit64 = config.Bit64
 	data.TickRate = config.TickRate
+	data.EncodeUserPath = config.EncodeUserPath
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
@@ -1231,6 +1232,21 @@ func handleSystemSettingPut(c *gin.Context) {
 		} else {
 			// 安装32位依赖
 			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
+		}
+	}
+
+	if config.EncodeUserPath.Ground != systemSettingForm.EncodeUserPath.Ground {
+		config.EncodeUserPath.Ground = systemSettingForm.EncodeUserPath.Ground
+		err = saveSetting(config)
+		if err != nil {
+			utils.Logger.Error("生成游戏配置文件失败", "err", err)
+		}
+	}
+	if config.EncodeUserPath.Cave != systemSettingForm.EncodeUserPath.Cave {
+		config.EncodeUserPath.Cave = systemSettingForm.EncodeUserPath.Cave
+		err = saveSetting(config)
+		if err != nil {
+			utils.Logger.Error("生成游戏配置文件失败", "err", err)
 		}
 	}
 
