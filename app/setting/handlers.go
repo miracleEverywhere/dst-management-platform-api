@@ -9,6 +9,7 @@ import (
 	"github.com/tealeg/xlsx"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -1520,4 +1521,84 @@ func handleAddClientModsDisabledConfig(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
+}
+
+func handleDeleteClientModsDisabledConfig(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	if config.RoomSetting.Base.Name == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": nil})
+		return
+	}
+	// 定义正则表达式来匹配目标内容
+	re := regexp.MustCompile(`\s*client_mods_disabled=\s*\{(\s*configuration_options=\s*\{(\s*)*\},?\s*enabled=true\s*)\},?`)
+
+	if config.RoomSetting.Ground != "" {
+		//Master/modoverrides.lua
+		luaScript, err := utils.GetFileAllContent(utils.MasterModPath)
+		if err != nil {
+			utils.Logger.Error("获取地面模组配置文件失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+		// 删除匹配到的内容
+		luaScript = re.ReplaceAllString(luaScript, "")
+
+		config.RoomSetting.Mod = luaScript
+		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	if config.RoomSetting.Cave != "" {
+		//Caves/modoverrides.lua
+		luaScript, err := utils.GetFileAllContent(utils.CavesModPath)
+		if err != nil {
+			utils.Logger.Error("获取洞穴模组配置文件失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+		// 删除匹配到的内容
+		luaScript = re.ReplaceAllString(luaScript, "")
+
+		config.RoomSetting.Mod = luaScript
+
+		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
+		if err != nil {
+			utils.Logger.Error("洞穴modoverrides.lua写入失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			utils.RespondWithError(c, 500, "zh")
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("disableModSuccess", langStr), "data": nil})
+
 }

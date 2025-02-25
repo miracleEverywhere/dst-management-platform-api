@@ -130,7 +130,6 @@ func ModOverridesToStruct(luaScript string) []ModOverrides {
 
 	//fmt.Println(table.Len())
 	if !ok {
-		fmt.Println("Returned value is not a table")
 		return []ModOverrides{}
 	}
 
@@ -379,8 +378,6 @@ func CheckModDownloadedReady(ugc bool, modID int, modSize string) (bool, error) 
 
 	correctSize, err := strconv.Atoi(modSize)
 	diffSize := int64(correctSize) - realSize
-
-	fmt.Println(diffSize)
 
 	if diffSize != 0 {
 		return false, nil
