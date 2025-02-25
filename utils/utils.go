@@ -619,6 +619,7 @@ func TruncAndWriteFile(fileName string, fileContent string) error {
 	if err != nil {
 		return fmt.Errorf("打开或创建文件时出错: %w", err)
 	}
+
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
