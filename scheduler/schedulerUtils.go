@@ -419,6 +419,7 @@ func doKeepalive() {
 func maintainUidMap() {
 	uidMap, err := utils.ReadUidMap()
 	if err != nil {
+		utils.Logger.Error("写入历史玩家字典失败", "err", err)
 		return
 	}
 
