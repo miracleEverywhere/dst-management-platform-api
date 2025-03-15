@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -275,6 +276,9 @@ func ParseToLua(data []ModFormattedData) string {
 
 func NeedDoubleQuotes(s string) bool {
 	if len(s) == 0 {
+		return true
+	}
+	if strings.Contains(s, " ") {
 		return true
 	}
 	for _, r := range s {
