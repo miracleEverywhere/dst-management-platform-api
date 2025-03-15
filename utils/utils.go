@@ -1043,6 +1043,7 @@ func StartGame() error {
 			}
 		}
 	} else {
+		_ = ReplaceDSTSOFile()
 		if config.RoomSetting.Ground != "" {
 			var cmd string
 			if config.Bit64 {
