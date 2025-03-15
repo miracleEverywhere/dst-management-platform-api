@@ -244,6 +244,7 @@ func ParseToLua(data []ModFormattedData) string {
 				case bool:
 					stringValue = fmt.Sprintf("%t", value)
 				}
+				// 判断是否需要['key']这种形式
 				if NeedDoubleQuotes(key) {
 					luaString += "      [\"" + key + "\"]=" + stringValue
 				} else {
