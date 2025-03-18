@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
-	"unicode"
 )
 
 type Option struct {
@@ -279,18 +277,10 @@ func NeedDoubleQuotes(s string) bool {
 	if len(s) == 0 {
 		return true
 	}
-	if strings.Contains(s, " ") {
-		return true
-	}
-	for _, r := range s {
-		if unicode.In(r, unicode.Han) || unicode.In(r, unicode.Hiragana) || unicode.In(r, unicode.Katakana) {
-			return true
-		}
-		if unicode.IsSpace(r) {
-			return true
-		}
-	}
-	return false
+
+	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
+
+	return re.MatchString(s)
 }
 
 func GenerateModDownloadCMD(id int) string {
