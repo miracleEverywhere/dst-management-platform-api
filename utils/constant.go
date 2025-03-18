@@ -1,6 +1,6 @@
 package utils
 
-const VERSION string = "1.1.8"
+const VERSION string = "1.1.9"
 
 const MasterName = "Master"
 const CavesName = "Caves"

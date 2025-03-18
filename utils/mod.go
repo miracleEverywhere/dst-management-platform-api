@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"unicode"
 )
 
 type Option struct {
@@ -243,6 +242,7 @@ func ParseToLua(data []ModFormattedData) string {
 				case bool:
 					stringValue = fmt.Sprintf("%t", value)
 				}
+				// 判断是否需要['key']这种形式
 				if NeedDoubleQuotes(key) {
 					luaString += "      [\"" + key + "\"]=" + stringValue
 				} else {
@@ -277,15 +277,10 @@ func NeedDoubleQuotes(s string) bool {
 	if len(s) == 0 {
 		return true
 	}
-	for _, r := range s {
-		if unicode.In(r, unicode.Han) || unicode.In(r, unicode.Hiragana) || unicode.In(r, unicode.Katakana) {
-			return true
-		}
-		if unicode.IsSpace(r) {
-			return true
-		}
-	}
-	return false
+
+	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
+
+	return re.MatchString(s)
 }
 
 func GenerateModDownloadCMD(id int) string {
