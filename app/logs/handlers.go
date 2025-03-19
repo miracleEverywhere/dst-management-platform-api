@@ -3,6 +3,7 @@ package logs
 import (
 	"dst-management-platform-api/utils"
 	"encoding/base64"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -83,13 +84,33 @@ func handleLogGet(c *gin.Context) {
 	}
 }
 
-func handleProcessLogPost(c *gin.Context) {
+func handleLogDownloadPost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	err := utils.BashCMD("tar zcvf logs.tgz dmpProcess.log")
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var cmd = "tar zcvf logs.tgz dmp.log dmpProcess.log"
+
+	if config.RoomSetting.Ground != "" {
+		cmd = cmd + " " + utils.MasterLogPath
+	}
+
+	if config.RoomSetting.Cave != "" {
+		cmd = cmd + " " + utils.CavesLogPath
+	}
+
+	fmt.Println(cmd)
+
+	err = utils.BashCMD(cmd)
 	if err != nil {
 		utils.Logger.Error("打包日志压缩文件失败")
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("tarFail", langStr), "data": nil})
@@ -98,7 +119,7 @@ func handleProcessLogPost(c *gin.Context) {
 	// 读取文件内容
 	fileData, err := os.ReadFile("./logs.tgz")
 	if err != nil {
-		utils.Logger.Error("读取备份文件失败", "err", err)
+		utils.Logger.Error("读取日志压缩文件失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileReadFail", langStr), "data": nil})
 		return
 	}
