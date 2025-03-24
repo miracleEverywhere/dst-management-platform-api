@@ -85,6 +85,14 @@ func handleLogGet(c *gin.Context) {
 }
 
 func handleLogDownloadPost(c *gin.Context) {
+	defer func() {
+		var cmdClean = "cd /tmp && rm -f *.log logs.tgz"
+		err := utils.BashCMD(cmdClean)
+		if err != nil {
+			utils.Logger.Error("清理日志文件失败", "err", err)
+		}
+	}()
+
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -98,26 +106,34 @@ func handleLogDownloadPost(c *gin.Context) {
 		return
 	}
 
-	var cmd = "tar zcvf logs.tgz dmp.log dmpProcess.log"
+	var cmdPrepare = "cp ~/dmp.log /tmp && cp ~/dmpProcess.log /tmp"
+	var cmdTar = "cd /tmp && tar zcvf logs.tgz dmp.log dmpProcess.log"
 
 	if config.RoomSetting.Ground != "" {
-		cmd = cmd + " " + utils.MasterLogPath
+		cmdPrepare = cmdPrepare + " && cp " + utils.MasterLogPath + " /tmp/ground.log"
+		cmdTar += " ground.log"
 	}
 
 	if config.RoomSetting.Cave != "" {
-		cmd = cmd + " " + utils.CavesLogPath
+		cmdPrepare = cmdPrepare + " && cp " + utils.CavesLogPath + " /tmp/cave.log"
+		cmdTar += " cave.log"
 	}
-
-	fmt.Println(cmd)
-
-	err = utils.BashCMD(cmd)
+	fmt.Println(cmdPrepare)
+	fmt.Println(cmdTar)
+	err = utils.BashCMD(cmdPrepare)
 	if err != nil {
-		utils.Logger.Error("打包日志压缩文件失败")
+		utils.Logger.Error("整理日志文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("tarFail", langStr), "data": nil})
+		return
+	}
+	err = utils.BashCMD(cmdTar)
+	if err != nil {
+		utils.Logger.Error("打包日志压缩文件失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("tarFail", langStr), "data": nil})
 		return
 	}
 	// 读取文件内容
-	fileData, err := os.ReadFile("./logs.tgz")
+	fileData, err := os.ReadFile("/tmp/logs.tgz")
 	if err != nil {
 		utils.Logger.Error("读取日志压缩文件失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileReadFail", langStr), "data": nil})
