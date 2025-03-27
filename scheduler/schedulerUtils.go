@@ -378,7 +378,7 @@ func doKeepalive() {
 
 		if config.Keepalive.LastTime == masterLastTime {
 			utils.Logger.Info("发现地面异常，执行重启任务")
-			doRestart()
+			doRestart() // TODO 只重启地面
 			return
 		} else {
 			config.Keepalive.LastTime = masterLastTime
@@ -401,7 +401,7 @@ func doKeepalive() {
 
 		if config.Keepalive.CavesLastTime == cavesLastTime {
 			utils.Logger.Info("发现洞穴异常，执行重启任务")
-			doRestart()
+			doRestart() // TODO 只重启洞穴
 			return
 		} else {
 			config.Keepalive.CavesLastTime = cavesLastTime
