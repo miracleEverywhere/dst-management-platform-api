@@ -432,29 +432,35 @@ func CheckDirs() {
 
 }
 
-func CheckFiles() {
+func CheckFiles(checkItem string) {
 	var (
 		err   error
 		exist bool
 	)
-	exist, err = FileDirectoryExists(NicknameUIDPath)
-	if err != nil {
-		Logger.Error("检查uid_map.json文件失败")
-		return
-	} else {
-		if exist {
+
+	if checkItem == "uidMap" || checkItem == "all" {
+		exist, err = FileDirectoryExists(NicknameUIDPath)
+		if err != nil {
+			Logger.Error("检查uid_map.json文件失败")
 			return
-		} else {
-			err = EnsureFileExists(NicknameUIDPath)
-			if err != nil {
+		}
+
+		if !exist {
+			if err = EnsureFileExists(NicknameUIDPath); err != nil {
 				Logger.Error("创建uid_map.json文件失败")
-			} else {
-				err = TruncAndWriteFile(NicknameUIDPath, "{}")
-				if err != nil {
-					Logger.Error("初始化uid_map.json文件失败")
-				}
-				Logger.Info("uid_map.json文件检查完成")
+				return
 			}
+
+			if err = TruncAndWriteFile(NicknameUIDPath, "{}"); err != nil {
+				Logger.Error("初始化uid_map.json文件失败")
+				return
+			}
+
+			Logger.Info("uid_map.json文件检查完成")
+		}
+
+		if checkItem == "uidMap" {
+			return
 		}
 	}
 
