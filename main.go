@@ -67,7 +67,7 @@ func initialize() {
 	//检查目录
 	utils.CheckDirs()
 	//检查文件
-	utils.CheckFiles()
+	utils.CheckFiles("all")
 	//创建DST手动安装脚本
 	utils.CreateManualInstallScript()
 	//配置必要的数据

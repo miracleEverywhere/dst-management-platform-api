@@ -443,7 +443,11 @@ func maintainUidMap() {
 		}
 	}
 
-	_ = utils.WriteUidMap(uidMap)
+	err = utils.WriteUidMap(uidMap)
+	if err != nil {
+		utils.CheckFiles("uidMap")
+		_ = utils.WriteUidMap(uidMap)
+	}
 }
 
 func getSysMetrics() {
