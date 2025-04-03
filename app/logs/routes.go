@@ -12,7 +12,10 @@ func RouteLogs(r *gin.Engine) *gin.Engine {
 		{
 			// 获取4种日志
 			logs.GET("/log_value", utils.MWtoken(), handleLogGet)
-			logs.POST("/process_log", utils.MWtoken(), handleProcessLogPost)
+			// ！！！！注意！！！！ v1.1.10
+			// 此接口原本是下载process日志的，现在改为下载所有日志
+			// 考虑到新老接口调用，因此不修改接口的url
+			logs.POST("/process_log", utils.MWtoken(), handleLogDownloadPost)
 			logs.GET("/historical/log_file", utils.MWtoken(), handleHistoricalLogFileGet)
 			logs.GET("/historical/log", utils.MWtoken(), handleHistoricalLogGet)
 			// 日志清理

@@ -402,17 +402,17 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	} else {
 		language = 0
 	}
+	url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&", utils.SteamApiModSearch)
+	url = url + "requiredtags[0]=server_only_mod&requiredtags[1]=all_clients_require_mod&match_all_tags=false&"
 	if searchText == "" {
-		url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&language=%d&key=%s&page=%d&numperpage=%d",
-			utils.SteamApiModSearch,
+		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d",
 			language,
 			utils.SteamApiKey,
 			page,
 			pageSize,
 		)
 	} else {
-		url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&language=%d&key=%s&page=%d&numperpage=%d&search_text=%s",
-			utils.SteamApiModSearch,
+		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d&search_text=%s",
 			language,
 			utils.SteamApiKey,
 			page,
