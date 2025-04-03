@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
@@ -179,24 +178,6 @@ func GenerateJWT(username string, jwtSecret []byte, expiration int) (string, err
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
-}
-
-func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
-	})
-
-	if err != nil {
-		Logger.Warn("JWT验证失败")
-		return nil, err
-	}
-
-	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		return claims, nil
-	}
-
-	return nil, fmt.Errorf("invalid token")
 }
 
 func CreateConfig() {
@@ -549,33 +530,6 @@ func BindFlags() {
 	flag.BoolVar(&ConsoleOutput, "c", false, "开启控制台日志输出，如： -c (Enable console log output, e.g. -c)")
 	flag.BoolVar(&VersionShow, "v", false, "查看版本，如： -v (Check version, e.g. -v)")
 	flag.Parse()
-}
-
-func MWlang() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		lang := c.Request.Header.Get("X-I18n-Lang")
-		c.Set("lang", lang)
-	}
-}
-
-func MWtoken() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		token := c.Request.Header.Get("authorization")
-		config, err := ReadConfig()
-		if err != nil {
-			Logger.Error("配置文件打开失败", "err", err)
-			return
-		}
-		tokenSecret := config.JwtSecret
-		_, err = ValidateJWT(token, []byte(tokenSecret))
-		if err != nil {
-			lang := c.Request.Header.Get("X-I18n-Lang")
-			RespondWithError(c, 420, lang)
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
 }
 
 func GetOSInfo() (*OSInfo, error) {
