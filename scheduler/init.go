@@ -1,6 +1,6 @@
 package scheduler
 
-import (
+/*import (
 	"dst-management-platform-api/utils"
 	"github.com/go-co-op/gocron"
 	"time"
@@ -58,4 +58,4 @@ func InitTasks() {
 		utils.Logger.Info("自动保活定时任务已配置")
 	}
 
-}
+}*/

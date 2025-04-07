@@ -3,11 +3,7 @@ package main
 import (
 	"dst-management-platform-api/app/auth"
 	"dst-management-platform-api/app/externalApi"
-	"dst-management-platform-api/app/home"
-	"dst-management-platform-api/app/logs"
-	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/app/tools"
-	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"embed"
 	"fmt"
@@ -37,13 +33,13 @@ func main() {
 	//用户、鉴权模块
 	r = auth.RouteAuth(r)
 	//主页模块
-	r = home.RouteHome(r)
-	//设置模块
-	r = setting.RouteSetting(r)
+	//r = home.RouteHome(r)
+	////设置模块
+	//r = setting.RouteSetting(r)
 	//工具模块
 	r = tools.RouteTools(r)
-	//工具模块
-	r = logs.RouteLogs(r)
+	////工具模块
+	//r = logs.RouteLogs(r)
 	// 外部接口
 	r = externalApi.RouteExternalApi(r)
 	//静态资源，放在最后
@@ -76,8 +72,8 @@ func initialize() {
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
 	//加载定时任务
-	scheduler.InitTasks()
-	//启动定时任务调度器
-	go scheduler.Scheduler.StartAsync()
+	//scheduler.InitTasks()
+	////启动定时任务调度器
+	//go scheduler.Scheduler.StartAsync()
 	utils.Logger.Info("定时任务已启动")
 }

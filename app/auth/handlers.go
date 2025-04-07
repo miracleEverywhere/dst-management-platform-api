@@ -16,7 +16,9 @@ type JsonBody struct {
 }
 
 type UpdatePasswordForm struct {
-	Password string `json:"password"`
+	Username    string `json:"username"`
+	OldPassword string `json:"oldPassword"`
+	Password    string `json:"password"`
 }
 
 func handleLogin(c *gin.Context) {
@@ -38,30 +40,49 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 	// 校验用户名和密码
-	if loginForm.LoginForm.Username != config.Username {
-		utils.RespondWithError(c, 421, langStr)
-		return
-	}
-	if loginForm.LoginForm.Password != config.Password {
-		utils.RespondWithError(c, 422, langStr)
-		return
+	for _, user := range config.Users {
+		if loginForm.LoginForm.Username == user.Username {
+			if user.Disabled {
+				utils.RespondWithError(c, 423, langStr)
+				return
+			}
+			if loginForm.LoginForm.Password == user.Password {
+				jwtSecret := []byte(config.JwtSecret)
+				token, _ := utils.GenerateJWT(user.Username, user.Nickname, jwtSecret, 12)
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("loginSuccess", langStr), "data": gin.H{"token": token}})
+				return
+			} else {
+				utils.RespondWithError(c, 422, langStr)
+				return
+			}
+		}
 	}
 
-	jwtSecret := []byte(config.JwtSecret)
-	token, _ := utils.GenerateJWT(config.Username, jwtSecret, 12)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("loginSuccess", langStr), "data": gin.H{"token": token}})
+	utils.RespondWithError(c, 421, langStr)
 }
 
 func handleUserinfo(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	token := c.Request.Header.Get("authorization")
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("读取配置文件失败", "err", err)
 		utils.RespondWithError(c, 500, "zh")
 		return
 	}
+	tokenSecret := config.JwtSecret
+	claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
+	if err != nil {
+		utils.RespondWithError(c, 421, langStr)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-		"username": config.Username,
-		"nickname": config.Nickname,
+		"username": claims.Username,
+		"nickname": claims.Nickname,
 	}})
 }
 
@@ -289,24 +310,6 @@ func handleMenu(c *gin.Context) {
 			Redirect:    "",
 			ActiveMenu:  nil,
 		},
-		//{
-		//	MenuId:      10204,
-		//	MenuName:    "自动保活",
-		//	EnName:      "Keepalive",
-		//	ParentId:    102,
-		//	MenuType:    "2",
-		//	Path:        "/tools/keepalive",
-		//	Name:        "toolsKeepalive",
-		//	Component:   "tools/keepalive",
-		//	Icon:        "sc-icon-PulseFill",
-		//	IsHide:      "1",
-		//	IsLink:      "",
-		//	IsKeepAlive: "0",
-		//	IsFull:      "1",
-		//	IsAffix:     "1",
-		//	Redirect:    "",
-		//	ActiveMenu:  nil,
-		//},
 		{
 			MenuId:      10205,
 			MenuName:    "安装游戏",
@@ -570,12 +573,30 @@ func handleUpdatePassword(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	config.Password = updatePasswordForm.Password
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("写入配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
+
+	for userIndex, user := range config.Users {
+		if user.Username == updatePasswordForm.Username {
+			if user.Password == updatePasswordForm.OldPassword {
+				config.Users[userIndex].Password = updatePasswordForm.Password
+				c.JSON(http.StatusOK, gin.H{
+					"code":    200,
+					"message": Success("updatePassword", langStr),
+					"data":    nil,
+				})
+				err = utils.WriteConfig(config)
+				if err != nil {
+					utils.Logger.Error("写入配置文件失败", "err", err)
+					utils.RespondWithError(c, 500, langStr)
+					return
+				}
+
+				return
+			} else {
+				utils.RespondWithError(c, 424, langStr)
+				return
+			}
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("updatePassword", langStr), "data": nil})
+
+	utils.RespondWithError(c, 421, langStr)
 }

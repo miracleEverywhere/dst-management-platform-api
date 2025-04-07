@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
@@ -28,8 +27,8 @@ import (
 var (
 	// STATISTICS 玩家统计
 	STATISTICS []Statistics
-	// SYS_METRICS 系统监控
-	SYS_METRICS []SysMetrics
+	// SYSMETRICS 系统监控
+	SYSMETRICS []SysMetrics
 	// BindPort flag绑定的变量
 	BindPort      int
 	ConsoleOutput bool
@@ -40,120 +39,8 @@ var (
 
 type Claims struct {
 	Username string `json:"username"`
+	Nickname string `json:"nickname"`
 	jwt.StandardClaims
-}
-
-type RoomSettingBase struct {
-	Name                    string `json:"name"`
-	Description             string `json:"description"`
-	GameMode                string `json:"gameMode"`
-	PVP                     bool   `json:"pvp"`
-	PlayerNum               int    `json:"playerNum"`
-	BackDays                int    `json:"backDays"`
-	Vote                    bool   `json:"vote"`
-	Password                string `json:"password"`
-	Token                   string `json:"token"`
-	MasterPort              int    `json:"masterPort"`
-	CavesPort               int    `json:"cavesPort"`
-	ClusterKey              string `json:"clusterKey"`
-	ShardMasterIp           string `json:"shardMasterIp"`
-	ShardMasterPort         int    `json:"shardMasterPort"`
-	SteamMasterPort         int    `json:"steamMasterPort"`
-	SteamAuthenticationPort int    `json:"steamAuthenticationPort"`
-}
-
-type RoomSetting struct {
-	Base   RoomSettingBase `json:"base"`
-	Ground string          `json:"ground"`
-	Cave   string          `json:"cave"`
-	Mod    string          `json:"mod"`
-}
-
-type AutoUpdate struct {
-	Enable bool   `json:"enable"`
-	Time   string `json:"time"`
-}
-
-type AutoAnnounce struct {
-	Name      string `json:"name"`
-	Enable    bool   `json:"enable"`
-	Content   string `json:"content"`
-	Frequency int    `json:"frequency"`
-}
-
-type AutoBackup struct {
-	Enable bool   `json:"enable"`
-	Time   string `json:"time"`
-}
-
-type Players struct {
-	UID      string `json:"uid"`
-	NickName string `json:"nickName"`
-	Prefab   string `json:"prefab"`
-}
-
-type Statistics struct {
-	Timestamp int64     `json:"timestamp"`
-	Num       int       `json:"num"`
-	Players   []Players `json:"players"`
-}
-
-type SysMetrics struct {
-	Timestamp   int64   `json:"timestamp"`
-	Cpu         float64 `json:"cpu"`
-	Memory      float64 `json:"memory"`
-	NetUplink   float64 `json:"netUplink"`
-	NetDownlink float64 `json:"netDownlink"`
-}
-
-type Keepalive struct {
-	Enable        bool   `json:"enable"`
-	Frequency     int    `json:"frequency"`
-	LastTime      string `json:"lastTime"`
-	CavesLastTime string `json:"cavesLastTime"`
-}
-
-type SchedulerSettingItem struct {
-	// disable的原因是1.1.3版本之前都是默认打开的，新增配置后应该也是默认打开
-	// 所以 disable=false
-	Disable   bool `json:"disable"`
-	Frequency int  `json:"frequency"`
-}
-
-type SchedulerSetting struct {
-	PlayerGetFrequency int                  `json:"playerGetFrequency"`
-	UIDMaintain        SchedulerSettingItem `json:"UIDMaintain"`
-	SysMetricsGet      SchedulerSettingItem `json:"sysMetricsGet"`
-}
-
-type SysSetting struct {
-	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
-}
-
-type EncodeUserPath struct {
-	Ground bool `json:"ground"`
-	Cave   bool `json:"cave"`
-}
-
-type Config struct {
-	Username       string         `json:"username"`
-	Nickname       string         `json:"nickname"`
-	Password       string         `json:"password"`
-	JwtSecret      string         `json:"jwtSecret"`
-	RoomSetting    RoomSetting    `json:"roomSetting"`
-	MultiHost      bool           `json:"multiHost"`
-	AutoUpdate     AutoUpdate     `json:"autoUpdate"`
-	AutoAnnounce   []AutoAnnounce `json:"autoAnnounce"`
-	AutoBackup     AutoBackup     `json:"autoBackup"`
-	Players        []Players      `json:"players"`
-	Statistics     []Statistics   `json:"statistics"`
-	Keepalive      Keepalive      `json:"keepalive"`
-	AnnouncedID    int            `json:"announcedID"`
-	SysSetting     SysSetting     `json:"sysSetting"`
-	Bit64          bool           `json:"bit64"`
-	Platform       string         `json:"platform"`
-	TickRate       int            `json:"tickRate"`
-	EncodeUserPath EncodeUserPath `json:"encodeUserPath"`
 }
 
 type OSInfo struct {
@@ -167,11 +54,26 @@ type OSInfo struct {
 	Uptime          uint64
 }
 
-func GenerateJWT(username string, jwtSecret []byte, expiration int) (string, error) {
+func GenerateJWTSecret() string {
+	source := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(source)
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	length := 26
+	randomString := make([]byte, length)
+	for i := range randomString {
+		// 从字符集中随机选择一个字符
+		randomString[i] = charset[r.Intn(len(charset))]
+	}
+
+	return string(randomString)
+}
+
+func GenerateJWT(username string, nickname string, jwtSecret []byte, expiration int) (string, error) {
 	// 定义一个自定义的声明结构
 
 	claims := Claims{
 		Username: username,
+		Nickname: nickname,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Duration(expiration) * time.Hour).Unix(), // 过期时间
 		},
@@ -179,24 +81,6 @@ func GenerateJWT(username string, jwtSecret []byte, expiration int) (string, err
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
-}
-
-func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
-	})
-
-	if err != nil {
-		Logger.Warn("JWT验证失败")
-		return nil, err
-	}
-
-	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		return claims, nil
-	}
-
-	return nil, fmt.Errorf("invalid token")
 }
 
 func CreateConfig() {
@@ -217,18 +101,15 @@ func CreateConfig() {
 			Logger.Info("设置UID字典定时维护任务默认频率")
 			config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
 		}
-		if config.Keepalive.Frequency == 0 {
+		if config.SysSetting.Keepalive.Frequency == 0 {
 			Logger.Info("设置自动保活任务默认频率")
-			config.Keepalive.Frequency = 30
+			config.SysSetting.Keepalive.Frequency = 30
 		}
-		if config.TickRate == 0 {
+		if config.SysSetting.TickRate == 0 {
 			Logger.Info("设置默认TickRate")
-			config.TickRate = 15
+			config.SysSetting.TickRate = 15
 		}
 
-		Logger.Info("执行数据库检查中，清除历史脏数据")
-		config.Statistics = nil
-		config.Players = nil
 		err = WriteConfig(config)
 		if err != nil {
 			Logger.Error("写入数据库失败", "err", err)
@@ -238,32 +119,49 @@ func CreateConfig() {
 	}
 	Logger.Info("执行数据库检查中，初始化数据库")
 	var config Config
-	config.Username = "admin"
-	config.Password = "ba3253876aed6bc22d4a6ff53d8406c6ad864195ed144ab5c87621b6c233b548baeae6956df346ec8c17f5ea10f35ee3cbc514797ed7ddd3145464e2a0bab413"
-	source := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(source)
-	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	length := 26
-	randomString := make([]byte, length)
-	for i := range randomString {
-		// 从字符集中随机选择一个字符
-		randomString[i] = charset[r.Intn(len(charset))]
+	config.Users = []User{
+		{
+			Username: "admin",
+			Nickname: "admin",
+			Password: "ba3253876aed6bc22d4a6ff53d8406c6ad864195ed144ab5c87621b6c233b548baeae6956df346ec8c17f5ea10f35ee3cbc514797ed7ddd3145464e2a0bab413",
+			Disabled: false,
+		},
 	}
-	config.JwtSecret = string(randomString)
 
-	config.AutoUpdate.Time = "06:13:57"
-	config.AutoUpdate.Enable = true
+	config.JwtSecret = GenerateJWTSecret()
 
-	config.AutoBackup.Time = "06:52:18"
-	config.AutoBackup.Enable = true
+	config.RoomSetting.Worlds = []RoomSettingWorld{}
 
-	config.Keepalive.Enable = true
-	config.Keepalive.Frequency = 30
+	config.SysSetting = SysSetting{
+		SchedulerSetting: SchedulerSetting{
+			PlayerGetFrequency: 30,
+			UIDMaintain: SchedulerSettingItem{
+				Disable:   false,
+				Frequency: 5,
+			},
+			SysMetricsGet: SchedulerSettingItem{
+				Disable:   false,
+				Frequency: 0,
+			},
+		},
+		AutoUpdate: AutoUpdate{
+			Time:   "06:13:57",
+			Enable: true,
+		},
+		AutoAnnounce: nil,
+		AutoBackup: AutoBackup{
+			Time:   "06:13:57",
+			Enable: true,
+		},
+		Keepalive: Keepalive{
+			Frequency: 30,
+			Enable:    true,
+		},
+		Bit64:    false,
+		TickRate: 15,
+	}
 
-	config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
-	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
-
-	config.TickRate = 15
+	config.AnnouncedID = 0
 
 	err = WriteConfig(config)
 	if err != nil {
@@ -278,7 +176,7 @@ func ReadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	//jsonData := Base64Decode(string(content))
+
 	jsonData := string(content)
 	var config Config
 	err = json.Unmarshal([]byte(jsonData), &config)
@@ -289,7 +187,7 @@ func ReadConfig() (Config, error) {
 }
 
 func WriteConfig(config Config) error {
-	if config.Username == "" {
+	if config.Users[0].Username == "" {
 		return fmt.Errorf("传入的配置文件异常")
 	}
 	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
@@ -491,6 +389,7 @@ func CheckPlatform() {
 	Logger.Info("系统检查通过")
 }
 
+// SetInitInfo 进程启动时，检查已配置的用户路径编码，并写入数据库
 func SetInitInfo() {
 	config, err := ReadConfig()
 	if err != nil {
@@ -498,44 +397,24 @@ func SetInitInfo() {
 		return
 	}
 
-	if config.RoomSetting.Base.Name == "" {
+	if config.RoomSetting.Cluster.Name == "" {
 		return
 	}
 
-	if config.RoomSetting.Ground != "" {
-		cmd := "grep encode_user_path " + MasterServerPath + " | awk -F'=' '{print $2}'"
-		out, _, err := BashCMDOutput(cmd)
-		if err != nil {
-			Logger.Warn("获取地面encode_user_path失败，跳过", "err", err)
-			goto doCave
+	for worldIndex, world := range config.RoomSetting.Worlds {
+		if world.Name != "" {
+			cmd := "grep encode_user_path " + MasterServerPath + " | awk -F'=' '{print $2}'"
+			out, _, err := BashCMDOutput(cmd)
+			if err != nil {
+				Logger.Warn("获取地面encode_user_path失败，跳过", "err", err)
+				continue
+			}
+
+			out = strings.TrimSpace(out)
+			result, err := strconv.ParseBool(out)
+			config.RoomSetting.Worlds[worldIndex].EncodeUserPath = result
 		}
-		out = strings.TrimSpace(out)
-		result, err := strconv.ParseBool(out)
-		if err != nil {
-			Logger.Warn("获取地面encode_user_path失败，跳过", "err", err)
-			goto doCave
-		}
-		config.EncodeUserPath.Ground = result
-		err = WriteConfig(config)
-		if err != nil {
-			Logger.Error("写入配置文件失败", "err", err)
-		}
-	}
-doCave:
-	if config.RoomSetting.Cave != "" {
-		cmd := "grep encode_user_path " + CavesServerPath + " | awk -F'=' '{print $2}'"
-		out, _, err := BashCMDOutput(cmd)
-		if err != nil {
-			Logger.Warn("获取洞穴encode_user_path失败，跳过", "err", err)
-			return
-		}
-		out = strings.TrimSpace(out)
-		result, err := strconv.ParseBool(out)
-		if err != nil {
-			Logger.Warn("获取洞穴encode_user_path失败，跳过", "err", err)
-			return
-		}
-		config.EncodeUserPath.Cave = result
+
 		err = WriteConfig(config)
 		if err != nil {
 			Logger.Error("写入配置文件失败", "err", err)
@@ -549,33 +428,6 @@ func BindFlags() {
 	flag.BoolVar(&ConsoleOutput, "c", false, "开启控制台日志输出，如： -c (Enable console log output, e.g. -c)")
 	flag.BoolVar(&VersionShow, "v", false, "查看版本，如： -v (Check version, e.g. -v)")
 	flag.Parse()
-}
-
-func MWlang() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		lang := c.Request.Header.Get("X-I18n-Lang")
-		c.Set("lang", lang)
-	}
-}
-
-func MWtoken() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		token := c.Request.Header.Get("authorization")
-		config, err := ReadConfig()
-		if err != nil {
-			Logger.Error("配置文件打开失败", "err", err)
-			return
-		}
-		tokenSecret := config.JwtSecret
-		_, err = ValidateJWT(token, []byte(tokenSecret))
-		if err != nil {
-			lang := c.Request.Header.Get("X-I18n-Lang")
-			RespondWithError(c, 420, lang)
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
 }
 
 func GetOSInfo() (*OSInfo, error) {
@@ -979,102 +831,102 @@ func BackupGame() error {
 	return nil
 }
 
-func StopGame() error {
-	config, err := ReadConfig()
-	if err != nil {
-		Logger.Error("配置文件读取失败", "err", err)
-		return err
-	}
-
-	cmd := "c_shutdown()"
-	if config.RoomSetting.Ground != "" {
-		err = ScreenCMD(cmd, MasterName)
-		if err != nil {
-			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
-		}
-	}
-	if config.RoomSetting.Cave != "" {
-		err = ScreenCMD(cmd, CavesName)
-		if err != nil {
-			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
-		}
-	}
-
-	time.Sleep(2 * time.Second)
-	if config.RoomSetting.Ground != "" {
-		err = BashCMD(StopMasterCMD)
-		if err != nil {
-			Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopMasterCMD)
-		}
-	}
-	if config.RoomSetting.Cave != "" {
-		err = BashCMD(StopCavesCMD)
-		if err != nil {
-			Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopCavesCMD)
-		}
-	}
-
-	time.Sleep(1 * time.Second)
-
-	err = BashCMD(KillDST)
-	if err != nil {
-		Logger.Info("执行BashCMD失败", "msg", err, "cmd", KillDST)
-	}
-	err = BashCMD(ClearScreenCMD)
-	if err != nil {
-		Logger.Info("执行BashCMD失败", "msg", err, "cmd", ClearScreenCMD)
-	}
+func StopGame(worldName string) error {
+	//config, err := ReadConfig()
+	//if err != nil {
+	//	Logger.Error("配置文件读取失败", "err", err)
+	//	return err
+	//}
+	//
+	//cmd := "c_shutdown()"
+	//if config.RoomSetting.Ground != "" {
+	//	err = ScreenCMD(cmd, MasterName)
+	//	if err != nil {
+	//		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
+	//	}
+	//}
+	//if config.RoomSetting.Cave != "" {
+	//	err = ScreenCMD(cmd, CavesName)
+	//	if err != nil {
+	//		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
+	//	}
+	//}
+	//
+	//time.Sleep(2 * time.Second)
+	//if config.RoomSetting.Ground != "" {
+	//	err = BashCMD(StopMasterCMD)
+	//	if err != nil {
+	//		Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopMasterCMD)
+	//	}
+	//}
+	//if config.RoomSetting.Cave != "" {
+	//	err = BashCMD(StopCavesCMD)
+	//	if err != nil {
+	//		Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopCavesCMD)
+	//	}
+	//}
+	//
+	//time.Sleep(1 * time.Second)
+	//
+	//err = BashCMD(KillDST)
+	//if err != nil {
+	//	Logger.Info("执行BashCMD失败", "msg", err, "cmd", KillDST)
+	//}
+	//err = BashCMD(ClearScreenCMD)
+	//if err != nil {
+	//	Logger.Info("执行BashCMD失败", "msg", err, "cmd", ClearScreenCMD)
+	//}
 
 	return nil
 }
 
 func StartGame() error {
-	config, err := ReadConfig()
-	if err != nil {
-		Logger.Error("配置文件读取失败", "err", err)
-		return err
-	}
-
-	if config.Platform == "darwin" {
-		if config.RoomSetting.Ground != "" {
-			err = BashCMD(MacStartMasterCMD)
-			if err != nil {
-				Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
-			}
-		}
-		if config.RoomSetting.Cave != "" {
-			err = BashCMD(MacStartCavesCMD)
-			if err != nil {
-				Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartCavesCMD)
-			}
-		}
-	} else {
-		_ = ReplaceDSTSOFile()
-		if config.RoomSetting.Ground != "" {
-			var cmd string
-			if config.Bit64 {
-				cmd = StartMaster64CMD
-			} else {
-				cmd = StartMasterCMD
-			}
-			err = BashCMD(cmd)
-			if err != nil {
-				Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
-			}
-		}
-		if config.RoomSetting.Cave != "" {
-			var cmd string
-			if config.Bit64 {
-				cmd = StartCaves64CMD
-			} else {
-				cmd = StartCavesCMD
-			}
-			err = BashCMD(cmd)
-			if err != nil {
-				Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
-			}
-		}
-	}
+	//config, err := ReadConfig()
+	//if err != nil {
+	//	Logger.Error("配置文件读取失败", "err", err)
+	//	return err
+	//}
+	//
+	//if config.Platform == "darwin" {
+	//	if config.RoomSetting.Ground != "" {
+	//		err = BashCMD(MacStartMasterCMD)
+	//		if err != nil {
+	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
+	//		}
+	//	}
+	//	if config.RoomSetting.Cave != "" {
+	//		err = BashCMD(MacStartCavesCMD)
+	//		if err != nil {
+	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartCavesCMD)
+	//		}
+	//	}
+	//} else {
+	//	_ = ReplaceDSTSOFile()
+	//	if config.RoomSetting.Ground != "" {
+	//		var cmd string
+	//		if config.Bit64 {
+	//			cmd = StartMaster64CMD
+	//		} else {
+	//			cmd = StartMasterCMD
+	//		}
+	//		err = BashCMD(cmd)
+	//		if err != nil {
+	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
+	//		}
+	//	}
+	//	if config.RoomSetting.Cave != "" {
+	//		var cmd string
+	//		if config.Bit64 {
+	//			cmd = StartCaves64CMD
+	//		} else {
+	//			cmd = StartCavesCMD
+	//		}
+	//		err = BashCMD(cmd)
+	//		if err != nil {
+	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
+	//		}
+	//	}
+	//}
 	return nil
 }
 
@@ -1234,84 +1086,84 @@ func GetFiles(dirPath string) ([]string, error) {
 	return fileNames, nil
 }
 
-func GetRoomSettingBase() (RoomSettingBase, error) {
-	roomSettings := RoomSettingBase{}
-	// 打开文件
-	file, err := os.Open(ServerSettingPath)
-	if err != nil {
-		Logger.Error("打开cluster.ini文件失败", "err", err)
-		return RoomSettingBase{}, err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			Logger.Error("关闭cluster.ini文件失败", "err", err)
-		}
-	}(file)
+func GetRoomSettingBase() (RoomSettingCluster, error) {
+	//roomSettings := RoomSettingBase{}
+	//// 打开文件
+	//file, err := os.Open(ServerSettingPath)
+	//if err != nil {
+	//	Logger.Error("打开cluster.ini文件失败", "err", err)
+	//	return RoomSettingBase{}, err
+	//}
+	//defer func(file *os.File) {
+	//	err := file.Close()
+	//	if err != nil {
+	//		Logger.Error("关闭cluster.ini文件失败", "err", err)
+	//	}
+	//}(file)
+	//
+	//// 定义要读取的字段映射
+	//fieldsToRead := map[string]string{
+	//	"cluster_name":        "Name",
+	//	"cluster_description": "Description",
+	//	"game_mode":           "GameMode",
+	//	"pvp":                 "PVP",
+	//	"max_players":         "PlayerNum",
+	//	"vote_enabled":        "Vote",
+	//	"cluster_password":    "Password",
+	//}
+	//
+	//// 使用bufio.Scanner逐行读取文件内容
+	//scanner := bufio.NewScanner(file)
+	//for scanner.Scan() {
+	//	line := scanner.Text()
+	//	line = strings.TrimSpace(line)
+	//	// 跳过注释和空行
+	//	if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
+	//		continue
+	//	}
+	//	// 解析字段和值
+	//	for field, structField := range fieldsToRead {
+	//		if strings.HasPrefix(line, field+" =") {
+	//			value := strings.TrimPrefix(line, field+" =")
+	//			value = strings.TrimSpace(value)
+	//
+	//			// 根据结构体字段类型设置值
+	//			switch structField {
+	//			case "Name":
+	//				roomSettings.Name = value
+	//			case "Description":
+	//				roomSettings.Description = value
+	//			case "GameMode":
+	//				roomSettings.GameMode = value
+	//			case "PVP":
+	//				roomSettings.PVP, _ = strconv.ParseBool(value)
+	//			case "PlayerNum":
+	//				roomSettings.PlayerNum, _ = strconv.Atoi(value)
+	//			case "Vote":
+	//				roomSettings.Vote, _ = strconv.ParseBool(value)
+	//			case "Password":
+	//				roomSettings.Password = value
+	//			}
+	//			break
+	//		}
+	//	}
+	//}
+	//
+	//// 检查是否有错误
+	//if err := scanner.Err(); err != nil {
+	//	Logger.Error("读取cluster.ini文件失败", "err", err)
+	//	return RoomSettingBase{}, err
+	//}
+	//
+	////token文件
+	//token, err := GetFileAllContent(ServerTokenPath)
+	//if err != nil {
+	//	Logger.Error("读取token文件失败", "err", err)
+	//	return RoomSettingBase{}, err
+	//}
+	//roomSettings.Token = token
 
-	// 定义要读取的字段映射
-	fieldsToRead := map[string]string{
-		"cluster_name":        "Name",
-		"cluster_description": "Description",
-		"game_mode":           "GameMode",
-		"pvp":                 "PVP",
-		"max_players":         "PlayerNum",
-		"vote_enabled":        "Vote",
-		"cluster_password":    "Password",
-	}
-
-	// 使用bufio.Scanner逐行读取文件内容
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
-		// 跳过注释和空行
-		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
-			continue
-		}
-		// 解析字段和值
-		for field, structField := range fieldsToRead {
-			if strings.HasPrefix(line, field+" =") {
-				value := strings.TrimPrefix(line, field+" =")
-				value = strings.TrimSpace(value)
-
-				// 根据结构体字段类型设置值
-				switch structField {
-				case "Name":
-					roomSettings.Name = value
-				case "Description":
-					roomSettings.Description = value
-				case "GameMode":
-					roomSettings.GameMode = value
-				case "PVP":
-					roomSettings.PVP, _ = strconv.ParseBool(value)
-				case "PlayerNum":
-					roomSettings.PlayerNum, _ = strconv.Atoi(value)
-				case "Vote":
-					roomSettings.Vote, _ = strconv.ParseBool(value)
-				case "Password":
-					roomSettings.Password = value
-				}
-				break
-			}
-		}
-	}
-
-	// 检查是否有错误
-	if err := scanner.Err(); err != nil {
-		Logger.Error("读取cluster.ini文件失败", "err", err)
-		return RoomSettingBase{}, err
-	}
-
-	//token文件
-	token, err := GetFileAllContent(ServerTokenPath)
-	if err != nil {
-		Logger.Error("读取token文件失败", "err", err)
-		return RoomSettingBase{}, err
-	}
-	roomSettings.Token = token
-
-	return roomSettings, nil
+	return RoomSettingCluster{}, nil
 }
 
 func GetServerPort(serverFile string) (int, error) {

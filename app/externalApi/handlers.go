@@ -26,50 +26,50 @@ func handleVersionGet(c *gin.Context) {
 }
 
 func handleConnectionCodeGet(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	var (
-		internetIp string
-		err        error
-	)
-	internetIp, err = GetInternetIP1()
-	if err != nil {
-		utils.Logger.Warn("调用公网ip接口1失败", "err", err)
-		internetIp, err = GetInternetIP2()
-		if err != nil {
-			utils.Logger.Warn("调用公网ip接口2失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getConnectionCodeFail", langStr), "data": nil})
-			return
-		}
-	}
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
+	//lang, _ := c.Get("lang")
+	//langStr := "zh" // 默认语言
+	//if strLang, ok := lang.(string); ok {
+	//	langStr = strLang
+	//}
+	//var (
+	//	internetIp string
+	//	err        error
+	//)
+	//internetIp, err = GetInternetIP1()
+	//if err != nil {
+	//	utils.Logger.Warn("调用公网ip接口1失败", "err", err)
+	//	internetIp, err = GetInternetIP2()
+	//	if err != nil {
+	//		utils.Logger.Warn("调用公网ip接口2失败", "err", err)
+	//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getConnectionCodeFail", langStr), "data": nil})
+	//		return
+	//	}
+	//}
+	//config, err := utils.ReadConfig()
+	//if err != nil {
+	//	utils.Logger.Error("配置文件读取失败", "err", err)
+	//	utils.RespondWithError(c, 500, langStr)
+	//	return
+	//}
+	//
+	//var (
+	//	connectionCode string
+	//	port           int
+	//)
+	//
+	//if config.RoomSetting.Ground != "" {
+	//	port = config.RoomSetting.Base.MasterPort
+	//} else {
+	//	port = config.RoomSetting.Base.CavesPort
+	//}
+	//
+	//if config.RoomSetting.Base.Password != "" {
+	//	connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(port) + ", '" + config.RoomSetting.Base.Password + "')"
+	//} else {
+	//	connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(port) + ")"
+	//}
 
-	var (
-		connectionCode string
-		port           int
-	)
-
-	if config.RoomSetting.Ground != "" {
-		port = config.RoomSetting.Base.MasterPort
-	} else {
-		port = config.RoomSetting.Base.CavesPort
-	}
-
-	if config.RoomSetting.Base.Password != "" {
-		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(port) + ", '" + config.RoomSetting.Base.Password + "')"
-	} else {
-		connectionCode = "c_connect('" + internetIp + "', " + strconv.Itoa(port) + ")"
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
 }
 
 func handleModInfoGet(c *gin.Context) {
