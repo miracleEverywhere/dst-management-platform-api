@@ -40,6 +40,7 @@ func MWtoken() gin.HandlerFunc {
 		config, err := ReadConfig()
 		if err != nil {
 			Logger.Error("配置文件打开失败", "err", err)
+			c.Abort()
 			return
 		}
 		tokenSecret := config.JwtSecret
@@ -164,5 +165,32 @@ func (l *IPRateLimiter) MWIPLimiter() gin.HandlerFunc {
 func (l *IPRateLimiter) Stop() {
 	if l.cleanupTicker != nil {
 		l.cleanupTicker.Stop()
+	}
+}
+
+func MWAdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Request.Header.Get("authorization")
+		config, err := ReadConfig()
+		if err != nil {
+			Logger.Error("配置文件打开失败", "err", err)
+			c.Abort()
+			return
+		}
+		tokenSecret := config.JwtSecret
+		claims, err := ValidateJWT(token, []byte(tokenSecret))
+		if err != nil {
+			lang := c.Request.Header.Get("X-I18n-Lang")
+			RespondWithError(c, 420, lang)
+			c.Abort()
+			return
+		}
+		username := claims.Username
+		if username != "admin" {
+			Logger.Info("越权请求已中断", "越权用户", username)
+			c.Abort()
+			return
+		}
+		c.Next()
 	}
 }
