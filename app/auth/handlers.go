@@ -49,7 +49,7 @@ func handleLogin(c *gin.Context) {
 			if loginForm.LoginForm.Password == user.Password {
 				jwtSecret := []byte(config.JwtSecret)
 				token, _ := utils.GenerateJWT(user.Username, user.Nickname, jwtSecret, 12)
-				c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("loginSuccess", langStr), "data": gin.H{"token": token}})
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": Response("loginSuccess", langStr), "data": gin.H{"token": token}})
 				return
 			} else {
 				utils.RespondWithError(c, 422, langStr)
@@ -580,7 +580,7 @@ func handleUpdatePassword(c *gin.Context) {
 				config.Users[userIndex].Password = updatePasswordForm.Password
 				c.JSON(http.StatusOK, gin.H{
 					"code":    200,
-					"message": Success("updatePassword", langStr),
+					"message": Response("updatePassword", langStr),
 					"data":    nil,
 				})
 				err = utils.WriteConfig(config)
@@ -599,4 +599,86 @@ func handleUpdatePassword(c *gin.Context) {
 	}
 
 	utils.RespondWithError(c, 421, langStr)
+}
+
+func handleUserListGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	type UserResponse struct {
+		Username string `json:"username"`
+		Nickname string `json:"nickname"`
+		Disabled bool   `json:"disabled"`
+	}
+
+	var userResponse []UserResponse
+
+	for _, i := range config.Users {
+		user := UserResponse{
+			Username: i.Username,
+			Nickname: i.Nickname,
+			Disabled: i.Disabled,
+		}
+		userResponse = append(userResponse, user)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": userResponse})
+}
+
+func handleUserCreatePost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var user utils.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	for _, i := range config.Users {
+		if i.Username == user.Username {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    201,
+				"message": Response("userExist", langStr),
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	config.Users = append(config.Users, user)
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    201,
+		"message": Response("createSuccess", langStr),
+		"data":    nil,
+	})
 }
