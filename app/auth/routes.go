@@ -15,8 +15,9 @@ func RouteAuth(r *gin.Engine) *gin.Engine {
 		v1.POST("/update/password", utils.MWtoken(), handleUpdatePassword)
 		// 用户
 		v1.GET("/user/list", utils.MWtoken(), handleUserListGet)
-		v1.POST("/user/create", utils.MWtoken(), utils.MWAdminOnly(), handleUserCreatePost)
-
+		v1.POST("/user", utils.MWtoken(), utils.MWAdminOnly(), handleUserCreatePost)
+		v1.PUT("/user", utils.MWtoken(), utils.MWAdminOnly(), handleUserUpdatePut)
+		v1.DELETE("/user", utils.MWtoken(), utils.MWAdminOnly(), handleUserDeleteDelete)
 	}
 
 	return r

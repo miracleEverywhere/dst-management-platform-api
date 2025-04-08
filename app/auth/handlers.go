@@ -677,8 +677,111 @@ func handleUserCreatePost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code":    201,
+		"code":    200,
 		"message": Response("createSuccess", langStr),
 		"data":    nil,
 	})
+}
+
+func handleUserUpdatePut(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var user utils.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	for index, i := range config.Users {
+		if i.Username == user.Username {
+			newUser := utils.User{
+				Username: user.Username,
+				Nickname: user.Nickname,
+				Password: i.Password,
+				Disabled: user.Disabled,
+			}
+			config.Users[index] = newUser
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("写入配置文件失败", "err", err)
+				utils.RespondWithError(c, 500, langStr)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": Response("updateSuccess", langStr),
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	utils.RespondWithError(c, 421, langStr)
+}
+
+func handleUserDeleteDelete(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var (
+		user    utils.User
+		users   []utils.User
+		deleted bool
+	)
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	for _, i := range config.Users {
+		if i.Username != user.Username {
+			users = append(users, i)
+		} else {
+			deleted = true
+		}
+	}
+
+	config.Users = users
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	if deleted {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    200,
+			"message": Response("deleteSuccess", langStr),
+			"data":    nil,
+		})
+	} else {
+		utils.RespondWithError(c, 421, langStr)
+	}
+
 }
