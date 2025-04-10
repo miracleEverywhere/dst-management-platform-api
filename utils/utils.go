@@ -35,11 +35,13 @@ var (
 	VersionShow   bool
 	ConfDir       string
 	PLATFORM      string
+	Registered    bool
 )
 
 type Claims struct {
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`
+	Role     string `json:"role"`
 	jwt.StandardClaims
 }
 
@@ -68,12 +70,13 @@ func GenerateJWTSecret() string {
 	return string(randomString)
 }
 
-func GenerateJWT(username string, nickname string, jwtSecret []byte, expiration int) (string, error) {
+func GenerateJWT(user User, jwtSecret []byte, expiration int) (string, error) {
 	// 定义一个自定义的声明结构
 
 	claims := Claims{
-		Username: username,
-		Nickname: nickname,
+		Username: user.Username,
+		Nickname: user.Nickname,
+		Role:     user.Role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Duration(expiration) * time.Hour).Unix(), // 过期时间
 		},
@@ -109,7 +112,7 @@ func CreateConfig() {
 			Logger.Info("设置默认TickRate")
 			config.SysSetting.TickRate = 15
 		}
-
+		Registered = true
 		err = WriteConfig(config)
 		if err != nil {
 			Logger.Error("写入数据库失败", "err", err)
@@ -119,14 +122,14 @@ func CreateConfig() {
 	}
 	Logger.Info("执行数据库检查中，初始化数据库")
 	var config Config
-	config.Users = []User{
-		{
-			Username: "admin",
-			Nickname: "admin",
-			Password: "ba3253876aed6bc22d4a6ff53d8406c6ad864195ed144ab5c87621b6c233b548baeae6956df346ec8c17f5ea10f35ee3cbc514797ed7ddd3145464e2a0bab413",
-			Disabled: false,
-		},
-	}
+	//config.Users = []User{
+	//	{
+	//		Username: "admin",
+	//		Nickname: "admin",
+	//		Password: "ba3253876aed6bc22d4a6ff53d8406c6ad864195ed144ab5c87621b6c233b548baeae6956df346ec8c17f5ea10f35ee3cbc514797ed7ddd3145464e2a0bab413",
+	//		Disabled: false,
+	//	},
+	//}
 
 	config.JwtSecret = GenerateJWTSecret()
 
@@ -162,6 +165,7 @@ func CreateConfig() {
 	}
 
 	config.AnnouncedID = 0
+	Registered = false
 
 	err = WriteConfig(config)
 	if err != nil {

@@ -48,7 +48,7 @@ func handleLogin(c *gin.Context) {
 			}
 			if loginForm.LoginForm.Password == user.Password {
 				jwtSecret := []byte(config.JwtSecret)
-				token, _ := utils.GenerateJWT(user.Username, user.Nickname, jwtSecret, 12)
+				token, _ := utils.GenerateJWT(user, jwtSecret, 12)
 				c.JSON(http.StatusOK, gin.H{"code": 200, "message": Response("loginSuccess", langStr), "data": gin.H{"token": token}})
 				return
 			} else {
@@ -667,6 +667,7 @@ func handleUserCreatePost(c *gin.Context) {
 		}
 	}
 
+	user.Role = "Non-admin"
 	config.Users = append(config.Users, user)
 
 	err = utils.WriteConfig(config)
@@ -784,4 +785,47 @@ func handleUserDeleteDelete(c *gin.Context) {
 		utils.RespondWithError(c, 421, langStr)
 	}
 
+}
+
+func handleRegisterPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	if utils.Registered {
+		utils.RespondWithError(c, 425, langStr)
+		return
+	}
+
+	var user utils.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	user.Role = "admin"
+	config.Users = append(config.Users, user)
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": Response("createSuccess", langStr),
+		"data":    nil,
+	})
 }
