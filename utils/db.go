@@ -3,6 +3,7 @@ package utils
 type User struct {
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`
+	Role     string `json:"role"`
 	Password string `json:"password"`
 	Disabled bool   `json:"disabled"`
 }
@@ -111,4 +112,5 @@ type Config struct {
 	SysSetting  SysSetting  `json:"sysSetting"`
 	Platform    string      `json:"platform"`
 	AnnouncedID int         `json:"announcedID"`
+	Registered  bool        `json:"registered"`
 }
