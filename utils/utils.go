@@ -191,9 +191,6 @@ func ReadConfig() (Config, error) {
 }
 
 func WriteConfig(config Config) error {
-	if config.Users[0].Username == "" {
-		return fmt.Errorf("传入的配置文件异常")
-	}
 	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
 	if err != nil {
 		return fmt.Errorf("Error marshalling JSON:" + err.Error())
