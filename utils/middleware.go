@@ -31,6 +31,8 @@ func MWlang() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		lang := c.Request.Header.Get("X-I18n-Lang")
 		c.Set("lang", lang)
+
+		c.Next()
 	}
 }
 
@@ -51,6 +53,7 @@ func MWtoken() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		c.Next()
 	}
 }
@@ -143,17 +146,8 @@ func (l *IPRateLimiter) MWIPLimiter() gin.HandlerFunc {
 			if strLang, ok := lang.(string); ok {
 				langStr = strLang
 			}
-			var message string
-			if langStr == "zh" {
-				message = "请求过于频繁，请稍后再试"
-			} else {
-				message = "Request rate limit exceeded. Please try again later"
-			}
-			c.AbortWithStatusJSON(http.StatusOK, gin.H{
-				"code":    429,
-				"message": message,
-				"data":    nil,
-			})
+			RespondWithError(c, 429, langStr)
+			c.Abort()
 			return
 		}
 
@@ -174,6 +168,7 @@ func MWAdminOnly() gin.HandlerFunc {
 		config, err := ReadConfig()
 		if err != nil {
 			Logger.Error("配置文件打开失败", "err", err)
+			c.Status(http.StatusUnauthorized)
 			c.Abort()
 			return
 		}
@@ -185,9 +180,14 @@ func MWAdminOnly() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		username := claims.Username
-		if username != "admin" {
-			Logger.Info("越权请求已中断", "越权用户", username)
+
+		if claims.Role != "admin" {
+			Logger.Info("越权请求已中断",
+				"越权用户",
+				fmt.Sprintf("%s(%s)", claims.Username, claims.Role),
+			)
+			lang := c.Request.Header.Get("X-I18n-Lang")
+			RespondWithError(c, 425, lang)
 			c.Abort()
 			return
 		}
