@@ -814,6 +814,7 @@ func handleRegisterPost(c *gin.Context) {
 	}
 
 	user.Role = "admin"
+	user.Disabled = false
 	config.Users = append(config.Users, user)
 
 	err = utils.WriteConfig(config)
@@ -822,6 +823,8 @@ func handleRegisterPost(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
+
+	utils.Registered = true
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
