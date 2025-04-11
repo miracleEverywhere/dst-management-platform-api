@@ -17,7 +17,7 @@ func InitTasks() {
 	}
 
 	// 获取当前玩家
-	_, _ = Scheduler.Every(config.SysSetting.SchedulerSetting.PlayerGetFrequency).Seconds().Do(setPlayer2DB)
+	_, _ = Scheduler.Every(config.SysSetting.SchedulerSetting.PlayerGetFrequency).Seconds().Do(setPlayer2DB, config)
 	utils.Logger.Info("玩家列表定时任务已配置")
 
 	// 维护UID字典
@@ -41,9 +41,15 @@ func InitTasks() {
 	}
 
 	// 自动更新
-	if config.AutoUpdate.Enable {
-		_, _ = Scheduler.Every(1).Day().At(updateTimeFix(config.AutoUpdate.Time)).Do(checkUpdate)
+	if config.SysSetting.AutoUpdate.Enable {
+		_, _ = Scheduler.Every(1).Day().At(updateTimeFix(config.SysSetting.AutoUpdate.Time)).Do(checkUpdate, config)
 		utils.Logger.Info("自动更新定时任务已配置")
+	}
+
+	// 自动重启
+	if config.SysSetting.AutoRestart.Enable {
+		_, _ = Scheduler.Every(1).Day().At(updateTimeFix(config.SysSetting.AutoRestart.Time)).Do(doRestart, config)
+		utils.Logger.Info("自动重启定时任务已配置")
 	}
 
 	// 自动备份

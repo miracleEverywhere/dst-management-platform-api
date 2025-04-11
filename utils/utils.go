@@ -629,13 +629,7 @@ func isSubPath(path, mountpoint string) bool {
 }
 
 func ScreenCMD(cmd string, screenName string) error {
-	var totalCMD string
-	if world == MasterName {
-		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
-	}
-	if world == CavesName {
-		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
-	}
+	totalCMD := "screen -S \"" + screenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
 
 	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
 	err := cmdExec.Run()
@@ -880,15 +874,47 @@ func StopGame(worldName string) error {
 	return nil
 }
 
-func (world World) StartGame(clusterName string) error {
-	config, err := ReadConfig()
+func (world World) StopGame(clusterName string) error {
+	err := ScreenCMD(ShutdownScreenCMD, world.ScreenName)
 	if err != nil {
-		Logger.Error("配置文件读取失败", "err", err)
-		return err
+		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", ShutdownScreenCMD)
+	}
+	time.Sleep(2 * time.Second)
+	killCMD := fmt.Sprintf("kill -9 `cat %s/%s_%s.pid`", PIDPath, clusterName, world.Name)
+	err = BashCMD(killCMD)
+	if err != nil {
+		Logger.Info("执行Bash命令失败", "msg", err, "cmd", killCMD)
 	}
 
-	var cmd string
+	return err
+}
 
+func StopClusterAllWorlds(cluster Cluster) error {
+	var err error
+	for _, world := range cluster.Worlds {
+		err = world.StopGame(cluster.ClusterSetting.ClusterName)
+		if err != nil {
+			Logger.Error("关闭游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
+		}
+	}
+
+	return err
+}
+
+func StopAllClusters(clusters []Cluster) error {
+	var err error
+	for _, cluster := range clusters {
+		err = StopClusterAllWorlds(cluster)
+	}
+
+	return err
+}
+
+func (world World) StartGame(clusterName string, bit64 bool) error {
+	var (
+		cmd string
+		err error
+	)
 	if PLATFORM == "darwin" {
 		cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		err = BashCMD(cmd)
@@ -897,8 +923,8 @@ func (world World) StartGame(clusterName string) error {
 		}
 	} else {
 		_ = ReplaceDSTSOFile()
-		if config.SysSetting.Bit64 {
-			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+		if bit64 {
+			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s"+" ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		} else {
 			cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		}
@@ -907,28 +933,32 @@ func (world World) StartGame(clusterName string) error {
 			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
 		}
 	}
-
-	pidCmd := fmt.Sprintf("screen -ls | grep DST_MASTER | awk -F'.' '{print $1}' | awk '{print $1}' > %s/%s.%s.pid", PIDPath, clusterName, world.Name)
+	pidCmd := fmt.Sprintf("screen -ls | grep DST_MASTER | awk -F'.' '{print $1}' | awk '{print $1}' > %s/%s_%s.pid", PIDPath, clusterName, world.Name)
 	_ = BashCMD(pidCmd)
 
 	return err
 }
 
-func StartClusterAllWorlds() error {
+func StartClusterAllWorlds(cluster Cluster) error {
 	config, err := ReadConfig()
 	if err != nil {
 		Logger.Error("配置文件读取失败", "err", err)
 		return err
 	}
-
-	for _, cluster := range config.Clusters {
-		for _, world := range cluster.Worlds {
-			err = world.StartGame(cluster.ClusterSetting.ClusterName)
-			if err != nil {
-				Logger.Error("启动游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
-				return err
-			}
+	for _, world := range cluster.Worlds {
+		err = world.StartGame(cluster.ClusterSetting.ClusterName, config.SysSetting.Bit64)
+		if err != nil {
+			Logger.Error("启动游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
 		}
+	}
+
+	return err
+}
+
+func StartAllClusters(clusters []Cluster) error {
+	var err error
+	for _, cluster := range clusters {
+		err = StartClusterAllWorlds(cluster)
 	}
 
 	return err

@@ -22,7 +22,6 @@ type ClusterSetting struct {
 }
 
 type World struct {
-	ID                      int    `json:"id"`
 	Name                    string `json:"name"`
 	ScreenName              string `json:"screenName"`
 	IsMaster                bool   `json:"isMaster"`

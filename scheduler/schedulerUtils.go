@@ -12,14 +12,9 @@ import (
 	"time"
 )
 
-func setPlayer2DB() {
+func setPlayer2DB(config utils.Config) {
 	var players []string
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
-	}
-
+	// 可能要用map
 	if config.RoomSetting.Ground != "" {
 		players, err = getPlayersList("master")
 	} else {
@@ -210,102 +205,78 @@ func updateTimeFix(timeStr string) string {
 	return newTimeStr
 }
 
-func checkUpdate() {
+func checkUpdate(config utils.Config) {
 	dstVersion, err := externalApi.GetDSTVersion()
 	if err != nil {
 		utils.Logger.Error("获取饥荒版本失败，跳过自动更新", "err", err)
 		return
 	}
-	doAnnounce()
 	if dstVersion.Local != dstVersion.Server {
-		_ = doUpdate()
-		_ = utils.ReplaceDSTSOFile()
+		for _, cluster := range config.Clusters {
+			for _, world := range cluster.Worlds {
+				if world.IsMaster {
+					go func() {
+						doAnnounce(world)
+					}()
+				}
+			}
+		}
+		// 异步执行宣告，宣告需要15分钟，因此sleep 15 分钟
+		time.Sleep(15 * time.Minute)
+		_ = doUpdate(config)
 	}
-	doRestart()
 }
 
-func doAnnounce() {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
-	}
-
+func doAnnounce(world utils.World) {
 	var (
-		hasMaster  bool
-		screenName string
-		cmd        string
+		cmd string
+		err error
 	)
-
-	for _, world := range config.RoomSetting.Worlds {
-		if world.IsMaster {
-			hasMaster = true
-			screenName = world.ScreenName
-		}
-	}
-
-	if !hasMaster {
-		return
-	}
-
 	// 重启前进行宣告
 	cmd = "c_announce('将在15分钟后自动重启服务器(The server will automatically restart in 15 minutes)')"
-	err = utils.ScreenCMD(cmd, screenName)
+	err = utils.ScreenCMD(cmd, world.ScreenName)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(5 * time.Minute)
 	cmd = "c_announce('将在10分钟后自动重启服务器(The server will automatically restart in 10 minutes)')"
-	err = utils.ScreenCMD(cmd, screenName)
+	err = utils.ScreenCMD(cmd, world.ScreenName)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(5 * time.Minute)
 	cmd = "c_announce('将在5分钟后自动重启服务器(The server will automatically restart in 5 minutes)')"
-	err = utils.ScreenCMD(cmd, screenName)
+	err = utils.ScreenCMD(cmd, world.ScreenName)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(4 * time.Minute)
 	cmd = "c_announce('将在1分钟后自动重启服务器(The server will automatically restart in 1 minute)')"
-	err = utils.ScreenCMD(cmd, screenName)
+	err = utils.ScreenCMD(cmd, world.ScreenName)
 	if err != nil {
 		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
 	}
 	time.Sleep(1 * time.Minute)
 }
 
-func doUpdate() error {
-	/*config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return err
-	}*/
+func doUpdate(config utils.Config) error {
 
-	_ = utils.StopGame()
+	_ = utils.StopAllClusters(config.Clusters)
 
 	go func() {
 		err := utils.BashCMD(utils.UpdateGameCMD)
 		if err != nil {
 			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.UpdateGameCMD)
 		}
-		/*err = utils.BashCMD(utils.StartMasterCMD)
-		if err != nil {
-			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartMasterCMD)
-		}
-		if config.RoomSetting.Cave != "" {
-			err = utils.BashCMD(utils.StartCavesCMD)
-			if err != nil {
-				utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.StartCavesCMD)
-			}
-		}*/
+		_ = utils.StartAllClusters(config.Clusters)
 	}()
 	return nil
 }
 
-func doRestart() {
-	_ = utils.StopGame()
-	_ = utils.StartGame()
+func doRestart(config utils.Config) {
+	_ = utils.StopAllClusters(config.Clusters)
+	time.Sleep(3 * time.Second)
+	_ = utils.StartAllClusters(config.Clusters)
 }
 
 func doBackup() {

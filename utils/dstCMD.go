@@ -1,5 +1,7 @@
 package utils
 
+const ShutdownScreenCMD = "c_shutdown()"
+
 /* ---- 重构 ---- */
 
 const StartMasterCMD = "cd ~/dst/bin/ && screen -d -m -S \"" + MasterScreenName + "\"  ./dontstarve_dedicated_server_nullrenderer -console -cluster MyDediServer -shard " + MasterName + "  ;"

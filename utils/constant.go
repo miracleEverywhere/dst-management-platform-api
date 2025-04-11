@@ -2,7 +2,7 @@ package utils
 
 const VERSION string = "2.0.0"
 
-const PIDPath = "./pid"
+const PIDPath = "./pid" // ./pid/MyDediServer_Cave0.pid
 
 /* ---- 重构 ---- */
 
