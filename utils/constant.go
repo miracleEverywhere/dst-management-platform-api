@@ -2,6 +2,10 @@ package utils
 
 const VERSION string = "2.0.0"
 
+const PIDPath = "./pid"
+
+/* ---- 重构 ---- */
+
 const MasterName = "Master"
 const CavesName = "Caves"
 const MasterScreenName = "DST_MASTER"

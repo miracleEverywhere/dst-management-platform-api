@@ -96,23 +96,7 @@ func CreateConfig() {
 			Logger.Error("执行数据库检查中，打开数据库文件失败", "err", err)
 			return
 		}
-		if config.SysSetting.SchedulerSetting.PlayerGetFrequency == 0 {
-			Logger.Info("设置玩家列表定时任务默认频率")
-			config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
-		}
-		if config.SysSetting.SchedulerSetting.UIDMaintain.Frequency == 0 {
-			Logger.Info("设置UID字典定时维护任务默认频率")
-			config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
-		}
-		if config.SysSetting.Keepalive.Frequency == 0 {
-			Logger.Info("设置自动保活任务默认频率")
-			config.SysSetting.Keepalive.Frequency = 30
-		}
-		if config.SysSetting.TickRate == 0 {
-			Logger.Info("设置默认TickRate")
-			config.SysSetting.TickRate = 15
-		}
-		Registered = true
+		config.ConfigCheck()
 		err = WriteConfig(config)
 		if err != nil {
 			Logger.Error("写入数据库失败", "err", err)
@@ -120,21 +104,21 @@ func CreateConfig() {
 		Logger.Info("数据库检查完成")
 		return
 	}
+
 	Logger.Info("执行数据库检查中，初始化数据库")
 	var config Config
-	//config.Users = []User{
-	//	{
-	//		Username: "admin",
-	//		Nickname: "admin",
-	//		Password: "ba3253876aed6bc22d4a6ff53d8406c6ad864195ed144ab5c87621b6c233b548baeae6956df346ec8c17f5ea10f35ee3cbc514797ed7ddd3145464e2a0bab413",
-	//		Disabled: false,
-	//	},
-	//}
+	config.ConfigInit()
+	err = WriteConfig(config)
+	if err != nil {
+		Logger.Error("写入数据库失败", "err", err)
+		panic("数据库初始化失败")
+	}
+	Logger.Info("数据库初始化完成")
+}
 
+func (config Config) ConfigInit() {
 	config.JwtSecret = GenerateJWTSecret()
-
 	config.RoomSetting.Worlds = []RoomSettingWorld{}
-
 	config.SysSetting = SysSetting{
 		SchedulerSetting: SchedulerSetting{
 			PlayerGetFrequency: 30,
@@ -148,7 +132,11 @@ func CreateConfig() {
 			},
 		},
 		AutoUpdate: AutoUpdate{
-			Time:   "06:13:57",
+			Time:   "06:19:23",
+			Enable: true,
+		},
+		AutoRestart: AutoRestart{
+			Time:   "06:47:19",
 			Enable: true,
 		},
 		AutoAnnounce: nil,
@@ -163,16 +151,27 @@ func CreateConfig() {
 		Bit64:    false,
 		TickRate: 15,
 	}
-
 	config.AnnouncedID = 0
 	Registered = false
+}
 
-	err = WriteConfig(config)
-	if err != nil {
-		Logger.Error("写入数据库失败", "err", err)
-		panic("数据库初始化失败")
+func (config Config) ConfigCheck() {
+	if config.SysSetting.SchedulerSetting.PlayerGetFrequency == 0 {
+		Logger.Info("设置玩家列表定时任务默认频率")
+		config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
 	}
-	Logger.Info("数据库初始化完成")
+	if config.SysSetting.SchedulerSetting.UIDMaintain.Frequency == 0 {
+		Logger.Info("设置UID字典定时维护任务默认频率")
+		config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
+	}
+	if config.SysSetting.Keepalive.Frequency == 0 {
+		Logger.Info("设置自动保活任务默认频率")
+		config.SysSetting.Keepalive.Frequency = 30
+	}
+	if config.SysSetting.TickRate == 0 {
+		Logger.Info("设置默认TickRate")
+		config.SysSetting.TickRate = 15
+	}
 }
 
 func ReadConfig() (Config, error) {
@@ -629,13 +628,13 @@ func isSubPath(path, mountpoint string) bool {
 	return !strings.Contains(rel, "..")
 }
 
-func ScreenCMD(cmd string, world string) error {
+func ScreenCMD(cmd string, screenName string) error {
 	var totalCMD string
 	if world == MasterName {
-		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
+		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
 	}
 	if world == CavesName {
-		totalCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
+		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
 	}
 
 	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
@@ -648,18 +647,18 @@ func ScreenCMD(cmd string, world string) error {
 
 // ScreenCMDOutput 执行screen命令，并从日志中获取输出
 // 自动添加print命令，cmdIdentifier是该命令在日志中输出的唯一标识符
-func ScreenCMDOutput(cmd string, cmdIdentifier string, world string) (string, error) {
+func ScreenCMDOutput(cmd string, cmdIdentifier string, screenName string) (string, error) {
 	var (
 		totalCMD string
 		logPath  string
 	)
 
 	if world == MasterName {
-		totalCMD = "screen -S \"" + MasterScreenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
+		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
 		logPath = MasterLogPath
 	}
 	if world == CavesName {
-		totalCMD = "screen -S \"" + CavesScreenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
+		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
 		logPath = CavesLogPath
 	}
 
@@ -881,54 +880,58 @@ func StopGame(worldName string) error {
 	return nil
 }
 
-func StartGame() error {
-	//config, err := ReadConfig()
-	//if err != nil {
-	//	Logger.Error("配置文件读取失败", "err", err)
-	//	return err
-	//}
-	//
-	//if config.Platform == "darwin" {
-	//	if config.RoomSetting.Ground != "" {
-	//		err = BashCMD(MacStartMasterCMD)
-	//		if err != nil {
-	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
-	//		}
-	//	}
-	//	if config.RoomSetting.Cave != "" {
-	//		err = BashCMD(MacStartCavesCMD)
-	//		if err != nil {
-	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartCavesCMD)
-	//		}
-	//	}
-	//} else {
-	//	_ = ReplaceDSTSOFile()
-	//	if config.RoomSetting.Ground != "" {
-	//		var cmd string
-	//		if config.Bit64 {
-	//			cmd = StartMaster64CMD
-	//		} else {
-	//			cmd = StartMasterCMD
-	//		}
-	//		err = BashCMD(cmd)
-	//		if err != nil {
-	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
-	//		}
-	//	}
-	//	if config.RoomSetting.Cave != "" {
-	//		var cmd string
-	//		if config.Bit64 {
-	//			cmd = StartCaves64CMD
-	//		} else {
-	//			cmd = StartCavesCMD
-	//		}
-	//		err = BashCMD(cmd)
-	//		if err != nil {
-	//			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
-	//		}
-	//	}
-	//}
-	return nil
+func (world World) StartGame(clusterName string) error {
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	var cmd string
+
+	if PLATFORM == "darwin" {
+		cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+		err = BashCMD(cmd)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
+		}
+	} else {
+		_ = ReplaceDSTSOFile()
+		if config.SysSetting.Bit64 {
+			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+		} else {
+			cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+		}
+		err = BashCMD(cmd)
+		if err != nil {
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
+		}
+	}
+
+	pidCmd := fmt.Sprintf("screen -ls | grep DST_MASTER | awk -F'.' '{print $1}' | awk '{print $1}' > %s/%s.%s.pid", PIDPath, clusterName, world.Name)
+	_ = BashCMD(pidCmd)
+
+	return err
+}
+
+func StartClusterAllWorlds() error {
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	for _, cluster := range config.Clusters {
+		for _, world := range cluster.Worlds {
+			err = world.StartGame(cluster.ClusterSetting.ClusterName)
+			if err != nil {
+				Logger.Error("启动游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
+				return err
+			}
+		}
+	}
+
+	return err
 }
 
 func RecoveryGame(backupFile string) error {

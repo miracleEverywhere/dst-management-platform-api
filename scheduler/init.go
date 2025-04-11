@@ -1,6 +1,6 @@
 package scheduler
 
-/*import (
+import (
 	"dst-management-platform-api/utils"
 	"github.com/go-co-op/gocron"
 	"time"
@@ -33,7 +33,7 @@ func InitTasks() {
 	}
 
 	// 定时通知
-	for _, announce := range config.AutoAnnounce {
+	for _, announce := range config.SysSetting.AutoAnnounce {
 		if announce.Enable {
 			_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(execAnnounce, announce.Content)
 			utils.Logger.Info("定时通知定时任务已配置", "name", announce.Name)
@@ -58,4 +58,4 @@ func InitTasks() {
 		utils.Logger.Info("自动保活定时任务已配置")
 	}
 
-}*/
+}
