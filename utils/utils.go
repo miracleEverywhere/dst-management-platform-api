@@ -897,13 +897,9 @@ func (world World) StartGame(clusterName string, bit64 bool) error {
 }
 
 func StartClusterAllWorlds(cluster Cluster) error {
-	config, err := ReadConfig()
-	if err != nil {
-		Logger.Error("配置文件读取失败", "err", err)
-		return err
-	}
+	var err error
 	for _, world := range cluster.Worlds {
-		err = world.StartGame(cluster.ClusterSetting.ClusterName, config.SysSetting.Bit64)
+		err = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.SysSetting.Bit64)
 		if err != nil {
 			Logger.Error("启动游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
 		}
