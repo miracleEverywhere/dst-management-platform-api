@@ -131,7 +131,7 @@ func getPlayersList(world utils.World, clusterName string) ([]string, error) {
 	for _, line := range linesAfterKeyword {
 		if matches := re.FindStringSubmatch(line); matches != nil {
 			// 检查是否包含 [Host]
-			if !regexp.MustCompile(`\[Host\]`).MatchString(line) {
+			if !regexp.MustCompile(`\[Host]`).MatchString(line) {
 				uid := strings.ReplaceAll(matches[1], "\t", "")
 				//uid = strings.ReplaceAll(uid, " ", "")
 				nickName := strings.ReplaceAll(matches[2], "\t", "")
@@ -278,7 +278,7 @@ func getWorldLastTime(logfile string) (string, error) {
 	// 逐行读取文件
 	scanner := bufio.NewScanner(file)
 	var lines []string
-	timeRegex := regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}\]`)
+	timeRegex := regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}]`)
 
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
