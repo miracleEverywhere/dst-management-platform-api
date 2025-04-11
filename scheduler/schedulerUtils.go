@@ -13,92 +13,73 @@ import (
 )
 
 func setPlayer2DB(config utils.Config) {
-	var players []string
-	// 可能要用map
-	if config.RoomSetting.Ground != "" {
-		players, err = getPlayersList("master")
-	} else {
-		if config.RoomSetting.Cave != "" {
-			players, err = getPlayersList("caves")
-		} else {
-			// 没有配置地面和洞穴，直接return
-			return
+	var (
+		hasMaster  bool
+		players    []string
+		playerList []utils.Players
+		err        error
+	)
+	for _, cluster := range config.Clusters {
+		hasMaster = false
+		for _, world := range cluster.Worlds {
+			if world.IsMaster {
+				hasMaster = true
+				players, err = getPlayersList(world, cluster.ClusterSetting.ClusterName)
+				break
+			}
 		}
-	}
 
-	if err != nil {
-		utils.Logger.Error("获取玩家列表失败", "err", err)
-		return
-	}
-	var playerList []utils.Players
-	for _, p := range players {
-		var player utils.Players
-		uidNickName := strings.Split(p, "<-@dmp@->")
-		player.UID = uidNickName[0]
-		player.NickName = uidNickName[1]
-		player.Prefab = uidNickName[2]
-		playerList = append(playerList, player)
-	}
-	//config.Players = playerList
+		if !hasMaster {
+			players, err = getPlayersList(cluster.Worlds[0], cluster.ClusterSetting.ClusterName)
+		}
+		if err != nil {
+			utils.Logger.Error("获取玩家列表失败", "err", err)
+			continue
+		}
 
-	numPlayer := len(playerList)
-	currentTime := utils.GetTimestamp()
-	var statistics utils.Statistics
-	statistics.Timestamp = currentTime
-	statistics.Num = numPlayer
-	statistics.Players = playerList
-	//statisticsLength := len(config.Statistics)
-	statisticsLength := len(utils.STATISTICS)
-	if statisticsLength > 2880 {
-		// 只保留一天的数据量
-		//config.Statistics = append(config.Statistics[:0], config.Statistics[1:]...)
-		utils.STATISTICS = append(utils.STATISTICS[:0], utils.STATISTICS[1:]...)
-	}
-	//config.Statistics = append(config.Statistics, statistics)
-	utils.STATISTICS = append(utils.STATISTICS, statistics)
+		for _, p := range players {
+			var player utils.Players
+			uidNickName := strings.Split(p, "<-@dmp@->")
+			player.UID = uidNickName[0]
+			player.NickName = uidNickName[1]
+			player.Prefab = uidNickName[2]
+			playerList = append(playerList, player)
+		}
 
-	//err = utils.WriteConfig(config)
-	//if err != nil {
-	//	utils.Logger.Error("配置文件写入失败", "err", err)
-	//}
+		numPlayer := len(playerList)
+		currentTime := utils.GetTimestamp()
+
+		var statistics utils.Statistics
+		statistics.Timestamp = currentTime
+		statistics.Num = numPlayer
+		statistics.Players = playerList
+
+		statisticsLength := len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])
+		if statisticsLength > 2879 {
+			// 只保留一天的数据量
+			utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName][:0], utils.STATISTICS[cluster.ClusterSetting.ClusterName][1:]...)
+		}
+		utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName], statistics)
+	}
 }
 
-func getPlayersList(world string) ([]string, error) {
+func getPlayersList(world utils.World, clusterName string) ([]string, error) {
 	var file *os.File
-	if world == "master" {
-		masterStatus := home.GetProcessStatus(utils.MasterScreenName)
-		if masterStatus == 0 {
-			return nil, fmt.Errorf("地面未开启")
-		}
-		// 先执行命令
-		err := utils.BashCMD(utils.PlayersListMasterCMD)
-		if err != nil {
-			return nil, err
-		}
-		// 等待命令执行完毕
-		time.Sleep(time.Second * 2)
-		// 获取日志文件中的list
-		file, err = os.Open(utils.MasterLogPath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		cavesStatus := home.GetProcessStatus(utils.CavesScreenName)
-		if cavesStatus == 0 {
-			return nil, fmt.Errorf("洞穴未开启")
-		}
-		// 先执行命令
-		err := utils.BashCMD(utils.PlayersListCavesCMD)
-		if err != nil {
-			return nil, err
-		}
-		// 等待命令执行完毕
-		time.Sleep(time.Second * 2)
-		// 获取日志文件中的list
-		file, err = os.Open(utils.CavesLogPath)
-		if err != nil {
-			return nil, err
-		}
+	masterStatus := home.GetProcessStatus(world.ScreenName)
+	if masterStatus == 0 {
+		return nil, fmt.Errorf("当前世界未开启")
+	}
+	// 先执行命令
+	err := utils.BashCMD(world.GeneratePlayersListCMD())
+	if err != nil {
+		return nil, err
+	}
+	// 等待命令执行完毕
+	time.Sleep(time.Second * 2)
+	// 获取日志文件中的list
+	file, err = os.Open(world.GetServerLogPath(clusterName))
+	if err != nil {
+		return nil, err
 	}
 
 	defer func(file *os.File) {
@@ -166,24 +147,18 @@ func getPlayersList(world string) ([]string, error) {
 	players = utils.UniqueSliceKeepOrderString(players)
 
 	return players, nil
-
 }
 
-func execAnnounce(content string) {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
-	}
+func execAnnounce(content string, cluster utils.Cluster) {
 	cmd := "c_announce('" + content + "')"
-	if config.RoomSetting.Ground != "" {
-		err = utils.ScreenCMD(cmd, utils.MasterName)
-	} else {
-		err = utils.ScreenCMD(cmd, utils.CavesName)
-	}
 
-	if err != nil {
-		utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+	for _, world := range cluster.Worlds {
+		if world.IsMaster {
+			err := utils.ScreenCMD(cmd, world.ScreenName)
+			if err != nil {
+				utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+			}
+		}
 	}
 }
 
@@ -273,14 +248,14 @@ func doUpdate(config utils.Config) error {
 	return nil
 }
 
-func doRestart(config utils.Config) {
-	_ = utils.StopAllClusters(config.Clusters)
+func doRestart(cluster utils.Cluster) {
+	_ = utils.StopClusterAllWorlds(cluster)
 	time.Sleep(3 * time.Second)
-	_ = utils.StartAllClusters(config.Clusters)
+	_ = utils.StartClusterAllWorlds(cluster)
 }
 
-func doBackup() {
-	err := utils.BackupGame()
+func doBackup(cluster utils.Cluster) {
+	err := utils.BackupGame(cluster)
 	if err != nil {
 		utils.Logger.Error("游戏备份失败", "err", err)
 	}
@@ -327,15 +302,44 @@ func getWorldLastTime(logfile string) (string, error) {
 	return "", fmt.Errorf("没有找到日志时间戳")
 }
 
-func doKeepalive() {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
-	}
+func doKeepalive(cluster utils.Cluster) {
+	for _, world := range cluster.Worlds {
+		if world.LevelData != "" {
+			_ = utils.BashCMD(world.GeneratePlayersListCMD())
+			time.Sleep(1 * time.Second)
+			lastAliveTime, err := getWorldLastTime(world.GetServerLogPath(cluster.ClusterSetting.ClusterName))
+			if err != nil {
+				utils.Logger.Error("获取日志信息失败", "err", err)
+			}
 
-	if config.RoomSetting.Ground == "" && config.RoomSetting.Cave == "" {
-		return
+			if world.LastAliveTime == lastAliveTime {
+				utils.Logger.Info("发现服务器运行异常，执行重启任务", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
+				_ = world.StopGame(cluster.ClusterSetting.ClusterName)
+				time.Sleep(3 * time.Second)
+				_ = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.SysSetting.Bit64)
+				break
+			} else {
+				config, err := utils.ReadConfig()
+				if err != nil {
+					utils.Logger.Error("配置文件读取失败", "err", err)
+					return
+				}
+
+				for clusterIndex, willWriteCluster := range config.Clusters {
+					if cluster.ClusterSetting.ClusterName == willWriteCluster.ClusterSetting.ClusterName {
+						for worldIndex, willWriteWorld := range willWriteCluster.Worlds {
+							if world.Name == willWriteWorld.Name {
+								config.Clusters[clusterIndex].Worlds[worldIndex].LastAliveTime = lastAliveTime
+								err = utils.WriteConfig(config)
+								if err != nil {
+									utils.Logger.Error("配置文件写入失败", "err", err)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// 地面
@@ -393,37 +397,33 @@ func doKeepalive() {
 	}
 }
 
-func maintainUidMap() {
-	uidMap, err := utils.ReadUidMap()
-	if err != nil {
-		utils.Logger.Error("写入历史玩家字典失败", "err", err)
-		return
-	}
-
-	if len(utils.STATISTICS) < 2 {
-		return
-	}
-
-	currentPlaylist := utils.STATISTICS[len(utils.STATISTICS)-1].Players
-
-	for _, i := range currentPlaylist {
-		uid := i.UID
-		nickname := i.NickName
-
-		value, exists := uidMap[uid]
-		if exists {
-			if value != nickname {
+func maintainUidMap(config utils.Config) {
+	for _, cluster := range config.Clusters {
+		uidMap, err := utils.ReadUidMap(cluster)
+		if err != nil {
+			utils.Logger.Error("读取历史玩家字典失败", "err", err)
+			continue
+		}
+		if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) < 2 {
+			continue
+		}
+		currentPlaylist := utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
+		for _, i := range currentPlaylist {
+			uid := i.UID
+			nickname := i.NickName
+			value, exists := uidMap[uid]
+			if exists {
+				if value != nickname {
+					uidMap[uid] = nickname
+				}
+			} else {
 				uidMap[uid] = nickname
 			}
-		} else {
-			uidMap[uid] = nickname
 		}
-	}
-
-	err = utils.WriteUidMap(uidMap)
-	if err != nil {
-		utils.CheckFiles("uidMap")
-		_ = utils.WriteUidMap(uidMap)
+		err = utils.WriteUidMap(uidMap)
+		if err != nil {
+			utils.Logger.Error("写入历史玩家字典失败", "err", err)
+		}
 	}
 }
 

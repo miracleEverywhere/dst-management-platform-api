@@ -9,8 +9,8 @@ type User struct {
 }
 
 type ClusterSetting struct {
-	ClusterName string `json:"clusterName"`
-	Name        string `json:"name"`
+	ClusterName string `json:"clusterName"` // MyDediServer
+	Name        string `json:"name"`        // xxx长期档
 	Description string `json:"description"`
 	GameMode    string `json:"gameMode"`
 	PVP         bool   `json:"pvp"`
@@ -22,8 +22,9 @@ type ClusterSetting struct {
 }
 
 type World struct {
-	Name                    string `json:"name"`
-	ScreenName              string `json:"screenName"`
+	Name                    string `json:"name"`       // Master
+	ScreenName              string `json:"screenName"` // DST_Master
+	LevelData               string `json:"levelData"`
 	IsMaster                bool   `json:"isMaster"`
 	ServerPort              int    `json:"serverPort"`
 	ClusterKey              string `json:"clusterKey"`
@@ -32,12 +33,14 @@ type World struct {
 	SteamMasterPort         int    `json:"steamMasterPort"`
 	SteamAuthenticationPort int    `json:"steamAuthenticationPort"`
 	EncodeUserPath          bool   `json:"encodeUserPath"`
+	LastAliveTime           string `json:"lastAliveTime"`
 }
 
 type Cluster struct {
 	ClusterSetting ClusterSetting `json:"clusterSetting"`
 	Worlds         []World        `json:"worlds"`
 	Mod            string         `json:"mod"`
+	SysSetting     SysSetting     `json:"sysSetting"`
 }
 
 type AutoUpdate struct {
@@ -83,10 +86,8 @@ type SysMetrics struct {
 }
 
 type Keepalive struct {
-	Enable        bool   `json:"enable"`
-	Frequency     int    `json:"frequency"`
-	LastTime      string `json:"lastTime"`
-	CavesLastTime string `json:"cavesLastTime"`
+	Enable    bool `json:"enable"`
+	Frequency int  `json:"frequency"`
 }
 
 type SchedulerSettingItem struct {
@@ -100,25 +101,24 @@ type SchedulerSetting struct {
 	PlayerGetFrequency int                  `json:"playerGetFrequency"`
 	UIDMaintain        SchedulerSettingItem `json:"UIDMaintain"`
 	SysMetricsGet      SchedulerSettingItem `json:"sysMetricsGet"`
+	AutoUpdate         AutoUpdate           `json:"autoUpdate"`
 }
 
 type SysSetting struct {
-	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
-	AutoUpdate       AutoUpdate       `json:"autoUpdate"`
-	AutoRestart      AutoRestart      `json:"autoRestart"`
-	AutoAnnounce     []AutoAnnounce   `json:"autoAnnounce"`
-	AutoBackup       AutoBackup       `json:"autoBackup"`
-	Keepalive        Keepalive        `json:"keepalive"`
-	Bit64            bool             `json:"bit64"`
-	TickRate         int              `json:"tickRate"`
+	AutoRestart  AutoRestart    `json:"autoRestart"`
+	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
+	AutoBackup   AutoBackup     `json:"autoBackup"`
+	Keepalive    Keepalive      `json:"keepalive"`
+	Bit64        bool           `json:"bit64"`
+	TickRate     int            `json:"tickRate"`
 }
 
 type Config struct {
-	Users       []User     `json:"users"`
-	JwtSecret   string     `json:"jwtSecret"`
-	Clusters    []Cluster  `json:"clusters"`
-	SysSetting  SysSetting `json:"sysSetting"`
-	Platform    string     `json:"platform"`
-	AnnouncedID int        `json:"announcedID"`
-	Registered  bool       `json:"registered"`
+	Users            []User           `json:"users"`
+	JwtSecret        string           `json:"jwtSecret"`
+	Clusters         []Cluster        `json:"clusters"`
+	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
+	Platform         string           `json:"platform"`
+	AnnouncedID      int              `json:"announcedID"`
+	Registered       bool             `json:"registered"`
 }

@@ -56,6 +56,8 @@ func main() {
 func initialize() {
 	//绑定flag
 	utils.BindFlags()
+	//设置全局变量
+
 	//数据库检查
 	utils.CreateConfig()
 	//检查平台

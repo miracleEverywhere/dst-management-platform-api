@@ -26,7 +26,7 @@ import (
 
 var (
 	// STATISTICS 玩家统计
-	STATISTICS []Statistics
+	STATISTICS = make(map[string][]Statistics)
 	// SYSMETRICS 系统监控
 	SYSMETRICS []SysMetrics
 	// BindPort flag绑定的变量
@@ -36,6 +36,7 @@ var (
 	ConfDir       string
 	PLATFORM      string
 	Registered    bool
+	HomeDir       string
 )
 
 type Claims struct {
@@ -54,6 +55,16 @@ type OSInfo struct {
 	Platform        string
 	PlatformVersion string
 	Uptime          uint64
+}
+
+func SetGlobalVariables() {
+	var err error
+	HomeDir, err = os.UserHomeDir()
+	if err != nil {
+		Logger.Error("无法获取用户HOME目录", "err", err)
+		panic("无法获取用户HOME目录")
+	}
+
 }
 
 func GenerateJWTSecret() string {
@@ -118,7 +129,6 @@ func CreateConfig() {
 
 func (config Config) ConfigInit() {
 	config.JwtSecret = GenerateJWTSecret()
-	config.RoomSetting.Worlds = []RoomSettingWorld{}
 	config.SysSetting = SysSetting{
 		SchedulerSetting: SchedulerSetting{
 			PlayerGetFrequency: 30,
@@ -212,16 +222,24 @@ func WriteConfig(config Config) error {
 	return nil
 }
 
-func ReadUidMap() (map[string]interface{}, error) {
+func ReadUidMap(cluster Cluster) (map[string]interface{}, error) {
 	uidMap := make(map[string]interface{})
-	content, err := os.ReadFile(NicknameUIDPath)
+	content, err := os.ReadFile(cluster.GetUIDMapPath())
 	if err != nil {
-		return uidMap, err
+		// 如果打开文件失败，则初始化json文件
+		err = EnsureFileExists(cluster.GetUIDMapPath())
+		if err != nil {
+			return uidMap, err
+		}
+		err = TruncAndWriteFile(cluster.GetUIDMapPath(), "{}")
+		if err != nil {
+			return uidMap, err
+		}
 	}
 	jsonData := string(content)
 	err = json.Unmarshal([]byte(jsonData), &uidMap)
 	if err != nil {
-		return uidMap, fmt.Errorf("解析 JSON 失败: %w", err)
+		return uidMap, err
 	}
 	return uidMap, nil
 }
@@ -745,12 +763,7 @@ func RemoveFile(filePath string) error {
 // EnsureDirExists 检查目录是否存在，如果不存在则创建
 func EnsureDirExists(dirPath string) error {
 	if strings.HasPrefix(dirPath, "~") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			Logger.Error("无法获取 home 目录", "err", err)
-			return err
-		}
-		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+		dirPath = strings.Replace(dirPath, "~", HomeDir, 1)
 	}
 	// 检查目录是否存在
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
@@ -792,12 +805,7 @@ func EnsureFileExists(filePath string) error {
 func FileDirectoryExists(filePath string) (bool, error) {
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
 	if strings.HasPrefix(filePath, "~") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			Logger.Error("无法获取 home 目录", "err", err)
-			return false, err
-		}
-		filePath = strings.Replace(filePath, "~", homeDir, 1)
+		filePath = strings.Replace(filePath, "~", HomeDir, 1)
 	}
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -809,68 +817,17 @@ func FileDirectoryExists(filePath string) (bool, error) {
 	}
 }
 
-func BackupGame() error {
-	err := EnsureDirExists(BackupPath)
+func BackupGame(cluster Cluster) error {
+	err := EnsureDirExists(cluster.GetBackupPath())
 	if err != nil {
 		return err
 	}
-	currentTime := time.Now()
-	timestampSeconds := currentTime.Unix()
-	timestampSecondsStr := strconv.FormatInt(timestampSeconds, 10)
-	cmd := "tar zcvf " + BackupPath + "/" + timestampSecondsStr + ".tgz " + ServerPath[:len(ServerPath)-1]
+	currentTime := time.Now().Format("2006-01-02-15-04-05")
+	cmd := "tar zcvf " + cluster.GetBackupPath() + "/" + currentTime + ".tgz " + cluster.GetMainPath()
 	err = BashCMD(cmd)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func StopGame(worldName string) error {
-	//config, err := ReadConfig()
-	//if err != nil {
-	//	Logger.Error("配置文件读取失败", "err", err)
-	//	return err
-	//}
-	//
-	//cmd := "c_shutdown()"
-	//if config.RoomSetting.Ground != "" {
-	//	err = ScreenCMD(cmd, MasterName)
-	//	if err != nil {
-	//		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
-	//	}
-	//}
-	//if config.RoomSetting.Cave != "" {
-	//	err = ScreenCMD(cmd, CavesName)
-	//	if err != nil {
-	//		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", cmd)
-	//	}
-	//}
-	//
-	//time.Sleep(2 * time.Second)
-	//if config.RoomSetting.Ground != "" {
-	//	err = BashCMD(StopMasterCMD)
-	//	if err != nil {
-	//		Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopMasterCMD)
-	//	}
-	//}
-	//if config.RoomSetting.Cave != "" {
-	//	err = BashCMD(StopCavesCMD)
-	//	if err != nil {
-	//		Logger.Info("执行BashCMD失败", "msg", err, "cmd", StopCavesCMD)
-	//	}
-	//}
-	//
-	//time.Sleep(1 * time.Second)
-	//
-	//err = BashCMD(KillDST)
-	//if err != nil {
-	//	Logger.Info("执行BashCMD失败", "msg", err, "cmd", KillDST)
-	//}
-	//err = BashCMD(ClearScreenCMD)
-	//if err != nil {
-	//	Logger.Info("执行BashCMD失败", "msg", err, "cmd", ClearScreenCMD)
-	//}
-
 	return nil
 }
 
