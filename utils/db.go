@@ -8,7 +8,8 @@ type User struct {
 	Disabled bool   `json:"disabled"`
 }
 
-type RoomSettingCluster struct {
+type ClusterSetting struct {
+	ClusterName string `json:"clusterName"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	GameMode    string `json:"gameMode"`
@@ -20,9 +21,11 @@ type RoomSettingCluster struct {
 	Token       string `json:"token"`
 }
 
-type RoomSettingWorld struct {
+type World struct {
 	ID                      int    `json:"id"`
 	Name                    string `json:"name"`
+	ScreenName              string `json:"screenName"`
+	IsMaster                bool   `json:"isMaster"`
 	ServerPort              int    `json:"serverPort"`
 	ClusterKey              string `json:"clusterKey"`
 	ShardMasterIp           string `json:"shardMasterIp"`
@@ -32,10 +35,10 @@ type RoomSettingWorld struct {
 	EncodeUserPath          bool   `json:"encodeUserPath"`
 }
 
-type RoomSetting struct {
-	Cluster RoomSettingCluster `json:"cluster"`
-	Worlds  []RoomSettingWorld `json:"worlds"`
-	Mod     string             `json:"mod"`
+type Cluster struct {
+	ClusterSetting ClusterSetting `json:"clusterSetting"`
+	Worlds         []World        `json:"worlds"`
+	Mod            string         `json:"mod"`
 }
 
 type AutoUpdate struct {
@@ -51,6 +54,11 @@ type AutoAnnounce struct {
 }
 
 type AutoBackup struct {
+	Enable bool   `json:"enable"`
+	Time   string `json:"time"`
+}
+
+type AutoRestart struct {
 	Enable bool   `json:"enable"`
 	Time   string `json:"time"`
 }
@@ -98,6 +106,7 @@ type SchedulerSetting struct {
 type SysSetting struct {
 	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
 	AutoUpdate       AutoUpdate       `json:"autoUpdate"`
+	AutoRestart      AutoRestart      `json:"autoRestart"`
 	AutoAnnounce     []AutoAnnounce   `json:"autoAnnounce"`
 	AutoBackup       AutoBackup       `json:"autoBackup"`
 	Keepalive        Keepalive        `json:"keepalive"`
@@ -106,11 +115,11 @@ type SysSetting struct {
 }
 
 type Config struct {
-	Users       []User      `json:"users"`
-	JwtSecret   string      `json:"jwtSecret"`
-	RoomSetting RoomSetting `json:"roomSetting"`
-	SysSetting  SysSetting  `json:"sysSetting"`
-	Platform    string      `json:"platform"`
-	AnnouncedID int         `json:"announcedID"`
-	Registered  bool        `json:"registered"`
+	Users       []User     `json:"users"`
+	JwtSecret   string     `json:"jwtSecret"`
+	Clusters    []Cluster  `json:"clusters"`
+	SysSetting  SysSetting `json:"sysSetting"`
+	Platform    string     `json:"platform"`
+	AnnouncedID int        `json:"announcedID"`
+	Registered  bool       `json:"registered"`
 }
