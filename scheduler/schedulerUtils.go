@@ -341,60 +341,6 @@ func doKeepalive(cluster utils.Cluster) {
 			}
 		}
 	}
-
-	// 地面
-	if config.RoomSetting.Ground != "" {
-
-		err = utils.BashCMD(utils.PlayersListMasterCMD)
-		if err != nil {
-			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListMasterCMD)
-		}
-
-		time.Sleep(1 * time.Second)
-
-		masterLastTime, err := getWorldLastTime(utils.MasterLogPath)
-		if err != nil {
-			utils.Logger.Error("获取日志信息失败", "err", err)
-		}
-
-		if config.Keepalive.LastTime == masterLastTime {
-			utils.Logger.Info("发现地面异常，执行重启任务")
-			doRestart() // TODO 只重启地面
-			return
-		} else {
-			config.Keepalive.LastTime = masterLastTime
-		}
-	}
-
-	// 洞穴
-	if config.RoomSetting.Cave != "" {
-		err = utils.BashCMD(utils.PlayersListCavesCMD)
-		if err != nil {
-			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.PlayersListCavesCMD)
-		}
-
-		time.Sleep(1 * time.Second)
-
-		cavesLastTime, err := getWorldLastTime(utils.CavesLogPath)
-		if err != nil {
-			utils.Logger.Error("获取日志信息失败", "err", err)
-		}
-
-		if config.Keepalive.CavesLastTime == cavesLastTime {
-			utils.Logger.Info("发现洞穴异常，执行重启任务")
-			doRestart() // TODO 只重启洞穴
-			return
-		} else {
-			config.Keepalive.CavesLastTime = cavesLastTime
-		}
-	}
-
-	err = utils.WriteConfig(config)
-	if err != nil {
-		if err != nil {
-			utils.Logger.Error("配置文件写入失败", "err", err)
-		}
-	}
 }
 
 func maintainUidMap(config utils.Config) {
