@@ -24,7 +24,7 @@ func InitTasks() {
 
 	// 维护UID字典
 	if !config.SchedulerSetting.UIDMaintain.Disable {
-		_, _ = Scheduler.Every(config.SysSetting.SchedulerSetting.UIDMaintain.Frequency).Minute().Do(maintainUidMap, config)
+		_, _ = Scheduler.Every(config.SchedulerSetting.UIDMaintain.Frequency).Minute().Do(maintainUidMap, config)
 		utils.Logger.Info("UID字典定时维护任务已配置")
 	}
 
@@ -36,7 +36,7 @@ func InitTasks() {
 
 	// 自动更新
 	if config.SchedulerSetting.AutoUpdate.Enable {
-		_, _ = Scheduler.Every(1).Day().At(updateTimeFix(config.SysSetting.AutoUpdate.Time)).Do(checkUpdate, config)
+		_, _ = Scheduler.Every(1).Day().At(updateTimeFix(config.SchedulerSetting.AutoUpdate.Time)).Do(checkUpdate, config)
 		utils.Logger.Info("自动更新定时任务已配置")
 	}
 
@@ -76,9 +76,4 @@ func InitTasks() {
 			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster)
 		}
 	}
-	if config.Keepalive.Enable {
-		_, _ = Scheduler.Every(config.Keepalive.Frequency).Minute().Do(doKeepalive)
-		utils.Logger.Info("自动保活定时任务已配置")
-	}
-
 }
