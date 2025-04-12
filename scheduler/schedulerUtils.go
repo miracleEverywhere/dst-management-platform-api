@@ -77,7 +77,7 @@ func getPlayersList(world utils.World, clusterName string) ([]string, error) {
 	// 等待命令执行完毕
 	time.Sleep(time.Second * 2)
 	// 获取日志文件中的list
-	file, err = os.Open(world.GetServerLogPath(clusterName))
+	file, err = os.Open(world.GetServerLogFile(clusterName))
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func doKeepalive(cluster utils.Cluster) {
 		if world.LevelData != "" {
 			_ = utils.BashCMD(world.GeneratePlayersListCMD())
 			time.Sleep(1 * time.Second)
-			lastAliveTime, err := getWorldLastTime(world.GetServerLogPath(cluster.ClusterSetting.ClusterName))
+			lastAliveTime, err := getWorldLastTime(world.GetServerLogFile(cluster.ClusterSetting.ClusterName))
 			if err != nil {
 				utils.Logger.Error("获取日志信息失败", "err", err)
 			}
