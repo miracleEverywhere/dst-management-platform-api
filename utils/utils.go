@@ -97,20 +97,16 @@ func GenerateJWT(user User, jwtSecret []byte, expiration int) (string, error) {
 	return token.SignedString(jwtSecret)
 }
 
-func CreateConfig() {
+func CheckConfig() {
 	_ = EnsureDirExists(ConfDir)
 	_, err := os.Stat(ConfDir + "/DstMP.sdb")
 	if !os.IsNotExist(err) {
 		Logger.Info("执行数据库检查中，发现数据库文件")
-		config, err := ReadConfig()
+		_, err := ReadConfig()
 		if err != nil {
 			Logger.Error("执行数据库检查中，打开数据库文件失败", "err", err)
+			panic("数据库检查未通过")
 			return
-		}
-		config.ConfigCheck()
-		err = WriteConfig(config)
-		if err != nil {
-			Logger.Error("写入数据库失败", "err", err)
 		}
 		Logger.Info("数据库检查完成")
 		return
@@ -118,7 +114,7 @@ func CreateConfig() {
 
 	Logger.Info("执行数据库检查中，初始化数据库")
 	var config Config
-	config.ConfigInit()
+	config.Init()
 	err = WriteConfig(config)
 	if err != nil {
 		Logger.Error("写入数据库失败", "err", err)
@@ -127,61 +123,47 @@ func CreateConfig() {
 	Logger.Info("数据库初始化完成")
 }
 
-func (config Config) ConfigInit() {
+func (config Config) Init() {
 	config.JwtSecret = GenerateJWTSecret()
-	config.SysSetting = SysSetting{
-		SchedulerSetting: SchedulerSetting{
-			PlayerGetFrequency: 30,
-			UIDMaintain: SchedulerSettingItem{
-				Disable:   false,
-				Frequency: 5,
-			},
-			SysMetricsGet: SchedulerSettingItem{
-				Disable:   false,
-				Frequency: 0,
-			},
+	config.SchedulerSetting = SchedulerSetting{
+		PlayerGetFrequency: 30,
+		UIDMaintain: SchedulerSettingItem{
+			Disable:   false,
+			Frequency: 5,
+		},
+		SysMetricsGet: SchedulerSettingItem{
+			Disable:   false,
+			Frequency: 0,
 		},
 		AutoUpdate: AutoUpdate{
 			Time:   "06:19:23",
 			Enable: true,
 		},
-		AutoRestart: AutoRestart{
-			Time:   "06:47:19",
-			Enable: true,
-		},
-		AutoAnnounce: nil,
-		AutoBackup: AutoBackup{
-			Time:   "06:13:57",
-			Enable: true,
-		},
-		Keepalive: Keepalive{
-			Frequency: 30,
-			Enable:    true,
-		},
-		Bit64:    false,
-		TickRate: 15,
 	}
+	//config.SysSetting = SysSetting{
+	//
+	//	AutoUpdate: AutoUpdate{
+	//		Time:   "06:19:23",
+	//		Enable: true,
+	//	},
+	//	AutoRestart: AutoRestart{
+	//		Time:   "06:47:19",
+	//		Enable: true,
+	//	},
+	//	AutoAnnounce: nil,
+	//	AutoBackup: AutoBackup{
+	//		Time:   "06:13:57",
+	//		Enable: true,
+	//	},
+	//	Keepalive: Keepalive{
+	//		Frequency: 30,
+	//		Enable:    true,
+	//	},
+	//	Bit64:    false,
+	//	TickRate: 15,
+	//}
 	config.AnnouncedID = 0
 	Registered = false
-}
-
-func (config Config) ConfigCheck() {
-	if config.SysSetting.SchedulerSetting.PlayerGetFrequency == 0 {
-		Logger.Info("设置玩家列表定时任务默认频率")
-		config.SysSetting.SchedulerSetting.PlayerGetFrequency = 30
-	}
-	if config.SysSetting.SchedulerSetting.UIDMaintain.Frequency == 0 {
-		Logger.Info("设置UID字典定时维护任务默认频率")
-		config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = 5
-	}
-	if config.SysSetting.Keepalive.Frequency == 0 {
-		Logger.Info("设置自动保活任务默认频率")
-		config.SysSetting.Keepalive.Frequency = 30
-	}
-	if config.SysSetting.TickRate == 0 {
-		Logger.Info("设置默认TickRate")
-		config.SysSetting.TickRate = 15
-	}
 }
 
 func ReadConfig() (Config, error) {
@@ -224,14 +206,14 @@ func WriteConfig(config Config) error {
 
 func ReadUidMap(cluster Cluster) (map[string]interface{}, error) {
 	uidMap := make(map[string]interface{})
-	content, err := os.ReadFile(cluster.GetUIDMapPath())
+	content, err := os.ReadFile(cluster.GetUIDMapFile())
 	if err != nil {
 		// 如果打开文件失败，则初始化json文件
-		err = EnsureFileExists(cluster.GetUIDMapPath())
+		err = EnsureFileExists(cluster.GetUIDMapFile())
 		if err != nil {
 			return uidMap, err
 		}
-		err = TruncAndWriteFile(cluster.GetUIDMapPath(), "{}")
+		err = TruncAndWriteFile(cluster.GetUIDMapFile(), "{}")
 		if err != nil {
 			return uidMap, err
 		}
@@ -405,39 +387,6 @@ func CheckPlatform() {
 	}
 
 	Logger.Info("系统检查通过")
-}
-
-// SetInitInfo 进程启动时，检查已配置的用户路径编码，并写入数据库
-func SetInitInfo() {
-	config, err := ReadConfig()
-	if err != nil {
-		Logger.Error("读取配置文件失败", "err", err)
-		return
-	}
-
-	if config.RoomSetting.Cluster.Name == "" {
-		return
-	}
-
-	for worldIndex, world := range config.RoomSetting.Worlds {
-		if world.Name != "" {
-			cmd := "grep encode_user_path " + MasterServerPath + " | awk -F'=' '{print $2}'"
-			out, _, err := BashCMDOutput(cmd)
-			if err != nil {
-				Logger.Warn("获取地面encode_user_path失败，跳过", "err", err)
-				continue
-			}
-
-			out = strings.TrimSpace(out)
-			result, err := strconv.ParseBool(out)
-			config.RoomSetting.Worlds[worldIndex].EncodeUserPath = result
-		}
-
-		err = WriteConfig(config)
-		if err != nil {
-			Logger.Error("写入配置文件失败", "err", err)
-		}
-	}
 }
 
 func BindFlags() {
@@ -659,20 +608,8 @@ func ScreenCMD(cmd string, screenName string) error {
 
 // ScreenCMDOutput 执行screen命令，并从日志中获取输出
 // 自动添加print命令，cmdIdentifier是该命令在日志中输出的唯一标识符
-func ScreenCMDOutput(cmd string, cmdIdentifier string, screenName string) (string, error) {
-	var (
-		totalCMD string
-		logPath  string
-	)
-
-	if world == MasterName {
-		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
-		logPath = MasterLogPath
-	}
-	if world == CavesName {
-		totalCMD = "screen -S \"" + screenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
-		logPath = CavesLogPath
-	}
+func ScreenCMDOutput(cmd string, cmdIdentifier string, screenName string, logPath string) (string, error) {
+	totalCMD := "screen -S \"" + screenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
 
 	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
 	err := cmdExec.Run()
@@ -887,7 +824,7 @@ func (world World) StartGame(clusterName string, bit64 bool) error {
 		}
 		err = BashCMD(cmd)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
 		}
 	}
 	pidCmd := fmt.Sprintf("screen -ls | grep DST_MASTER | awk -F'.' '{print $1}' | awk '{print $1}' > %s/%s_%s.pid", PIDPath, clusterName, world.Name)
@@ -1073,85 +1010,85 @@ func GetFiles(dirPath string) ([]string, error) {
 	return fileNames, nil
 }
 
-func GetRoomSettingBase() (RoomSettingCluster, error) {
-	//roomSettings := RoomSettingBase{}
-	//// 打开文件
-	//file, err := os.Open(ServerSettingPath)
-	//if err != nil {
-	//	Logger.Error("打开cluster.ini文件失败", "err", err)
-	//	return RoomSettingBase{}, err
-	//}
-	//defer func(file *os.File) {
-	//	err := file.Close()
-	//	if err != nil {
-	//		Logger.Error("关闭cluster.ini文件失败", "err", err)
-	//	}
-	//}(file)
-	//
-	//// 定义要读取的字段映射
-	//fieldsToRead := map[string]string{
-	//	"cluster_name":        "Name",
-	//	"cluster_description": "Description",
-	//	"game_mode":           "GameMode",
-	//	"pvp":                 "PVP",
-	//	"max_players":         "PlayerNum",
-	//	"vote_enabled":        "Vote",
-	//	"cluster_password":    "Password",
-	//}
-	//
-	//// 使用bufio.Scanner逐行读取文件内容
-	//scanner := bufio.NewScanner(file)
-	//for scanner.Scan() {
-	//	line := scanner.Text()
-	//	line = strings.TrimSpace(line)
-	//	// 跳过注释和空行
-	//	if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
-	//		continue
-	//	}
-	//	// 解析字段和值
-	//	for field, structField := range fieldsToRead {
-	//		if strings.HasPrefix(line, field+" =") {
-	//			value := strings.TrimPrefix(line, field+" =")
-	//			value = strings.TrimSpace(value)
-	//
-	//			// 根据结构体字段类型设置值
-	//			switch structField {
-	//			case "Name":
-	//				roomSettings.Name = value
-	//			case "Description":
-	//				roomSettings.Description = value
-	//			case "GameMode":
-	//				roomSettings.GameMode = value
-	//			case "PVP":
-	//				roomSettings.PVP, _ = strconv.ParseBool(value)
-	//			case "PlayerNum":
-	//				roomSettings.PlayerNum, _ = strconv.Atoi(value)
-	//			case "Vote":
-	//				roomSettings.Vote, _ = strconv.ParseBool(value)
-	//			case "Password":
-	//				roomSettings.Password = value
-	//			}
-	//			break
-	//		}
-	//	}
-	//}
-	//
-	//// 检查是否有错误
-	//if err := scanner.Err(); err != nil {
-	//	Logger.Error("读取cluster.ini文件失败", "err", err)
-	//	return RoomSettingBase{}, err
-	//}
-	//
-	////token文件
-	//token, err := GetFileAllContent(ServerTokenPath)
-	//if err != nil {
-	//	Logger.Error("读取token文件失败", "err", err)
-	//	return RoomSettingBase{}, err
-	//}
-	//roomSettings.Token = token
+//func GetRoomSettingBase() (RoomSettingCluster, error) {
+//roomSettings := RoomSettingBase{}
+//// 打开文件
+//file, err := os.Open(ServerSettingPath)
+//if err != nil {
+//	Logger.Error("打开cluster.ini文件失败", "err", err)
+//	return RoomSettingBase{}, err
+//}
+//defer func(file *os.File) {
+//	err := file.Close()
+//	if err != nil {
+//		Logger.Error("关闭cluster.ini文件失败", "err", err)
+//	}
+//}(file)
+//
+//// 定义要读取的字段映射
+//fieldsToRead := map[string]string{
+//	"cluster_name":        "Name",
+//	"cluster_description": "Description",
+//	"game_mode":           "GameMode",
+//	"pvp":                 "PVP",
+//	"max_players":         "PlayerNum",
+//	"vote_enabled":        "Vote",
+//	"cluster_password":    "Password",
+//}
+//
+//// 使用bufio.Scanner逐行读取文件内容
+//scanner := bufio.NewScanner(file)
+//for scanner.Scan() {
+//	line := scanner.Text()
+//	line = strings.TrimSpace(line)
+//	// 跳过注释和空行
+//	if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
+//		continue
+//	}
+//	// 解析字段和值
+//	for field, structField := range fieldsToRead {
+//		if strings.HasPrefix(line, field+" =") {
+//			value := strings.TrimPrefix(line, field+" =")
+//			value = strings.TrimSpace(value)
+//
+//			// 根据结构体字段类型设置值
+//			switch structField {
+//			case "Name":
+//				roomSettings.Name = value
+//			case "Description":
+//				roomSettings.Description = value
+//			case "GameMode":
+//				roomSettings.GameMode = value
+//			case "PVP":
+//				roomSettings.PVP, _ = strconv.ParseBool(value)
+//			case "PlayerNum":
+//				roomSettings.PlayerNum, _ = strconv.Atoi(value)
+//			case "Vote":
+//				roomSettings.Vote, _ = strconv.ParseBool(value)
+//			case "Password":
+//				roomSettings.Password = value
+//			}
+//			break
+//		}
+//	}
+//}
+//
+//// 检查是否有错误
+//if err := scanner.Err(); err != nil {
+//	Logger.Error("读取cluster.ini文件失败", "err", err)
+//	return RoomSettingBase{}, err
+//}
+//
+////token文件
+//token, err := GetFileAllContent(ServerTokenPath)
+//if err != nil {
+//	Logger.Error("读取token文件失败", "err", err)
+//	return RoomSettingBase{}, err
+//}
+//roomSettings.Token = token
 
-	return RoomSettingCluster{}, nil
-}
+//	return RoomSettingCluster{}, nil
+//}
 
 func GetServerPort(serverFile string) (int, error) {
 	file, err := os.Open(serverFile)
