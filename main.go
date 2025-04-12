@@ -59,7 +59,7 @@ func initialize() {
 	//设置全局变量
 
 	//数据库检查
-	utils.CreateConfig()
+	utils.CheckConfig()
 	//检查平台
 	utils.CheckPlatform()
 	//检查目录
@@ -68,9 +68,6 @@ func initialize() {
 	utils.CheckFiles("all")
 	//创建DST手动安装脚本
 	utils.CreateManualInstallScript()
-	//配置必要的数据
-	utils.SetInitInfo()
-	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
 	//加载定时任务
