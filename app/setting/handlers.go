@@ -1,5 +1,11 @@
 package setting
 
+import (
+	"dst-management-platform-api/utils"
+	"github.com/gin-gonic/gin"
+	"net/http"
+)
+
 //import (
 //	"dst-management-platform-api/app/externalApi"
 //	"dst-management-platform-api/scheduler"
@@ -1602,3 +1608,14 @@ package setting
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("disableModSuccess", langStr), "data": nil})
 //
 //}
+
+func handleGetClustersGet(c *gin.Context) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.Clusters})
+}

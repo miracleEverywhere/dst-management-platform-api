@@ -2,8 +2,7 @@ package main
 
 import (
 	"dst-management-platform-api/app/auth"
-	"dst-management-platform-api/app/externalApi"
-	"dst-management-platform-api/app/tools"
+	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/utils"
 	"embed"
 	"fmt"
@@ -34,14 +33,14 @@ func main() {
 	r = auth.RouteAuth(r)
 	//主页模块
 	//r = home.RouteHome(r)
-	////设置模块
-	//r = setting.RouteSetting(r)
+	//设置模块
+	r = setting.RouteSetting(r)
 	//工具模块
-	r = tools.RouteTools(r)
+	//r = tools.RouteTools(r)
 	////工具模块
 	//r = logs.RouteLogs(r)
 	// 外部接口
-	r = externalApi.RouteExternalApi(r)
+	//r = externalApi.RouteExternalApi(r)
 	//静态资源，放在最后
 	r.Use(static.ServeEmbed("dist", EmbedFS))
 

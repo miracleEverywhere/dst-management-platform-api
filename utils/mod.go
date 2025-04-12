@@ -1,5 +1,6 @@
 package utils
 
+/*
 import (
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
@@ -380,7 +381,7 @@ func CheckModDownloadedReady(ugc bool, modID int, modSize string) (bool, error) 
 		return true, nil
 	}
 }
-
+*/
 // 计算 Lua 表的元素个数（包括数组部分和哈希部分）
 //func getTableLength(table *lua.LTable) int {
 //	// 计算数组部分的元素个数

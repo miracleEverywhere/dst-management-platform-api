@@ -83,6 +83,7 @@ func handleUserinfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"username": claims.Username,
 		"nickname": claims.Nickname,
+		"role":     claims.Role,
 	}})
 }
 
@@ -619,6 +620,7 @@ func handleUserListGet(c *gin.Context) {
 		Username string `json:"username"`
 		Nickname string `json:"nickname"`
 		Disabled bool   `json:"disabled"`
+		Role     string `json:"role"`
 	}
 
 	var userResponse []UserResponse
@@ -628,6 +630,7 @@ func handleUserListGet(c *gin.Context) {
 			Username: i.Username,
 			Nickname: i.Nickname,
 			Disabled: i.Disabled,
+			Role:     i.Role,
 		}
 		userResponse = append(userResponse, user)
 	}
@@ -708,10 +711,11 @@ func handleUserUpdatePut(c *gin.Context) {
 	for index, i := range config.Users {
 		if i.Username == user.Username {
 			newUser := utils.User{
-				Username: user.Username,
+				Username: i.Username,
 				Nickname: user.Nickname,
 				Password: i.Password,
 				Disabled: user.Disabled,
+				Role:     i.Role,
 			}
 			config.Users[index] = newUser
 			err = utils.WriteConfig(config)
