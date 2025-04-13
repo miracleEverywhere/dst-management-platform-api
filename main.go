@@ -55,12 +55,10 @@ func main() {
 func initialize() {
 	//绑定flag
 	utils.BindFlags()
-	//设置全局变量
-
 	//数据库检查
 	utils.CheckConfig()
-	//检查平台
-	utils.CheckPlatform()
+	//设置全局变量
+	utils.SetGlobalVariables()
 	//检查目录
 	utils.CheckDirs()
 	//检查文件

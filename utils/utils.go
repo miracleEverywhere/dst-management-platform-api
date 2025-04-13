@@ -25,18 +25,16 @@ import (
 )
 
 var (
-	// STATISTICS 玩家统计
-	STATISTICS = make(map[string][]Statistics)
-	// SYSMETRICS 系统监控
-	SYSMETRICS []SysMetrics
-	// BindPort flag绑定的变量
 	BindPort      int
 	ConsoleOutput bool
 	VersionShow   bool
 	ConfDir       string
-	PLATFORM      string
-	Registered    bool
-	HomeDir       string
+
+	Platform   string
+	Registered bool
+	HomeDir    string
+	STATISTICS = make(map[string][]Statistics) // 玩家统计
+	SYSMETRICS []SysMetrics                    // 系统监控
 )
 
 type Claims struct {
@@ -58,13 +56,26 @@ type OSInfo struct {
 }
 
 func SetGlobalVariables() {
-	var err error
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取数据库失败", "err", err)
+		panic(err)
+	}
+
 	HomeDir, err = os.UserHomeDir()
 	if err != nil {
 		Logger.Error("无法获取用户HOME目录", "err", err)
 		panic("无法获取用户HOME目录")
 	}
 
+	osInfo, err := GetOSInfo()
+	if err != nil {
+		Logger.Error("启动检查出现致命错误：获取系统信息失败", "err", err)
+		panic(err)
+	}
+	Platform = osInfo.Platform
+
+	Registered = config.Registered
 }
 
 func GenerateJWTSecret() string {
@@ -95,113 +106,6 @@ func GenerateJWT(user User, jwtSecret []byte, expiration int) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
-}
-
-func CheckConfig() {
-	_ = EnsureDirExists(ConfDir)
-	_, err := os.Stat(ConfDir + "/DstMP.sdb")
-	if !os.IsNotExist(err) {
-		Logger.Info("执行数据库检查中，发现数据库文件")
-		_, err := ReadConfig()
-		if err != nil {
-			Logger.Error("执行数据库检查中，打开数据库文件失败", "err", err)
-			panic("数据库检查未通过")
-			return
-		}
-		Logger.Info("数据库检查完成")
-		return
-	}
-
-	Logger.Info("执行数据库检查中，初始化数据库")
-	var config Config
-	config.Init()
-	err = WriteConfig(config)
-	if err != nil {
-		Logger.Error("写入数据库失败", "err", err)
-		panic("数据库初始化失败")
-	}
-	Logger.Info("数据库初始化完成")
-}
-
-func (config Config) Init() {
-	config.JwtSecret = GenerateJWTSecret()
-	config.SchedulerSetting = SchedulerSetting{
-		PlayerGetFrequency: 30,
-		UIDMaintain: SchedulerSettingItem{
-			Disable:   false,
-			Frequency: 5,
-		},
-		SysMetricsGet: SchedulerSettingItem{
-			Disable:   false,
-			Frequency: 0,
-		},
-		AutoUpdate: AutoUpdate{
-			Time:   "06:19:23",
-			Enable: true,
-		},
-	}
-	//config.SysSetting = SysSetting{
-	//
-	//	AutoUpdate: AutoUpdate{
-	//		Time:   "06:19:23",
-	//		Enable: true,
-	//	},
-	//	AutoRestart: AutoRestart{
-	//		Time:   "06:47:19",
-	//		Enable: true,
-	//	},
-	//	AutoAnnounce: nil,
-	//	AutoBackup: AutoBackup{
-	//		Time:   "06:13:57",
-	//		Enable: true,
-	//	},
-	//	Keepalive: Keepalive{
-	//		Frequency: 30,
-	//		Enable:    true,
-	//	},
-	//	Bit64:    false,
-	//	TickRate: 15,
-	//}
-	config.AnnouncedID = 0
-	Registered = false
-}
-
-func ReadConfig() (Config, error) {
-	content, err := os.ReadFile(ConfDir + "/DstMP.sdb")
-	if err != nil {
-		return Config{}, err
-	}
-
-	jsonData := string(content)
-	var config Config
-	err = json.Unmarshal([]byte(jsonData), &config)
-	if err != nil {
-		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
-	}
-	return config, nil
-}
-
-func WriteConfig(config Config) error {
-	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
-	if err != nil {
-		return fmt.Errorf("Error marshalling JSON:" + err.Error())
-	}
-	file, err := os.OpenFile(ConfDir+"/DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return fmt.Errorf("Error opening file:" + err.Error())
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			Logger.Error("关闭文件失败", "err", err)
-		}
-	}(file) // 在函数结束时关闭文件
-	// 写入 JSON 数据到文件
-	_, err = file.Write(data)
-	if err != nil {
-		return fmt.Errorf("Error writing to file:" + err.Error())
-	}
-	return nil
 }
 
 func ReadUidMap(cluster Cluster) (map[string]interface{}, error) {
@@ -250,14 +154,12 @@ func WriteUidMap(uidMap map[string]interface{}) error {
 }
 
 func CreateManualInstallScript() {
-	var manualInstallScript string
-	config, err := ReadConfig()
-	if err != nil {
-		Logger.Error("启动检查出现致命错误：获取数据库失败", "err", err)
-		panic(err)
-	}
+	var (
+		manualInstallScript string
+		err                 error
+	)
 
-	if config.Platform == "darwin" {
+	if Platform == "darwin" {
 		manualInstallScript = ManualInstallMac
 	} else {
 		manualInstallScript = ManualInstall
@@ -365,28 +267,7 @@ func CheckFiles(checkItem string) {
 }
 
 func CheckPlatform() {
-	osInfo, err := GetOSInfo()
-	if err != nil {
-		Logger.Error("启动检查出现致命错误：获取系统信息失败", "err", err)
-		panic(err)
-	}
 
-	config, err := ReadConfig()
-	if err != nil {
-		Logger.Error("启动检查出现致命错误：获取数据库失败", "err", err)
-		panic(err)
-	}
-	config.Platform = osInfo.Platform
-
-	PLATFORM = osInfo.Platform
-
-	err = WriteConfig(config)
-	if err != nil {
-		Logger.Error("启动检查出现致命错误：写入数据库失败", "err", err)
-		panic(err)
-	}
-
-	Logger.Info("系统检查通过")
 }
 
 func BindFlags() {
@@ -809,7 +690,7 @@ func (world World) StartGame(clusterName string, bit64 bool) error {
 		cmd string
 		err error
 	)
-	if PLATFORM == "darwin" {
+	if Platform == "darwin" {
 		cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		err = BashCMD(cmd)
 		if err != nil {
