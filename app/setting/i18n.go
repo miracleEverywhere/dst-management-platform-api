@@ -40,6 +40,7 @@ func response(message string, lang string) string {
 		"updateModSuccess":     "模组更新成功",
 		"updateModFail":        "模组更新失败",
 		"createSuccess":        "创建成功",
+		"clusterExisted":       "集群已存在",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":          "Save Success",
@@ -80,6 +81,7 @@ func response(message string, lang string) string {
 		"updateModSuccess":     "Mod Update Success",
 		"updateModFail":        "Mod Update Fail",
 		"createSuccess":        "Create Success",
+		"clusterExisted":       "Cluster Existed",
 	}
 
 	if lang == "zh" {
