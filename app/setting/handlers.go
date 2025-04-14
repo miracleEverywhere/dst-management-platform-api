@@ -1610,6 +1610,8 @@ import (
 //}
 
 func handleClustersGet(c *gin.Context) {
+	username, _ := c.Get("username")
+	role, _ := c.Get("role")
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
@@ -1617,7 +1619,21 @@ func handleClustersGet(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.Clusters})
+	if role == "admin" {
+		// 管理员返回所有cluster
+		var data []string
+		for _, cluster := range config.Clusters {
+			data = append(data, cluster.ClusterSetting.ClusterName)
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	} else {
+		for i, user := range config.Users {
+			if user.Username == username {
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.Users[i].ClusterPermission})
+				return
+			}
+		}
+	}
 }
 
 func handleClusterPost(c *gin.Context) {
@@ -1626,12 +1642,8 @@ func handleClusterPost(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	username, exist := c.Get("username")
-	if !exist {
-		utils.Logger.Error("获取用户名失败")
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
+	username, _ := c.Get("username")
+	role, _ := c.Get("role")
 
 	type ReqFrom struct {
 		ClusterName string `json:"clusterName"`
@@ -1641,6 +1653,24 @@ func handleClusterPost(c *gin.Context) {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for _, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == reqFrom.ClusterName {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    201,
+				"message": response("clusterExisted", langStr),
+				"data":    nil,
+			})
+			return
+		}
 	}
 
 	var cluster utils.Cluster
@@ -1663,19 +1693,14 @@ func handleClusterPost(c *gin.Context) {
 		TickRate: 15,
 	}
 
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-
 	config.Clusters = append(config.Clusters, cluster)
 
 	// 添加对应的用户权限
-	for userIndex, user := range config.Users {
-		if user.Username == username {
-			config.Users[userIndex].ClusterPermission = append(config.Users[userIndex].ClusterPermission, reqFrom.ClusterName)
+	if role != "admin" {
+		for userIndex, user := range config.Users {
+			if user.Username == username {
+				config.Users[userIndex].ClusterPermission = append(config.Users[userIndex].ClusterPermission, reqFrom.ClusterName)
+			}
 		}
 	}
 
