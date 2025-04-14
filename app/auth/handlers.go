@@ -645,20 +645,22 @@ func handleUserListGet(c *gin.Context) {
 	}
 
 	type UserResponse struct {
-		Username string `json:"username"`
-		Nickname string `json:"nickname"`
-		Disabled bool   `json:"disabled"`
-		Role     string `json:"role"`
+		Username          string   `json:"username"`
+		Nickname          string   `json:"nickname"`
+		Disabled          bool     `json:"disabled"`
+		Role              string   `json:"role"`
+		ClusterPermission []string `json:"clusterPermission"`
 	}
 
 	var userResponse []UserResponse
 
 	for _, i := range config.Users {
 		user := UserResponse{
-			Username: i.Username,
-			Nickname: i.Nickname,
-			Disabled: i.Disabled,
-			Role:     i.Role,
+			Username:          i.Username,
+			Nickname:          i.Nickname,
+			Disabled:          i.Disabled,
+			Role:              i.Role,
+			ClusterPermission: i.ClusterPermission,
 		}
 		userResponse = append(userResponse, user)
 	}
@@ -698,7 +700,6 @@ func handleUserCreatePost(c *gin.Context) {
 		}
 	}
 
-	user.Role = "Non-admin"
 	config.Users = append(config.Users, user)
 
 	err = utils.WriteConfig(config)
@@ -739,11 +740,12 @@ func handleUserUpdatePut(c *gin.Context) {
 	for index, i := range config.Users {
 		if i.Username == user.Username {
 			newUser := utils.User{
-				Username: i.Username,
-				Nickname: user.Nickname,
-				Password: i.Password,
-				Disabled: user.Disabled,
-				Role:     i.Role,
+				Username:          i.Username,
+				Nickname:          user.Nickname,
+				Password:          i.Password,
+				Disabled:          user.Disabled,
+				Role:              user.Role,
+				ClusterPermission: user.ClusterPermission,
 			}
 			config.Users[index] = newUser
 			err = utils.WriteConfig(config)
