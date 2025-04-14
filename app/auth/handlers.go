@@ -329,24 +329,6 @@ func handleMenu(c *gin.Context) {
 			Redirect:    "",
 			ActiveMenu:  nil,
 		},
-		//{
-		//	MenuId:      10205,
-		//	MenuName:    "模组安装",
-		//	EnName:      "Mod",
-		//	ParentId:    102,
-		//	MenuType:    "2",
-		//	Path:        "/tools/mod",
-		//	Name:        "toolsMod",
-		//	Component:   "tools/mod",
-		//	Icon:        "sc-icon-DashboardFill",
-		//	IsHide:      "1",
-		//	IsLink:      "",
-		//	IsKeepAlive: "0",
-		//	IsFull:      "1",
-		//	IsAffix:     "1",
-		//	Redirect:    "",
-		//	ActiveMenu:  nil,
-		//},
 		{
 			MenuId:      10206,
 			MenuName:    "玩家统计",
@@ -529,6 +511,24 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      104,
+			MenuName:    "用户管理",
+			EnName:      "Users",
+			ParentId:    0,
+			MenuType:    "2",
+			Path:        "/users",
+			Name:        "users",
+			Component:   "users/index",
+			Icon:        "sc-icon-UserSettingsFill",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/users",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      105,
 			MenuName:    "帮助",
 			EnName:      "Help",
 			ParentId:    0,
@@ -546,10 +546,38 @@ func handleMenu(c *gin.Context) {
 			ActiveMenu:  nil,
 		},
 	}
-	response := Response{
-		Code:    200,
-		Message: "success",
-		Data:    menuItems,
+
+	nonAdminID := []int{
+		100,
+		101, 10101, 10102, 10103, 10104, 10105,
+		102, 10201, 10202, 10203, 10205, 10206, 10207, 10208,
+		103, 10301, 10302, 10303, 10304, 10305,
+		105,
+	}
+
+	var response Response
+
+	role, exist := c.Get("role")
+	if exist && role == "admin" {
+		response = Response{
+			Code:    200,
+			Message: "success",
+			Data:    menuItems,
+		}
+	} else {
+		var nonAdminMenu []MenuItem
+		for _, i := range nonAdminID {
+			for _, item := range menuItems {
+				if i == item.MenuId {
+					nonAdminMenu = append(nonAdminMenu, item)
+				}
+			}
+		}
+		response = Response{
+			Code:    200,
+			Message: "success",
+			Data:    nonAdminMenu,
+		}
 	}
 
 	// 返回 JSON 响应
