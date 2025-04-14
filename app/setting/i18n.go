@@ -39,6 +39,7 @@ func response(message string, lang string) string {
 		"exportSuccess":        "模组导出成功",
 		"updateModSuccess":     "模组更新成功",
 		"updateModFail":        "模组更新失败",
+		"createSuccess":        "创建成功",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":          "Save Success",
@@ -78,6 +79,7 @@ func response(message string, lang string) string {
 		"exportSuccess":        "MOD Export Success",
 		"updateModSuccess":     "Mod Update Success",
 		"updateModFail":        "Mod Update Fail",
+		"createSuccess":        "Create Success",
 	}
 
 	if lang == "zh" {

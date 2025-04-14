@@ -1621,5 +1621,74 @@ func handleClustersGet(c *gin.Context) {
 }
 
 func handleClusterPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	username, exist := c.Get("username")
+	if !exist {
+		utils.Logger.Error("获取用户名失败")
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 
+	type ReqFrom struct {
+		ClusterName string `json:"clusterName"`
+	}
+	var reqFrom ReqFrom
+	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var cluster utils.Cluster
+	cluster.ClusterSetting.ClusterName = reqFrom.ClusterName
+	cluster.SysSetting = utils.SysSetting{
+		AutoRestart: utils.AutoRestart{
+			Enable: true,
+			Time:   "06:47:19",
+		},
+		AutoAnnounce: nil,
+		AutoBackup: utils.AutoBackup{
+			Enable: true,
+			Time:   "06:13:57",
+		},
+		Keepalive: utils.Keepalive{
+			Enable:    true,
+			Frequency: 30,
+		},
+		Bit64:    false,
+		TickRate: 15,
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	config.Clusters = append(config.Clusters, cluster)
+
+	// 添加对应的用户权限
+	for userIndex, user := range config.Users {
+		if user.Username == username {
+			config.Users[userIndex].ClusterPermission = append(config.Users[userIndex].ClusterPermission, reqFrom.ClusterName)
+		}
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": response("createSuccess", langStr),
+		"data":    nil,
+	})
 }
