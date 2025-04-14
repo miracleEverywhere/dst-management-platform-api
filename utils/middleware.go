@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"net/http"
 	"sync"
 	"time"
 )
@@ -46,14 +45,16 @@ func MWtoken() gin.HandlerFunc {
 			return
 		}
 		tokenSecret := config.JwtSecret
-		_, err = ValidateJWT(token, []byte(tokenSecret))
+		claims, err := ValidateJWT(token, []byte(tokenSecret))
 		if err != nil {
 			lang := c.Request.Header.Get("X-I18n-Lang")
 			RespondWithError(c, 420, lang)
 			c.Abort()
 			return
 		}
-
+		c.Set("username", claims.Username)
+		c.Set("nickname", claims.Nickname)
+		c.Set("role", claims.Role)
 		c.Next()
 	}
 }
@@ -164,33 +165,16 @@ func (l *IPRateLimiter) Stop() {
 
 func MWAdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.Request.Header.Get("authorization")
-		config, err := ReadConfig()
-		if err != nil {
-			Logger.Error("配置文件打开失败", "err", err)
-			c.Status(http.StatusUnauthorized)
-			c.Abort()
-			return
-		}
-		tokenSecret := config.JwtSecret
-		claims, err := ValidateJWT(token, []byte(tokenSecret))
-		if err != nil {
-			lang := c.Request.Header.Get("X-I18n-Lang")
-			RespondWithError(c, 420, lang)
-			c.Abort()
+		role, exist := c.Get("role")
+		if exist && role == "admin" {
+			c.Next()
 			return
 		}
 
-		if claims.Role != "admin" {
-			Logger.Info("越权请求已中断",
-				"越权用户",
-				fmt.Sprintf("%s(%s)", claims.Username, claims.Role),
-			)
-			lang := c.Request.Header.Get("X-I18n-Lang")
-			RespondWithError(c, 425, lang)
-			c.Abort()
-			return
-		}
-		c.Next()
+		Logger.Info("越权请求已中断")
+		lang := c.Request.Header.Get("X-I18n-Lang")
+		RespondWithError(c, 425, lang)
+		c.Abort()
+		return
 	}
 }
