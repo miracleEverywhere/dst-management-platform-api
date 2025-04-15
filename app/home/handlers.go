@@ -1,106 +1,164 @@
 package home
 
-//func handleRoomInfoGet(c *gin.Context) {
-//
-//	type Data struct {
-//		RoomSettingBase utils.RoomSettingBase `json:"roomSettingBase"`
-//		SeasonInfo      metaInfo              `json:"seasonInfo"`
-//		ModsCount       int                   `json:"modsCount"`
-//		PlayerNum       int                   `json:"playerNum"`
-//	}
-//	type Response struct {
-//		Code    int    `json:"code"`
-//		Message string `json:"message"`
-//		Data    Data   `json:"data"`
-//	}
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("读取配置文件失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//	modsCount, err := countMods(config.RoomSetting.Mod)
-//	if err != nil {
-//		utils.Logger.Error("读取mod数量失败", "err", err)
-//	}
-//
-//	var filePath string
-//
-//	if config.RoomSetting.Ground != "" {
-//		filePath, err = FindLatestMetaFile(utils.MasterMetaPath)
-//	} else {
-//		filePath, err = FindLatestMetaFile(utils.CavesMetaPath)
-//	}
-//
-//	if err != nil {
-//		utils.Logger.Error("查询session-meta文件失败", "err", err)
-//	}
-//
-//	var seasonInfo metaInfo
-//	if err != nil {
-//		seasonInfo, err = getMetaInfo("")
-//		utils.Logger.Error("获取meta文件内容失败", "err", err)
-//	} else {
-//		seasonInfo, err = getMetaInfo(filePath)
-//		if err != nil {
-//			utils.Logger.Error("获取meta文件内容失败", "err", err)
-//		}
-//	}
-//
-//	var playerNum int
-//	if len(utils.STATISTICS) > 0 {
-//		players := utils.STATISTICS[len(utils.STATISTICS)-1].Players
-//		playerNum = len(players)
-//	} else {
-//		playerNum = 0
-//	}
-//
-//	data := Data{
-//		RoomSettingBase: config.RoomSetting.Base,
-//		SeasonInfo:      seasonInfo,
-//		ModsCount:       modsCount,
-//		PlayerNum:       playerNum,
-//	}
-//
-//	response := Response{
-//		Code:    200,
-//		Message: "success",
-//		Data:    data,
-//	}
-//
-//	c.JSON(http.StatusOK, response)
-//}
-//
-//func handleSystemInfoGet(c *gin.Context) {
-//	type Data struct {
-//		Cpu    float64 `json:"cpu"`
-//		Memory float64 `json:"memory"`
-//		Master int     `json:"master"`
-//		Caves  int     `json:"caves"`
-//	}
-//	type Response struct {
-//		Code    int    `json:"code"`
-//		Message string `json:"message"`
-//		Data    Data   `json:"data"`
-//	}
-//	var err error
-//	var response Response
-//	response.Code = 200
-//	response.Message = "success"
-//	response.Data.Cpu, err = utils.CpuUsage()
-//	if err != nil {
-//		utils.Logger.Error("获取Cpu使用率失败", "err", err)
-//	}
-//	response.Data.Memory, err = utils.MemoryUsage()
-//	if err != nil {
-//		utils.Logger.Error("获取内存使用率失败", "err", err)
-//	}
-//	response.Data.Master = GetProcessStatus(utils.MasterScreenName)
-//	response.Data.Caves = GetProcessStatus(utils.CavesScreenName)
-//	c.JSON(http.StatusOK, response)
-//}
-//
+import (
+	"dst-management-platform-api/utils"
+	"github.com/gin-gonic/gin"
+	"net/http"
+)
+
+func handleRoomInfoGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var clusterIndex int
+	for i, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == reqForm.ClusterName {
+			clusterIndex = i
+		}
+	}
+
+	type Data struct {
+		ClusterSetting utils.ClusterSetting `json:"clusterSetting"`
+		SeasonInfo     metaInfo             `json:"seasonInfo"`
+		ModsCount      int                  `json:"modsCount"`
+		PlayerNum      int                  `json:"playerNum"`
+	}
+	type Response struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    Data   `json:"data"`
+	}
+
+	modsCount, err := countMods(config.Clusters[clusterIndex].Mod)
+	if err != nil {
+		utils.Logger.Error("读取mod数量失败", "err", err)
+	}
+
+	var (
+		filePath   string
+		sessionErr error
+		seasonInfo metaInfo
+		playerNum  int
+	)
+	for _, world := range config.Clusters[clusterIndex].Worlds {
+		sessionPath := world.GetSessionPath(config.Clusters[clusterIndex].ClusterSetting.ClusterName)
+		filePath, sessionErr = FindLatestMetaFile(sessionPath)
+		if sessionErr == nil {
+			break
+		}
+	}
+
+	if sessionErr != nil {
+		seasonInfo, _ = getMetaInfo("")
+		utils.Logger.Error("查询session-meta文件失败", "err", sessionErr)
+	} else {
+		seasonInfo, err = getMetaInfo(filePath)
+		if err != nil {
+			utils.Logger.Error("获取meta文件内容失败", "err", err)
+		}
+	}
+
+	if len(utils.STATISTICS[config.Clusters[clusterIndex].ClusterSetting.ClusterName]) > 0 {
+		players := utils.STATISTICS[config.Clusters[clusterIndex].ClusterSetting.ClusterName][len(utils.STATISTICS[config.Clusters[clusterIndex].ClusterSetting.ClusterName])-1].Players
+		playerNum = len(players)
+	} else {
+		playerNum = 0
+	}
+
+	data := Data{
+		ClusterSetting: config.Clusters[clusterIndex].ClusterSetting,
+		SeasonInfo:     seasonInfo,
+		ModsCount:      modsCount,
+		PlayerNum:      playerNum,
+	}
+
+	response := Response{
+		Code:    200,
+		Message: "success",
+		Data:    data,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+func handleSystemInfoGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	type WorldStat struct {
+		Stat  int    `json:"stat"`
+		World string `json:"world"`
+	}
+	type Data struct {
+		Cpu    float64     `json:"cpu"`
+		Memory float64     `json:"memory"`
+		Status []WorldStat `json:"status"`
+	}
+	type Response struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    Data   `json:"data"`
+	}
+
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var err error
+	var SysInfoResponse Response
+	SysInfoResponse.Code = 200
+	SysInfoResponse.Message = "success"
+	SysInfoResponse.Data.Cpu, err = utils.CpuUsage()
+	if err != nil {
+		utils.Logger.Error("获取Cpu使用率失败", "err", err)
+	}
+	SysInfoResponse.Data.Memory, err = utils.MemoryUsage()
+	if err != nil {
+		utils.Logger.Error("获取内存使用率失败", "err", err)
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var clusterIndex int
+	for i, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == reqForm.ClusterName {
+			clusterIndex = i
+		}
+	}
+
+	for _, world := range config.Clusters[clusterIndex].Worlds {
+		status := WorldStat{
+			Stat:  GetProcessStatus(world.ScreenName),
+			World: world.Name,
+		}
+
+		SysInfoResponse.Data.Status = append(SysInfoResponse.Data.Status, status)
+	}
+
+	c.JSON(http.StatusOK, SysInfoResponse)
+}
+
 //func handleExecPost(c *gin.Context) {
 //	type ExecForm struct {
 //		Type string `json:"type"`
