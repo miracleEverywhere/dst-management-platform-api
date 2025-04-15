@@ -74,3 +74,27 @@ func (cluster Cluster) GetBlockListFile() string {
 func (cluster Cluster) GetWhiteListFile() string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/whitelist.txt", HomeDir, cluster.ClusterSetting.ClusterName)
 }
+
+/* ============== config 配置相关 ============== */
+
+func (config Config) GetClusterWithName(clusterName string) (Cluster, error) {
+	for _, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == clusterName {
+			return cluster, nil
+		}
+	}
+	return Cluster{}, fmt.Errorf("没有发现名为%s的集群", clusterName)
+}
+
+func (config Config) GetWorldWithName(clusterName, worldName string) (World, error) {
+	for _, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == clusterName {
+			for _, world := range cluster.Worlds {
+				if world.Name == worldName {
+					return world, nil
+				}
+			}
+		}
+	}
+	return World{}, fmt.Errorf("在集群%s中，没有发现名为%s的世界", clusterName, worldName)
+}
