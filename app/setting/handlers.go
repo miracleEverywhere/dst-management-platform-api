@@ -1636,6 +1636,34 @@ func handleClustersGet(c *gin.Context) {
 	}
 }
 
+func handleClusterGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cluster})
+}
+
 func handleClusterPost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言

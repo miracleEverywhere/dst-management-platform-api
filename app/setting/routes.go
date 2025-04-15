@@ -12,6 +12,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 		{
 			// 设置
 			setting.GET("/clusters", utils.MWtoken(), handleClustersGet)
+			setting.GET("/cluster", utils.MWtoken(), handleClusterGet)
 			setting.POST("/cluster", utils.MWtoken(), handleClusterPost)
 			//setting.GET("/room", utils.MWtoken(), handleRoomSettingGet)
 			//setting.GET("/room/multihost", utils.MWtoken(), handleGetMultiHostGet)
