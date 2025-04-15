@@ -24,11 +24,11 @@ func handleRoomInfoGet(c *gin.Context) {
 		return
 	}
 
-	var clusterIndex int
-	for i, cluster := range config.Clusters {
-		if cluster.ClusterSetting.ClusterName == reqForm.ClusterName {
-			clusterIndex = i
-		}
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
 	}
 
 	type Data struct {
@@ -43,7 +43,7 @@ func handleRoomInfoGet(c *gin.Context) {
 		Data    Data   `json:"data"`
 	}
 
-	modsCount, err := countMods(config.Clusters[clusterIndex].Mod)
+	modsCount, err := countMods(cluster.Mod)
 	if err != nil {
 		utils.Logger.Error("读取mod数量失败", "err", err)
 	}
@@ -54,8 +54,8 @@ func handleRoomInfoGet(c *gin.Context) {
 		seasonInfo metaInfo
 		playerNum  int
 	)
-	for _, world := range config.Clusters[clusterIndex].Worlds {
-		sessionPath := world.GetSessionPath(config.Clusters[clusterIndex].ClusterSetting.ClusterName)
+	for _, world := range cluster.Worlds {
+		sessionPath := world.GetSessionPath(cluster.ClusterSetting.ClusterName)
 		filePath, sessionErr = FindLatestMetaFile(sessionPath)
 		if sessionErr == nil {
 			break
@@ -72,15 +72,15 @@ func handleRoomInfoGet(c *gin.Context) {
 		}
 	}
 
-	if len(utils.STATISTICS[config.Clusters[clusterIndex].ClusterSetting.ClusterName]) > 0 {
-		players := utils.STATISTICS[config.Clusters[clusterIndex].ClusterSetting.ClusterName][len(utils.STATISTICS[config.Clusters[clusterIndex].ClusterSetting.ClusterName])-1].Players
+	if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) > 0 {
+		players := utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
 		playerNum = len(players)
 	} else {
 		playerNum = 0
 	}
 
 	data := Data{
-		ClusterSetting: config.Clusters[clusterIndex].ClusterSetting,
+		ClusterSetting: cluster.ClusterSetting,
 		SeasonInfo:     seasonInfo,
 		ModsCount:      modsCount,
 		PlayerNum:      playerNum,
@@ -140,14 +140,14 @@ func handleSystemInfoGet(c *gin.Context) {
 		return
 	}
 
-	var clusterIndex int
-	for i, cluster := range config.Clusters {
-		if cluster.ClusterSetting.ClusterName == reqForm.ClusterName {
-			clusterIndex = i
-		}
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
 	}
 
-	for _, world := range config.Clusters[clusterIndex].Worlds {
+	for _, world := range cluster.Worlds {
 		status := WorldStat{
 			Stat:  GetProcessStatus(world.ScreenName),
 			World: world.Name,
