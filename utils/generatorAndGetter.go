@@ -37,6 +37,10 @@ func (world World) GetIniFile(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/server.ini", HomeDir, clusterName, world.Name)
 }
 
+func (world World) GetSessionPath(clusterName string) string {
+	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/save/session", HomeDir, clusterName, world.Name)
+}
+
 /* ============== cluster 集群相关 ============== */
 
 func (cluster Cluster) GetUIDMapFile() string {
