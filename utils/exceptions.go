@@ -7,6 +7,7 @@ import (
 
 func exceptions(code int, lang string) string {
 	exceptionsZH := map[int]string{
+		404: "资源不存在",
 		420: "Token认证失败",
 		421: "用户不存在",
 		422: "密码错误",
@@ -19,6 +20,7 @@ func exceptions(code int, lang string) string {
 		511: "执行命令失败",
 	}
 	exceptionsEN := map[int]string{
+		404: "Resources Not Found",
 		420: "Token Auth Fail",
 		421: "User Not Exist",
 		422: "Incorrect password",
