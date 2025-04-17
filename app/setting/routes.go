@@ -14,6 +14,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.GET("/clusters", utils.MWtoken(), handleClustersGet)
 			setting.GET("/cluster", utils.MWtoken(), handleClusterGet)
 			setting.POST("/cluster", utils.MWtoken(), handleClusterPost)
+			setting.PUT("/cluster", utils.MWtoken(), handleClusterPut)
 			//setting.GET("/room", utils.MWtoken(), handleRoomSettingGet)
 			//setting.GET("/room/multihost", utils.MWtoken(), handleGetMultiHostGet)
 			//setting.POST("/room/multihost", utils.MWtoken(), handleChangeMultiHostPost)
