@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
+	"github.com/yuin/gopher-lua"
 	"io"
 	"io/fs"
 	"math/rand"
@@ -177,58 +178,6 @@ func CreateManualInstallScript() {
 }
 
 func CheckDirs() {
-	var err error
-	err = EnsureDirExists(BackupPath)
-	if err != nil {
-		Logger.Error("创建备份目录失败", "err", err)
-	} else {
-		Logger.Info("备份目录检查完成")
-	}
-
-	err = EnsureDirExists(ModDownloadPath)
-	if err != nil {
-		Logger.Error("创建模组下载目录失败", "err", err)
-	}
-	err = EnsureDirExists(ModDownloadPath + "/not_ugc")
-	if err != nil {
-		Logger.Error("创建非UGC模组下载目录失败", "err", err)
-	} else {
-		err = EnsureDirExists(ModDownloadPath + "/steamapps/workshop/content/322330")
-	}
-
-	if err != nil {
-		Logger.Error("创建UGC模组下载目录失败", "err", err)
-	} else {
-		Logger.Info("模组下载目录检查完成")
-	}
-
-	err = EnsureDirExists(ServerPath + MasterName)
-	if err != nil {
-		Logger.Error("创建Master目录失败", "err", err)
-	} else {
-		Logger.Info("Master目录检查完成")
-	}
-
-	err = EnsureDirExists(ServerPath + CavesName)
-	if err != nil {
-		Logger.Error("创建Caves目录失败", "err", err)
-	} else {
-		Logger.Info("Caves目录检查完成")
-	}
-
-	err = EnsureDirExists(MasterModUgcPath)
-	if err != nil {
-		Logger.Error("创建Master Mod目录失败", "err", err)
-	} else {
-		Logger.Info("Master Mod目录检查完成")
-	}
-
-	err = EnsureDirExists(CavesModUgcPath)
-	if err != nil {
-		Logger.Error("创建Caves Mod目录失败", "err", err)
-	} else {
-		Logger.Info("Caves Mod目录检查完成")
-	}
 
 }
 
@@ -655,11 +604,13 @@ func (world World) StopGame(clusterName string) error {
 		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", ShutdownScreenCMD)
 	}
 	time.Sleep(2 * time.Second)
-	killCMD := fmt.Sprintf("kill -9 `cat %s/%s_%s.pid`", PIDPath, clusterName, world.Name)
+	killCMD := fmt.Sprintf("ps -ef | grep %s | grep -v grep | awk '{print $2}' | xargs kill -9", world.ScreenName)
 	err = BashCMD(killCMD)
 	if err != nil {
 		Logger.Info("执行Bash命令失败", "msg", err, "cmd", killCMD)
 	}
+
+	_ = BashCMD("screen -wipe")
 
 	return err
 }
@@ -708,14 +659,16 @@ func (world World) StartGame(clusterName string, bit64 bool) error {
 			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
 		}
 	}
-	pidCmd := fmt.Sprintf("screen -ls | grep DST_MASTER | awk -F'.' '{print $1}' | awk '{print $1}' > %s/%s_%s.pid", PIDPath, clusterName, world.Name)
-	_ = BashCMD(pidCmd)
 
 	return err
 }
 
 func StartClusterAllWorlds(cluster Cluster) error {
 	var err error
+	err = DstModsSetup(cluster)
+	if err != nil {
+		return err
+	}
 	for _, world := range cluster.Worlds {
 		err = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.SysSetting.Bit64)
 		if err != nil {
@@ -1148,4 +1101,38 @@ func Contains[T comparable](s []T, i T) bool {
 	}
 
 	return false
+}
+
+func DstModsSetup(cluster Cluster) error {
+	L := lua.NewState()
+	defer L.Close()
+	if err := L.DoString(cluster.Mod); err != nil {
+		Logger.Error("加载 Lua 文件失败:", "err", err)
+		return err
+	}
+	modsTable := L.Get(-1)
+	fileContent := ""
+	if tbl, ok := modsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
+			// 检查键是否是字符串，并且以 "workshop-" 开头
+			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
+				// 提取 "workshop-" 后面的数字
+				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
+				fileContent = fileContent + "ServerModSetup(\"" + workshopID + "\")\n"
+			}
+		})
+		var modFilePath string
+		if Platform == "darwin" {
+			modFilePath = MacGameModSettingPath
+		} else {
+			modFilePath = GameModSettingPath
+		}
+		err := TruncAndWriteFile(modFilePath, fileContent)
+		if err != nil {
+			Logger.Error("mod配置文件写入失败", "err", err, "file", modFilePath)
+			return err
+		}
+	}
+
+	return nil
 }
