@@ -2,9 +2,9 @@ package setting
 
 import (
 	"dst-management-platform-api/utils"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 //import (
@@ -1747,7 +1747,7 @@ func handleClusterPost(c *gin.Context) {
 	})
 }
 
-func handleClusterPut(c *gin.Context) {
+func handleClusterSavePost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -1761,6 +1761,54 @@ func handleClusterPut(c *gin.Context) {
 		return
 	}
 
+	err := saveSetting(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": response("saveSuccess", langStr),
+		"data":    nil,
+	})
+}
+
+func handleClusterSaveRestartPost(c *gin.Context) {
+	defer func() {
+		time.Sleep(10 * time.Second)
+		_ = utils.BashCMD("screen -wipe")
+	}()
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var reqCluster utils.Cluster
+	if err := c.ShouldBindJSON(&reqCluster); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_ = utils.BashCMD("screen -wipe")
+
+	err := saveSetting(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
@@ -1768,47 +1816,18 @@ func handleClusterPut(c *gin.Context) {
 		return
 	}
 
-	var clusterIndex = -1
+	cluster, err := config.GetClusterWithName(reqCluster.ClusterSetting.ClusterName)
 
-	for i, cluster := range config.Clusters {
-		if cluster.ClusterSetting.ClusterName == reqCluster.ClusterSetting.ClusterName {
-			clusterIndex = i
-			reqCluster.SysSetting = cluster.SysSetting
-			break
-		}
-	}
-
-	if clusterIndex == -1 {
+	_ = utils.StopClusterAllWorlds(cluster)
+	err = utils.StartClusterAllWorlds(cluster)
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
-			"message": "集群不存在",
+			"message": response("saveSuccessRestartFail", langStr),
 			"data":    nil,
 		})
 		return
 	}
 
-	// 对world进行排序
-	var formattedCluster utils.Cluster
-
-	for i, world := range reqCluster.Worlds {
-		world.Name = fmt.Sprintf("World%d", i)
-		world.ScreenName = fmt.Sprintf("DST_%s_%s", reqCluster.ClusterSetting.ClusterName, world.Name)
-		formattedCluster.Worlds = append(formattedCluster.Worlds, world)
-	}
-	reqCluster.Worlds = formattedCluster.Worlds
-
-	config.Clusters[clusterIndex] = reqCluster
-
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("写入配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": response("createSuccess", langStr),
-		"data":    nil,
-	})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
 }

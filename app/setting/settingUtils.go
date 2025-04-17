@@ -1,179 +1,208 @@
 package setting
 
-//import (
-//	"bufio"
-//	"dst-management-platform-api/utils"
-//	lua "github.com/yuin/gopher-lua"
-//	"math"
-//	"os"
-//	"strconv"
-//	"strings"
-//	"time"
-//)
-//
-//func clusterTemplate(config utils.Config) string {
-//	var bindIP string
-//	if !config.MultiHost {
-//		bindIP = "127.0.0.1"
-//	} else {
-//		bindIP = "0.0.0.0"
-//	}
-//	base := config.RoomSetting.Base
-//	contents := `
-//[GAMEPLAY]
-//game_mode = ` + base.GameMode + `
-//max_players = ` + strconv.Itoa(base.PlayerNum) + `
-//pvp = ` + strconv.FormatBool(base.PVP) + `
-//pause_when_empty = true
-//vote_enabled = ` + strconv.FormatBool(base.Vote) + `
-//vote_kick_enabled = ` + strconv.FormatBool(base.Vote) + `
-//
-//[NETWORK]
-//cluster_description = ` + base.Description + `
-//whitelist_slots = 0
-//cluster_name = ` + base.Name + `
-//cluster_password = ` + base.Password + `
-//cluster_language = zh
-//tick_rate = ` + strconv.Itoa(config.TickRate) + `
-//
-//[MISC]
-//console_enabled = true
-//max_snapshots = ` + strconv.Itoa(base.BackDays) + `
-//
-//[SHARD]
-//shard_enabled = true
-//bind_ip = ` + bindIP + `
-//master_ip = ` + base.ShardMasterIp + `
-//master_port = ` + strconv.Itoa(base.ShardMasterPort) + `
-//cluster_key = ` + base.ClusterKey + `
-//`
-//	return contents
-//}
-//
-//func masterServerTemplate(config utils.Config) string {
-//	base := config.RoomSetting.Base
-//	content := `
-//[NETWORK]
-//server_port = ` + strconv.Itoa(base.MasterPort) + `
-//
-//[SHARD]
-//is_master = true
-//
-//[STEAM]
-//master_server_port = ` + strconv.Itoa(base.SteamMasterPort) + `
-//authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
-//
-//[ACCOUNT]
-//encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Ground) + `
-//`
-//	return content
-//}
-//
-//func cavesServerTemplate(config utils.Config) string {
-//	var (
-//		SteamMasterPort         int
-//		SteamAuthenticationPort int
-//	)
-//	if !config.MultiHost {
-//		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort + 1
-//		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort + 1
-//	} else {
-//		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort
-//		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort
-//	}
-//	base := config.RoomSetting.Base
-//	content := `
-//[NETWORK]
-//server_port = ` + strconv.Itoa(base.CavesPort) + `
-//
-//[SHARD]
-//is_master = false
-//name = Caves
-//
-//[STEAM]
-//master_server_port = ` + strconv.Itoa(SteamMasterPort) + `
-//authentication_port = ` + strconv.Itoa(SteamAuthenticationPort) + `
-//
-//[ACCOUNT]
-//encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Cave) + `
-//`
-//	return content
-//}
-//
-//func saveSetting(config utils.Config) error {
-//	clusterIniFileContent := clusterTemplate(config)
-//
-//	//cluster.ini
-//	err := utils.TruncAndWriteFile(utils.ServerSettingPath, clusterIniFileContent)
-//	if err != nil {
-//		return err
-//	}
-//
-//	//cluster_token.txt
-//	err = utils.TruncAndWriteFile(utils.ServerTokenPath, config.RoomSetting.Base.Token)
-//	if err != nil {
-//		return err
-//	}
-//
-//	if config.RoomSetting.Ground != "" {
-//		err = utils.EnsureDirExists(utils.ServerPath + utils.MasterName)
-//		if err != nil {
-//			utils.Logger.Error("创建Master目录失败", "err", err)
-//		}
-//		//Master/leveldataoverride.lua
-//		err = utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
-//		if err != nil {
-//			return err
-//		}
-//
-//		//Master/modoverrides.lua
-//		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-//		if err != nil {
-//			return err
-//		}
-//
-//		//Master/server.ini
-//		err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate(config))
-//		if err != nil {
-//			return err
-//		}
-//	} else {
-//		err = utils.RemoveDir(utils.ServerPath + utils.MasterName)
-//		if err != nil {
-//			utils.Logger.Error("删除目录下文件失败", "err", err)
-//		}
-//	}
-//
-//	if config.RoomSetting.Cave != "" {
-//		//Caves/leveldataoverride.lua
-//		err = utils.EnsureDirExists(utils.ServerPath + utils.CavesName)
-//		if err != nil {
-//			utils.Logger.Error("创建Caves目录失败", "err", err)
-//		}
-//		err = utils.TruncAndWriteFile(utils.CavesSettingPath, config.RoomSetting.Cave)
-//		if err != nil {
-//			return err
-//		}
-//		//Caves/modoverrides.lua
-//		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
-//		if err != nil {
-//			return err
-//		}
-//		//Caves/server.ini
-//		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate(config))
-//		if err != nil {
-//			return err
-//		}
-//	} else {
-//		err = utils.RemoveDir(utils.ServerPath + utils.CavesName)
-//		if err != nil {
-//			utils.Logger.Error("删除目录下文件失败", "err", err)
-//		}
-//	}
-//
-//	return nil
-//}
-//
+import (
+	"dst-management-platform-api/utils"
+	"fmt"
+	"strconv"
+)
+
+func clusterTemplate(cluster utils.Cluster) string {
+	var (
+		masterIP   string
+		masterPort int
+		clusterKey string
+		hasMaster  bool
+	)
+
+	for _, world := range cluster.Worlds {
+		if world.IsMaster {
+			masterIP = world.ShardMasterIp
+			masterPort = world.ShardMasterPort
+			clusterKey = world.ClusterKey
+			hasMaster = true
+		}
+	}
+
+	if !hasMaster {
+		masterIP = cluster.Worlds[0].ShardMasterIp
+		masterPort = cluster.Worlds[0].ShardMasterPort
+		clusterKey = cluster.Worlds[0].ClusterKey
+	}
+
+	contents := `
+[GAMEPLAY]
+game_mode = ` + cluster.ClusterSetting.GameMode + `
+max_players = ` + strconv.Itoa(cluster.ClusterSetting.PlayerNum) + `
+pvp = ` + strconv.FormatBool(cluster.ClusterSetting.PVP) + `
+pause_when_empty = true
+vote_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
+vote_kick_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
+
+[NETWORK]
+cluster_description = ` + cluster.ClusterSetting.Description + `
+whitelist_slots = 0
+cluster_name = ` + cluster.ClusterSetting.Name + `
+cluster_password = ` + cluster.ClusterSetting.Password + `
+cluster_language = zh
+tick_rate = ` + strconv.Itoa(cluster.SysSetting.TickRate) + `
+
+[MISC]
+console_enabled = true
+max_snapshots = ` + strconv.Itoa(cluster.ClusterSetting.BackDays) + `
+
+[SHARD]
+shard_enabled = true
+bind_ip = 0.0.0.0
+master_ip = ` + masterIP + `
+master_port = ` + strconv.Itoa(masterPort) + `
+cluster_key = ` + clusterKey + `
+`
+	return contents
+}
+
+func worldTemplate(world utils.World) string {
+	content := `
+[NETWORK]
+server_port = ` + strconv.Itoa(world.ServerPort) + `
+
+[SHARD]
+is_master = ` + strconv.FormatBool(world.IsMaster) + `
+name = ` + world.Name + `
+
+[STEAM]
+master_server_port = ` + strconv.Itoa(world.SteamMasterPort) + `
+authentication_port = ` + strconv.Itoa(world.SteamAuthenticationPort) + `
+
+[ACCOUNT]
+encode_user_path = ` + strconv.FormatBool(world.EncodeUserPath) + `
+`
+	return content
+}
+
+func saveSetting(reqCluster utils.Cluster) error {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	var clusterIndex = -1
+
+	for i, dbCluster := range config.Clusters {
+		if dbCluster.ClusterSetting.ClusterName == reqCluster.ClusterSetting.ClusterName {
+			clusterIndex = i
+			reqCluster.SysSetting = dbCluster.SysSetting
+			break
+		}
+	}
+
+	if clusterIndex == -1 {
+		return fmt.Errorf("集群不存在")
+	}
+
+	// 对world进行排序
+	var formattedCluster utils.Cluster
+
+	for i, world := range reqCluster.Worlds {
+		world.Name = fmt.Sprintf("World%d", i)
+		world.ScreenName = fmt.Sprintf("DST_%s_%s", reqCluster.ClusterSetting.ClusterName, world.Name)
+		formattedCluster.Worlds = append(formattedCluster.Worlds, world)
+	}
+	reqCluster.Worlds = formattedCluster.Worlds
+
+	// 写入文件
+	err = utils.EnsureDirExists(utils.DstPath)
+	if err != nil {
+		utils.Logger.Error("创建饥荒目录失败", "err", err)
+		return err
+	}
+
+	err = utils.EnsureDirExists(reqCluster.GetMainPath())
+	if err != nil {
+		utils.Logger.Error("创建集群目录失败", "err", err)
+		return err
+	}
+
+	//cluster.ini
+	err = utils.EnsureFileExists(reqCluster.GetIniFile())
+	if err != nil {
+		utils.Logger.Error("创建cluster.ini失败", "err", err)
+		return err
+	}
+	clusterIniFileContent := clusterTemplate(reqCluster)
+	err = utils.TruncAndWriteFile(reqCluster.GetIniFile(), clusterIniFileContent)
+	if err != nil {
+		utils.Logger.Error("写入cluster.ini失败", "err", err)
+		return err
+	}
+
+	//cluster_token.txt
+	err = utils.EnsureFileExists(reqCluster.GetTokenFile())
+	if err != nil {
+		utils.Logger.Error("创建cluster_token.txt失败", "err", err)
+		return err
+	}
+	err = utils.TruncAndWriteFile(reqCluster.GetTokenFile(), reqCluster.ClusterSetting.Token)
+	if err != nil {
+		utils.Logger.Error("写入cluster_token.txt失败", "err", err)
+		return err
+	}
+
+	for _, world := range reqCluster.Worlds {
+		err = utils.EnsureDirExists(world.GetMainPath(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建世界目录失败", "err", err)
+			return err
+		}
+
+		// leveldataoverride.lua
+		err = utils.EnsureFileExists(world.GetLevelDataFile(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建leveldataoverride.lua失败", "err", err)
+			return err
+		}
+		err = utils.TruncAndWriteFile(world.GetLevelDataFile(reqCluster.ClusterSetting.ClusterName), world.LevelData)
+		if err != nil {
+			utils.Logger.Error("写入leveldataoverride.lua失败", "err", err)
+			return err
+		}
+
+		// modoverrides.lua
+		err = utils.EnsureFileExists(world.GetModFile(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建modoverrides.lua失败", "err", err)
+			return err
+		}
+		err = utils.TruncAndWriteFile(world.GetModFile(reqCluster.ClusterSetting.ClusterName), reqCluster.Mod)
+		if err != nil {
+			utils.Logger.Error("写入modoverrides.lua失败", "err", err)
+			return err
+		}
+
+		// server.ini
+		err = utils.EnsureFileExists(world.GetIniFile(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建server.ini失败", "err", err)
+			return err
+		}
+		worldIniContent := worldTemplate(world)
+		err = utils.TruncAndWriteFile(world.GetIniFile(reqCluster.ClusterSetting.ClusterName), worldIniContent)
+		if err != nil {
+			utils.Logger.Error("写入server.ini失败", "err", err)
+			return err
+		}
+	}
+
+	config.Clusters[clusterIndex] = reqCluster
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		return err
+	}
+
+	return nil
+}
+
 //func generateWorld() {
 //	//关闭Master进程
 //	/*cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
@@ -226,46 +255,7 @@ package setting
 //		utils.Logger.Error("启动游戏失败", "err", err)
 //	}
 //}
-//
-//func DstModsSetup() error {
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		return err
-//	}
-//
-//	L := lua.NewState()
-//	defer L.Close()
-//	if err := L.DoString(config.RoomSetting.Mod); err != nil {
-//		utils.Logger.Error("加载 Lua 文件失败:", "err", err)
-//		return err
-//	}
-//	modsTable := L.Get(-1)
-//	fileContent := ""
-//	if tbl, ok := modsTable.(*lua.LTable); ok {
-//		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-//			// 检查键是否是字符串，并且以 "workshop-" 开头
-//			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
-//				// 提取 "workshop-" 后面的数字
-//				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
-//				fileContent = fileContent + "ServerModSetup(\"" + workshopID + "\")\n"
-//			}
-//		})
-//		var modFilePath string
-//		if config.Platform == "darwin" {
-//			modFilePath = utils.MacGameModSettingPath
-//		} else {
-//			modFilePath = utils.GameModSettingPath
-//		}
-//		err := utils.TruncAndWriteFile(modFilePath, fileContent)
-//		if err != nil {
-//			utils.Logger.Error("mod配置文件写入失败", "err", err, "file", modFilePath)
-//			return err
-//		}
-//	}
-//
-//	return nil
-//}
+
 //
 //func getList(filepath string) []string {
 //	// 预留位 黑名单 管理员
