@@ -10,6 +10,10 @@ func (world World) GeneratePlayersListCMD() string {
 	return "screen -S \"" + world.ScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s <-@dmp@-> %s <-@dmp@-> %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
 }
 
+func (world World) GetMainPath(clusterName string) string {
+	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s", HomeDir, clusterName, world.Name)
+}
+
 func (world World) GetServerLogFile(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/server_log.txt", HomeDir, clusterName, world.Name)
 }
@@ -39,6 +43,16 @@ func (world World) GetIniFile(clusterName string) string {
 
 func (world World) GetSessionPath(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/save/session", HomeDir, clusterName, world.Name)
+}
+
+func (world World) GetStatus() bool {
+	cmd := fmt.Sprintf("ps -ef | grep %s | grep -v grep", world.ScreenName)
+	err := BashCMD(cmd)
+	if err != nil {
+		return false
+	} else {
+		return true
+	}
 }
 
 /* ============== cluster 集群相关 ============== */
