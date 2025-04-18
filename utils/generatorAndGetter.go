@@ -2,12 +2,49 @@ package utils
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 /* ============== world 世界相关 ============== */
 
 func (world World) GeneratePlayersListCMD() string {
 	return "screen -S \"" + world.ScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s <-@dmp@-> %s <-@dmp@-> %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
+}
+
+func (world World) GetProcessStatus() (float64, float64) {
+	cmd := fmt.Sprintf("top -b -n 1 -p $(ps -ef | grep $(ps -ef | grep %s | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}') | tail -1 | awk '{print $9\"-\"$10}'", world.ScreenName)
+	out, errs, err := BashCMDOutput(cmd)
+	if err != nil {
+		Logger.Warn("获取世界CPU内存失败", "world", world.Name, "errMsg", errs, "err", err)
+		return 0, 0
+	}
+
+	out = strings.TrimSpace(out)
+	stats := strings.Split(out, "-")
+
+	cpu, err := strconv.ParseFloat(stats[0], 64)
+	if err != nil {
+		cpu = 0
+	}
+	mem, err := strconv.ParseFloat(stats[1], 64)
+	if err != nil {
+		mem = 0
+	}
+
+	return cpu, mem
+}
+
+func (world World) GetWorldType() string {
+	re := regexp.MustCompile(`location\s*=\s*"([^"]+)"`)
+	matches := re.FindStringSubmatch(world.LevelData)
+
+	if len(matches) >= 2 {
+		return matches[1] // 输出: Location: forest
+	} else {
+		return "None"
+	}
 }
 
 func (world World) GetMainPath(clusterName string) string {
