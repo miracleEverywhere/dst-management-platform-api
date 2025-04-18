@@ -636,7 +636,7 @@ func StopAllClusters(clusters []Cluster) error {
 	return err
 }
 
-func (world World) StartGame(clusterName string, bit64 bool) error {
+func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 	var (
 		cmd string
 		err error
@@ -649,6 +649,10 @@ func (world World) StartGame(clusterName string, bit64 bool) error {
 		}
 	} else {
 		_ = ReplaceDSTSOFile()
+		err = DstModsSetup(mod)
+		if err != nil {
+			Logger.Error("设置mod下载配置失败", "err", err)
+		}
 		if bit64 {
 			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s"+" ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		} else {
@@ -665,12 +669,8 @@ func (world World) StartGame(clusterName string, bit64 bool) error {
 
 func StartClusterAllWorlds(cluster Cluster) error {
 	var err error
-	err = DstModsSetup(cluster)
-	if err != nil {
-		return err
-	}
 	for _, world := range cluster.Worlds {
-		err = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.SysSetting.Bit64)
+		err = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
 		if err != nil {
 			Logger.Error("启动游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
 		}
@@ -1104,10 +1104,10 @@ func Contains[T comparable](s []T, i T) bool {
 	return false
 }
 
-func DstModsSetup(cluster Cluster) error {
+func DstModsSetup(mod string) error {
 	L := lua.NewState()
 	defer L.Close()
-	if err := L.DoString(cluster.Mod); err != nil {
+	if err := L.DoString(mod); err != nil {
 		Logger.Error("加载 Lua 文件失败:", "err", err)
 		return err
 	}
