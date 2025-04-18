@@ -603,7 +603,7 @@ func (world World) StopGame(clusterName string) error {
 	if err != nil {
 		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", ShutdownScreenCMD)
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	killCMD := fmt.Sprintf("ps -ef | grep %s | grep -v grep | awk '{print $2}' | xargs kill -9", world.ScreenName)
 	err = BashCMD(killCMD)
 	if err != nil {
@@ -674,6 +674,7 @@ func StartClusterAllWorlds(cluster Cluster) error {
 		if err != nil {
 			Logger.Error("启动游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	return err
