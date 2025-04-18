@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 func clusterTemplate(cluster utils.Cluster) string {
@@ -66,6 +67,7 @@ func worldTemplate(world utils.World) string {
 server_port = ` + strconv.Itoa(world.ServerPort) + `
 
 [SHARD]
+id = ` + strings.ReplaceAll(world.Name, "World", "") + `
 is_master = ` + strconv.FormatBool(world.IsMaster) + `
 name = ` + world.Name + `
 
@@ -104,7 +106,7 @@ func saveSetting(reqCluster utils.Cluster) error {
 	var formattedCluster utils.Cluster
 
 	for i, world := range reqCluster.Worlds {
-		world.Name = fmt.Sprintf("World%d", i)
+		world.Name = fmt.Sprintf("World%d", i+1)
 		world.ScreenName = fmt.Sprintf("DST_%s_%s", reqCluster.ClusterSetting.ClusterName, world.Name)
 		formattedCluster.Worlds = append(formattedCluster.Worlds, world)
 	}
