@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
 )
 
 func handleRoomInfoGet(c *gin.Context) {
@@ -94,30 +95,16 @@ func handleRoomInfoGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
 func handleSystemInfoGet(c *gin.Context) {
-	type ReqForm struct {
-		ClusterName string `json:"clusterName" form:"clusterName"`
-	}
-	type WorldStat struct {
-		Stat  int    `json:"stat"`
-		World string `json:"world"`
-	}
 	type Data struct {
-		Cpu    float64     `json:"cpu"`
-		Memory float64     `json:"memory"`
-		Status []WorldStat `json:"status"`
+		Cpu    float64 `json:"cpu"`
+		Memory float64 `json:"memory"`
 	}
 	type Response struct {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
 		Data    Data   `json:"data"`
-	}
-
-	var reqForm ReqForm
-	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
 	}
 
 	var err error
@@ -131,6 +118,29 @@ func handleSystemInfoGet(c *gin.Context) {
 	SysInfoResponse.Data.Memory, err = utils.MemoryUsage()
 	if err != nil {
 		utils.Logger.Error("获取内存使用率失败", "err", err)
+	}
+
+	c.JSON(http.StatusOK, SysInfoResponse)
+}
+
+func handleWorldInfoGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	type WorldStat struct {
+		ID    string  `json:"id"`
+		Stat  int     `json:"stat"`
+		World string  `json:"world"`
+		Type  string  `json:"type"`
+		Cpu   float64 `json:"cpu"`
+		Mem   float64 `json:"mem"`
+	}
+
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	config, err := utils.ReadConfig()
@@ -147,16 +157,24 @@ func handleSystemInfoGet(c *gin.Context) {
 		return
 	}
 
+	var worldInfo []WorldStat
+
 	for _, world := range cluster.Worlds {
+		cpu, mem := world.GetProcessStatus()
+
 		status := WorldStat{
+			ID:    strings.ReplaceAll(world.Name, "World", ""),
 			Stat:  GetProcessStatus(world.ScreenName),
 			World: world.Name,
+			Type:  world.GetWorldType(),
+			Cpu:   cpu,
+			Mem:   mem,
 		}
 
-		SysInfoResponse.Data.Status = append(SysInfoResponse.Data.Status, status)
+		worldInfo = append(worldInfo, status)
 	}
 
-	c.JSON(http.StatusOK, SysInfoResponse)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": worldInfo})
 }
 
 //func handleExecPost(c *gin.Context) {
