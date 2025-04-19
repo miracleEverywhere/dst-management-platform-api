@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -148,4 +149,18 @@ func (config Config) GetWorldWithName(clusterName, worldName string) (World, err
 		}
 	}
 	return World{}, fmt.Errorf("在集群%s中，没有发现名为%s的世界", clusterName, worldName)
+}
+
+/* ============== Key API相关 ============== */
+
+func GetSteamApiKey() string {
+	obfuscated := []byte{
+		0xD5, 0xED, 0xDA, 0x66, 0x64, 0xFF, 0x23, 0xA6,
+		0xB3, 0xD8, 0x50, 0x2C, 0x63, 0xB1, 0xBF, 0x6D,
+	}
+	var data []byte
+	for _, b := range obfuscated {
+		data = append(data, b^0x55)
+	}
+	return hex.EncodeToString(data)
 }
