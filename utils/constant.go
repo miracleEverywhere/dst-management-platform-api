@@ -76,7 +76,7 @@ const InternetIPApi1 = "http://ip-api.com/json/?lang=zh-CN"
 
 const InternetIPApi2 = "https://qifu-api.baidubce.com/ip/local/geo/v1/district"
 
-const SteamApiKey = "1D15E021E1AB06D20F761C16525FFD40"
+const SteamApiKey = "80B88F3331AA76F3E68D057936E4EA38"
 
 const SteamApiModDetail = "http://api.steampowered.com/IPublishedFileService/GetDetails/v1/"
 
