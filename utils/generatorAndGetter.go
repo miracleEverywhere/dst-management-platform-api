@@ -16,9 +16,10 @@ func (world World) GeneratePlayersListCMD() string {
 
 func (world World) GetProcessStatus() (float64, float64) {
 	cmd := fmt.Sprintf("top -b -n 1 -p $(ps -ef | grep $(ps -ef | grep %s | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}') | tail -1 | awk '{print $9\"-\"$10}'", world.ScreenName)
-	out, errs, err := BashCMDOutput(cmd)
-	if err != nil {
-		Logger.Warn("获取世界CPU内存失败", "world", world.Name, "errMsg", errs, "err", err)
+	out, _, _ := BashCMDOutput(cmd)
+
+	if len(out) < 2 {
+		Logger.Warn("获取世界CPU内存失败", "world", world.Name)
 		return 0, 0
 	}
 
