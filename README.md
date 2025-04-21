@@ -1,4 +1,4 @@
-# [中文文档] | [[English README]](README_EN.md)
+# [中文文档] | [[English README]](docs/README_EN.md)
 ## :lemon: 饥荒管理平台App来啦  
 [https://github.com/miracleEverywhere/dst-management-platform-desktop](https://github.com/miracleEverywhere/dst-management-platform-desktop)  
 
