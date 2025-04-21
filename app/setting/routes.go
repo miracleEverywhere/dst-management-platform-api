@@ -16,6 +16,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/cluster", utils.MWtoken(), handleClusterPost)
 			setting.POST("/cluster/save", utils.MWtoken(), handleClusterSavePost)
 			setting.POST("/cluster/save_restart", utils.MWtoken(), handleClusterSaveRestartPost)
+			setting.POST("/cluster/save_regenerate", utils.MWtoken(), handleClusterSaveRegeneratePost)
 			//setting.GET("/room", utils.MWtoken(), handleRoomSettingGet)
 			//setting.GET("/room/multihost", utils.MWtoken(), handleGetMultiHostGet)
 			//setting.POST("/room/multihost", utils.MWtoken(), handleChangeMultiHostPost)
