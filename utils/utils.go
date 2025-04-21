@@ -673,6 +673,8 @@ func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 
 func StartClusterAllWorlds(cluster Cluster) error {
 	var err error
+	_ = BashCMD("screen -wipe")
+	time.Sleep(500 * time.Millisecond)
 	for _, world := range cluster.Worlds {
 		err = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
 		if err != nil {
@@ -1140,4 +1142,45 @@ func DstModsSetup(mod string) error {
 	}
 
 	return nil
+}
+
+// ReadLinesToSlice 读取文件内容到切片中
+func ReadLinesToSlice(filePath string) ([]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
+}
+
+// WriteLinesFromSlice 将切片内容写回文件
+func WriteLinesFromSlice(filePath string, lines []string) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		_, _ = writer.WriteString(line + "\n")
+	}
+	return writer.Flush()
 }

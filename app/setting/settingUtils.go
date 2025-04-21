@@ -41,7 +41,7 @@ vote_kick_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
 
 [NETWORK]
 cluster_description = ` + cluster.ClusterSetting.Description + `
-whitelist_slots = 0
+whitelist_slots = ` + strconv.Itoa(cluster.GetWhiteListSlot()) + `
 cluster_name = ` + cluster.ClusterSetting.Name + `
 cluster_password = ` + cluster.ClusterSetting.Password + `
 cluster_language = zh
@@ -131,6 +131,8 @@ func saveSetting(reqCluster utils.Cluster) error {
 		utils.Logger.Error("创建cluster.ini失败", "err", err)
 		return err
 	}
+	// 获取白名单长度
+
 	clusterIniFileContent := clusterTemplate(reqCluster)
 	err = utils.TruncAndWriteFile(reqCluster.GetIniFile(), clusterIniFileContent)
 	if err != nil {
@@ -323,46 +325,6 @@ func saveSetting(reqCluster utils.Cluster) error {
 //	return nil
 //}
 //
-//// 读取文件内容到切片中
-//func readLines(filePath string) ([]string, error) {
-//	file, err := os.Open(filePath)
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer func(file *os.File) {
-//		err := file.Close()
-//		if err != nil {
-//			utils.Logger.Error("关闭文件失败", "err", err)
-//		}
-//	}(file)
-//
-//	var lines []string
-//	scanner := bufio.NewScanner(file)
-//	for scanner.Scan() {
-//		lines = append(lines, scanner.Text())
-//	}
-//	return lines, scanner.Err()
-//}
-//
-//// 将切片内容写回文件
-//func writeLines(filePath string, lines []string) error {
-//	file, err := os.Create(filePath)
-//	if err != nil {
-//		return err
-//	}
-//	defer func(file *os.File) {
-//		err := file.Close()
-//		if err != nil {
-//			utils.Logger.Error("关闭文件失败", "err", err)
-//		}
-//	}(file)
-//
-//	writer := bufio.NewWriter(file)
-//	for _, line := range lines {
-//		_, _ = writer.WriteString(line + "\n")
-//	}
-//	return writer.Flush()
-//}
 //
 //type UIDForm struct {
 //	UID string `json:"uid"`
