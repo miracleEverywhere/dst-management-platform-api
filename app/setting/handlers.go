@@ -1620,21 +1620,41 @@ func handleClustersGet(c *gin.Context) {
 		return
 	}
 
+	type ClusterItem struct {
+		ClusterName        string `json:"clusterName"`
+		ClusterDisplayName string `json:"clusterDisplayName"`
+	}
+	var data []ClusterItem
+
 	if role == "admin" {
 		// 管理员返回所有cluster
-		var data []string
+
 		for _, cluster := range config.Clusters {
-			data = append(data, cluster.ClusterSetting.ClusterName)
+			data = append(data, ClusterItem{
+				ClusterName:        cluster.ClusterSetting.ClusterName,
+				ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+			})
 		}
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+
 	} else {
 		for i, user := range config.Users {
 			if user.Username == username {
-				c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.Users[i].ClusterPermission})
-				return
+				for _, clusterName := range config.Users[i].ClusterPermission {
+					cluster, err := config.GetClusterWithName(clusterName)
+					if err != nil {
+						continue
+					} else {
+						data = append(data, ClusterItem{
+							ClusterName:        cluster.ClusterSetting.ClusterName,
+							ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+						})
+					}
+				}
 			}
 		}
 	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
 func handleClusterGet(c *gin.Context) {
@@ -1675,7 +1695,8 @@ func handleClusterPost(c *gin.Context) {
 	role, _ := c.Get("role")
 
 	type ReqFrom struct {
-		ClusterName string `json:"clusterName"`
+		ClusterName        string `json:"clusterName"`
+		ClusterDisplayName string `json:"clusterDisplayName"`
 	}
 	var reqFrom ReqFrom
 	if err := c.ShouldBindJSON(&reqFrom); err != nil {
@@ -1704,6 +1725,7 @@ func handleClusterPost(c *gin.Context) {
 
 	var cluster utils.Cluster
 	cluster.ClusterSetting.ClusterName = reqFrom.ClusterName
+	cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
 	cluster.SysSetting = utils.SysSetting{
 		AutoRestart: utils.AutoRestart{
 			Enable: true,
