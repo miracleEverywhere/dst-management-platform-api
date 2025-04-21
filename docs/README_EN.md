@@ -1,4 +1,4 @@
-# [[中文文档]](README.md) | [English README]
+# [[中文文档]](../README.md) | [English README]
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
@@ -121,31 +121,31 @@ Enter 0 to download and start, after startup is complete, run the manual_install
 ---
 
 ## :cherries: DMP screenshot
-![home-en](docs/images/home-en.png)
+![home-en](images/home-en.png)
   
 
-![mobile-en](docs/images/mobile-en.png)
+![mobile-en](images/mobile-en.png)
   
 
-![room-en](docs/images/room-en.png)
+![room-en](images/room-en.png)
 
 
-![world-en](docs/images/world-en.png)
+![world-en](images/world-en.png)
 
 
-![mod1-en](docs/images/mod1-en.jpg)
+![mod1-en](images/mod1-en.jpg)
 
 
-![mod2-en](docs/images/mod2-en.jpg)
+![mod2-en](images/mod2-en.jpg)
   
 
-![player-en](docs/images/player-en.png)
+![player-en](images/player-en.png)
   
 
-![statistics-en](docs/images/statistics-en.png)
+![statistics-en](images/statistics-en.png)
   
 
-![menu-tools-en](docs/images/menu-tools-en.png)
+![menu-tools-en](images/menu-tools-en.png)
   
 
 ---
