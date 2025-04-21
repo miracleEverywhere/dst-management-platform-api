@@ -599,11 +599,15 @@ func BackupGame(cluster Cluster) error {
 }
 
 func (world World) StopGame(clusterName string) error {
-	err := ScreenCMD(ShutdownScreenCMD, world.ScreenName)
-	if err != nil {
-		Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", ShutdownScreenCMD)
+	var err error
+	if world.GetStatus() {
+		err = ScreenCMD(ShutdownScreenCMD, world.ScreenName)
+		if err != nil {
+			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", ShutdownScreenCMD)
+		}
+		time.Sleep(1 * time.Second)
 	}
-	time.Sleep(1 * time.Second)
+
 	killCMD := fmt.Sprintf("ps -ef | grep %s | grep -v grep | awk '{print $2}' | xargs kill -9", world.ScreenName)
 	err = BashCMD(killCMD)
 	if err != nil {
