@@ -56,6 +56,7 @@ func (world World) GetMainPath(clusterName string) string {
 func (world World) GetServerLogFile(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/server_log.txt", HomeDir, clusterName, world.Name)
 }
+
 func (world World) GetBackupServerLogPath(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/backup/server_log", HomeDir, clusterName, world.Name)
 }
@@ -84,6 +85,7 @@ func (world World) GetSessionPath(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/save/session", HomeDir, clusterName, world.Name)
 }
 
+// GetStatus 获取世界状态
 func (world World) GetStatus() bool {
 	cmd := fmt.Sprintf("ps -ef | grep %s | grep -v grep", world.ScreenName)
 	err := BashCMD(cmd)
