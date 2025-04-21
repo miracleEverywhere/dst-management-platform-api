@@ -2,6 +2,7 @@ package setting
 
 import (
 	"dst-management-platform-api/utils"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -1831,17 +1832,8 @@ func handleClusterSaveRestartPost(c *gin.Context) {
 		return
 	}
 
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-
-	cluster, err := config.GetClusterWithName(reqCluster.ClusterSetting.ClusterName)
-
-	_ = utils.StopClusterAllWorlds(cluster)
-	err = utils.StartClusterAllWorlds(cluster)
+	_ = utils.StopClusterAllWorlds(reqCluster)
+	err = utils.StartClusterAllWorlds(reqCluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
@@ -1852,4 +1844,60 @@ func handleClusterSaveRestartPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
+}
+
+func handleClusterSaveRegeneratePost(c *gin.Context) {
+	defer func() {
+		time.Sleep(10 * time.Second)
+		_ = utils.BashCMD("screen -wipe")
+	}()
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var reqCluster utils.Cluster
+	if err := c.ShouldBindJSON(&reqCluster); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_ = utils.BashCMD("screen -wipe")
+
+	_ = utils.StopClusterAllWorlds(reqCluster)
+
+	for _, world := range reqCluster.Worlds {
+		cmd := fmt.Sprintf("rm -rf %s", world.GetMainPath(reqCluster.ClusterSetting.ClusterName))
+		err := utils.BashCMD(cmd)
+		if err != nil {
+			utils.Logger.Error("删除旧世界目录失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteOldServerFail", langStr), "data": nil})
+			return
+		}
+	}
+
+	err := saveSetting(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	err = utils.StartClusterAllWorlds(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveSuccessRestartFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
 }
