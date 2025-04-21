@@ -128,12 +128,13 @@ func handleWorldInfoGet(c *gin.Context) {
 		ClusterName string `json:"clusterName" form:"clusterName"`
 	}
 	type WorldStat struct {
-		ID    string  `json:"id"`
-		Stat  bool    `json:"stat"`
-		World string  `json:"world"`
-		Type  string  `json:"type"`
-		Cpu   float64 `json:"cpu"`
-		Mem   float64 `json:"mem"`
+		ID       string  `json:"id"`
+		Stat     bool    `json:"stat"`
+		World    string  `json:"world"`
+		IsMaster bool    `json:"isMaster"`
+		Type     string  `json:"type"`
+		Cpu      float64 `json:"cpu"`
+		Mem      float64 `json:"mem"`
 	}
 
 	var reqForm ReqForm
@@ -163,18 +164,72 @@ func handleWorldInfoGet(c *gin.Context) {
 		cpu, mem := world.GetProcessStatus()
 
 		status := WorldStat{
-			ID:    strings.ReplaceAll(world.Name, "World", ""),
-			Stat:  world.GetStatus(),
-			World: world.Name,
-			Type:  world.GetWorldType(),
-			Cpu:   cpu,
-			Mem:   mem,
+			ID:       strings.ReplaceAll(world.Name, "World", ""),
+			Stat:     world.GetStatus(),
+			World:    world.Name,
+			IsMaster: world.IsMaster,
+			Type:     world.GetWorldType(),
+			Cpu:      cpu,
+			Mem:      mem,
 		}
 
 		worldInfo = append(worldInfo, status)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": worldInfo})
+}
+
+func handleExecPost(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string      `json:"clusterName"`
+		WorldName   string      `json:"worldName"`
+		Type        string      `json:"type"`
+		ExtraData   interface{} `json:"extraData"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var reqFrom ReqForm
+	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqFrom.ClusterName)
+	world, err := config.GetWorldWithName(reqFrom.ClusterName, reqFrom.WorldName)
+	if err != nil {
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	switch reqFrom.Type {
+	case "worldSwitch":
+		if world.GetStatus() {
+			_ = world.StopGame(reqFrom.ClusterName)
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
+			return
+		} else {
+			err = world.StartGame(reqFrom.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+	}
 }
 
 //func handleExecPost(c *gin.Context) {
