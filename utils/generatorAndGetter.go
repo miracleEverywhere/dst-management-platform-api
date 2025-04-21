@@ -128,6 +128,24 @@ func (cluster Cluster) GetWhiteListFile() string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/whitelist.txt", HomeDir, cluster.ClusterSetting.ClusterName)
 }
 
+func (cluster Cluster) GetWhiteListSlot() int {
+	fileContent, err := ReadLinesToSlice(cluster.GetWhiteListFile())
+	if err != nil {
+		Logger.Warn("没有找到白名单文件")
+		return 0
+	}
+
+	var whiteList []string
+	for _, i := range fileContent {
+		uid := strings.TrimSpace(i)
+		if uid != "" {
+			whiteList = append(whiteList, uid)
+		}
+	}
+
+	return len(whiteList)
+}
+
 /* ============== config 配置相关 ============== */
 
 func (config Config) GetClusterWithName(clusterName string) (Cluster, error) {
