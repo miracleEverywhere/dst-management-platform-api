@@ -1695,11 +1695,11 @@ func handleClusterPost(c *gin.Context) {
 	username, _ := c.Get("username")
 	role, _ := c.Get("role")
 
-	type ReqFrom struct {
+	type ReqForm struct {
 		ClusterName        string `json:"clusterName"`
 		ClusterDisplayName string `json:"clusterDisplayName"`
 	}
-	var reqFrom ReqFrom
+	var reqFrom ReqForm
 	if err := c.ShouldBindJSON(&reqFrom); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
