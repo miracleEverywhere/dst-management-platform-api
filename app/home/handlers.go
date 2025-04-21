@@ -129,7 +129,7 @@ func handleWorldInfoGet(c *gin.Context) {
 	}
 	type WorldStat struct {
 		ID    string  `json:"id"`
-		Stat  int     `json:"stat"`
+		Stat  bool    `json:"stat"`
 		World string  `json:"world"`
 		Type  string  `json:"type"`
 		Cpu   float64 `json:"cpu"`
@@ -164,7 +164,7 @@ func handleWorldInfoGet(c *gin.Context) {
 
 		status := WorldStat{
 			ID:    strings.ReplaceAll(world.Name, "World", ""),
-			Stat:  GetProcessStatus(world.ScreenName),
+			Stat:  world.GetStatus(),
 			World: world.Name,
 			Type:  world.GetWorldType(),
 			Cpu:   cpu,
