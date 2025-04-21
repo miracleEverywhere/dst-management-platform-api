@@ -3,7 +3,6 @@ package scheduler
 import (
 	"bufio"
 	"dst-management-platform-api/app/externalApi"
-	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
@@ -65,8 +64,8 @@ func setPlayer2DB(config utils.Config) {
 
 func getPlayersList(world utils.World, clusterName string) ([]string, error) {
 	var file *os.File
-	masterStatus := home.GetProcessStatus(world.ScreenName)
-	if masterStatus == 0 {
+
+	if !world.GetStatus() {
 		return nil, fmt.Errorf("当前世界未开启")
 	}
 	// 先执行命令
@@ -316,7 +315,7 @@ func doKeepalive(cluster utils.Cluster) {
 				utils.Logger.Info("发现服务器运行异常，执行重启任务", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
 				_ = world.StopGame(cluster.ClusterSetting.ClusterName)
 				time.Sleep(3 * time.Second)
-				_ = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.SysSetting.Bit64)
+				_ = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
 				break
 			} else {
 				config, err := utils.ReadConfig()
