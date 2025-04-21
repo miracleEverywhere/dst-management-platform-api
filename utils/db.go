@@ -16,16 +16,17 @@ type User struct {
 }
 
 type ClusterSetting struct {
-	ClusterName string `json:"clusterName"` // MyDediServer
-	Name        string `json:"name"`        // xxx长期档
-	Description string `json:"description"`
-	GameMode    string `json:"gameMode"`
-	PVP         bool   `json:"pvp"`
-	PlayerNum   int    `json:"playerNum"`
-	BackDays    int    `json:"backDays"`
-	Vote        bool   `json:"vote"`
-	Password    string `json:"password"`
-	Token       string `json:"token"`
+	ClusterName        string `json:"clusterName"` // MyDediServer
+	ClusterDisplayName string `json:"clusterDisplayName"`
+	Name               string `json:"name"` // xxx长期档
+	Description        string `json:"description"`
+	GameMode           string `json:"gameMode"`
+	PVP                bool   `json:"pvp"`
+	PlayerNum          int    `json:"playerNum"`
+	BackDays           int    `json:"backDays"`
+	Vote               bool   `json:"vote"`
+	Password           string `json:"password"`
+	Token              string `json:"token"`
 }
 
 type World struct {
