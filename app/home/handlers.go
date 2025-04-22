@@ -2,9 +2,11 @@ package home
 
 import (
 	"dst-management-platform-api/utils"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func handleRoomInfoGet(c *gin.Context) {
@@ -135,6 +137,7 @@ func handleWorldInfoGet(c *gin.Context) {
 		Type     string  `json:"type"`
 		Cpu      float64 `json:"cpu"`
 		Mem      float64 `json:"mem"`
+		MemSize  float64 `json:"memSize"`
 	}
 
 	var reqForm ReqForm
@@ -161,16 +164,17 @@ func handleWorldInfoGet(c *gin.Context) {
 	var worldInfo []WorldStat
 
 	for _, world := range cluster.Worlds {
-		cpu, mem := world.GetProcessStatus()
+		stat, cpu, mem, memSize := world.GetProcessStatus()
 
 		status := WorldStat{
 			ID:       strings.ReplaceAll(world.Name, "World", ""),
-			Stat:     world.GetStatus(),
+			Stat:     stat,
 			World:    world.Name,
 			IsMaster: world.IsMaster,
 			Type:     world.GetWorldType(),
 			Cpu:      cpu,
 			Mem:      mem,
+			MemSize:  memSize,
 		}
 
 		worldInfo = append(worldInfo, status)
@@ -201,19 +205,23 @@ func handleExecPost(c *gin.Context) {
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
+		utils.RespondWithError(c, 500, langStr)
 		return
 	}
 
 	cluster, err := config.GetClusterWithName(reqFrom.ClusterName)
-	world, err := config.GetWorldWithName(reqFrom.ClusterName, reqFrom.WorldName)
 	if err != nil {
-		utils.RespondWithError(c, 404, "zh")
+		utils.RespondWithError(c, 404, langStr)
 		return
 	}
 
 	switch reqFrom.Type {
-	case "worldSwitch":
+	case "switch":
+		world, err := config.GetWorldWithName(reqFrom.ClusterName, reqFrom.WorldName)
+		if err != nil {
+			utils.RespondWithError(c, 404, langStr)
+			return
+		}
 		if world.GetStatus() {
 			_ = world.StopGame(reqFrom.ClusterName)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
@@ -227,320 +235,154 @@ func handleExecPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
 			return
 		}
+	case "startup":
+		defer func() {
+			time.Sleep(10 * time.Second)
+			_ = utils.BashCMD("screen -wipe")
+		}()
+		err = utils.StartClusterAllWorlds(cluster)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
+		return
+	case "shutdown":
+		defer func() {
+			time.Sleep(10 * time.Second)
+			_ = utils.BashCMD("screen -wipe")
+		}()
+		err = utils.StopClusterAllWorlds(cluster)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("shutdownFail", langStr), "data": nil})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
+		return
+	case "update":
+		go func() {
+			_ = utils.StopAllClusters(config.Clusters)
+			_ = utils.BashCMD(utils.UpdateGameCMD)
+			_ = utils.StartAllClusters(config.Clusters)
+		}()
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updating", langStr), "data": nil})
+		return
+	case "restart":
+		_ = utils.StopClusterAllWorlds(cluster)
+		err = utils.StartClusterAllWorlds(cluster)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restartFail", langStr), "data": nil})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
+		return
+	case "rollback":
+		days := func() string {
+			// 只存在float64的情况
+			switch v := reqFrom.ExtraData.(type) {
+			case float64:
+				return fmt.Sprintf("%d", int64(v))
+			default:
+				return ""
+			}
+		}()
+		cmd := fmt.Sprintf("c_rollback(%s)", days)
+		for _, world := range cluster.Worlds {
+			if world.GetStatus() {
+				err = utils.ScreenCMD(cmd, world.ScreenName)
+				if err != nil {
+					utils.Logger.Error("回档命令执行失败，尝试下一个世界", "err", err, "world", world.Name)
+					continue
+				}
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("rollbackSuccess", langStr), "data": nil})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("rollbackFail", langStr), "data": nil})
+		return
+	case "reset":
+		cmd := "c_regenerateworld()"
+		for _, world := range cluster.Worlds {
+			if world.GetStatus() {
+				err = utils.ScreenCMD(cmd, world.ScreenName)
+				if err != nil {
+					utils.Logger.Error("重置世界命令执行失败，尝试下一个世界", "err", err, "world", world.Name)
+					continue
+				}
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("resetSuccess", langStr), "data": nil})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("resetFail", langStr), "data": nil})
+		return
+	case "delete":
+		_ = utils.StopClusterAllWorlds(cluster)
+		for _, world := range cluster.Worlds {
+			err = utils.RemoveDir(world.GetSavePath(cluster.ClusterSetting.ClusterName))
+			if err != nil {
+				utils.Logger.Error("删除世界失败，尝试下一个世界", "err", err, "world", world.Name)
+				continue
+			}
+		}
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteFail", langStr), "data": nil})
+			return
+		} else {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+			return
+		}
+	case "announce":
+		message := func() string {
+			// 只存在string的情况
+			switch v := reqFrom.ExtraData.(type) {
+			case string:
+				return v
+			default:
+				return ""
+			}
+		}()
+		cmd := fmt.Sprintf("c_announce('%s')", message)
+		for _, world := range cluster.Worlds {
+			if world.GetStatus() {
+				err = utils.ScreenCMD(cmd, world.ScreenName)
+				if err != nil {
+					utils.Logger.Error("公告命令执行失败，尝试下一个世界", "err", err, "world", world.Name)
+					continue
+				}
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("announceSuccess", langStr), "data": nil})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("announceFail", langStr), "data": nil})
+		return
+	case "console":
+		cmd := func() string {
+			// 只存在string的情况
+			switch v := reqFrom.ExtraData.(type) {
+			case string:
+				return v
+			default:
+				return ""
+			}
+		}()
+		world, err := config.GetWorldWithName(reqFrom.ClusterName, reqFrom.WorldName)
+		if err != nil {
+			utils.RespondWithError(c, 404, langStr)
+			return
+		}
+		err = utils.ScreenCMD(cmd, world.ScreenName)
+		if err != nil {
+			utils.Logger.Error("console命令执行失败", "err", err, "world", world.Name)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("execFail", langStr), "data": nil})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("execSuccess", langStr), "data": nil})
+		return
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 	}
 }
 
-//func handleExecPost(c *gin.Context) {
-//	type ExecForm struct {
-//		Type string `json:"type"`
-//		Info int    `json:"info"`
-//	}
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	var execFrom ExecForm
-//	if err := c.ShouldBindJSON(&execFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	switch execFrom.Type {
-//	case "startup":
-//		err := utils.BashCMD(utils.KillDST)
-//		if err != nil {
-//			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.KillDST)
-//		}
-//		err = utils.BashCMD(utils.ClearScreenCMD)
-//		if err != nil {
-//			utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-//		}
-//		masterStatus := GetProcessStatus(utils.MasterScreenName)
-//		cavesStatus := GetProcessStatus(utils.CavesScreenName)
-//
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("读取配置文件失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//
-//		if config.RoomSetting.Ground != "" {
-//			if masterStatus == 0 {
-//				if config.Platform == "darwin" {
-//					err = utils.BashCMD(utils.MacStartMasterCMD)
-//					if err != nil {
-//						utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.MacStartMasterCMD)
-//					}
-//				} else {
-//					var cmd string
-//					if config.Bit64 {
-//						cmd = utils.StartMaster64CMD
-//					} else {
-//						cmd = utils.StartMasterCMD
-//					}
-//					err = utils.BashCMD(cmd)
-//					if err != nil {
-//						utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
-//					}
-//				}
-//			}
-//		}
-//
-//		if config.RoomSetting.Cave != "" {
-//			if cavesStatus == 0 {
-//				if config.RoomSetting.Cave != "" {
-//					if config.Platform == "darwin" {
-//						err = utils.BashCMD(utils.MacStartCavesCMD)
-//						if err != nil {
-//							utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.MacStartCavesCMD)
-//						}
-//					} else {
-//						var cmd string
-//						if config.Bit64 {
-//							cmd = utils.StartCaves64CMD
-//						} else {
-//							cmd = utils.StartCavesCMD
-//						}
-//						err = utils.BashCMD(cmd)
-//						if err != nil {
-//							utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
-//						}
-//					}
-//				}
-//			}
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
-//
-//	case "rollback":
-//		cmd := "c_rollback(" + strconv.Itoa(execFrom.Info) + ")"
-//		err := utils.ScreenCMD(cmd, utils.MasterName)
-//		if err != nil {
-//			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", utils.MasterName)
-//			utils.RespondWithError(c, 511, langStr)
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("rollbackSuccess", langStr), "data": nil})
-//
-//	case "shutdown":
-//		err := utils.StopGame()
-//		if err != nil {
-//			utils.Logger.Error("关闭游戏失败", "err", err)
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
-//
-//	case "restart":
-//		err := utils.StopGame()
-//		if err != nil {
-//			utils.Logger.Error("关闭游戏失败", "err", err)
-//		}
-//		err = utils.StartGame()
-//		if err != nil {
-//			utils.Logger.Error("启动游戏失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restartFail", langStr), "data": nil})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
-//
-//	case "update":
-//		err := utils.StopGame()
-//		if err != nil {
-//			utils.Logger.Error("关闭游戏失败", "err", err)
-//		}
-//
-//		go func() {
-//			err = utils.BashCMD(utils.UpdateGameCMD)
-//			if err != nil {
-//				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.UpdateGameCMD)
-//			}
-//			err = utils.StartGame()
-//			if err != nil {
-//				utils.Logger.Error("启动游戏失败", "err", err)
-//			}
-//		}()
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updating", langStr), "data": nil})
-//
-//	case "reset":
-//		cmd := "c_regenerateworld()"
-//		err := utils.ScreenCMD(cmd, utils.MasterName)
-//		if err != nil {
-//			utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("execFail", langStr), "data": nil})
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("resetSuccess", langStr), "data": nil})
-//
-//	case "delete":
-//		err := utils.StopGame()
-//		if err != nil {
-//			utils.Logger.Error("关闭游戏失败", "err", err)
-//		}
-//
-//		time.Sleep(2 * time.Second)
-//
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("读取配置文件失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//
-//		var (
-//			cmd    string
-//			master bool
-//			caves  bool
-//		)
-//		if config.RoomSetting.Ground != "" {
-//			cmd = "rm -rf " + utils.MasterPath + "/*"
-//			err = utils.BashCMD(cmd)
-//			if err != nil {
-//				utils.Logger.Error("删除地面失败", "err", err)
-//			}
-//			master = true
-//		}
-//		if config.RoomSetting.Cave != "" {
-//			cmd = "rm -rf " + utils.CavesPath + "/*"
-//			err = utils.BashCMD(cmd)
-//			if err != nil {
-//				utils.Logger.Error("删除洞穴失败", "err", err)
-//			}
-//			caves = true
-//		}
-//
-//		if !master && !caves {
-//			c.JSON(http.StatusOK, gin.H{
-//				"code":    201,
-//				"message": response("deleteFail", langStr),
-//				"data":    nil,
-//			})
-//		} else {
-//			c.JSON(http.StatusOK, gin.H{
-//				"code":    200,
-//				"message": response("deleteSuccess", langStr),
-//				"data":    nil,
-//			})
-//		}
-//
-//	case "masterSwitch":
-//		if execFrom.Info == 0 {
-//			cmd := "c_shutdown()"
-//			err := utils.ScreenCMD(cmd, utils.MasterName)
-//			if err != nil {
-//				utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-//			}
-//			time.Sleep(2 * time.Second)
-//			err = utils.BashCMD(utils.StopMasterCMD)
-//			if err != nil {
-//				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StopMasterCMD)
-//			}
-//			err = utils.BashCMD(utils.ClearScreenCMD)
-//			if err != nil {
-//				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-//			}
-//
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
-//		} else {
-//			config, err := utils.ReadConfig()
-//			if err != nil {
-//				utils.Logger.Error("读取配置文件失败", "err", err)
-//				utils.RespondWithError(c, 500, langStr)
-//				return
-//			}
-//			if config.RoomSetting.Ground == "" {
-//				c.JSON(http.StatusOK, gin.H{"code": 200, "message": "no master", "data": nil})
-//				return
-//			}
-//			//开启服务器
-//			err = utils.BashCMD(utils.ClearScreenCMD)
-//			if err != nil {
-//				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-//			}
-//			time.Sleep(1 * time.Second)
-//			var cmd string
-//			if config.Platform == "darwin" {
-//				cmd = utils.MacStartMasterCMD
-//			} else {
-//				if config.Bit64 {
-//					cmd = utils.StartMaster64CMD
-//				} else {
-//					cmd = utils.StartMasterCMD
-//				}
-//			}
-//			err = utils.BashCMD(cmd)
-//			if err != nil {
-//				utils.Logger.Error("启动游戏失败", "err", err, "cmd", cmd)
-//				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
-//			}
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
-//		}
-//
-//	case "cavesSwitch":
-//		if execFrom.Info == 0 {
-//			cmd := "c_shutdown()"
-//			err := utils.ScreenCMD(cmd, utils.CavesName)
-//			if err != nil {
-//				utils.Logger.Error("ScreenCMD执行失败", "err", err, "cmd", cmd)
-//			}
-//			time.Sleep(2 * time.Second)
-//			err = utils.BashCMD(utils.StopCavesCMD)
-//			if err != nil {
-//				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.StopCavesCMD)
-//			}
-//			err = utils.BashCMD(utils.ClearScreenCMD)
-//			if err != nil {
-//				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-//			}
-//
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
-//		} else {
-//			config, err := utils.ReadConfig()
-//			if err != nil {
-//				utils.Logger.Error("读取配置文件失败", "err", err)
-//				utils.RespondWithError(c, 500, langStr)
-//				return
-//			}
-//			if config.RoomSetting.Cave == "" {
-//				c.JSON(http.StatusOK, gin.H{"code": 200, "message": "no caves", "data": nil})
-//				return
-//			}
-//			//开启服务器
-//			err = utils.BashCMD(utils.ClearScreenCMD)
-//			if err != nil {
-//				utils.Logger.Error("BashCMD执行失败", "err", err, "cmd", utils.ClearScreenCMD)
-//			}
-//			time.Sleep(1 * time.Second)
-//
-//			var cmd string
-//			if config.Platform == "darwin" {
-//				cmd = utils.MacStartCavesCMD
-//			} else {
-//				if config.Bit64 {
-//					cmd = utils.StartCaves64CMD
-//				} else {
-//					cmd = utils.StartCavesCMD
-//				}
-//			}
-//			err = utils.BashCMD(cmd)
-//			if err != nil {
-//				utils.Logger.Error("启动游戏失败", "err", err)
-//				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
-//				return
-//			}
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
-//		}
-//
-//	default:
-//		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-//	}
-//}
-//
 //func handleAnnouncementPost(c *gin.Context) {
 //	type AnnouncementForm struct {
 //		Message string `json:"message"`
