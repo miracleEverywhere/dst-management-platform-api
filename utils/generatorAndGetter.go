@@ -3,9 +3,11 @@ package utils
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/shirou/gopsutil/v3/process"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 /* ============== world 世界相关 ============== */
@@ -14,28 +16,51 @@ func (world World) GeneratePlayersListCMD() string {
 	return "screen -S \"" + world.ScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s <-@dmp@-> %s <-@dmp@-> %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
 }
 
-func (world World) GetProcessStatus() (float64, float64) {
-	cmd := fmt.Sprintf("top -b -n 1 -p $(ps -ef | grep $(ps -ef | grep %s | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}') | tail -1 | awk '{print $9\"-\"$10}'", world.ScreenName)
+func (world World) GetProcessStatus() (bool, float64, float64, float64) {
+	status := world.GetStatus()
+	if !status {
+		return false, 0, 0, 0
+	}
+
+	cmd := fmt.Sprintf("ps -ef | grep $(ps -ef | grep %s | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}'", world.ScreenName)
 	out, _, _ := BashCMDOutput(cmd)
 
 	if len(out) < 2 {
-		Logger.Warn("获取世界CPU内存失败", "world", world.Name)
-		return 0, 0
+		Logger.Warn("获取世界PID失败", "world", world.Name)
+		return true, 0, 0, 0
 	}
 
-	out = strings.TrimSpace(out)
-	stats := strings.Split(out, "-")
-
-	cpu, err := strconv.ParseFloat(stats[0], 64)
+	pid, err := strconv.Atoi(strings.TrimSpace(out))
 	if err != nil {
-		cpu = 0
-	}
-	mem, err := strconv.ParseFloat(stats[1], 64)
-	if err != nil {
-		mem = 0
+		Logger.Warn("获取世界PID失败", "world", world.Name, "err", err)
+		return true, 0, 0, 0
 	}
 
-	return cpu, mem
+	p, err := process.NewProcess(int32(pid))
+	if err != nil {
+		Logger.Warn("获取世界进程失败", "world", world.Name, "err", err)
+		return true, 0, 0, 0
+	}
+
+	cpu, err := p.Percent(time.Millisecond * 100)
+	if err != nil {
+		Logger.Warn("获取世界CPU失败", "world", world.Name, "err", err)
+		return true, 0, 0, 0
+	}
+
+	mem, err := p.MemoryPercent()
+	if err != nil {
+		Logger.Warn("获取世界内存使用率失败", "world", world.Name, "err", err)
+		return true, cpu, 0, 0
+	}
+
+	memSize, err := p.MemoryInfo()
+	if err != nil {
+		Logger.Warn("获取世界内存使用量失败", "world", world.Name, "err", err)
+		return true, cpu, 0, 0
+	}
+
+	return true, cpu, float64(mem), float64(memSize.RSS / 1024 / 1024)
 }
 
 func (world World) GetWorldType() string {
@@ -79,6 +104,10 @@ func (world World) GetModFile(clusterName string) string {
 
 func (world World) GetIniFile(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/server.ini", HomeDir, clusterName, world.Name)
+}
+
+func (world World) GetSavePath(clusterName string) string {
+	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/save", HomeDir, clusterName, world.Name)
 }
 
 func (world World) GetSessionPath(clusterName string) string {
