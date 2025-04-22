@@ -516,7 +516,7 @@ func handleMenu(c *gin.Context) {
 			ParentId:    0,
 			MenuType:    "2",
 			Path:        "/users",
-			Name:        "users",
+			Name:        "Users",
 			Component:   "users/index",
 			Icon:        "sc-icon-UserSettingsFill",
 			IsHide:      "1",
