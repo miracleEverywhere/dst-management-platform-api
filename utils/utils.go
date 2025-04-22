@@ -676,6 +676,9 @@ func StartClusterAllWorlds(cluster Cluster) error {
 	_ = BashCMD("screen -wipe")
 	time.Sleep(500 * time.Millisecond)
 	for _, world := range cluster.Worlds {
+		if world.GetStatus() {
+			continue
+		}
 		err = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
 		if err != nil {
 			Logger.Error("启动游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
