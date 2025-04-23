@@ -178,40 +178,15 @@ func CreateManualInstallScript() {
 }
 
 func CheckDirs() {
-
+	var err error
+	err = EnsureDirExists(DmpFilesPath)
+	if err != nil {
+		Logger.Error("目录检查未通过", "path", DmpFilesPath)
+		panic("目录检查未通过")
+	}
 }
 
 func CheckFiles(checkItem string) {
-	var (
-		err   error
-		exist bool
-	)
-
-	if checkItem == "uidMap" || checkItem == "all" {
-		exist, err = FileDirectoryExists(NicknameUIDPath)
-		if err != nil {
-			Logger.Error("检查uid_map.json文件失败")
-			return
-		}
-
-		if !exist {
-			if err = EnsureFileExists(NicknameUIDPath); err != nil {
-				Logger.Error("创建uid_map.json文件失败")
-				return
-			}
-
-			if err = TruncAndWriteFile(NicknameUIDPath, "{}"); err != nil {
-				Logger.Error("初始化uid_map.json文件失败")
-				return
-			}
-
-			Logger.Info("uid_map.json文件检查完成")
-		}
-
-		if checkItem == "uidMap" {
-			return
-		}
-	}
 
 }
 
@@ -1186,4 +1161,50 @@ func WriteLinesFromSlice(filePath string, lines []string) error {
 		_, _ = writer.WriteString(line + "\n")
 	}
 	return writer.Flush()
+}
+
+// ParseIniToMap 将ini文件读取为map
+func ParseIniToMap(filePath string) (map[string]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败")
+		}
+	}(file)
+
+	configMap := make(map[string]string)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+			continue
+		}
+
+		// 检查是否是节标题
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			continue
+		}
+
+		// 解析键值对
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+
+			configMap[key] = value
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return configMap, nil
 }
