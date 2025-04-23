@@ -4,6 +4,12 @@ const VERSION string = "2.0.0"
 
 const DstPath = ".klei/DoNotStarveTogether"
 
+const DmpFilesPath = "dmp_files"
+
+const ImportFileUploadPath = DmpFilesPath + "/upload/"
+
+const ImportFileUnzipPath = ImportFileUploadPath + "unzip/"
+
 /* ---- 重构 ---- */
 
 const MasterName = "Master"
@@ -82,9 +88,9 @@ const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/Que
 
 const ProcessLogFile = "dmpProcess.log"
 
-const ImportFileUploadPath = "/tmp/dst/"
+//const ImportFileUploadPath = "/tmp/dst/"
 
-const ImportFileUnzipPath = ImportFileUploadPath + "unzip/"
+//const ImportFileUnzipPath = ImportFileUploadPath + "unzip/"
 
 const MasterModUgcPath = "dst/ugc_mods/MyDediServer/Master/content/322330"
 
