@@ -92,3 +92,23 @@ func response(message string, lang string) string {
 		return responseEN[message]
 	}
 }
+
+func responseImportError(message string, lang string) string {
+	responseZH := map[string]string{
+		"zipFileSave":        "文件保存失败",
+		"createUnzipDir":     "解压目录创建失败",
+		"unzipProcess":       "解压失败",
+		"clusterIniNotFound": "未发现cluster.ini文件",
+		"clusterIniReadFail": "读取cluster.ini文件失败",
+		"cluster_name":       "缺少字段cluster_name",
+	}
+	responseEN := map[string]string{
+		"createUnzipDir": "解压目录创建失败",
+	}
+
+	if lang == "zh" {
+		return responseZH[message]
+	} else {
+		return responseEN[message]
+	}
+}

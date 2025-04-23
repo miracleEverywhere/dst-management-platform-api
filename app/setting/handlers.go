@@ -535,7 +535,7 @@ import (
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("kickSuccess", langStr), "data": nil})
 //}
-//
+
 //func handleImportFileUploadPost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -610,7 +610,7 @@ import (
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
 //}
-//
+
 //func handleModSettingFormatGet(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -1900,4 +1900,55 @@ func handleClusterSaveRegeneratePost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
+}
+
+func handleImportPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	clusterName := c.PostForm("clusterName")
+	if clusterName == "" {
+		c.JSON(http.StatusBadRequest, "缺少集群名")
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	cluster, err := config.GetClusterWithName(clusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	//保存文件
+	savePath := utils.ImportFileUploadPath + file.Filename
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.Logger.Error("文件保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": responseImportError("zipFileSave", langStr),
+			"data":    nil,
+		})
+		return
+	}
+	//执行导入
+	result, msg := doImport(file.Filename, cluster, langStr)
+	if !result {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": responseImportError(msg, langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
 }
