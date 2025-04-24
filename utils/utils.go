@@ -733,6 +733,7 @@ func GetTimestamp() int64 {
 	return milliseconds
 }
 
+// GetFileAllContent 读取文件内容
 func GetFileAllContent(filePath string) (string, error) {
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
 	if strings.HasPrefix(filePath, "~") {
@@ -768,7 +769,7 @@ func GetFileAllContent(filePath string) (string, error) {
 }
 
 // GetDirs 获取指定目录下的目录，不包含子目录和文件
-func GetDirs(dirPath string) ([]string, error) {
+func GetDirs(dirPath string, fullPath bool) ([]string, error) {
 	var dirs []string
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
 	if strings.HasPrefix(dirPath, "~") {
@@ -802,7 +803,16 @@ func GetDirs(dirPath string) ([]string, error) {
 	// 遍历目录条目，只输出目录
 	for _, entry := range entries {
 		if entry.IsDir() {
-			dirs = append(dirs, entry.Name())
+			if fullPath {
+				lastChar := string([]rune(dirPath)[len([]rune(dirPath))-1])
+				if lastChar != "/" {
+					dirs = append(dirs, dirPath+"/"+entry.Name())
+				} else {
+					dirs = append(dirs, dirPath+entry.Name())
+				}
+			} else {
+				dirs = append(dirs, entry.Name())
+			}
 		}
 	}
 	return dirs, nil
@@ -1044,6 +1054,11 @@ func GetDirSize(path string) (int64, error) {
 	return size, err
 }
 
+// GetLastDir 从路径中提取最后一个目录名，并检查是否以 "__" 开头
+func GetLastDir(path string) string {
+	return filepath.Base(path)
+}
+
 // GetFileSize 文件大小
 func GetFileSize(filePath string) (int64, error) {
 	// 使用 os.Stat 获取文件信息
@@ -1122,7 +1137,7 @@ func DstModsSetup(mod string) error {
 	return nil
 }
 
-// ReadLinesToSlice 读取文件内容到切片中
+// ReadLinesToSlice 文件内容按行读取到切片中
 func ReadLinesToSlice(filePath string) ([]string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -1143,7 +1158,7 @@ func ReadLinesToSlice(filePath string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-// WriteLinesFromSlice 将切片内容写回文件
+// WriteLinesFromSlice 将切片内容按元素+\n写回文件
 func WriteLinesFromSlice(filePath string, lines []string) error {
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -1207,4 +1222,19 @@ func ParseIniToMap(filePath string) (map[string]string, error) {
 	}
 
 	return configMap, nil
+}
+
+func GetWorldPortFactor(clusterName string) (int, error) {
+	config, err := ReadConfig()
+	if err != nil {
+		return 0, err
+	}
+
+	for index, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == clusterName {
+			return index * 10, nil
+		}
+	}
+
+	return 0, fmt.Errorf("没有对应的集群")
 }
