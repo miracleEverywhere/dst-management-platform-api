@@ -162,7 +162,7 @@ func (cluster Cluster) GetWhiteListFile() string {
 func (cluster Cluster) GetWhiteListSlot() int {
 	fileContent, err := ReadLinesToSlice(cluster.GetWhiteListFile())
 	if err != nil {
-		Logger.Warn("没有找到白名单文件")
+		Logger.Info("没有找到白名单文件", "err", err)
 		return 0
 	}
 
