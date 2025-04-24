@@ -1903,6 +1903,10 @@ func handleClusterSaveRegeneratePost(c *gin.Context) {
 }
 
 func handleImportPost(c *gin.Context) {
+	defer func() {
+		clearUpZipFile()
+	}()
+
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -1932,6 +1936,16 @@ func handleImportPost(c *gin.Context) {
 		return
 	}
 
+	if cluster.Worlds != nil {
+		utils.Logger.Info("被导入的集群中的世界不为空")
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": responseImportError("worldNotEmpty", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
 	//保存文件
 	savePath := utils.ImportFileUploadPath + file.Filename
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
@@ -1944,9 +1958,42 @@ func handleImportPost(c *gin.Context) {
 		return
 	}
 	//执行导入
-	result, msg := doImport(file.Filename, cluster, langStr)
+	result, msg, cluster, lists := doImport(file.Filename, cluster, langStr)
 	if !result {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": responseImportError(msg, langStr), "data": nil})
+		return
+	}
+	//写入三个名单
+	clusterPath := cluster.GetMainPath() + "/"
+	err = utils.EnsureDirExists(clusterPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": responseImportError("clusterDirCreateFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+	for key, value := range lists {
+		err = utils.EnsureFileExists(clusterPath + key)
+		if err != nil {
+			utils.Logger.Error("创建"+key+"文件失败", "err", err)
+			continue
+		}
+		err = utils.WriteLinesFromSlice(clusterPath+key, value)
+		if err != nil {
+			utils.Logger.Error("写入"+key+"文件失败", "err", err)
+			continue
+		}
+	}
+	//写入文件
+	err = saveSetting(cluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("importSuccessSaveFail", langStr),
+			"data":    nil,
+		})
 		return
 	}
 

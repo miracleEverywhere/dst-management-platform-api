@@ -42,6 +42,7 @@ func response(message string, lang string) string {
 		"createSuccess":          "创建成功",
 		"clusterExisted":         "集群已存在",
 		"saveSuccessRestartFail": "保存成功，重启失败",
+		"importSuccessSaveFail":  "导入文件检查通过，保存失败，服务器内部错误",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":            "Save Success",
@@ -84,6 +85,7 @@ func response(message string, lang string) string {
 		"createSuccess":          "Create Success",
 		"clusterExisted":         "Cluster Existed",
 		"saveSuccessRestartFail": "Save Success, Restart Fail",
+		"importSuccessSaveFail":  "File import verification passed, but save failed due to an internal server error.",
 	}
 
 	if lang == "zh" {
@@ -95,15 +97,46 @@ func response(message string, lang string) string {
 
 func responseImportError(message string, lang string) string {
 	responseZH := map[string]string{
-		"zipFileSave":        "文件保存失败",
-		"createUnzipDir":     "解压目录创建失败",
-		"unzipProcess":       "解压失败",
-		"clusterIniNotFound": "未发现cluster.ini文件",
-		"clusterIniReadFail": "读取cluster.ini文件失败",
-		"cluster_name":       "缺少字段cluster_name",
+		"zipFileSave":             "文件保存失败",
+		"createUnzipDir":          "解压目录创建失败",
+		"unzipProcess":            "解压失败",
+		"clusterIniNotFound":      "未发现cluster.ini文件",
+		"clusterIniReadFail":      "读取cluster.ini文件失败",
+		"cluster_name_NotSet":     "cluster.ini文件缺少字段cluster_name",
+		"game_mode_NotSet":        "cluster.ini文件缺少字段game_mode",
+		"clusterTokenNotFound":    "未发现cluster_token.txt文件",
+		"clusterTokenReadFail":    "读取cluster_token.txt文件失败",
+		"world_file_path_GetFail": "获取世界目录失败",
+		"serverIniNotFound":       "未发现server.ini文件",
+		"port_factor_GetFail":     "获取集群信息异常，请检查当前操作的集群",
+		"is_master_NotSet":        "server.ini文件缺少字段is_master",
+		"is_master_ValueError":    "server.ini字段is_master值异常",
+		"master_ip_NotSet":        "cluster.ini文件缺少字段master_ip",
+		"levelDataNotFound":       "未发现leveldataoverride.lua文件",
+		"levelDataReadFail":       "读取leveldataoverride.lua文件失败",
+		"worldNotEmpty":           "当前房间含有其他世界，请创建一个新集群后导入",
+		"clusterDirCreateFail":    "创建集群目录失败，服务器内部错误",
 	}
 	responseEN := map[string]string{
-		"createUnzipDir": "解压目录创建失败",
+		"zipFileSave":             "file save fail",
+		"createUnzipDir":          "create zip dir fail",
+		"unzipProcess":            "unzip fail",
+		"clusterIniNotFound":      "cluster.ini not found",
+		"clusterIniReadFail":      "read cluster.ini fail",
+		"cluster_name_NotSet":     "the cluster.ini file is missing the cluster_name field",
+		"game_mode_NotSet":        "the cluster.ini file is missing the game_mode field",
+		"clusterTokenNotFound":    "cluster_token.txt not found",
+		"clusterTokenReadFail":    "read cluster_token.txt fail",
+		"world_file_path_GetFail": "read world dir fail",
+		"serverIniNotFound":       "server.ini not found",
+		"port_factor_GetFail":     "failed to retrieve cluster information. Please check the cluster you are currently operating on",
+		"is_master_NotSet":        "the server.ini file is missing the is_master field",
+		"is_master_ValueError":    "invalid value detected for 'is_master' field in server.ini configuration file",
+		"master_ip_NotSet":        "the server.ini file is missing the master_ip field",
+		"levelDataNotFound":       "leveldataoverride.lua not found",
+		"levelDataReadFail":       "read leveldataoverride.lua fail",
+		"worldNotEmpty":           "this cluster has valid world, please create new cluster to import",
+		"clusterDirCreateFail":    "cluster directory creation failed due to an internal server error",
 	}
 
 	if lang == "zh" {

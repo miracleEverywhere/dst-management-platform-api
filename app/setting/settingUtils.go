@@ -131,7 +131,6 @@ func saveSetting(reqCluster utils.Cluster) error {
 		utils.Logger.Error("创建cluster.ini失败", "err", err)
 		return err
 	}
-	// 获取白名单长度
 
 	clusterIniFileContent := clusterTemplate(reqCluster)
 	err = utils.TruncAndWriteFile(reqCluster.GetIniFile(), clusterIniFileContent)
@@ -335,7 +334,7 @@ func saveSetting(reqCluster utils.Cluster) error {
 //	return utils.ScreenCMD(cmd, world)
 //}
 
-func doImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster) {
+func doImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster, map[string][]string) {
 	var (
 		result    bool
 		errMsgKey string
@@ -346,121 +345,305 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	if err != nil {
 		errMsgKey = "createUnzipDir"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
 	}
 	err = utils.BashCMD("unzip -qo " + filePath + " -d " + utils.ImportFileUnzipPath)
 	if err != nil {
 		errMsgKey = "unzipProcess"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
 	}
 
 	/* ======== cluster.ini ======== */
-	filePath = utils.ImportFileUnzipPath + "cluster.ini"
-	result, err = utils.FileDirectoryExists(filePath)
+	clusterIniFilePath := utils.ImportFileUnzipPath + "cluster.ini"
+	result, err = utils.FileDirectoryExists(clusterIniFilePath)
 	if !result || err != nil {
 		errMsgKey = "clusterIniNotFound"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
 	}
 
-	clusterIni, err := utils.ParseIniToMap(filePath)
+	clusterIni, err := utils.ParseIniToMap(clusterIniFilePath)
+	if err != nil {
+		errMsgKey = "clusterIniReadFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	}
 
 	if clusterIni["cluster_name"] == "" {
 		errMsgKey = "cluster_name_NotSet"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
 	}
 	cluster.ClusterSetting.Name = clusterIni["cluster_name"]
 
 	cluster.ClusterSetting.Description = clusterIni["cluster_description"]
 
-	checkItems := []string{"cluster.ini", "cluster_token.txt", "Master/leveldataoverride.lua", "Master/modoverrides.lua", "Master/server.ini"}
-	for _, item := range checkItems {
-		filePath = utils.ImportFileUnzipPath + item
-		result, err = utils.FileDirectoryExists(filePath)
+	if clusterIni["game_mode"] == "" {
+		errMsgKey = "game_mode_NotSet"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	}
+	cluster.ClusterSetting.GameMode = clusterIni["game_mode"]
+
+	if clusterIni["pvp"] == "" {
+		cluster.ClusterSetting.PVP = false
+	} else {
+		pvp, err := strconv.ParseBool(clusterIni["pvp"])
 		if err != nil {
-			utils.Logger.Error("检查文件"+filePath+"失败", "err", err)
-			return false, err, utils.Cluster{}
-		}
-		if !result {
-			utils.Logger.Error("文件" + filePath + "不存在")
-			return false, nil
+			cluster.ClusterSetting.PVP = false
+		} else {
+			cluster.ClusterSetting.PVP = pvp
 		}
 	}
-	return true, nil
+
+	if clusterIni["max_players"] == "" {
+		errMsgKey = "max_players_NotSet"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	}
+	playnum, err := strconv.Atoi(clusterIni["max_players"])
+	if err != nil {
+		utils.Logger.Warn("最大玩家数获取异常，设置为默认值6")
+		cluster.ClusterSetting.PlayerNum = 6
+	} else {
+		cluster.ClusterSetting.PlayerNum = playnum
+	}
+
+	if clusterIni["max_snapshots"] == "" {
+		utils.Logger.Info("未获取到最大回档天数，设置为默认值10")
+		cluster.ClusterSetting.BackDays = 10
+	} else {
+		backdays, err := strconv.Atoi(clusterIni["max_snapshots"])
+		if err != nil {
+			utils.Logger.Warn("最大回档天数获取异常，设置为默认值10")
+			cluster.ClusterSetting.BackDays = 10
+		} else {
+			cluster.ClusterSetting.BackDays = backdays
+		}
+	}
+
+	if clusterIni["vote_enabled"] == "" {
+		utils.Logger.Info("未获取到是否开启玩家投票，设置为默认值关闭")
+		cluster.ClusterSetting.Vote = false
+	} else {
+		vote, err := strconv.ParseBool(clusterIni["vote_enabled"])
+		if err != nil {
+			utils.Logger.Warn("是否开启玩家投票获取异常，设置为默认值关闭")
+			cluster.ClusterSetting.Vote = false
+		} else {
+			cluster.ClusterSetting.Vote = vote
+		}
+	}
+
+	cluster.ClusterSetting.Password = clusterIni["cluster_password"]
+
+	if clusterIni["tick_rate"] == "" {
+		utils.Logger.Info("未获取到tick_rate，设置为默认值15")
+		cluster.SysSetting.TickRate = 15
+	} else {
+		tickRate, err := strconv.Atoi(clusterIni["tick_rate"])
+		if err != nil {
+			utils.Logger.Warn("tick_rate获取异常，设置为默认值15")
+			cluster.SysSetting.TickRate = 15
+		} else {
+			cluster.SysSetting.TickRate = tickRate
+		}
+	}
+
+	clusterKey := "supersecretkey"
+	if clusterIni["cluster_key"] == "" {
+		utils.Logger.Info("未获取到cluster_key，设置为默认值'supersecretkey'")
+	} else {
+		clusterKey = clusterIni["cluster_key"]
+	}
+
+	masterIp := "127.0.0.1"
+	if clusterIni["master_ip"] == "" {
+		errMsgKey = "master_ip_NotSet"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	} else {
+		masterIp = clusterIni["master_ip"]
+	}
+
+	/* ======== cluster_token.txt ======== */
+	clusterTokenFilePath := utils.ImportFileUnzipPath + "cluster_token.txt"
+	result, err = utils.FileDirectoryExists(clusterTokenFilePath)
+	if !result || err != nil {
+		errMsgKey = "clusterTokenNotFound"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	}
+	clusterToken, err := utils.GetFileAllContent(clusterTokenFilePath)
+	if err != nil {
+		errMsgKey = "clusterTokenReadFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	}
+	cluster.ClusterSetting.Token = clusterToken
+
+	/* ======== whitelist.txt blocklist.txt adminlist.txt ======== */
+	lists := make(map[string][]string)
+	whiteListFilePath := utils.ImportFileUnzipPath + "whitelist.txt"
+	result, err = utils.FileDirectoryExists(whiteListFilePath)
+	if !result || err != nil {
+		utils.Logger.Warn("未发现白名单文件，跳过")
+	} else {
+		whiteList, err := utils.ReadLinesToSlice(whiteListFilePath)
+		if err != nil {
+			utils.Logger.Warn("读取白名单文件失败，跳过")
+		} else {
+			lists["whitelist.txt"] = whiteList
+		}
+	}
+
+	blockListFilePath := utils.ImportFileUnzipPath + "blocklist.txt"
+	result, err = utils.FileDirectoryExists(blockListFilePath)
+	if !result || err != nil {
+		utils.Logger.Warn("未发现黑名单文件，跳过")
+	} else {
+		blockList, err := utils.ReadLinesToSlice(blockListFilePath)
+		if err != nil {
+			utils.Logger.Warn("读取黑名单文件失败，跳过")
+		} else {
+			lists["blocklist.txt"] = blockList
+		}
+	}
+
+	adminListFilePath := utils.ImportFileUnzipPath + "adminlist.txt"
+	result, err = utils.FileDirectoryExists(adminListFilePath)
+	if !result || err != nil {
+		utils.Logger.Warn("未发现管理员名单文件，跳过")
+	} else {
+		adminList, err := utils.ReadLinesToSlice(adminListFilePath)
+		if err != nil {
+			utils.Logger.Warn("读取管理员名单文件失败，跳过")
+		} else {
+			lists["adminlist.txt"] = adminList
+		}
+	}
+
+	/* ======== Master/ Caves/ ======== */
+	worldsPath, err := utils.GetDirs(utils.ImportFileUnzipPath, true)
+	if err != nil || len(worldsPath) == 0 {
+		errMsgKey = "world_file_path_GetFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	}
+
+	worldPortFactor, err := utils.GetWorldPortFactor(cluster.ClusterSetting.ClusterName)
+	if err != nil {
+		errMsgKey = "port_factor_GetFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+	}
+
+	for index, worldPath := range worldsPath {
+		// 判断是否含有奇奇怪怪的目录，MacOS真是狗屎啊
+		lastDir := utils.GetLastDir(worldPath)
+		if strings.HasPrefix(lastDir, "__") {
+			continue
+		}
+		var world utils.World
+		/* ======== server.ini ======== */
+		result, err = utils.FileDirectoryExists(worldPath + "/server.ini")
+		if !result || err != nil {
+			errMsgKey = "serverIniNotFound"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		}
+
+		serverIni, err := utils.ParseIniToMap(worldPath + "/server.ini")
+		if err != nil {
+			errMsgKey = "clusterIniReadFail"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		}
+
+		world.ServerPort = 11000 + worldPortFactor + index + 1
+
+		if serverIni["is_master"] == "" {
+			errMsgKey = "is_master_NotSet"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		}
+		isMaster, err := strconv.ParseBool(serverIni["is_master"])
+		if err != nil {
+			errMsgKey = "is_master_ValueError"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		}
+		world.IsMaster = isMaster
+
+		world.ClusterKey = clusterKey
+
+		world.ShardMasterIp = masterIp
+
+		world.ShardMasterPort = 10887 + worldPortFactor + index + 1
+
+		world.SteamMasterPort = 27017 + worldPortFactor + index + 1
+
+		world.SteamAuthenticationPort = 8767 + worldPortFactor + index + 1
+
+		if serverIni["encode_user_path"] == "" {
+			world.EncodeUserPath = true
+		} else {
+			encodeUserPath, err := strconv.ParseBool(serverIni["encode_user_path"])
+			if err != nil {
+				utils.Logger.Warn("encode_user_path值异常，设置为默认值true")
+				world.EncodeUserPath = true
+			} else {
+				world.EncodeUserPath = encodeUserPath
+			}
+		}
+
+		/* ======== leveldataoverride.lua(worldgenoverride.lua) ======== */
+		// 兼容两种文件名leveldataoverride.lua和worldgenoverride.lua
+		levelDataPath := worldPath + "/leveldataoverride.lua"
+		result, err = utils.FileDirectoryExists(levelDataPath)
+		if !result || err != nil {
+			levelDataPath = worldPath + "/worldgenoverride.lua"
+			result, err := utils.FileDirectoryExists(levelDataPath)
+			if !result || err != nil {
+				errMsgKey = "levelDataNotFound"
+				utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+				return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+			}
+		}
+		levelData, err := utils.GetFileAllContent(levelDataPath)
+		if err != nil {
+			errMsgKey = "levelDataReadFail"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		}
+		world.LevelData = levelData
+
+		/* ======== modoverrides.lua ======== */
+		result, err = utils.FileDirectoryExists(worldPath + "/modoverrides.lua")
+		if !result || err != nil {
+			utils.Logger.Warn("未发现modoverrides.lua文件，跳过")
+		}
+		mod, err := utils.GetFileAllContent(worldPath + "/modoverrides.lua")
+		if err != nil {
+			utils.Logger.Warn("读取modoverrides.lua文件失败，跳过")
+		} else {
+			cluster.Mod = mod
+		}
+
+		cluster.Worlds = append(cluster.Worlds, world)
+	}
+
+	return true, "", cluster, lists
 }
 
-//func WriteDatabase() error {
-//	//地面配置
-//	ground, err := utils.GetFileAllContent(utils.MasterSettingPath)
-//	if err != nil {
-//		utils.Logger.Error("读取地面配置文件失败", "err", err)
-//		return err
-//	}
-//	//模组配置
-//	mod, err := utils.GetFileAllContent(utils.MasterModPath)
-//	if err != nil {
-//		utils.Logger.Error("读取mod配置文件失败", "err", err)
-//		return err
-//	}
-//	//洞穴配置
-//	caves, err := utils.GetFileAllContent(utils.CavesSettingPath)
-//	if err != nil {
-//		utils.Logger.Warn("读取洞穴配置文件失败", "err", err)
-//		caves = ""
-//	}
-//
-//	var baseSetting utils.RoomSettingBase
-//	baseSetting, err = utils.GetRoomSettingBase()
-//	if err != nil {
-//		utils.Logger.Error("读取cluster配置文件失败", "err", err)
-//		return err
-//	}
-//
-//	masterPort, err := utils.GetServerPort(utils.MasterServerPath)
-//	if err != nil {
-//		utils.Logger.Error("获取地面端口失败", "err", err)
-//		return err
-//	}
-//	baseSetting.MasterPort = masterPort
-//	if caves != "" {
-//		cavesPort, err := utils.GetServerPort(utils.CavesServerPath)
-//		if err != nil {
-//			utils.Logger.Error("获取洞穴端口失败", "err", err)
-//			return err
-//		}
-//		baseSetting.CavesPort = cavesPort
-//	}
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		return err
-//	}
-//
-//	utils.SetInitInfo()
-//
-//	config.RoomSetting.Base = baseSetting
-//	config.RoomSetting.Ground = ground
-//	config.RoomSetting.Cave = caves
-//	config.RoomSetting.Mod = mod
-//
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		return err
-//	}
-//
-//	return nil
-//}
-//
-//func clearUpZipFile() {
-//	err := utils.BashCMD("rm -rf " + utils.ImportFileUploadPath + "*")
-//	if err != nil {
-//		utils.Logger.Error("清理导入的压缩文件失败", "err", err)
-//	}
-//}
+func clearUpZipFile() {
+	err := utils.BashCMD("rm -rf " + utils.ImportFileUploadPath + "*")
+	if err != nil {
+		utils.Logger.Error("清理导入的压缩文件失败", "err", err)
+	}
+}
+
 //
 //func changeWhitelistSlots() error {
 //	err := utils.EnsureFileExists(utils.WhiteListPath)

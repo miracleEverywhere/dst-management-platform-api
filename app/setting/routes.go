@@ -17,12 +17,6 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/cluster/save", utils.MWtoken(), handleClusterSavePost)
 			setting.POST("/cluster/save_restart", utils.MWtoken(), handleClusterSaveRestartPost)
 			setting.POST("/cluster/save_regenerate", utils.MWtoken(), handleClusterSaveRegeneratePost)
-			//setting.GET("/room", utils.MWtoken(), handleRoomSettingGet)
-			//setting.GET("/room/multihost", utils.MWtoken(), handleGetMultiHostGet)
-			//setting.POST("/room/multihost", utils.MWtoken(), handleChangeMultiHostPost)
-			//setting.POST("/room/save", utils.MWtoken(), handleRoomSettingSavePost)
-			//setting.POST("/room/save_restart", utils.MWtoken(), handleRoomSettingSaveAndRestartPost)
-			//setting.POST("/room/save_generate", utils.MWtoken(), handleRoomSettingSaveAndGeneratePost)
 			//// Player
 			//setting.GET("/player/list", utils.MWtoken(), handlePlayerListGet)
 			//setting.GET("/player/list/history", utils.MWtoken(), handleHistoryPlayerGet)
@@ -34,8 +28,8 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			//setting.POST("/player/delete/block", utils.MWtoken(), handleBlockDeletePost)
 			//setting.POST("/player/delete/white", utils.MWtoken(), handleWhiteDeletePost)
 			//setting.POST("/player/kick", utils.MWtoken(), handleKick)
-			//// 存档导入
-			//setting.POST("/import/upload", utils.MWtoken(), handleImportFileUploadPost)
+			// 存档导入
+			setting.POST("/import/upload", utils.MWtoken(), handleImportPost)
 			//// MOD
 			//setting.GET("/mod/setting/format", utils.MWtoken(), handleModSettingFormatGet)
 			//setting.GET("/mod/config_options", utils.MWtoken(), handleModConfigOptionsGet)
