@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/app/auth"
 	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/app/setting"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"embed"
 	"fmt"
@@ -69,8 +70,8 @@ func initialize() {
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
 	//加载定时任务
-	//scheduler.InitTasks()
-	////启动定时任务调度器
-	//go scheduler.Scheduler.StartAsync()
+	scheduler.InitTasks()
+	//启动定时任务调度器
+	go scheduler.Scheduler.StartAsync()
 	utils.Logger.Info("定时任务已启动")
 }
