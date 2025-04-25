@@ -1,89 +1,59 @@
 package logs
 
-//import (
-//	"dst-management-platform-api/utils"
-//	"encoding/base64"
-//	"fmt"
-//	"github.com/gin-gonic/gin"
-//	"net/http"
-//	"os"
-//	"strings"
-//)
-//
-//func handleLogGet(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	type LogForm struct {
-//		Line int    `form:"line" json:"line"`
-//		Type string `form:"type" json:"type"`
-//	}
-//	var logForm LogForm
-//	if err := c.ShouldBindQuery(&logForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	switch logForm.Type {
-//	case "ground":
-//		logsValue, err := getLastNLines(utils.MasterLogPath, logForm.Line)
-//		if err != nil {
-//			utils.Logger.Error("读取日志失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
-//	case "caves":
-//		logsValue, err := getLastNLines(utils.CavesLogPath, logForm.Line)
-//		if err != nil {
-//			utils.Logger.Error("读取日志失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
-//	case "chat":
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		var logsValue []string
-//		if config.RoomSetting.Ground != "" {
-//			logsValue, err = getLastNLines(utils.MasterChatLogPath, logForm.Line)
-//		} else {
-//			logsValue, err = getLastNLines(utils.CavesChatLogPath, logForm.Line)
-//		}
-//
-//		if err != nil {
-//			utils.Logger.Error("读取日志失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
-//	case "dmp":
-//		logsValue, err := getLastNLines(utils.DMPLogPath, logForm.Line)
-//		if err != nil {
-//			utils.Logger.Error("读取日志失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
-//	case "runtime":
-//		logsValue, err := getLastNLines(utils.ProcessLogFile, logForm.Line)
-//		if err != nil {
-//			utils.Logger.Error("读取日志失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
-//	default:
-//		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-//	}
-//}
-//
+import (
+	"dst-management-platform-api/utils"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"net/http"
+)
+
+func handleLogGet(c *gin.Context) {
+	type LogForm struct {
+		ClusterName string `form:"clusterName" json:"clusterName"`
+		WorldName   string `form:"worldName" json:"worldName"`
+		Line        int    `form:"line" json:"line"`
+		Type        string `form:"type" json:"type"`
+	}
+	var (
+		logForm LogForm
+		logPath string
+	)
+	if err := c.ShouldBindQuery(&logForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	switch logForm.Type {
+	case "world":
+		if logForm.ClusterName == "" || logForm.WorldName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少集群名或世界名"})
+			return
+		}
+		logPath = fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/server_log.txt", utils.HomeDir, logForm.ClusterName, logForm.WorldName)
+	case "chat":
+		if logForm.ClusterName == "" || logForm.WorldName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少集群名或世界名"})
+			return
+		}
+		logPath = fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/server_chat_log.txt", utils.HomeDir, logForm.ClusterName, logForm.WorldName)
+	case "access":
+		logPath = utils.DMPAccessLog
+	case "runtime":
+		logPath = utils.DMPRuntimeLog
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+	}
+
+	logsValue, err := getLastNLines(logPath, logForm.Line)
+	if err != nil {
+		utils.Logger.Error("读取日志失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{""}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logsValue})
+}
+
 //func handleLogDownloadPost(c *gin.Context) {
 //	defer func() {
 //		var cmdClean = "cd /tmp && rm -f *.log logs.tgz"

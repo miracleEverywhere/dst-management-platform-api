@@ -3,6 +3,7 @@ package main
 import (
 	"dst-management-platform-api/app/auth"
 	"dst-management-platform-api/app/home"
+	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
@@ -39,8 +40,8 @@ func main() {
 	r = setting.RouteSetting(r)
 	//工具模块
 	//r = tools.RouteTools(r)
-	////工具模块
-	//r = logs.RouteLogs(r)
+	//日志模块
+	r = logs.RouteLogs(r)
 	// 外部接口
 	//r = externalApi.RouteExternalApi(r)
 	//静态资源，放在最后

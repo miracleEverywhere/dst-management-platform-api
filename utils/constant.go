@@ -10,6 +10,10 @@ const ImportFileUploadPath = DmpFilesPath + "/upload/"
 
 const ImportFileUnzipPath = ImportFileUploadPath + "unzip/"
 
+const DMPAccessLog = "dmp.log"
+
+const DMPRuntimeLog = "dmpProcess.log"
+
 /* ---- 重构 ---- */
 
 const MasterName = "Master"
@@ -57,8 +61,6 @@ const CavesChatLogPath = ServerPath + CavesName + "/server_chat_log.txt"
 const MasterBackupChatLogPath = ServerPath + MasterName + "/backup/server_chat_log"
 
 const CavesBackupChatLogPath = ServerPath + CavesName + "/backup/server_chat_log"
-
-const DMPLogPath = "./dmp.log"
 
 const AdminListPath = ServerPath + "adminlist.txt"
 
