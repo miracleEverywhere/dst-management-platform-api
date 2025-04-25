@@ -1622,8 +1622,9 @@ func handleClustersGet(c *gin.Context) {
 	}
 
 	type ClusterItem struct {
-		ClusterName        string `json:"clusterName"`
-		ClusterDisplayName string `json:"clusterDisplayName"`
+		ClusterName        string   `json:"clusterName"`
+		ClusterDisplayName string   `json:"clusterDisplayName"`
+		Worlds             []string `json:"worlds"`
 	}
 	var data []ClusterItem
 
@@ -1631,9 +1632,14 @@ func handleClustersGet(c *gin.Context) {
 		// 管理员返回所有cluster
 
 		for _, cluster := range config.Clusters {
+			var worlds []string
+			for _, world := range cluster.Worlds {
+				worlds = append(worlds, world.Name)
+			}
 			data = append(data, ClusterItem{
 				ClusterName:        cluster.ClusterSetting.ClusterName,
 				ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+				Worlds:             worlds,
 			})
 		}
 
@@ -1645,9 +1651,14 @@ func handleClustersGet(c *gin.Context) {
 					if err != nil {
 						continue
 					} else {
+						var worlds []string
+						for _, world := range cluster.Worlds {
+							worlds = append(worlds, world.Name)
+						}
 						data = append(data, ClusterItem{
 							ClusterName:        cluster.ClusterSetting.ClusterName,
 							ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+							Worlds:             worlds,
 						})
 					}
 				}
