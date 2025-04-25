@@ -2,6 +2,7 @@ package main
 
 import (
 	"dst-management-platform-api/app/auth"
+	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/app/home"
 	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/setting"
@@ -43,7 +44,7 @@ func main() {
 	//日志模块
 	r = logs.RouteLogs(r)
 	// 外部接口
-	//r = externalApi.RouteExternalApi(r)
+	r = externalApi.RouteExternalApi(r)
 	//静态资源，放在最后
 	r.Use(static.ServeEmbed("dist", EmbedFS))
 
