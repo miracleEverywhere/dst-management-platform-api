@@ -848,3 +848,72 @@ func handleRegisterPost(c *gin.Context) {
 		"data":    nil,
 	})
 }
+
+func handleUserAnnounceIDGet(c *gin.Context) {
+	username, exist := c.Get("username")
+	if !exist {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+	usernameStr, ok := username.(string)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	user := config.GetUserWithUsername(usernameStr)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": user.AnnounceID})
+}
+
+func handleUserAnnounceIDPost(c *gin.Context) {
+	type AnnouncedForm struct {
+		ID int `json:"id"`
+	}
+	var announcedForm AnnouncedForm
+	if err := c.ShouldBindJSON(&announcedForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	username, exist := c.Get("username")
+	if !exist {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+	usernameStr, ok := username.(string)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for index, user := range config.Users {
+		if usernameStr == user.Username {
+			config.Users[index].AnnounceID = announcedForm.ID
+			break
+		}
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+}

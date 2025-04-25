@@ -1,7 +1,6 @@
 package tools
 
 import (
-	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,9 +41,6 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			//tools.POST("/replace_so", utils.MWtoken(), handleReplaceDSTSOFile)
 			//// 令牌
 			//tools.POST("/token", utils.MWtoken(), handleCreateTokenPost)
-			// 已读messageID
-			tools.GET("/announced_id", utils.MWtoken(), handleAnnouncedGet)
-			tools.POST("/announced_id", utils.MWtoken(), handleAnnouncedPost)
 			//// 监控
 			//tools.GET("/metrics", utils.MWtoken(), handleMetricsGet)
 			//// 版本
