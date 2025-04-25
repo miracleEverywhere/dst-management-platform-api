@@ -201,6 +201,15 @@ func (config Config) GetWorldWithName(clusterName, worldName string) (World, err
 	return World{}, fmt.Errorf("在集群%s中，没有发现名为%s的世界", clusterName, worldName)
 }
 
+func (config Config) GetUserWithUsername(username string) User {
+	for _, user := range config.Users {
+		if user.Username == username {
+			return user
+		}
+	}
+	return User{}
+}
+
 /* ============== Key API相关 ============== */
 
 func GetSteamApiKey() string {
