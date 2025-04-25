@@ -43,6 +43,7 @@ func handleLogGet(c *gin.Context) {
 		logPath = utils.DMPRuntimeLog
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
 	}
 
 	logsValue, err := getLastNLines(logPath, logForm.Line)

@@ -17,8 +17,9 @@ func setPlayer2DB(config utils.Config) {
 		playerList []utils.Players
 		err        error
 	)
-	fmt.Println(1)
+
 	for _, cluster := range config.Clusters {
+		err = nil
 		for _, world := range cluster.Worlds {
 			if world.GetStatus() {
 				players, err = getPlayersList(world, cluster.ClusterSetting.ClusterName)
@@ -28,7 +29,7 @@ func setPlayer2DB(config utils.Config) {
 			}
 		}
 		if err != nil {
-			utils.Logger.Error("获取玩家列表失败", "err", err)
+			utils.Logger.Error("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
 			continue
 		}
 
