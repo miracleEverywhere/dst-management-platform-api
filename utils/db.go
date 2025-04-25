@@ -13,6 +13,7 @@ type User struct {
 	Password          string   `json:"password"`
 	Disabled          bool     `json:"disabled"`
 	ClusterPermission []string `json:"clusterPermission"`
+	AnnounceID        int      `json:"announceID"`
 }
 
 type ClusterSetting struct {
