@@ -13,23 +13,19 @@ import (
 
 func setPlayer2DB(config utils.Config) {
 	var (
-		hasMaster  bool
 		players    []string
 		playerList []utils.Players
 		err        error
 	)
+	fmt.Println(1)
 	for _, cluster := range config.Clusters {
-		hasMaster = false
 		for _, world := range cluster.Worlds {
-			if world.IsMaster {
-				hasMaster = true
+			if world.GetStatus() {
 				players, err = getPlayersList(world, cluster.ClusterSetting.ClusterName)
-				break
+				if err == nil {
+					break
+				}
 			}
-		}
-
-		if !hasMaster {
-			players, err = getPlayersList(cluster.Worlds[0], cluster.ClusterSetting.ClusterName)
 		}
 		if err != nil {
 			utils.Logger.Error("获取玩家列表失败", "err", err)
@@ -65,9 +61,6 @@ func setPlayer2DB(config utils.Config) {
 func getPlayersList(world utils.World, clusterName string) ([]string, error) {
 	var file *os.File
 
-	if !world.GetStatus() {
-		return nil, fmt.Errorf("当前世界未开启")
-	}
 	// 先执行命令
 	err := utils.BashCMD(world.GeneratePlayersListCMD())
 	if err != nil {
