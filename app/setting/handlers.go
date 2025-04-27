@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/tealeg/xlsx"
 	"net/http"
 	"time"
 )
@@ -502,13 +503,13 @@ func handlePlayerListChangePost(c *gin.Context) {
 		langStr = strLang
 	}
 	var (
-		reqFrom        ReqForm
+		reqForm        ReqForm
 		uidList        []string
 		err            error
 		messageSuccess string
 		messageFail    string
 	)
-	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -521,22 +522,22 @@ func handlePlayerListChangePost(c *gin.Context) {
 		return
 	}
 
-	cluster, err := config.GetClusterWithName(reqFrom.ClusterName)
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
 	if err != nil {
 		utils.RespondWithError(c, 404, langStr)
 		return
 	}
 
-	switch reqFrom.ListName {
+	switch reqForm.ListName {
 	case "admin":
-		if reqFrom.Type == "add" {
+		if reqForm.Type == "add" {
 			messageSuccess = "addAdmin"
 			messageFail = "addAdminFail"
 			uidList, err = utils.ReadLinesToSlice(cluster.GetAdminListFile())
 			if err != nil {
 				utils.Logger.Info("未获取到管理员名单，跳过", "err", err)
 			}
-			uidList = append(uidList, reqFrom.Uid)
+			uidList = append(uidList, reqForm.Uid)
 			err = utils.WriteLinesFromSlice(cluster.GetAdminListFile(), uidList)
 			if err != nil {
 				utils.Logger.Info("写入管理员名单失败", "err", err)
@@ -568,7 +569,7 @@ func handlePlayerListChangePost(c *gin.Context) {
 			}
 			// 删除指定行
 			for i := 0; i < len(uidList); i++ {
-				if uidList[i] == reqFrom.Uid {
+				if uidList[i] == reqForm.Uid {
 					uidList = append(uidList[:i], uidList[i+1:]...)
 					break
 				}
@@ -591,14 +592,14 @@ func handlePlayerListChangePost(c *gin.Context) {
 			return
 		}
 	case "block":
-		if reqFrom.Type == "add" {
+		if reqForm.Type == "add" {
 			messageSuccess = "addWhite"
 			messageFail = "addWhiteFail"
 			uidList, err = utils.ReadLinesToSlice(cluster.GetBlockListFile())
 			if err != nil {
 				utils.Logger.Info("未获取到黑名单，跳过", "err", err)
 			}
-			uidList = append(uidList, reqFrom.Uid)
+			uidList = append(uidList, reqForm.Uid)
 			err = utils.WriteLinesFromSlice(cluster.GetBlockListFile(), uidList)
 			if err != nil {
 				utils.Logger.Info("写入黑名单失败", "err", err)
@@ -630,7 +631,7 @@ func handlePlayerListChangePost(c *gin.Context) {
 			}
 			// 删除指定行
 			for i := 0; i < len(uidList); i++ {
-				if uidList[i] == reqFrom.Uid {
+				if uidList[i] == reqForm.Uid {
 					uidList = append(uidList[:i], uidList[i+1:]...)
 					break
 				}
@@ -653,14 +654,14 @@ func handlePlayerListChangePost(c *gin.Context) {
 			return
 		}
 	case "white":
-		if reqFrom.Type == "add" {
+		if reqForm.Type == "add" {
 			messageSuccess = "addWhite"
 			messageFail = "addWhiteFail"
 			uidList, err = utils.ReadLinesToSlice(cluster.GetWhiteListFile())
 			if err != nil {
 				utils.Logger.Info("未获取到白名单，跳过", "err", err)
 			}
-			uidList = append(uidList, reqFrom.Uid)
+			uidList = append(uidList, reqForm.Uid)
 			err = utils.WriteLinesFromSlice(cluster.GetWhiteListFile(), uidList)
 			if err != nil {
 				utils.Logger.Info("写入白名单失败", "err", err)
@@ -686,7 +687,7 @@ func handlePlayerListChangePost(c *gin.Context) {
 			}
 			// 删除指定行
 			for i := 0; i < len(uidList); i++ {
-				if uidList[i] == reqFrom.Uid {
+				if uidList[i] == reqForm.Uid {
 					uidList = append(uidList[:i], uidList[i+1:]...)
 					break
 				}
@@ -725,341 +726,231 @@ func handlePlayerListChangePost(c *gin.Context) {
 	}
 }
 
-//func handleHistoryPlayerGet(c *gin.Context) {
-//	type Player struct {
-//		UID      string      `json:"uid"`
-//		Nickname interface{} `json:"nickname"`
-//		Prefab   string      `json:"prefab"`
-//		Age      int         `json:"age"`
-//	}
-//
-//	uidMap, _ := utils.ReadUidMap()
-//	if len(uidMap) == 0 {
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []Player{}})
-//		return
-//	}
-//
-//	var world string
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("读取配置文件失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//	if config.RoomSetting.Ground != "" {
-//		world = "Master"
-//	} else {
-//		world = "Caves"
-//	}
-//
-//	userPathEncode, _ := GetUserDataEncodeStatus("KU_12345678", world)
-//
-//	var playerList []Player
-//	for uid, nickname := range uidMap {
-//		age, prefab, err := GetPlayerAgePrefab(uid, world, userPathEncode)
-//		if err != nil {
-//			utils.Logger.Error("获取历史玩家信息失败", "err", err, "UID", uid)
-//		}
-//		var player Player
-//		player.UID = uid
-//		player.Nickname = nickname
-//		player.Age = age
-//		player.Prefab = prefab
-//		playerList = append(playerList, player)
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playerList})
-//}
+func handleHistoryPlayerGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-//func handleAdminAddPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var uidFrom UIDForm
-//	if err := c.ShouldBindJSON(&uidFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	err := addList(uidFrom.UID, utils.AdminListPath)
-//	if err != nil {
-//		utils.Logger.Error("添加管理员失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addAdminFail", langStr), "data": nil})
-//		return
-//	}
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addAdmin", langStr), "data": nil})
-//}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 
-//func handleBlockAddPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var uidFrom UIDForm
-//	if err := c.ShouldBindJSON(&uidFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	err := addList(uidFrom.UID, utils.BlockListPath)
-//	if err != nil {
-//		utils.Logger.Error("添加黑名单失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addBlockFail", langStr), "data": nil})
-//		return
-//	}
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlock", langStr), "data": nil})
-//}
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+	type Player struct {
+		UID      string      `json:"uid"`
+		Nickname interface{} `json:"nickname"`
+		Prefab   string      `json:"prefab"`
+		Age      int         `json:"age"`
+	}
 
-//func handleBlockUpload(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	file, err := c.FormFile("file")
-//	if err != nil {
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
-//		return
-//	}
-//	//保存文件
-//	savePath := utils.ImportFileUploadPath + file.Filename
-//	if err := c.SaveUploadedFile(file, savePath); err != nil {
-//		utils.Logger.Error("文件保存失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
-//		return
-//	}
-//
-//	// 打开Excel文件
-//	xlsFile, err := xlsx.OpenFile(savePath)
-//	if err != nil {
-//		utils.Logger.Error("无法打开文件: %s", err)
-//	}
-//
-//	blockList := getList(utils.BlockListPath)
-//
-//	// 遍历所有工作表
-//	for _, sheet := range xlsFile.Sheets {
-//		// 遍历工作表中的所有行
-//		for _, row := range sheet.Rows {
-//			// 获取A列（索引为0）的单元格
-//			if len(row.Cells) > 0 {
-//				cell := row.Cells[0]
-//				// 将单元格的值添加到字符串切片中
-//				blockList = append(blockList, cell.String())
-//			}
-//		}
-//	}
-//
-//	blockList = utils.UniqueSliceKeepOrderString(blockList)
-//	str := strings.Join(blockList, "\n")
-//	err = utils.TruncAndWriteFile(utils.BlockListPath, str)
-//
-//	_ = utils.BashCMD("rm -f " + savePath)
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
-//}
+	uidMap, _ := utils.ReadUidMap(cluster)
+	if len(uidMap) == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []Player{}})
+		return
+	}
 
-//func handleWhiteAddPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var uidFrom UIDForm
-//	if err := c.ShouldBindJSON(&uidFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	err := addList(uidFrom.UID, utils.WhiteListPath)
-//	if err != nil {
-//		utils.Logger.Error("添加白名单失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
-//		return
-//	}
-//	err = changeWhitelistSlots()
-//	if err != nil {
-//		utils.Logger.Error("添加白名单失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhite", langStr), "data": nil})
-//}
+	var playerList []Player
+	for uid, nickname := range uidMap {
+		age, prefab, err := GetPlayerAgePrefab(uid, cluster)
+		if err != nil {
+			utils.Logger.Error("获取历史玩家信息失败", "err", err, "UID", uid)
+		}
+		var player Player
+		player.UID = uid
+		player.Nickname = nickname
+		player.Age = age
+		player.Prefab = prefab
+		playerList = append(playerList, player)
+	}
 
-//func handleAdminDeletePost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var uidFrom UIDForm
-//	if err := c.ShouldBindJSON(&uidFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	err := deleteList(uidFrom.UID, utils.AdminListPath)
-//	if err != nil {
-//		utils.Logger.Error("删除管理员失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteAdminFail", langStr), "data": nil})
-//		return
-//	}
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteAdmin", langStr), "data": nil})
-//}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playerList})
+}
 
-//func handleBlockDeletePost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var uidFrom UIDForm
-//	if err := c.ShouldBindJSON(&uidFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	err := deleteList(uidFrom.UID, utils.BlockListPath)
-//	if err != nil {
-//		utils.Logger.Error("删除黑名单失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteBlockFail", langStr), "data": nil})
-//		return
-//	}
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteBlock", langStr), "data": nil})
-//}
+func handleHistoryPlayerCleanPost(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var (
+		reqForm ReqForm
+		err     error
+	)
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-//func handleWhiteDeletePost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var uidFrom UIDForm
-//	if err := c.ShouldBindJSON(&uidFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	err := deleteList(uidFrom.UID, utils.WhiteListPath)
-//	if err != nil {
-//		utils.Logger.Error("删除白名单失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteWhiteFail", langStr), "data": nil})
-//		return
-//	}
-//	err = changeWhitelistSlots()
-//	if err != nil {
-//		utils.Logger.Error("删除白名单失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("addWhiteFail", langStr), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteWhite", langStr), "data": nil})
-//}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
 
-//func handleKick(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var uidFrom UIDForm
-//	if err := c.ShouldBindJSON(&uidFrom); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	errMaster := kick(uidFrom.UID, utils.MasterName)
-//	errCaves := kick(uidFrom.UID, utils.CavesName)
-//
-//	if errMaster != nil && errCaves != nil {
-//		utils.Logger.Error("踢出玩家失败", "errMaster", errMaster, "errCaves", errCaves)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("kickFail", langStr), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("kickSuccess", langStr), "data": nil})
-//}
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
 
-//func handleImportFileUploadPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	file, err := c.FormFile("file")
-//	if err != nil {
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
-//		return
-//	}
-//	//保存文件
-//	savePath := utils.ImportFileUploadPath + file.Filename
-//	if err := c.SaveUploadedFile(file, savePath); err != nil {
-//		utils.Logger.Error("文件保存失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
-//		return
-//	}
-//	//检查导入文件是否合法
-//	result, err := checkZipFile(file.Filename)
-//	if err != nil {
-//		utils.Logger.Error("检查导入文件失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("wrongUploadFile", langStr), "data": nil})
-//		return
-//	}
-//	if !result {
-//		utils.Logger.Error("导入文件校验失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("wrongUploadFile", langStr), "data": nil})
-//		return
-//	}
-//	//关闭服务器
-//	_ = utils.StopGame()
-//	//备份服务器
-//	err = utils.BackupGame()
-//	if err != nil {
-//		utils.Logger.Warn("游戏备份失败", "err", err)
-//	}
-//	//删除旧服务器文件
-//	err = utils.BashCMD("rm -rf " + utils.ServerPath + "*")
-//	if err != nil {
-//		utils.Logger.Error("删除旧服务器文件失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteOldServerFail", langStr), "data": nil})
-//		return
-//	}
-//	//创建新服务器文件
-//	err = utils.BashCMD("mv " + utils.ImportFileUnzipPath + "* " + utils.ServerPath)
-//	if err != nil {
-//		utils.Logger.Error("创建新服务器文件失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("createNewServerFail", langStr), "data": nil})
-//		return
-//	}
-//	//写入数据库
-//	err = WriteDatabase()
-//	if err != nil {
-//		utils.Logger.Error("导入文件写入数据库失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("writeToDBFail", langStr), "data": nil})
-//		return
-//	}
-//	//清理上传的文件
-//	clearUpZipFile()
-//	// 写入dedicated_server_mods_setup.lua
-//	err = DstModsSetup()
-//	if err != nil {
-//		utils.Logger.Error("mod配置保存失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
-//		return
-//	}
-//	err = changeWhitelistSlots()
-//	if err != nil {
-//		utils.Logger.Error("配置白名单失败", "err", err)
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
-//}
+	err = utils.TruncAndWriteFile(cluster.GetUIDMapFile(), "{}")
+	if err != nil {
+		utils.Logger.Error("清空uid_map文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("cleanHistoryPlayersFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": response("cleanHistoryPlayersSuccess", langStr),
+		"data":    nil,
+	})
+}
+
+func handleBlockUpload(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+	clusterName := c.PostForm("clusterName")
+	if clusterName == "" {
+		c.JSON(http.StatusBadRequest, "缺少集群名")
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	cluster, err := config.GetClusterWithName(clusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	//保存文件
+	savePath := utils.ImportFileUploadPath + file.Filename
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.Logger.Error("文件保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+
+	// 打开Excel文件
+	xlsFile, err := xlsx.OpenFile(savePath)
+	if err != nil {
+		utils.Logger.Error("无法打开文件: %s", err)
+	}
+
+	blockList := getList(cluster.GetBlockListFile())
+
+	// 遍历所有工作表
+	for _, sheet := range xlsFile.Sheets {
+		// 遍历工作表中的所有行
+		for _, row := range sheet.Rows {
+			// 获取A列（索引为0）的单元格
+			if len(row.Cells) > 0 {
+				cell := row.Cells[0]
+				// 将单元格的值添加到字符串切片中
+				blockList = append(blockList, cell.String())
+			}
+		}
+	}
+
+	blockList = utils.UniqueSliceKeepOrderString(blockList)
+	err = utils.WriteLinesFromSlice(cluster.GetBlockListFile(), blockList)
+	if err != nil {
+		utils.Logger.Error("写入黑名单失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadFail", langStr), "data": nil})
+		return
+	}
+	_ = utils.BashCMD("rm -f " + savePath)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
+}
+
+func handleKick(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+		Uid         string `json:"uid"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	cmd := fmt.Sprintf("TheNet:Kick('%s')", reqForm.Uid)
+	for _, world := range cluster.Worlds {
+		if world.IsMaster {
+			err = utils.ScreenCMD(cmd, world.ScreenName)
+			if err != nil {
+				utils.Logger.Error("踢出玩家失败", "err", err)
+				break
+			} else {
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("kickSuccess", langStr), "data": nil})
+				return
+			}
+		}
+	}
+
+	for _, world := range cluster.Worlds {
+		_ = utils.ScreenCMD(cmd, world.ScreenName)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("executed", langStr), "data": nil})
+}
 
 //func handleModSettingFormatGet(c *gin.Context) {
 //	lang, _ := c.Get("lang")
