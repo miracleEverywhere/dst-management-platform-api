@@ -128,7 +128,7 @@ func (world World) GetStatus() bool {
 /* ============== cluster 集群相关 ============== */
 
 func (cluster Cluster) GetUIDMapFile() string {
-	return fmt.Sprintf("./dmp_files/uid_map/%s.json", cluster.ClusterSetting.ClusterName)
+	return fmt.Sprintf("%s/%s.json", UidFilePath, cluster.ClusterSetting.ClusterName)
 }
 
 func (cluster Cluster) GetBackupPath() string {
