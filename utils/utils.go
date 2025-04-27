@@ -114,6 +114,10 @@ func ReadUidMap(cluster Cluster) (map[string]interface{}, error) {
 	content, err := os.ReadFile(cluster.GetUIDMapFile())
 	if err != nil {
 		// 如果打开文件失败，则初始化json文件
+		err = EnsureDirExists(UidFilePath)
+		if err != nil {
+			return uidMap, err
+		}
 		err = EnsureFileExists(cluster.GetUIDMapFile())
 		if err != nil {
 			return uidMap, err
