@@ -114,6 +114,10 @@ func (world World) GetSessionPath(clusterName string) string {
 	return fmt.Sprintf("%s/.klei/DoNotStarveTogether/%s/%s/save/session", HomeDir, clusterName, world.Name)
 }
 
+func (world World) GetDstModPath(clusterName string) string {
+	return fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330", clusterName, world.Name)
+}
+
 // GetStatus 获取世界状态
 func (world World) GetStatus() bool {
 	cmd := fmt.Sprintf("ps -ef | grep %s | grep -v grep", world.ScreenName)
@@ -175,6 +179,15 @@ func (cluster Cluster) GetWhiteListSlot() int {
 	}
 
 	return len(whiteList)
+}
+
+func (cluster Cluster) GetModUgcPath() string {
+	worldName := cluster.Worlds[0].Name
+	return fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330", cluster.ClusterSetting.ClusterName, worldName)
+}
+
+func (cluster Cluster) GetModNoUgcPath() string {
+	return "dst/mods"
 }
 
 /* ============== config 配置相关 ============== */
