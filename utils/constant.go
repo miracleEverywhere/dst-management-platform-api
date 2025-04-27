@@ -18,6 +18,12 @@ const UidFilePath = DmpFilesPath + "/uid_map"
 
 const BackupPath = DmpFilesPath + "/backup"
 
+const ModDownloadPath = DmpFilesPath + "/mod"
+
+const ModUgcDownloadPath = ModDownloadPath + "/steamapps/workshop/content/322330"
+
+const ModNoUgcDownloadPath = ModDownloadPath + "/not_ugc"
+
 /* ---- 重构 ---- */
 
 const MasterName = "Master"
@@ -102,7 +108,7 @@ const CavesModUgcPath = "dst/ugc_mods/MyDediServer/Caves/content/322330"
 
 const ModNoUgcPath = "dst/mods"
 
-const ModDownloadPath = ".klei/DMP_MOD"
+//const ModDownloadPath = ".klei/DMP_MOD"
 
 const NicknameUIDPath = ServerPath + "uid_map.json"
 
