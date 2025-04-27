@@ -1,11 +1,14 @@
 package setting
 
 import (
+	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/tealeg/xlsx"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -952,520 +955,487 @@ func handleKick(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("executed", langStr), "data": nil})
 }
 
-//func handleModSettingFormatGet(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//
-//	if config.RoomSetting.Ground == "" && config.RoomSetting.Cave == "" {
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
-//		return
-//	}
-//
-//	var luaScript string
-//
-//	if config.RoomSetting.Ground == "" {
-//		luaScript, _ = utils.GetFileAllContent(utils.CavesModPath)
-//	} else {
-//		luaScript, _ = utils.GetFileAllContent(utils.MasterModPath)
-//	}
-//
-//	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
-//	if err != nil {
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	var responseData []utils.ModFormattedData
-//	for _, i := range utils.ModOverridesToStruct(luaScript) {
-//		item := utils.ModFormattedData{
-//			ID: i.ID,
-//			Name: func() string {
-//				for _, j := range modInfo {
-//					if i.ID == j.ID {
-//						return j.Name
-//					}
-//				}
-//				return ""
-//			}(),
-//			Enable:               i.Enabled,
-//			ConfigurationOptions: i.ConfigurationOptions,
-//			FileUrl: func() string {
-//				for _, j := range modInfo {
-//					if i.ID == j.ID {
-//						return j.FileUrl
-//					}
-//				}
-//				return ""
-//			}(),
-//			PreviewUrl: func() string {
-//				for _, j := range modInfo {
-//					if i.ID == j.ID {
-//						return j.PreviewUrl
-//					}
-//				}
-//				return ""
-//			}(),
-//		}
-//		responseData = append(responseData, item)
-//	}
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": responseData})
-//}
-//
-//func handleModConfigOptionsGet(c *gin.Context) {
-//	type ModConfigurationsForm struct {
-//		ID int `form:"id" json:"id"`
-//	}
-//	var modConfigurationsForm ModConfigurationsForm
-//	if err := c.ShouldBindQuery(&modConfigurationsForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	type ModConfig struct {
-//		ID            int                         `json:"id"`
-//		ConfigOptions []utils.ConfigurationOption `json:"configOptions"`
-//	}
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	var (
-//		modConfig      ModConfig
-//		modInfoLuaFile string
-//	)
-//
-//	modID := modConfigurationsForm.ID
-//
-//	if modID == 1 {
-//		// 禁用客户端模组配置
-//		modConfig.ID = 1
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
-//		return
-//	}
-//
-//	if config.RoomSetting.Ground != "" {
-//		modInfoLuaFile = utils.MasterModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
-//	} else {
-//		modInfoLuaFile = utils.CavesModUgcPath + "/" + strconv.Itoa(modID) + "/modinfo.lua"
-//	}
-//
-//	isUgcMod, err := utils.FileDirectoryExists(modInfoLuaFile)
-//	if err != nil {
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	if !isUgcMod {
-//		modInfoLuaFile = utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(modID) + "/modinfo.lua"
-//		exist, err := utils.FileDirectoryExists(modInfoLuaFile)
-//		if err != nil {
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		if !exist {
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("needDownload", langStr), "data": nil})
-//			return
-//		}
-//	}
-//
-//	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
-//	modConfig.ID = modID
-//	modConfig.ConfigOptions = utils.GetModConfigOptions(luaScript, langStr)
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
-//}
-//
-//func handleModConfigChangePost(c *gin.Context) {
-//	type ModFormattedDataForm struct {
-//		ModFormattedData []utils.ModFormattedData `json:"modFormattedData"`
-//	}
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	var modFormattedDataForm ModFormattedDataForm
-//	if err := c.ShouldBindJSON(&modFormattedDataForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	luaString := utils.ParseToLua(modFormattedDataForm.ModFormattedData)
-//
-//	config.RoomSetting.Mod = luaString
-//	// Master/modoverrides.lua
-//	err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-//	if err != nil {
-//		utils.Logger.Error("MOD配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	if config.RoomSetting.Cave != "" {
-//		//Caves/modoverrides.lua
-//		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
-//		if err != nil {
-//			utils.Logger.Error("MOD配置文件写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//	}
-//
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
-//}
-//
-//func handleModDownloadPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	type ModDownloadForm struct {
-//		ID      int    `json:"id"`
-//		FileURL string `json:"file_url"`
-//	}
-//	var modDownloadForm ModDownloadForm
-//	if err := c.ShouldBindJSON(&modDownloadForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	go func() {
-//		if modDownloadForm.FileURL == "" {
-//			cmd := utils.GenerateModDownloadCMD(modDownloadForm.ID)
-//			err := utils.BashCMD(cmd)
-//			if err != nil {
-//				utils.Logger.Error("MOD下载失败", "err", err)
-//			}
-//		} else {
-//			err := externalApi.DownloadMod(modDownloadForm.FileURL, modDownloadForm.ID)
-//			if err != nil {
-//				utils.Logger.Error("MOD下载失败", "err", err)
-//			}
-//		}
-//	}()
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("downloading", langStr), "data": nil})
-//}
-//
-//func handleSyncModPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	err := utils.SyncMods()
-//	if err != nil {
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("syncModFail", langStr), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("syncModSuccess", langStr), "data": nil})
-//}
-//
-//func handleDeleteDownloadedModPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	type DeleteForm struct {
-//		ISUGC bool `json:"isUgc"`
-//		ID    int  `json:"id"`
-//	}
-//
-//	var deleteForm DeleteForm
-//	if err := c.ShouldBindJSON(&deleteForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	err := utils.DeleteDownloadedMod(deleteForm.ISUGC, deleteForm.ID)
-//	if err != nil {
-//		utils.Logger.Error("删除已下载的MOD失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteModFail", langStr), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": nil})
-//}
-//
-//func handleEnableModPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	type EnableForm struct {
-//		ISUGC bool `json:"isUgc"`
-//		ID    int  `json:"id"`
-//	}
-//
-//	var enableForm EnableForm
-//	if err := c.ShouldBindJSON(&enableForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	homeDir, err := os.UserHomeDir()
-//	if err != nil {
-//		utils.Logger.Error("无法获取 home 目录", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	// 读取modinfo.lua
-//	var (
-//		modInfoLuaFile   string
-//		modDirPath       string
-//		modFormattedData []utils.ModFormattedData
-//	)
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	if config.RoomSetting.Base.Name == "" {
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": []string{}})
-//		return
-//	}
-//
-//	// 复制mod文件至指定的dst目录
-//	if enableForm.ISUGC {
-//		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(enableForm.ID)
-//		modInfoLuaFile = modDirPath + "/modinfo.lua"
-//		// MacOS 不执行复制
-//		if config.Platform != "darwin" {
-//			if config.RoomSetting.Ground != "" {
-//				err = utils.RemoveDir(utils.MasterModUgcPath + "/" + strconv.Itoa(enableForm.ID))
-//				if err != nil {
-//					utils.Logger.Error("删除旧MOD文件失败", "err", err)
-//				}
-//				cmdMaster := "cp -r " + modDirPath + " " + utils.MasterModUgcPath + "/"
-//				err := utils.BashCMD(cmdMaster)
-//				if err != nil {
-//					utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdMaster)
-//				}
-//			}
-//			if config.RoomSetting.Cave != "" {
-//				err = utils.RemoveDir(utils.CavesModUgcPath + "/" + strconv.Itoa(enableForm.ID))
-//				if err != nil {
-//					utils.Logger.Error("删除旧MOD文件失败", "err", err)
-//				}
-//				cmdCaves := "cp -r " + modDirPath + " " + utils.CavesModUgcPath + "/"
-//				err = utils.BashCMD(cmdCaves)
-//				if err != nil {
-//					utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmdCaves)
-//				}
-//			}
-//		}
-//
-//	} else {
-//		modDirPath = homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + strconv.Itoa(enableForm.ID)
-//		modInfoLuaFile = modDirPath + "/modinfo.lua"
-//		// MacOS 不执行复制
-//		if config.Platform != "darwin" {
-//			err = utils.RemoveDir(utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID))
-//			if err != nil {
-//				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
-//			}
-//			cmd := "cp -r " + modDirPath + " " + utils.ModNoUgcPath + "/workshop-" + strconv.Itoa(enableForm.ID)
-//			err = utils.BashCMD(cmd)
-//			if err != nil {
-//				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
-//			}
-//		}
-//	}
-//
-//	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
-//
-//	// 获取新modoverrides.lua
-//	modOverrides := utils.AddModDefaultConfig(luaScript, enableForm.ID, langStr)
-//	for _, mod := range modOverrides {
-//		modFormattedData = append(modFormattedData, utils.ModFormattedData{
-//			ID:                   mod.ID,
-//			Enable:               mod.Enabled,
-//			ConfigurationOptions: mod.ConfigurationOptions,
-//		})
-//	}
-//
-//	// 需要转一次json，否则会出现新mod的default变量无法添加
-//	a, _ := json.Marshal(modFormattedData)
-//	var b []utils.ModFormattedData
-//	_ = json.Unmarshal(a, &b)
-//	modOverridesLua := utils.ParseToLua(b)
-//
-//	// 写入数据库
-//	config.RoomSetting.Mod = modOverridesLua
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	if config.RoomSetting.Ground != "" {
-//		//Master/modoverrides.lua
-//		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-//		if err != nil {
-//			utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//	}
-//
-//	if config.RoomSetting.Cave != "" {
-//		//Caves/modoverrides.lua
-//		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
-//		if err != nil {
-//			utils.Logger.Error("洞穴modoverrides.lua写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//	}
-//
-//	// MacOS 不修改mod自动下载配置
-//	if config.Platform == "darwin" {
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
-//		return
-//	}
-//
-//	err = DstModsSetup()
-//	if err != nil {
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
-//}
-//
-//func handleDisableModPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	type DisableForm struct {
-//		ISUGC bool `json:"isUgc"`
-//		ID    int  `json:"id"`
-//	}
-//
-//	var disableForm DisableForm
-//	if err := c.ShouldBindJSON(&disableForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	// 读取modinfo.lua
-//	luaScript, _ := utils.GetFileAllContent(utils.MasterModPath)
-//	modOverrides := utils.ModOverridesToStruct(luaScript)
-//
-//	var newModOverrides []utils.ModOverrides
-//	for _, mod := range modOverrides {
-//		if mod.ID != disableForm.ID {
-//			newModOverrides = append(newModOverrides, mod)
-//		}
-//	}
-//
-//	// 需要转一次json，否则会出现新mod的default变量无法添加
-//	a, _ := json.Marshal(newModOverrides)
-//	var b []utils.ModOverrides
-//	_ = json.Unmarshal(a, &b)
-//	var modFormattedData []utils.ModFormattedData
-//	for _, mod := range b {
-//		modFormattedData = append(modFormattedData, utils.ModFormattedData{
-//			ID:                   mod.ID,
-//			Enable:               mod.Enabled,
-//			ConfigurationOptions: mod.ConfigurationOptions,
-//		})
-//	}
-//	newModOverridesLua := utils.ParseToLua(modFormattedData)
-//
-//	// 写入数据库
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	config.RoomSetting.Mod = newModOverridesLua
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	//Master/modoverrides.lua
-//	err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-//	if err != nil {
-//		utils.Logger.Error("地面modoverrides.lua写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	if config.RoomSetting.Cave != "" {
-//		//Caves/modoverrides.lua
-//		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
-//		if err != nil {
-//			utils.Logger.Error("洞穴modoverrides.lua写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//	}
-//
-//	err = DstModsSetup()
-//	if err != nil {
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": newModOverridesLua})
-//}
-//
+func handleModSettingFormatGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	luaScript := cluster.Mod
+
+	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
+	if err != nil {
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	var responseData []utils.ModFormattedData
+	for _, i := range utils.ModOverridesToStruct(luaScript) {
+		item := utils.ModFormattedData{
+			ID: i.ID,
+			Name: func() string {
+				for _, j := range modInfo {
+					if i.ID == j.ID {
+						return j.Name
+					}
+				}
+				return ""
+			}(),
+			Enable:               i.Enabled,
+			ConfigurationOptions: i.ConfigurationOptions,
+			FileUrl: func() string {
+				for _, j := range modInfo {
+					if i.ID == j.ID {
+						return j.FileUrl
+					}
+				}
+				return ""
+			}(),
+			PreviewUrl: func() string {
+				for _, j := range modInfo {
+					if i.ID == j.ID {
+						return j.PreviewUrl
+					}
+				}
+				return ""
+			}(),
+		}
+		responseData = append(responseData, item)
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": responseData})
+}
+
+func handleModConfigOptionsGet(c *gin.Context) {
+	type ModConfigurationsForm struct {
+		ID          int    `form:"id" json:"id"`
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var modConfigurationsForm ModConfigurationsForm
+	if err := c.ShouldBindQuery(&modConfigurationsForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(modConfigurationsForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	type ModConfig struct {
+		ID            int                         `json:"id"`
+		ConfigOptions []utils.ConfigurationOption `json:"configOptions"`
+	}
+
+	var (
+		modConfig      ModConfig
+		modInfoLuaFile string
+	)
+
+	modID := modConfigurationsForm.ID
+
+	if modID == 1 {
+		// 禁用客户端模组配置
+		modConfig.ID = 1
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
+		return
+	}
+
+	modInfoLuaFile = fmt.Sprintf("%s/%d/modinfo.lua", cluster.GetModUgcPath(), modID)
+
+	isUgcMod, err := utils.FileDirectoryExists(modInfoLuaFile)
+	if err != nil {
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	if !isUgcMod {
+		modInfoLuaFile = fmt.Sprintf("%s/workshop-%d/modinfo.lu", cluster.GetModNoUgcPath(), modID)
+		exist, err := utils.FileDirectoryExists(modInfoLuaFile)
+		if err != nil {
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+		if !exist {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("needDownload", langStr), "data": nil})
+			return
+		}
+	}
+
+	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
+	modConfig.ID = modID
+	modConfig.ConfigOptions = utils.GetModConfigOptions(luaScript, langStr)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modConfig})
+}
+
+func handleModConfigChangePost(c *gin.Context) {
+	type ModFormattedDataForm struct {
+		ModFormattedData []utils.ModFormattedData `json:"modFormattedData"`
+		ClusterName      string                   `json:"clusterName"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var modFormattedDataForm ModFormattedDataForm
+	if err := c.ShouldBindJSON(&modFormattedDataForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(modFormattedDataForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	luaString := utils.ParseToLua(modFormattedDataForm.ModFormattedData)
+
+	cluster.Mod = luaString
+
+	// 保存
+	err = saveSetting(cluster)
+	if err != nil {
+		utils.Logger.Error("MOD配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
+}
+
+func handleModDownloadPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ModDownloadForm struct {
+		ID      int    `json:"id"`
+		FileURL string `json:"file_url"`
+	}
+	var modDownloadForm ModDownloadForm
+	if err := c.ShouldBindJSON(&modDownloadForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	go func() {
+		if modDownloadForm.FileURL == "" {
+			cmd := utils.GenerateModDownloadCMD(modDownloadForm.ID)
+			err := utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("MOD下载失败", "err", err)
+			}
+		} else {
+			err := externalApi.DownloadMod(modDownloadForm.FileURL, modDownloadForm.ID)
+			if err != nil {
+				utils.Logger.Error("MOD下载失败", "err", err)
+			}
+		}
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("downloading", langStr), "data": nil})
+}
+
+func handleSyncModPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+		Uid         string `json:"uid"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	err = utils.SyncMods(cluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("syncModFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("syncModSuccess", langStr), "data": nil})
+}
+
+func handleDeleteDownloadedModPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type DeleteForm struct {
+		ISUGC bool `json:"isUgc"`
+		ID    int  `json:"id"`
+	}
+
+	var deleteForm DeleteForm
+	if err := c.ShouldBindJSON(&deleteForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := utils.DeleteDownloadedMod(deleteForm.ISUGC, deleteForm.ID)
+	if err != nil {
+		utils.Logger.Error("删除已下载的MOD失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteModFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": nil})
+}
+
+func handleEnableModPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type EnableForm struct {
+		ISUGC       bool   `json:"isUgc"`
+		ID          int    `json:"id"`
+		ClusterName string `json:"clusterName"`
+	}
+
+	var enableForm EnableForm
+	if err := c.ShouldBindJSON(&enableForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(enableForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	// 读取modinfo.lua
+	var (
+		modInfoLuaFile   string
+		modDirPath       string
+		modFormattedData []utils.ModFormattedData
+	)
+
+	if len(cluster.Worlds) == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("gameServerNotCreated", langStr), "data": []string{}})
+		return
+	}
+
+	// 复制mod文件至指定的dst目录
+	if enableForm.ISUGC {
+		modDirPath = fmt.Sprintf("%s/%d", utils.ModUgcDownloadPath, enableForm.ID)
+		modInfoLuaFile = modDirPath + "/modinfo.lua"
+		// MacOS 不执行复制
+		if utils.Platform != "darwin" {
+			for _, world := range cluster.Worlds {
+				dstModPath := world.GetDstModPath(cluster.ClusterSetting.ClusterName)
+				err = utils.RemoveDir(dstModPath + "/" + strconv.Itoa(enableForm.ID))
+				if err != nil {
+					utils.Logger.Warn("删除旧MOD文件失败", "err", err)
+				}
+				cmd := fmt.Sprintf("cp -r %s %s/", modDirPath, dstModPath)
+				err = utils.BashCMD(cmd)
+				if err != nil {
+					utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
+				}
+			}
+		}
+	} else {
+		modDirPath = fmt.Sprintf("%s/%d", utils.ModNoUgcDownloadPath, enableForm.ID)
+		modInfoLuaFile = modDirPath + "/modinfo.lua"
+		// MacOS 不执行复制
+		if utils.Platform != "darwin" {
+			err = utils.RemoveDir(cluster.GetModNoUgcPath() + "/workshop-" + strconv.Itoa(enableForm.ID))
+			if err != nil {
+				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+			}
+			cmd := fmt.Sprintf("cp -r %s %s/workshop-%d", modDirPath, cluster.GetModNoUgcPath(), enableForm.ID)
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("复制MOD文件失败", "err", err, "cmd", cmd)
+			}
+		}
+	}
+
+	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
+
+	// 获取新modoverrides.lua
+	modOverrides := utils.AddModDefaultConfig(luaScript, enableForm.ID, langStr, cluster)
+	for _, mod := range modOverrides {
+		modFormattedData = append(modFormattedData, utils.ModFormattedData{
+			ID:                   mod.ID,
+			Enable:               mod.Enabled,
+			ConfigurationOptions: mod.ConfigurationOptions,
+		})
+	}
+
+	// 需要转一次json，否则会出现新mod的default变量无法添加
+	a, _ := json.Marshal(modFormattedData)
+	var b []utils.ModFormattedData
+	_ = json.Unmarshal(a, &b)
+	modOverridesLua := utils.ParseToLua(b)
+
+	// 写入数据库
+	cluster.Mod = modOverridesLua
+	err = saveSetting(cluster)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
+}
+
+func handleDisableModPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type DisableForm struct {
+		ISUGC       bool   `json:"isUgc"`
+		ID          int    `json:"id"`
+		ClusterName string `json:"clusterName"`
+	}
+
+	var disableForm DisableForm
+	if err := c.ShouldBindJSON(&disableForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(disableForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	// 读取modinfo.lua
+	modOverrides := utils.ModOverridesToStruct(cluster.Mod)
+
+	var newModOverrides []utils.ModOverrides
+	for _, mod := range modOverrides {
+		if mod.ID != disableForm.ID {
+			newModOverrides = append(newModOverrides, mod)
+		}
+	}
+
+	// 需要转一次json，否则会出现新mod的default变量无法添加
+	a, _ := json.Marshal(newModOverrides)
+	var b []utils.ModOverrides
+	_ = json.Unmarshal(a, &b)
+	var modFormattedData []utils.ModFormattedData
+	for _, mod := range b {
+		modFormattedData = append(modFormattedData, utils.ModFormattedData{
+			ID:                   mod.ID,
+			Enable:               mod.Enabled,
+			ConfigurationOptions: mod.ConfigurationOptions,
+		})
+	}
+	newModOverridesLua := utils.ParseToLua(modFormattedData)
+
+	// 写入数据
+	cluster.Mod = newModOverridesLua
+	err = saveSetting(cluster)
+	if err != nil {
+		utils.Logger.Error("文件写入失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": newModOverridesLua})
+}
+
 //func handleGetMultiHostGet(c *gin.Context) {
 //	config, err := utils.ReadConfig()
 //	if err != nil {
@@ -1475,7 +1445,7 @@ func handleKick(c *gin.Context) {
 //	}
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.MultiHost})
 //}
-//
+
 //func handleChangeMultiHostPost(c *gin.Context) {
 //	type MultiHostForm struct {
 //		MultiHost bool `json:"multiHost"`
@@ -1511,7 +1481,7 @@ func handleKick(c *gin.Context) {
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
 //}
-//
+
 //func handleSystemSettingGet(c *gin.Context) {
 //	config, err := utils.ReadConfig()
 //	if err != nil {
@@ -1532,7 +1502,7 @@ func handleKick(c *gin.Context) {
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 //}
-//
+
 //func handleSystemSettingPut(c *gin.Context) {
 //	defer scheduler.ReloadScheduler()
 //	lang, _ := c.Get("lang")
@@ -1609,7 +1579,7 @@ func handleKick(c *gin.Context) {
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
 //}
-//
+
 //func handleMacOSModExportPost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -1670,7 +1640,7 @@ func handleKick(c *gin.Context) {
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("exportSuccess", langStr), "data": nil})
 //}
-//
+
 //func handleModUpdatePost(c *gin.Context) {
 //	// 同步阻塞接口，耗时较长
 //	lang, _ := c.Get("lang")
@@ -1787,7 +1757,7 @@ func handleKick(c *gin.Context) {
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateModSuccess", langStr), "data": nil})
 //
 //}
-//
+
 //func handleAddClientModsDisabledConfig(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -1871,7 +1841,7 @@ func handleKick(c *gin.Context) {
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("enableModSuccess", langStr), "data": nil})
 //}
-//
+
 //func handleDeleteClientModsDisabledConfig(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
