@@ -14,11 +14,11 @@ func RouteExternalApi(r *gin.Engine) *gin.Engine {
 			externalApi.GET("/dst_version", utils.MWtoken(), handleVersionGet)
 			// 获取直连代码
 			externalApi.GET("/connection_code", utils.MWtoken(), handleConnectionCodeGet)
-			//// 获取模组信息
-			//externalApi.GET("/mod_info", utils.MWtoken(), handleModInfoGet)
-			//externalApi.GET("/mod_search", utils.MWtoken(), handleModSearchGet)
-			//// 已下载的模组信息
-			//externalApi.GET("/downloaded/mod_info", utils.MWtoken(), handleDownloadedModInfoGet)
+			// 获取模组信息
+			externalApi.GET("/mod_info", utils.MWtoken(), handleModInfoGet)
+			externalApi.GET("/mod_search", utils.MWtoken(), handleModSearchGet)
+			// 已下载的模组信息
+			externalApi.GET("/downloaded/mod_info", utils.MWtoken(), handleDownloadedModInfoGet)
 		}
 	}
 
