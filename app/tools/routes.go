@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,7 +11,7 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 		tools := v1.Group("tools")
 		{
 			//// 安装
-			//tools.GET("/os_info", utils.MWtoken(), handleOSInfoGet)
+			tools.GET("/os_info", utils.MWtoken(), handleOSInfoGet)
 			//tools.POST("/install", utils.MWtoken(), handleInstall)
 			//tools.GET("/install/status", utils.MWtoken(), handleGetInstallStatus)
 			//// 定时通知
@@ -29,8 +30,6 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			//tools.DELETE("/backup/multi", utils.MWtoken(), handleMultiDelete)
 			//tools.POST("/backup/restore", utils.MWtoken(), handleBackupRestore)
 			//tools.POST("/backup/download", utils.MWtoken(), handleBackupDownload)
-			//// MOD
-			////tools.POST("/mod/install/all", utils.MWtoken(), handleDownloadModManualPost)
 			//// 统计信息
 			//tools.GET("/statistics", utils.MWtoken(), handleStatisticsGet)
 			//// 自动保活
