@@ -14,6 +14,8 @@ const DMPAccessLog = "dmp.log"
 
 const DMPRuntimeLog = "dmpProcess.log"
 
+const UidFilePath = DmpFilesPath + "/uid_map"
+
 /* ---- 重构 ---- */
 
 const MasterName = "Master"
