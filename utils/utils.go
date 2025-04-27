@@ -135,12 +135,12 @@ func ReadUidMap(cluster Cluster) (map[string]interface{}, error) {
 	return uidMap, nil
 }
 
-func WriteUidMap(uidMap map[string]interface{}) error {
+func WriteUidMap(uidMap map[string]interface{}, cluster Cluster) error {
 	data, err := json.MarshalIndent(uidMap, "", "    ") // 格式化输出
 	if err != nil {
 		return fmt.Errorf("Error marshalling JSON:" + err.Error())
 	}
-	file, err := os.OpenFile(NicknameUIDPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(cluster.GetUIDMapFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("Error opening file:" + err.Error())
 	}
@@ -186,6 +186,23 @@ func CheckDirs() {
 	err = EnsureDirExists(DmpFilesPath)
 	if err != nil {
 		Logger.Error("目录检查未通过", "path", DmpFilesPath)
+		panic("目录检查未通过")
+	}
+	// mod下载目录
+	err = EnsureDirExists(ModUgcDownloadPath)
+	if err != nil {
+		Logger.Error("目录检查未通过", "path", ModUgcDownloadPath)
+		panic("目录检查未通过")
+	}
+	err = EnsureDirExists(ModNoUgcDownloadPath)
+	if err != nil {
+		Logger.Error("目录检查未通过", "path", ModNoUgcDownloadPath)
+		panic("目录检查未通过")
+	}
+	// 备份目录
+	err = EnsureDirExists(BackupPath)
+	if err != nil {
+		Logger.Error("目录检查未通过", "path", BackupPath)
 		panic("目录检查未通过")
 	}
 }
