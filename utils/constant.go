@@ -16,6 +16,8 @@ const DMPRuntimeLog = "dmpProcess.log"
 
 const UidFilePath = DmpFilesPath + "/uid_map"
 
+const BackupPath = DmpFilesPath + "/backup"
+
 /* ---- 重构 ---- */
 
 const MasterName = "Master"
@@ -79,8 +81,6 @@ const CavesMetaPath = ServerPath + CavesName + "/save/session"
 const DSTLocalVersionPath = "dst/version.txt"
 
 const DSTServerVersionApi = "http://ver.tugos.cn/getLocalVersion"
-
-const BackupPath = ".klei/DMP_BACKUP"
 
 const InternetIPApi1 = "http://ip-api.com/json/?lang=zh-CN"
 

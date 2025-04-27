@@ -132,7 +132,7 @@ func (cluster Cluster) GetUIDMapFile() string {
 }
 
 func (cluster Cluster) GetBackupPath() string {
-	return fmt.Sprintf("./dmp_files/backup/%s", cluster.ClusterSetting.ClusterName)
+	return fmt.Sprintf("%s/%s", BackupPath, cluster.ClusterSetting.ClusterName)
 }
 
 func (cluster Cluster) GetMainPath() string {
