@@ -8,273 +8,723 @@ import (
 	"time"
 )
 
-//import (
-//	"dst-management-platform-api/app/externalApi"
-//	"dst-management-platform-api/scheduler"
-//	"dst-management-platform-api/utils"
-//	"encoding/json"
-//	"github.com/gin-gonic/gin"
-//	"github.com/tealeg/xlsx"
-//	"net/http"
-//	"os"
-//	"regexp"
-//	"strconv"
-//	"strings"
-//)
-//
-//func handleRoomSettingGet(c *gin.Context) {
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//	type Response struct {
-//		Code    int               `json:"code"`
-//		Message string            `json:"message"`
-//		Data    utils.RoomSetting `json:"data"`
-//	}
-//	response := Response{
-//		Code:    200,
-//		Message: "success",
-//		Data:    config.RoomSetting,
-//	}
-//	c.JSON(http.StatusOK, response)
-//}
-//
-//func handleRoomSettingSavePost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var roomSetting utils.RoomSetting
-//	if err := c.ShouldBindJSON(&roomSetting); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	config.RoomSetting = roomSetting
-//
-//	// 配置单服务器节点数据库
-//	if !config.MultiHost {
-//		config.RoomSetting.Base.ShardMasterIp = "127.0.0.1"
-//		config.RoomSetting.Base.ShardMasterPort = 10888
-//		config.RoomSetting.Base.ClusterKey = "supersecretkey"
-//		config.RoomSetting.Base.SteamMasterPort = 27018
-//		config.RoomSetting.Base.SteamAuthenticationPort = 8768
-//	}
-//
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	err = saveSetting(config)
-//	if err != nil {
-//		utils.Logger.Error("房间配置保存失败", "err", err)
-//	}
-//	err = DstModsSetup()
-//	if err != nil {
-//		utils.Logger.Error("mod配置保存失败", "err", err)
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("saveSuccess", langStr), "data": nil})
-//}
-//
-//func handleRoomSettingSaveAndRestartPost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var roomSetting utils.RoomSetting
-//	if err := c.ShouldBindJSON(&roomSetting); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	config.RoomSetting = roomSetting
-//
-//	// 配置单服务器节点数据库
-//	if !config.MultiHost {
-//		config.RoomSetting.Base.ShardMasterIp = "127.0.0.1"
-//		config.RoomSetting.Base.ShardMasterPort = 10888
-//		config.RoomSetting.Base.ClusterKey = "supersecretkey"
-//		config.RoomSetting.Base.SteamMasterPort = 27018
-//		config.RoomSetting.Base.SteamAuthenticationPort = 8768
-//	}
-//
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	err = saveSetting(config)
-//	if err != nil {
-//		utils.Logger.Error("房间配置保存失败", "err", err)
-//	}
-//	err = DstModsSetup()
-//	if err != nil {
-//		utils.Logger.Error("mod配置保存失败", "err", err)
-//	}
-//
-//	err = utils.StopGame()
-//	if err != nil {
-//		utils.Logger.Error("关闭游戏失败", "err", err)
-//	}
-//	err = utils.StartGame()
-//	if err != nil {
-//		utils.Logger.Error("启动游戏失败", "err", err)
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
-//}
-//
-//func handleRoomSettingSaveAndGeneratePost(c *gin.Context) {
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//	var roomSetting utils.RoomSetting
-//	if err := c.ShouldBindJSON(&roomSetting); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	config.RoomSetting = roomSetting
-//
-//	// 配置单服务器节点数据库
-//	if !config.MultiHost {
-//		config.RoomSetting.Base.ShardMasterIp = "127.0.0.1"
-//		config.RoomSetting.Base.ShardMasterPort = 10888
-//		config.RoomSetting.Base.ClusterKey = "supersecretkey"
-//		config.RoomSetting.Base.SteamMasterPort = 27018
-//		config.RoomSetting.Base.SteamAuthenticationPort = 8768
-//	}
-//
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	err = saveSetting(config)
-//	if err != nil {
-//		utils.Logger.Error("房间配置保存失败", "err", err)
-//	}
-//	err = DstModsSetup()
-//	if err != nil {
-//		utils.Logger.Error("mod配置保存失败", "err", err)
-//	}
-//	generateWorld()
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
-//
-//}
-//
-//func handlePlayerListGet(c *gin.Context) {
-//	type PlayersInfo struct {
-//		UID      string `json:"uid"`
-//		NickName string `json:"nickName"`
-//		Prefab   string `json:"prefab"`
-//		Age      int    `json:"age"`
-//	}
-//	type PlayerList struct {
-//		Players   []PlayersInfo          `json:"players"`
-//		AdminList []string               `json:"adminList"`
-//		BlockList []string               `json:"blockList"`
-//		WhiteList []string               `json:"whiteList"`
-//		UidMap    map[string]interface{} `json:"uidMap"`
-//	}
-//
-//	//config, err := utils.ReadConfig()
-//	//if err != nil {
-//	//	utils.Logger.Error("配置文件读取失败", "err", err)
-//	//	utils.RespondWithError(c, 500, "zh")
-//	//	return
-//	//}
-//	adminList := getList(utils.AdminListPath)
-//	blockList := getList(utils.BlockListPath)
-//	whiteList := getList(utils.WhiteListPath)
-//
-//	uidMap, _ := utils.ReadUidMap()
-//
-//	var (
-//		playList PlayerList
-//		players  []utils.Players
-//	)
-//
-//	//playList.Players = config.Players
-//	if len(utils.STATISTICS) > 0 {
-//		players = utils.STATISTICS[len(utils.STATISTICS)-1].Players
-//	}
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("读取配置文件失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//
-//	var world string
-//
-//	if config.RoomSetting.Ground != "" {
-//		world = "Master"
-//	} else {
-//		world = "Caves"
-//	}
-//
-//	userPathEncode, _ := GetUserDataEncodeStatus("KU_12345678", world)
-//
-//	for _, player := range players {
-//		uid := player.UID
-//		age, _, err := GetPlayerAgePrefab(uid, world, userPathEncode)
-//		if err != nil {
-//			utils.Logger.Error("玩家游戏时长获取失败")
-//		}
-//		var playerInfo PlayersInfo
-//		playerInfo.UID = uid
-//		playerInfo.NickName = player.NickName
-//		playerInfo.Prefab = player.Prefab
-//		playerInfo.Age = age
-//
-//		playList.Players = append(playList.Players, playerInfo)
-//	}
-//
-//	playList.AdminList = adminList
-//	playList.BlockList = blockList
-//	playList.WhiteList = whiteList
-//	playList.UidMap = uidMap
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playList})
-//}
-//
+func handleClustersGet(c *gin.Context) {
+	username, _ := c.Get("username")
+	role, _ := c.Get("role")
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	type ClusterItem struct {
+		ClusterName        string   `json:"clusterName"`
+		ClusterDisplayName string   `json:"clusterDisplayName"`
+		Worlds             []string `json:"worlds"`
+	}
+	var data []ClusterItem
+
+	if role == "admin" {
+		// 管理员返回所有cluster
+
+		for _, cluster := range config.Clusters {
+			var worlds []string
+			for _, world := range cluster.Worlds {
+				worlds = append(worlds, world.Name)
+			}
+			data = append(data, ClusterItem{
+				ClusterName:        cluster.ClusterSetting.ClusterName,
+				ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+				Worlds:             worlds,
+			})
+		}
+
+	} else {
+		for i, user := range config.Users {
+			if user.Username == username {
+				for _, clusterName := range config.Users[i].ClusterPermission {
+					cluster, err := config.GetClusterWithName(clusterName)
+					if err != nil {
+						continue
+					} else {
+						var worlds []string
+						for _, world := range cluster.Worlds {
+							worlds = append(worlds, world.Name)
+						}
+						data = append(data, ClusterItem{
+							ClusterName:        cluster.ClusterSetting.ClusterName,
+							ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+							Worlds:             worlds,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func handleClusterGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cluster})
+}
+
+func handleClusterPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	username, _ := c.Get("username")
+	role, _ := c.Get("role")
+
+	type ReqForm struct {
+		ClusterName        string `json:"clusterName"`
+		ClusterDisplayName string `json:"clusterDisplayName"`
+	}
+	var reqFrom ReqForm
+	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for _, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == reqFrom.ClusterName {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    201,
+				"message": response("clusterExisted", langStr),
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	var cluster utils.Cluster
+	cluster.ClusterSetting.ClusterName = reqFrom.ClusterName
+	cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
+	cluster.SysSetting = utils.SysSetting{
+		AutoRestart: utils.AutoRestart{
+			Enable: true,
+			Time:   "06:47:19",
+		},
+		AutoAnnounce: nil,
+		AutoBackup: utils.AutoBackup{
+			Enable: true,
+			Time:   "06:13:57",
+		},
+		Keepalive: utils.Keepalive{
+			Enable:    true,
+			Frequency: 30,
+		},
+		Bit64:    false,
+		TickRate: 15,
+	}
+
+	config.Clusters = append(config.Clusters, cluster)
+
+	// 添加对应的用户权限
+	if role != "admin" {
+		for userIndex, user := range config.Users {
+			if user.Username == username {
+				config.Users[userIndex].ClusterPermission = append(config.Users[userIndex].ClusterPermission, reqFrom.ClusterName)
+			}
+		}
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": response("createSuccess", langStr),
+		"data":    nil,
+	})
+}
+
+func handleClusterSavePost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var reqCluster utils.Cluster
+	if err := c.ShouldBindJSON(&reqCluster); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := saveSetting(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": response("saveSuccess", langStr),
+		"data":    nil,
+	})
+}
+
+func handleClusterSaveRestartPost(c *gin.Context) {
+	defer func() {
+		time.Sleep(10 * time.Second)
+		_ = utils.BashCMD("screen -wipe")
+	}()
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var reqCluster utils.Cluster
+	if err := c.ShouldBindJSON(&reqCluster); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_ = utils.BashCMD("screen -wipe")
+
+	err := saveSetting(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	_ = utils.StopClusterAllWorlds(reqCluster)
+	err = utils.StartClusterAllWorlds(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveSuccessRestartFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
+}
+
+func handleClusterSaveRegeneratePost(c *gin.Context) {
+	defer func() {
+		time.Sleep(10 * time.Second)
+		_ = utils.BashCMD("screen -wipe")
+	}()
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var reqCluster utils.Cluster
+	if err := c.ShouldBindJSON(&reqCluster); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_ = utils.BashCMD("screen -wipe")
+
+	_ = utils.StopClusterAllWorlds(reqCluster)
+
+	for _, world := range reqCluster.Worlds {
+		cmd := fmt.Sprintf("rm -rf %s", world.GetMainPath(reqCluster.ClusterSetting.ClusterName))
+		err := utils.BashCMD(cmd)
+		if err != nil {
+			utils.Logger.Error("删除旧世界目录失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteOldServerFail", langStr), "data": nil})
+			return
+		}
+	}
+
+	err := saveSetting(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	err = utils.StartClusterAllWorlds(reqCluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("saveSuccessRestartFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
+}
+
+func handleImportPost(c *gin.Context) {
+	defer func() {
+		clearUpZipFile()
+	}()
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	clusterName := c.PostForm("clusterName")
+	if clusterName == "" {
+		c.JSON(http.StatusBadRequest, "缺少集群名")
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	cluster, err := config.GetClusterWithName(clusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	if cluster.Worlds != nil {
+		utils.Logger.Info("被导入的集群中的世界不为空")
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": responseImportError("worldNotEmpty", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	//保存文件
+	savePath := utils.ImportFileUploadPath + file.Filename
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		utils.Logger.Error("文件保存失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": responseImportError("zipFileSave", langStr),
+			"data":    nil,
+		})
+		return
+	}
+	//执行导入
+	result, msg, cluster, lists := doImport(file.Filename, cluster, langStr)
+	if !result {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": responseImportError(msg, langStr), "data": nil})
+		return
+	}
+	//写入三个名单
+	clusterPath := cluster.GetMainPath() + "/"
+	err = utils.EnsureDirExists(clusterPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": responseImportError("clusterDirCreateFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+	for key, value := range lists {
+		err = utils.EnsureFileExists(clusterPath + key)
+		if err != nil {
+			utils.Logger.Error("创建"+key+"文件失败", "err", err)
+			continue
+		}
+		err = utils.WriteLinesFromSlice(clusterPath+key, value)
+		if err != nil {
+			utils.Logger.Error("写入"+key+"文件失败", "err", err)
+			continue
+		}
+	}
+	//写入文件
+	err = saveSetting(cluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": response("importSuccessSaveFail", langStr),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
+}
+
+func handlePlayerListGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	type PlayersInfo struct {
+		UID      string `json:"uid"`
+		NickName string `json:"nickName"`
+		Prefab   string `json:"prefab"`
+		Age      int    `json:"age"`
+	}
+	type PlayerList struct {
+		Players   []PlayersInfo          `json:"players"`
+		AdminList []string               `json:"adminList"`
+		BlockList []string               `json:"blockList"`
+		WhiteList []string               `json:"whiteList"`
+		UidMap    map[string]interface{} `json:"uidMap"`
+	}
+
+	adminListPath := cluster.GetAdminListFile()
+	blockListPath := cluster.GetBlockListFile()
+	whiteListPath := cluster.GetWhiteListFile()
+
+	adminList := getList(adminListPath)
+	blockList := getList(blockListPath)
+	whiteList := getList(whiteListPath)
+
+	uidMap, _ := utils.ReadUidMap(cluster)
+
+	var (
+		playList PlayerList
+		players  []utils.Players
+	)
+
+	if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) > 0 {
+		players = utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
+	}
+
+	for _, player := range players {
+		uid := player.UID
+		age, _, err := GetPlayerAgePrefab(uid, cluster)
+		if err != nil {
+			utils.Logger.Error("玩家游戏时长获取失败")
+		}
+		var playerInfo PlayersInfo
+		playerInfo.UID = uid
+		playerInfo.NickName = player.NickName
+		playerInfo.Prefab = player.Prefab
+		playerInfo.Age = age
+
+		playList.Players = append(playList.Players, playerInfo)
+	}
+
+	playList.AdminList = adminList
+	playList.BlockList = blockList
+	playList.WhiteList = whiteList
+	playList.UidMap = uidMap
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playList})
+}
+
+func handlePlayerListChangePost(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+		Uid         string `json:"uid"`
+		Type        string `json:"type"`
+		ListName    string `json:"listName"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var (
+		reqFrom        ReqForm
+		uidList        []string
+		err            error
+		messageSuccess string
+		messageFail    string
+	)
+	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqFrom.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	switch reqFrom.ListName {
+	case "admin":
+		if reqFrom.Type == "add" {
+			messageSuccess = "addAdmin"
+			messageFail = "addAdminFail"
+			uidList, err = utils.ReadLinesToSlice(cluster.GetAdminListFile())
+			if err != nil {
+				utils.Logger.Info("未获取到管理员名单，跳过", "err", err)
+			}
+			uidList = append(uidList, reqFrom.Uid)
+			err = utils.WriteLinesFromSlice(cluster.GetAdminListFile(), uidList)
+			if err != nil {
+				utils.Logger.Info("写入管理员名单失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response(messageSuccess, langStr),
+				"data":    nil,
+			})
+			return
+		} else {
+			messageSuccess = "deleteAdmin"
+			messageFail = "deleteAdminFail"
+			uidList, err = utils.ReadLinesToSlice(cluster.GetAdminListFile())
+			if err != nil {
+				utils.Logger.Info("未获取到管理员名单", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+			// 删除指定行
+			for i := 0; i < len(uidList); i++ {
+				if uidList[i] == reqFrom.Uid {
+					uidList = append(uidList[:i], uidList[i+1:]...)
+					break
+				}
+			}
+			err = utils.WriteLinesFromSlice(cluster.GetAdminListFile(), uidList)
+			if err != nil {
+				utils.Logger.Info("写入管理员名单失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response(messageSuccess, langStr),
+				"data":    nil,
+			})
+			return
+		}
+	case "block":
+		if reqFrom.Type == "add" {
+			messageSuccess = "addWhite"
+			messageFail = "addWhiteFail"
+			uidList, err = utils.ReadLinesToSlice(cluster.GetBlockListFile())
+			if err != nil {
+				utils.Logger.Info("未获取到黑名单，跳过", "err", err)
+			}
+			uidList = append(uidList, reqFrom.Uid)
+			err = utils.WriteLinesFromSlice(cluster.GetBlockListFile(), uidList)
+			if err != nil {
+				utils.Logger.Info("写入黑名单失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response(messageSuccess, langStr),
+				"data":    nil,
+			})
+			return
+		} else {
+			messageSuccess = "addWhite"
+			messageFail = "addWhiteFail"
+			uidList, err = utils.ReadLinesToSlice(cluster.GetBlockListFile())
+			if err != nil {
+				utils.Logger.Info("未获取到黑名单", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+			// 删除指定行
+			for i := 0; i < len(uidList); i++ {
+				if uidList[i] == reqFrom.Uid {
+					uidList = append(uidList[:i], uidList[i+1:]...)
+					break
+				}
+			}
+			err = utils.WriteLinesFromSlice(cluster.GetBlockListFile(), uidList)
+			if err != nil {
+				utils.Logger.Info("写入黑名单失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response(messageSuccess, langStr),
+				"data":    nil,
+			})
+			return
+		}
+	case "white":
+		if reqFrom.Type == "add" {
+			messageSuccess = "addWhite"
+			messageFail = "addWhiteFail"
+			uidList, err = utils.ReadLinesToSlice(cluster.GetWhiteListFile())
+			if err != nil {
+				utils.Logger.Info("未获取到白名单，跳过", "err", err)
+			}
+			uidList = append(uidList, reqFrom.Uid)
+			err = utils.WriteLinesFromSlice(cluster.GetWhiteListFile(), uidList)
+			if err != nil {
+				utils.Logger.Info("写入白名单失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+		} else {
+			messageSuccess = "deleteWhite"
+			messageFail = "deleteWhiteFail"
+			uidList, err = utils.ReadLinesToSlice(cluster.GetWhiteListFile())
+			if err != nil {
+				utils.Logger.Info("未获取到白名单", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+			// 删除指定行
+			for i := 0; i < len(uidList); i++ {
+				if uidList[i] == reqFrom.Uid {
+					uidList = append(uidList[:i], uidList[i+1:]...)
+					break
+				}
+			}
+			err = utils.WriteLinesFromSlice(cluster.GetWhiteListFile(), uidList)
+			if err != nil {
+				utils.Logger.Info("写入白名单失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": response(messageFail, langStr),
+					"data":    nil,
+				})
+				return
+			}
+		}
+
+		clusterIniFileContent := clusterTemplate(cluster)
+		err = utils.TruncAndWriteFile(cluster.GetIniFile(), clusterIniFileContent)
+		if err != nil {
+			utils.Logger.Error("写入cluster.ini失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{
+				"code":    201,
+				"message": response(messageFail, langStr),
+				"data":    nil,
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"code":    200,
+			"message": response(messageSuccess, langStr),
+			"data":    nil,
+		})
+		return
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+	}
+}
+
 //func handleHistoryPlayerGet(c *gin.Context) {
 //	type Player struct {
 //		UID      string      `json:"uid"`
@@ -321,7 +771,7 @@ import (
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": playerList})
 //}
-//
+
 //func handleAdminAddPost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -342,7 +792,7 @@ import (
 //	}
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addAdmin", langStr), "data": nil})
 //}
-//
+
 //func handleBlockAddPost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -363,7 +813,7 @@ import (
 //	}
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addBlock", langStr), "data": nil})
 //}
-//
+
 //func handleBlockUpload(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -412,7 +862,7 @@ import (
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
 //}
-//
+
 //func handleWhiteAddPost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -440,7 +890,7 @@ import (
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("addWhite", langStr), "data": nil})
 //}
-//
+
 //func handleAdminDeletePost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -461,7 +911,7 @@ import (
 //	}
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteAdmin", langStr), "data": nil})
 //}
-//
+
 //func handleBlockDeletePost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -482,7 +932,7 @@ import (
 //	}
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteBlock", langStr), "data": nil})
 //}
-//
+
 //func handleWhiteDeletePost(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -510,7 +960,7 @@ import (
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteWhite", langStr), "data": nil})
 //}
-//
+
 //func handleKick(c *gin.Context) {
 //	lang, _ := c.Get("lang")
 //	langStr := "zh" // 默认语言
@@ -1610,403 +2060,3 @@ import (
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("disableModSuccess", langStr), "data": nil})
 //
 //}
-
-func handleClustersGet(c *gin.Context) {
-	username, _ := c.Get("username")
-	role, _ := c.Get("role")
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-
-	type ClusterItem struct {
-		ClusterName        string   `json:"clusterName"`
-		ClusterDisplayName string   `json:"clusterDisplayName"`
-		Worlds             []string `json:"worlds"`
-	}
-	var data []ClusterItem
-
-	if role == "admin" {
-		// 管理员返回所有cluster
-
-		for _, cluster := range config.Clusters {
-			var worlds []string
-			for _, world := range cluster.Worlds {
-				worlds = append(worlds, world.Name)
-			}
-			data = append(data, ClusterItem{
-				ClusterName:        cluster.ClusterSetting.ClusterName,
-				ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
-				Worlds:             worlds,
-			})
-		}
-
-	} else {
-		for i, user := range config.Users {
-			if user.Username == username {
-				for _, clusterName := range config.Users[i].ClusterPermission {
-					cluster, err := config.GetClusterWithName(clusterName)
-					if err != nil {
-						continue
-					} else {
-						var worlds []string
-						for _, world := range cluster.Worlds {
-							worlds = append(worlds, world.Name)
-						}
-						data = append(data, ClusterItem{
-							ClusterName:        cluster.ClusterSetting.ClusterName,
-							ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
-							Worlds:             worlds,
-						})
-					}
-				}
-			}
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
-}
-
-func handleClusterGet(c *gin.Context) {
-	type ReqForm struct {
-		ClusterName string `json:"clusterName" form:"clusterName"`
-	}
-	var reqForm ReqForm
-	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("读取配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-
-	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
-	if err != nil {
-		utils.Logger.Error("获取集群失败", "err", err)
-		utils.RespondWithError(c, 404, "zh")
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cluster})
-}
-
-func handleClusterPost(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	username, _ := c.Get("username")
-	role, _ := c.Get("role")
-
-	type ReqForm struct {
-		ClusterName        string `json:"clusterName"`
-		ClusterDisplayName string `json:"clusterDisplayName"`
-	}
-	var reqFrom ReqForm
-	if err := c.ShouldBindJSON(&reqFrom); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-
-	for _, cluster := range config.Clusters {
-		if cluster.ClusterSetting.ClusterName == reqFrom.ClusterName {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    201,
-				"message": response("clusterExisted", langStr),
-				"data":    nil,
-			})
-			return
-		}
-	}
-
-	var cluster utils.Cluster
-	cluster.ClusterSetting.ClusterName = reqFrom.ClusterName
-	cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
-	cluster.SysSetting = utils.SysSetting{
-		AutoRestart: utils.AutoRestart{
-			Enable: true,
-			Time:   "06:47:19",
-		},
-		AutoAnnounce: nil,
-		AutoBackup: utils.AutoBackup{
-			Enable: true,
-			Time:   "06:13:57",
-		},
-		Keepalive: utils.Keepalive{
-			Enable:    true,
-			Frequency: 30,
-		},
-		Bit64:    false,
-		TickRate: 15,
-	}
-
-	config.Clusters = append(config.Clusters, cluster)
-
-	// 添加对应的用户权限
-	if role != "admin" {
-		for userIndex, user := range config.Users {
-			if user.Username == username {
-				config.Users[userIndex].ClusterPermission = append(config.Users[userIndex].ClusterPermission, reqFrom.ClusterName)
-			}
-		}
-	}
-
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("写入配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": response("createSuccess", langStr),
-		"data":    nil,
-	})
-}
-
-func handleClusterSavePost(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-
-	var reqCluster utils.Cluster
-	if err := c.ShouldBindJSON(&reqCluster); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := saveSetting(reqCluster)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": response("saveFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": response("saveSuccess", langStr),
-		"data":    nil,
-	})
-}
-
-func handleClusterSaveRestartPost(c *gin.Context) {
-	defer func() {
-		time.Sleep(10 * time.Second)
-		_ = utils.BashCMD("screen -wipe")
-	}()
-
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-
-	var reqCluster utils.Cluster
-	if err := c.ShouldBindJSON(&reqCluster); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	_ = utils.BashCMD("screen -wipe")
-
-	err := saveSetting(reqCluster)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": response("saveFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
-	_ = utils.StopClusterAllWorlds(reqCluster)
-	err = utils.StartClusterAllWorlds(reqCluster)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": response("saveSuccessRestartFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restartSuccess", langStr), "data": nil})
-}
-
-func handleClusterSaveRegeneratePost(c *gin.Context) {
-	defer func() {
-		time.Sleep(10 * time.Second)
-		_ = utils.BashCMD("screen -wipe")
-	}()
-
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-
-	var reqCluster utils.Cluster
-	if err := c.ShouldBindJSON(&reqCluster); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	_ = utils.BashCMD("screen -wipe")
-
-	_ = utils.StopClusterAllWorlds(reqCluster)
-
-	for _, world := range reqCluster.Worlds {
-		cmd := fmt.Sprintf("rm -rf %s", world.GetMainPath(reqCluster.ClusterSetting.ClusterName))
-		err := utils.BashCMD(cmd)
-		if err != nil {
-			utils.Logger.Error("删除旧世界目录失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteOldServerFail", langStr), "data": nil})
-			return
-		}
-	}
-
-	err := saveSetting(reqCluster)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": response("saveFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
-	err = utils.StartClusterAllWorlds(reqCluster)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": response("saveSuccessRestartFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
-}
-
-func handleImportPost(c *gin.Context) {
-	defer func() {
-		clearUpZipFile()
-	}()
-
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	file, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
-		return
-	}
-	clusterName := c.PostForm("clusterName")
-	if clusterName == "" {
-		c.JSON(http.StatusBadRequest, "缺少集群名")
-		return
-	}
-
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-	cluster, err := config.GetClusterWithName(clusterName)
-	if err != nil {
-		utils.Logger.Error("获取集群失败", "err", err)
-		utils.RespondWithError(c, 404, "zh")
-		return
-	}
-
-	if cluster.Worlds != nil {
-		utils.Logger.Info("被导入的集群中的世界不为空")
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": responseImportError("worldNotEmpty", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
-	//保存文件
-	savePath := utils.ImportFileUploadPath + file.Filename
-	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		utils.Logger.Error("文件保存失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": responseImportError("zipFileSave", langStr),
-			"data":    nil,
-		})
-		return
-	}
-	//执行导入
-	result, msg, cluster, lists := doImport(file.Filename, cluster, langStr)
-	if !result {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": responseImportError(msg, langStr), "data": nil})
-		return
-	}
-	//写入三个名单
-	clusterPath := cluster.GetMainPath() + "/"
-	err = utils.EnsureDirExists(clusterPath)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": responseImportError("clusterDirCreateFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-	for key, value := range lists {
-		err = utils.EnsureFileExists(clusterPath + key)
-		if err != nil {
-			utils.Logger.Error("创建"+key+"文件失败", "err", err)
-			continue
-		}
-		err = utils.WriteLinesFromSlice(clusterPath+key, value)
-		if err != nil {
-			utils.Logger.Error("写入"+key+"文件失败", "err", err)
-			continue
-		}
-	}
-	//写入文件
-	err = saveSetting(cluster)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": response("importSuccessSaveFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
-}

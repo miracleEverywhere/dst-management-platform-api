@@ -3,6 +3,7 @@ package setting
 import (
 	"dst-management-platform-api/utils"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -205,134 +206,6 @@ func saveSetting(reqCluster utils.Cluster) error {
 
 	return nil
 }
-
-//func generateWorld() {
-//	//关闭Master进程
-//	/*cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
-//	err := cmdStopMaster.Run()
-//	if err != nil {
-//		utils.Logger.Error("关闭地面失败", "err", err)
-//	}
-//	//关闭Caves进程
-//	cmdStopCaves := exec.Command("/bin/bash", "-c", utils.StopCavesCMD)
-//	err = cmdStopCaves.Run()
-//	if err != nil {
-//		utils.Logger.Error("关闭洞穴失败", "err", err)
-//	}*/
-//	err := utils.StopGame()
-//	if err != nil {
-//		utils.Logger.Error("关闭游戏失败", "err", err)
-//	}
-//	//删除Master/save目录
-//	err = utils.DeleteDir(utils.MasterSavePath)
-//	if err != nil {
-//		utils.Logger.Error("删除地面文件失败", "err", err, "dir", utils.MasterSavePath)
-//	}
-//	//等待3秒
-//	time.Sleep(3 * time.Second)
-//	//启动Master
-//	/*cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
-//	err = cmdStartMaster.Run()
-//	if err != nil {
-//		utils.Logger.Error("启动地面失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//	if config.RoomSetting.Cave != "" {
-//		//删除Caves/save目录
-//		err = utils.DeleteDir(utils.CavesSavePath)
-//		if err != nil {
-//			utils.Logger.Error("删除洞穴文件失败", "err", err, "dir", utils.CavesSavePath)
-//		}
-//		//启动Caves
-//		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
-//		err = cmdStartCaves.Run()
-//		if err != nil {
-//			utils.Logger.Error("启动洞穴失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//	}*/
-//	err = utils.StartGame()
-//	if err != nil {
-//		utils.Logger.Error("启动游戏失败", "err", err)
-//	}
-//}
-
-//
-//func getList(filepath string) []string {
-//	// 预留位 黑名单 管理员
-//	al, err := readLines(filepath)
-//	if err != nil {
-//		utils.Logger.Error("读取文件失败", "err", err, "file", filepath)
-//		return []string{}
-//	}
-//	var uidList []string
-//	for _, a := range al {
-//		uid := strings.TrimSpace(a)
-//		uidList = append(uidList, uid)
-//	}
-//	if uidList == nil {
-//		return []string{}
-//	}
-//	return uidList
-//}
-//
-//func addList(uid string, filePath string) error {
-//	// 要追加的内容
-//	content := "\n" + uid
-//	// 打开文件，使用 os.O_APPEND | os.O_CREATE | os.O_WRONLY 选项
-//	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-//	if err != nil {
-//		return err
-//	}
-//	defer func(file *os.File) {
-//		err = file.Close()
-//		if err != nil {
-//			utils.Logger.Error("关闭文件失败", "err", err)
-//		}
-//	}(file) // 确保在函数结束时关闭文件
-//	// 写入内容到文件
-//	if _, err = file.WriteString(content); err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-//
-//func deleteList(uid string, filePath string) error {
-//	// 读取文件内容
-//	lines, err := readLines(filePath)
-//	if err != nil {
-//		return err
-//	}
-//
-//	// 删除指定行
-//	for i := 0; i < len(lines); i++ {
-//		if lines[i] == uid {
-//			lines = append(lines[:i], lines[i+1:]...)
-//			break
-//		}
-//	}
-//
-//	// 将修改后的内容写回文件
-//	err = writeLines(filePath, lines)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-//
-//
-//type UIDForm struct {
-//	UID string `json:"uid"`
-//}
-//
-//func kick(uid string, world string) error {
-//	cmd := "TheNet:Kick('" + uid + "')"
-//	return utils.ScreenCMD(cmd, world)
-//}
 
 func doImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster, map[string][]string) {
 	var (
@@ -644,6 +517,104 @@ func clearUpZipFile() {
 	}
 }
 
+func getList(filepath string) []string {
+	// 预留位 黑名单 管理员
+	al, err := utils.ReadLinesToSlice(filepath)
+	if err != nil {
+		utils.Logger.Error("读取文件失败", "err", err, "file", filepath)
+		return []string{}
+	}
+	var uidList []string
+	for _, uid := range al {
+		if !(uid == "" || strings.HasPrefix(uid, " ")) {
+			uidList = append(uidList, uid)
+		}
+	}
+
+	return uidList
+}
+
+func GetPlayerAgePrefab(uid string, cluster utils.Cluster) (int, string, error) {
+	var (
+		path      string
+		cmdAge    string
+		cmdPrefab string
+		world     utils.World
+		hasMaster bool
+	)
+
+	for _, i := range cluster.Worlds {
+		if i.IsMaster {
+			world = i
+			hasMaster = true
+			break
+		}
+	}
+	if !hasMaster {
+		world = cluster.Worlds[0]
+	}
+
+	if world.EncodeUserPath {
+		sessionFileCmd := "TheNet:GetUserSessionFile(ShardGameIndex:GetSession(), '" + uid + "')"
+		userSessionFile, err := utils.ScreenCMDOutput(sessionFileCmd, uid+"UserSessionFile", world.ScreenName, world.GetServerLogFile(cluster.ClusterSetting.ClusterName))
+		if err != nil {
+			return 0, "", err
+		}
+
+		path = world.GetSavePath(cluster.ClusterSetting.ClusterName) + "/" + userSessionFile
+
+		ok, _ := utils.FileDirectoryExists(path)
+		if !ok {
+			return 0, "", err
+		}
+
+	} else {
+		cmd := fmt.Sprintf("find %s/session/*/%s_/ -name \"*.meta\" -type f -printf \"%%T@ %%p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2", world.GetSavePath(cluster.ClusterSetting.ClusterName), uid)
+		stdout, _, err := utils.BashCMDOutput(cmd)
+		if err != nil || stdout == "" {
+			utils.Logger.Warn("Bash命令执行失败", "err", err, "cmd", cmd)
+			return 0, "", err
+		}
+		path = stdout[:len(stdout)-6]
+	}
+
+	if utils.Platform == "darwin" {
+		cmdAge = "ggrep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	} else {
+		cmdAge = "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
+	}
+
+	stdout, _, err := utils.BashCMDOutput(cmdAge)
+	if err != nil || stdout == "" {
+		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdAge)
+		return 0, "", err
+	}
+
+	stdout = strings.TrimSpace(stdout)
+	age, err := strconv.ParseFloat(stdout, 64)
+	if err != nil {
+		utils.Logger.Error("玩家游戏时长转换失败", "err", err)
+		age = 0
+	}
+	age = age / 480
+	ageInt := int(math.Round(age))
+
+	if utils.Platform == "darwin" {
+		cmdPrefab = "ggrep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	} else {
+		cmdPrefab = "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
+	}
+
+	stdout, _, err = utils.BashCMDOutput(cmdPrefab)
+	if err != nil || stdout == "" {
+		utils.Logger.Error("Bash命令执行失败", "err", err, "cmd", cmdPrefab)
+		return ageInt, "", nil
+	}
+	prefab := strings.TrimSpace(stdout)
+
+	return ageInt, prefab, nil
+}
+
 //
 //func changeWhitelistSlots() error {
 //	err := utils.EnsureFileExists(utils.WhiteListPath)
@@ -787,4 +758,59 @@ func clearUpZipFile() {
 //	prefab := strings.TrimSpace(stdout)
 //
 //	return ageInt, prefab, nil
+//}
+
+//func addList(uid string, filePath string) error {
+//	// 要追加的内容
+//	content := "\n" + uid
+//	// 打开文件，使用 os.O_APPEND | os.O_CREATE | os.O_WRONLY 选项
+//	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+//	if err != nil {
+//		return err
+//	}
+//	defer func(file *os.File) {
+//		err = file.Close()
+//		if err != nil {
+//			utils.Logger.Error("关闭文件失败", "err", err)
+//		}
+//	}(file) // 确保在函数结束时关闭文件
+//	// 写入内容到文件
+//	if _, err = file.WriteString(content); err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
+
+//func deleteList(uid string, filePath string) error {
+//	// 读取文件内容
+//	lines, err := readLines(filePath)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// 删除指定行
+//	for i := 0; i < len(lines); i++ {
+//		if lines[i] == uid {
+//			lines = append(lines[:i], lines[i+1:]...)
+//			break
+//		}
+//	}
+//
+//	// 将修改后的内容写回文件
+//	err = writeLines(filePath, lines)
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
+
+//type UIDForm struct {
+//	UID string `json:"uid"`
+//}
+
+//func kick(uid string, world string) error {
+//	cmd := "TheNet:Kick('" + uid + "')"
+//	return utils.ScreenCMD(cmd, world)
 //}

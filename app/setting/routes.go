@@ -18,15 +18,10 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/cluster/save_restart", utils.MWtoken(), handleClusterSaveRestartPost)
 			setting.POST("/cluster/save_regenerate", utils.MWtoken(), handleClusterSaveRegeneratePost)
 			//// Player
-			//setting.GET("/player/list", utils.MWtoken(), handlePlayerListGet)
+			setting.GET("/player/list", utils.MWtoken(), handlePlayerListGet)
 			//setting.GET("/player/list/history", utils.MWtoken(), handleHistoryPlayerGet)
-			//setting.POST("/player/add/admin", utils.MWtoken(), handleAdminAddPost)
-			//setting.POST("/player/add/block", utils.MWtoken(), handleBlockAddPost)
+			setting.POST("/player/change", utils.MWtoken(), handlePlayerListChangePost)
 			//setting.POST("/player/add/block/upload", utils.MWtoken(), handleBlockUpload)
-			//setting.POST("/player/add/white", utils.MWtoken(), handleWhiteAddPost)
-			//setting.POST("/player/delete/admin", utils.MWtoken(), handleAdminDeletePost)
-			//setting.POST("/player/delete/block", utils.MWtoken(), handleBlockDeletePost)
-			//setting.POST("/player/delete/white", utils.MWtoken(), handleWhiteDeletePost)
 			//setting.POST("/player/kick", utils.MWtoken(), handleKick)
 			// 存档导入
 			setting.POST("/import/upload", utils.MWtoken(), handleImportPost)
