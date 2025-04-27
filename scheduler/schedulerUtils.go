@@ -29,7 +29,7 @@ func setPlayer2DB(config utils.Config) {
 			}
 		}
 		if err != nil {
-			utils.Logger.Error("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
+			utils.Logger.Warn("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
 			continue
 		}
 
@@ -359,7 +359,7 @@ func maintainUidMap(config utils.Config) {
 				uidMap[uid] = nickname
 			}
 		}
-		err = utils.WriteUidMap(uidMap)
+		err = utils.WriteUidMap(uidMap, cluster)
 		if err != nil {
 			utils.Logger.Error("写入历史玩家字典失败", "err", err)
 		}
