@@ -304,8 +304,8 @@ func GetModDefaultConfigs(id int) {
 
 func SyncMods(cluster Cluster) error {
 	// 处理UGC模组
-	ugcModPath := cluster.GetModUgcPath()
-	cmd := fmt.Sprintf("cp -r %s/* %s", ugcModPath, ModUgcDownloadPath)
+	ugcModPath := cluster.GetModUgcPath()[0]
+	cmd := fmt.Sprintf("cp -rf %s/* %s", ugcModPath, ModUgcDownloadPath)
 	err := BashCMD(cmd)
 	if err != nil {
 		Logger.Error("同步UGC模组失败", "err", err)
@@ -313,7 +313,7 @@ func SyncMods(cluster Cluster) error {
 	}
 	// 处理非UGC模组
 	noUgcModPath := cluster.GetModNoUgcPath()
-	cmd = "for dir in " + noUgcModPath + "/workshop-*; do [ -d \"$dir\" ] && cp -r \"$dir\" \"" + ModNoUgcDownloadPath + "/$(basename \"$dir\" | sed 's/workshop-//')\"; done"
+	cmd = "for dir in " + noUgcModPath + "/workshop-*; do [ -d \"$dir\" ] && cp -rf \"$dir\" \"" + ModNoUgcDownloadPath + "/$(basename \"$dir\" | sed 's/workshop-//')\"; done"
 	if err != nil {
 		Logger.Error("同步非UGC模组失败", "err", err)
 		return err
