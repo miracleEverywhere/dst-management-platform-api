@@ -565,6 +565,7 @@ func EnsureFileExists(filePath string) error {
 	return nil
 }
 
+// FileDirectoryExists 检查文件或目录是否存在
 func FileDirectoryExists(filePath string) (bool, error) {
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
 	if strings.HasPrefix(filePath, "~") {
