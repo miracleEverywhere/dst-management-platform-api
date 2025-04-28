@@ -122,6 +122,7 @@ func responseImportError(message string, lang string) string {
 		"levelDataReadFail":       "读取leveldataoverride.lua文件失败",
 		"worldNotEmpty":           "当前房间含有其他世界，请创建一个新集群后导入",
 		"clusterDirCreateFail":    "创建集群目录失败，服务器内部错误",
+		"copyFileFail":            "复制游戏数据文件失败，服务器内部错误",
 	}
 	responseEN := map[string]string{
 		"zipFileSave":             "file save fail",
@@ -143,6 +144,7 @@ func responseImportError(message string, lang string) string {
 		"levelDataReadFail":       "read leveldataoverride.lua fail",
 		"worldNotEmpty":           "this cluster has valid world, please create new cluster to import",
 		"clusterDirCreateFail":    "cluster directory creation failed due to an internal server error",
+		"copyFileFail":            "Failed to copy game data files, internal server error",
 	}
 
 	if lang == "zh" {

@@ -370,7 +370,7 @@ func handleImportPost(c *gin.Context) {
 		return
 	}
 	//执行导入
-	result, msg, cluster, lists := doImport(file.Filename, cluster, langStr)
+	result, msg, cluster, lists, dstFiles := doImport(file.Filename, cluster, langStr)
 	if !result {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": responseImportError(msg, langStr), "data": nil})
 		return
@@ -407,6 +407,24 @@ func handleImportPost(c *gin.Context) {
 			"data":    nil,
 		})
 		return
+	}
+	//写入 save/ 和 backup/
+	for worldName, dirPaths := range dstFiles {
+		clusterFilePath := fmt.Sprintf("%s/%s", cluster.GetMainPath(), worldName)
+		for _, dirPath := range dirPaths {
+			cmd := fmt.Sprintf("cp -r %s %s", dirPath, clusterFilePath)
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("复制游戏数据失败", "err", err, "dir", clusterFilePath)
+				c.JSON(http.StatusOK, gin.H{
+					"code":    201,
+					"message": responseImportError("copyFileFail", langStr),
+					"data":    nil,
+				})
+				return
+			}
+		}
+
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})

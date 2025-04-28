@@ -207,7 +207,7 @@ func saveSetting(reqCluster utils.Cluster) error {
 	return nil
 }
 
-func doImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster, map[string][]string) {
+func doImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster, map[string][]string, map[string][]string) {
 	var (
 		result    bool
 		errMsgKey string
@@ -218,13 +218,13 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	if err != nil {
 		errMsgKey = "createUnzipDir"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 	err = utils.BashCMD("unzip -qo " + filePath + " -d " + utils.ImportFileUnzipPath)
 	if err != nil {
 		errMsgKey = "unzipProcess"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 
 	/* ======== cluster.ini ======== */
@@ -233,20 +233,20 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	if !result || err != nil {
 		errMsgKey = "clusterIniNotFound"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 
 	clusterIni, err := utils.ParseIniToMap(clusterIniFilePath)
 	if err != nil {
 		errMsgKey = "clusterIniReadFail"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 
 	if clusterIni["cluster_name"] == "" {
 		errMsgKey = "cluster_name_NotSet"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 	cluster.ClusterSetting.Name = clusterIni["cluster_name"]
 
@@ -255,7 +255,7 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	if clusterIni["game_mode"] == "" {
 		errMsgKey = "game_mode_NotSet"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 	cluster.ClusterSetting.GameMode = clusterIni["game_mode"]
 
@@ -273,7 +273,7 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	if clusterIni["max_players"] == "" {
 		errMsgKey = "max_players_NotSet"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 	playnum, err := strconv.Atoi(clusterIni["max_players"])
 	if err != nil {
@@ -335,7 +335,7 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	if clusterIni["master_ip"] == "" {
 		errMsgKey = "master_ip_NotSet"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	} else {
 		masterIp = clusterIni["master_ip"]
 	}
@@ -346,13 +346,13 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	if !result || err != nil {
 		errMsgKey = "clusterTokenNotFound"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 	clusterToken, err := utils.GetFileAllContent(clusterTokenFilePath)
 	if err != nil {
 		errMsgKey = "clusterTokenReadFail"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 	cluster.ClusterSetting.Token = clusterToken
 
@@ -398,40 +398,46 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	}
 
 	/* ======== Master/ Caves/ ======== */
-	worldsPath, err := utils.GetDirs(utils.ImportFileUnzipPath, true)
+	fuckWorldsPath, err := utils.GetDirs(utils.ImportFileUnzipPath, true)
+	var worldsPath []string
+	for _, i := range fuckWorldsPath {
+		// 判断是否含有奇奇怪怪的目录，MacOS真是狗屎啊
+		lastDir := utils.GetLastDir(i)
+		if !strings.HasPrefix(lastDir, "__") {
+			worldsPath = append(worldsPath, i)
+		}
+	}
+
 	if err != nil || len(worldsPath) == 0 {
 		errMsgKey = "world_file_path_GetFail"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 
 	worldPortFactor, err := utils.GetWorldPortFactor(cluster.ClusterSetting.ClusterName)
 	if err != nil {
 		errMsgKey = "port_factor_GetFail"
 		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-		return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 
+	dstFiles := make(map[string][]string)
+
 	for index, worldPath := range worldsPath {
-		// 判断是否含有奇奇怪怪的目录，MacOS真是狗屎啊
-		lastDir := utils.GetLastDir(worldPath)
-		if strings.HasPrefix(lastDir, "__") {
-			continue
-		}
 		var world utils.World
 		/* ======== server.ini ======== */
 		result, err = utils.FileDirectoryExists(worldPath + "/server.ini")
 		if !result || err != nil {
 			errMsgKey = "serverIniNotFound"
 			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 		}
 
 		serverIni, err := utils.ParseIniToMap(worldPath + "/server.ini")
 		if err != nil {
 			errMsgKey = "clusterIniReadFail"
 			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 		}
 
 		world.ServerPort = 11000 + worldPortFactor + index + 1
@@ -439,13 +445,13 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 		if serverIni["is_master"] == "" {
 			errMsgKey = "is_master_NotSet"
 			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 		}
 		isMaster, err := strconv.ParseBool(serverIni["is_master"])
 		if err != nil {
 			errMsgKey = "is_master_ValueError"
 			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 		}
 		world.IsMaster = isMaster
 
@@ -481,14 +487,14 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 			if !result || err != nil {
 				errMsgKey = "levelDataNotFound"
 				utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-				return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+				return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 			}
 		}
 		levelData, err := utils.GetFileAllContent(levelDataPath)
 		if err != nil {
 			errMsgKey = "levelDataReadFail"
 			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
-			return false, errMsgKey, utils.Cluster{}, map[string][]string{}
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 		}
 		world.LevelData = levelData
 
@@ -505,9 +511,23 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 		}
 
 		cluster.Worlds = append(cluster.Worlds, world)
+
+		/* ======== save/ backup/ ======== */
+		result, err = utils.FileDirectoryExists(worldPath + "/save")
+		if !result || err != nil {
+			utils.Logger.Warn("未发现save目录，跳过(注意：没有该目录，游戏启动后会生成新世界)")
+		} else {
+			dstFiles[fmt.Sprintf("World%d", index+1)] = append(dstFiles[fmt.Sprintf("World%d", index+1)], worldPath+"/save")
+		}
+		result, err = utils.FileDirectoryExists(worldPath + "/backup")
+		if !result || err != nil {
+			utils.Logger.Warn("未发现backup目录，跳过")
+		} else {
+			dstFiles[fmt.Sprintf("World%d", index+1)] = append(dstFiles[fmt.Sprintf("World%d", index+1)], worldPath+"/backup")
+		}
 	}
 
-	return true, "", cluster, lists
+	return true, "", cluster, lists, dstFiles
 }
 
 func clearUpZipFile() {
