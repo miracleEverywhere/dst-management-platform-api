@@ -55,6 +55,16 @@ func handleConnectionCodeGet(c *gin.Context) {
 		utils.RespondWithError(c, 404, "zh")
 		return
 	}
+	if cluster.Worlds == nil {
+		var cc string
+		if langStr == "zh" {
+			cc = "未发现可用的世界，无法获取直连代码"
+		} else {
+			cc = "No valid World found, can NOT generate connection code"
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": cc, "data": nil})
+		return
+	}
 
 	var (
 		hasMaster bool
