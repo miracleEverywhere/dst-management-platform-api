@@ -181,9 +181,12 @@ func (cluster Cluster) GetWhiteListSlot() int {
 	return len(whiteList)
 }
 
-func (cluster Cluster) GetModUgcPath() string {
-	worldName := cluster.Worlds[0].Name
-	return fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330", cluster.ClusterSetting.ClusterName, worldName)
+func (cluster Cluster) GetModUgcPath() []string {
+	var paths []string
+	for _, world := range cluster.Worlds {
+		paths = append(paths, fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330", cluster.ClusterSetting.ClusterName, world.Name))
+	}
+	return paths
 }
 
 func (cluster Cluster) GetModNoUgcPath() string {
