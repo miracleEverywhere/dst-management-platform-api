@@ -40,7 +40,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/mod/add/clint_mods_disabled", utils.MWtoken(), handleAddClientModsDisabledConfig)
 			setting.POST("/mod/delete/clint_mods_disabled", utils.MWtoken(), handleDeleteClientModsDisabledConfig)
 			//// System
-			//setting.GET("/system/setting", utils.MWtoken(), handleSystemSettingGet)
+			setting.GET("/system/setting", utils.MWtoken(), handleSystemSettingGet)
 			//setting.PUT("/system/setting", utils.MWtoken(), handleSystemSettingPut)
 		}
 	}

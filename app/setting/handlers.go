@@ -1457,104 +1457,6 @@ func handleDisableModPost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": newModOverridesLua})
 }
 
-//func handleSystemSettingGet(c *gin.Context) {
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//
-//	var data SystemSettingForm
-//	data.SysMetricsGet = config.SysSetting.SchedulerSetting.SysMetricsGet
-//	data.KeepaliveDisable = !config.Keepalive.Enable
-//	data.PlayerGetFrequency = config.SysSetting.SchedulerSetting.PlayerGetFrequency
-//	data.UIDMaintain = config.SysSetting.SchedulerSetting.UIDMaintain
-//	data.KeepaliveFrequency = config.Keepalive.Frequency
-//	data.Bit64 = config.Bit64
-//	data.TickRate = config.TickRate
-//	data.EncodeUserPath = config.EncodeUserPath
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
-//}
-
-//func handleSystemSettingPut(c *gin.Context) {
-//	defer scheduler.ReloadScheduler()
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//
-//	var systemSettingForm SystemSettingForm
-//	if err := c.ShouldBindJSON(&systemSettingForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	config.SysSetting.SchedulerSetting.SysMetricsGet.Disable = systemSettingForm.SysMetricsGet.Disable
-//	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = systemSettingForm.UIDMaintain.Frequency
-//	config.SysSetting.SchedulerSetting.UIDMaintain.Disable = systemSettingForm.UIDMaintain.Disable
-//	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
-//	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
-//	config.Keepalive.Enable = !systemSettingForm.KeepaliveDisable
-//
-//	if config.TickRate != systemSettingForm.TickRate {
-//		config.TickRate = systemSettingForm.TickRate
-//		err = saveSetting(config)
-//		if err != nil {
-//			utils.Logger.Error("设置Tick Rate失败", "err", err)
-//		}
-//	}
-//
-//	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
-//		utils.SYSMETRICS = []utils.SysMetrics{}
-//	}
-//
-//	if config.Bit64 != systemSettingForm.Bit64 {
-//		config.Bit64 = systemSettingForm.Bit64
-//		if config.Bit64 {
-//			// 安装64位依赖
-//			go utils.ExecBashScript("tmp.sh", utils.Install64Dependency)
-//		} else {
-//			// 安装32位依赖
-//			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
-//		}
-//	}
-//
-//	if config.EncodeUserPath.Ground != systemSettingForm.EncodeUserPath.Ground {
-//		config.EncodeUserPath.Ground = systemSettingForm.EncodeUserPath.Ground
-//		err = saveSetting(config)
-//		if err != nil {
-//			utils.Logger.Error("生成游戏配置文件失败", "err", err)
-//		}
-//	}
-//	if config.EncodeUserPath.Cave != systemSettingForm.EncodeUserPath.Cave {
-//		config.EncodeUserPath.Cave = systemSettingForm.EncodeUserPath.Cave
-//		err = saveSetting(config)
-//		if err != nil {
-//			utils.Logger.Error("生成游戏配置文件失败", "err", err)
-//		}
-//	}
-//
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
-//}
-
 func handleMacOSModExportPost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -1817,3 +1719,113 @@ func handleDeleteClientModsDisabledConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("disableModSuccess", langStr), "data": nil})
 }
+
+func handleSystemSettingGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	var systemResponse System
+
+	systemResponse.SysSetting = cluster.SysSetting
+	systemResponse.SchedulerSetting = config.SchedulerSetting
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": systemResponse})
+}
+
+//func handleSystemSettingPut(c *gin.Context) {
+//	defer scheduler.ReloadScheduler()
+//	lang, _ := c.Get("lang")
+//	langStr := "zh" // 默认语言
+//	if strLang, ok := lang.(string); ok {
+//		langStr = strLang
+//	}
+//
+//	config, err := utils.ReadConfig()
+//	if err != nil {
+//		utils.Logger.Error("配置文件读取失败", "err", err)
+//		utils.RespondWithError(c, 500, "zh")
+//		return
+//	}
+//
+//	var systemSettingForm SystemSettingForm
+//	if err := c.ShouldBindJSON(&systemSettingForm); err != nil {
+//		// 如果绑定失败，返回 400 错误
+//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	config.SysSetting.SchedulerSetting.SysMetricsGet.Disable = systemSettingForm.SysMetricsGet.Disable
+//	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = systemSettingForm.UIDMaintain.Frequency
+//	config.SysSetting.SchedulerSetting.UIDMaintain.Disable = systemSettingForm.UIDMaintain.Disable
+//	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
+//	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
+//	config.Keepalive.Enable = !systemSettingForm.KeepaliveDisable
+//
+//	if config.TickRate != systemSettingForm.TickRate {
+//		config.TickRate = systemSettingForm.TickRate
+//		err = saveSetting(config)
+//		if err != nil {
+//			utils.Logger.Error("设置Tick Rate失败", "err", err)
+//		}
+//	}
+//
+//	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
+//		utils.SYSMETRICS = []utils.SysMetrics{}
+//	}
+//
+//	if config.Bit64 != systemSettingForm.Bit64 {
+//		config.Bit64 = systemSettingForm.Bit64
+//		if config.Bit64 {
+//			// 安装64位依赖
+//			go utils.ExecBashScript("tmp.sh", utils.Install64Dependency)
+//		} else {
+//			// 安装32位依赖
+//			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
+//		}
+//	}
+//
+//	if config.EncodeUserPath.Ground != systemSettingForm.EncodeUserPath.Ground {
+//		config.EncodeUserPath.Ground = systemSettingForm.EncodeUserPath.Ground
+//		err = saveSetting(config)
+//		if err != nil {
+//			utils.Logger.Error("生成游戏配置文件失败", "err", err)
+//		}
+//	}
+//	if config.EncodeUserPath.Cave != systemSettingForm.EncodeUserPath.Cave {
+//		config.EncodeUserPath.Cave = systemSettingForm.EncodeUserPath.Cave
+//		err = saveSetting(config)
+//		if err != nil {
+//			utils.Logger.Error("生成游戏配置文件失败", "err", err)
+//		}
+//	}
+//
+//	err = utils.WriteConfig(config)
+//	if err != nil {
+//		utils.Logger.Error("配置文件写入失败", "err", err)
+//		utils.RespondWithError(c, 500, langStr)
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
+//}

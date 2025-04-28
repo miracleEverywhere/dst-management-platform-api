@@ -634,3 +634,8 @@ func GetPlayerAgePrefab(uid string, cluster utils.Cluster) (int, string, error) 
 
 	return ageInt, prefab, nil
 }
+
+type System struct {
+	SysSetting       utils.SysSetting       `json:"sysSetting"`
+	SchedulerSetting utils.SchedulerSetting `json:"schedulerSetting"`
+}
