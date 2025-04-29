@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func setPlayer2DB(config utils.Config) {
+func getPlayers(config utils.Config) {
 	var (
 		players    []string
 		playerList []utils.Players

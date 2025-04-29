@@ -19,7 +19,7 @@ func InitTasks() {
 
 	/* ** ========== SchedulerSetting 影响全局 ========== ** */
 	// 获取当前玩家
-	_, _ = Scheduler.Every(config.SchedulerSetting.PlayerGetFrequency).Seconds().Do(setPlayer2DB, config)
+	_, _ = Scheduler.Every(config.SchedulerSetting.PlayerGetFrequency).Seconds().Do(getPlayers, config)
 	utils.Logger.Info("玩家列表定时任务已配置")
 
 	// 维护UID字典
