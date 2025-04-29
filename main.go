@@ -46,7 +46,7 @@ func main() {
 	r = logs.RouteLogs(r)
 	// 外部接口
 	r = externalApi.RouteExternalApi(r)
-	//静态资源，放在最后
+	// 静态资源，放在最后
 	r.Use(static.ServeEmbed("dist", EmbedFS))
 
 	// 启动服务器
