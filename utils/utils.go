@@ -183,6 +183,13 @@ func CreateManualInstallScript() {
 
 func CheckDirs() {
 	var err error
+	// dst config
+	err = EnsureDirExists(DstPath)
+	if err != nil {
+		Logger.Error("目录检查未通过", "path", DstPath)
+		panic("目录检查未通过")
+	}
+	// dmp_files
 	err = EnsureDirExists(DmpFilesPath)
 	if err != nil {
 		Logger.Error("目录检查未通过", "path", DmpFilesPath)
@@ -690,6 +697,31 @@ func StartAllClusters(clusters []Cluster) error {
 	var err error
 	for _, cluster := range clusters {
 		err = StartClusterAllWorlds(cluster)
+	}
+
+	return err
+}
+
+// ClearDstFiles 删除脏数据
+func (cluster Cluster) ClearDstFiles() error {
+	var (
+		err      error
+		dbWorlds []string
+	)
+
+	allWorlds, err := GetDirs(cluster.GetMainPath(), false)
+	if err != nil {
+		return err
+	}
+
+	for _, world := range cluster.Worlds {
+		dbWorlds = append(dbWorlds, world.Name)
+	}
+
+	for _, dirWorld := range allWorlds {
+		if !Contains(dbWorlds, dirWorld) {
+			err = RemoveDir(fmt.Sprintf("%s/%s", cluster.GetMainPath(), dirWorld))
+		}
 	}
 
 	return err
