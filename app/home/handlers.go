@@ -138,6 +138,7 @@ func handleWorldInfoGet(c *gin.Context) {
 		Cpu      float64 `json:"cpu"`
 		Mem      float64 `json:"mem"`
 		MemSize  float64 `json:"memSize"`
+		DiskUsed int64   `json:"diskUsed"`
 	}
 
 	var reqForm ReqForm
@@ -164,7 +165,7 @@ func handleWorldInfoGet(c *gin.Context) {
 	var worldInfo []WorldStat
 
 	for _, world := range cluster.Worlds {
-		stat, cpu, mem, memSize := world.GetProcessStatus()
+		stat, cpu, mem, memSize, diskUsed := world.GetProcessStatus(cluster.ClusterSetting.ClusterName)
 
 		status := WorldStat{
 			ID:       strings.ReplaceAll(world.Name, "World", ""),
@@ -175,6 +176,7 @@ func handleWorldInfoGet(c *gin.Context) {
 			Cpu:      cpu,
 			Mem:      mem,
 			MemSize:  memSize,
+			DiskUsed: diskUsed,
 		}
 
 		worldInfo = append(worldInfo, status)
