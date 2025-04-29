@@ -30,8 +30,9 @@ func (f FileInfoList) Swap(i, j int) {
 	f[i], f[j] = f[j], f[i]
 }
 
-func getBackupFiles() (FileInfoList, error) {
-	entries, err := os.ReadDir(utils.BackupPath)
+func getBackupFiles(cluster utils.Cluster) (FileInfoList, error) {
+	backupPath := cluster.GetBackupPath()
+	entries, err := os.ReadDir(backupPath)
 	if err != nil {
 		utils.Logger.Error("读取目录时出错", "err", err)
 		return FileInfoList{}, err

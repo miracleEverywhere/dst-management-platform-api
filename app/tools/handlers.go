@@ -1,9 +1,14 @@
 package tools
 
 import (
+	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/utils"
+	"encoding/base64"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -74,7 +79,7 @@ func handleOSInfoGet(c *gin.Context) {
 //		// 返回成功响应
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("installing", langStr), "data": nil})
 //	}
-//
+
 //	func handleGetInstallStatus(c *gin.Context) {
 //		content, err := os.ReadFile("/tmp/install_status")
 //		utils.Logger.Error("读取文件失败", "err", err)
@@ -84,7 +89,7 @@ func handleOSInfoGet(c *gin.Context) {
 //			"process": statusSlice[0], "zh": statusSlice[1], "en": statusSlice[2],
 //		}})
 //	}
-//
+
 //	func handleAnnounceGet(c *gin.Context) {
 //		config, err := utils.ReadConfig()
 //		if err != nil {
@@ -98,7 +103,7 @@ func handleOSInfoGet(c *gin.Context) {
 //		}
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.AutoAnnounce})
 //	}
-//
+
 //	func handleAnnouncePost(c *gin.Context) {
 //		defer scheduler.ReloadScheduler()
 //		lang, _ := c.Get("lang")
@@ -133,7 +138,7 @@ func handleOSInfoGet(c *gin.Context) {
 //		}
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createSuccess", langStr), "data": nil})
 //	}
-//
+
 //	func handleAnnounceDelete(c *gin.Context) {
 //		defer scheduler.ReloadScheduler()
 //		lang, _ := c.Get("lang")
@@ -168,7 +173,7 @@ func handleOSInfoGet(c *gin.Context) {
 //		}
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
 //	}
-//
+
 //	func handleAnnouncePut(c *gin.Context) {
 //		defer scheduler.ReloadScheduler()
 //		lang, _ := c.Get("lang")
@@ -203,7 +208,7 @@ func handleOSInfoGet(c *gin.Context) {
 //		}
 //		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateFail", langStr), "data": nil})
 //	}
-//
+
 //	func handleUpdateGet(c *gin.Context) {
 //		dstVersion, err := externalApi.GetDSTVersion()
 //		if err != nil {
@@ -221,7 +226,7 @@ func handleOSInfoGet(c *gin.Context) {
 //			"updateSetting": config.AutoUpdate,
 //		}})
 //	}
-//
+
 //	func handleUpdatePut(c *gin.Context) {
 //		defer scheduler.ReloadScheduler()
 //		lang, _ := c.Get("lang")
@@ -252,211 +257,341 @@ func handleOSInfoGet(c *gin.Context) {
 //
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
 //	}
-//
-//	func handleBackupGet(c *gin.Context) {
-//		type BackFiles struct {
-//			Name       string `json:"name"`
-//			CreateTime string `json:"createTime"`
-//			Size       int64  `json:"size"`
-//		}
-//		var tmp []BackFiles
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, "zh")
-//			return
-//		}
-//		backupFiles, err := getBackupFiles()
-//		if err != nil {
-//			utils.Logger.Error("备份文件获取", "err", err)
-//		}
-//		for _, i := range backupFiles {
-//			var a BackFiles
-//			a.Name = i.Name
-//			a.CreateTime = i.ModTime.Format("2006-01-02 15:04:05")
-//			a.Size = i.Size
-//			tmp = append(tmp, a)
-//		}
-//		diskUsage, err := utils.DiskUsage()
-//		if err != nil {
-//			utils.Logger.Error("磁盘使用率获取失败", "err", err)
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-//			"backupSetting": config.AutoBackup,
-//			"backupFiles":   tmp,
-//			"diskUsage":     diskUsage,
-//		}})
-//	}
-//
-//	func handleBackupPost(c *gin.Context) {
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		err := utils.BackupGame()
-//		if err != nil {
-//			utils.Logger.Error("游戏备份失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("backupFail", langStr), "data": nil})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("backupSuccess", langStr), "data": nil})
-//	}
-//
-//	func handleBackupPut(c *gin.Context) {
-//		defer scheduler.ReloadScheduler()
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var backupForm utils.AutoBackup
-//		if err := c.ShouldBindJSON(&backupForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		config.AutoBackup.Time = backupForm.Time
-//		config.AutoBackup.Enable = backupForm.Enable
-//		err = utils.WriteConfig(config)
-//		if err != nil {
-//			utils.Logger.Error("配置文件写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
-//	}
-//
-//	func handleBackupDelete(c *gin.Context) {
-//		type DeleteForm struct {
-//			Name string `json:"name"`
-//		}
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var deleteForm DeleteForm
-//		if err := c.ShouldBindJSON(&deleteForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		filePath := utils.BackupPath + "/" + deleteForm.Name
-//		err := utils.RemoveFile(filePath)
-//		if err != nil {
-//			utils.Logger.Error("备份文件删除失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteFail", langStr), "data": nil})
-//		} else {
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
-//		}
-//	}
-//
-//	func handleBackupRestore(c *gin.Context) {
-//		type RestoreForm struct {
-//			Name string `json:"name"`
-//		}
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var restoreForm RestoreForm
-//		if err := c.ShouldBindJSON(&restoreForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		filePath := utils.BackupPath + "/" + restoreForm.Name
-//		err := utils.RecoveryGame(filePath)
-//		if err != nil {
-//			utils.Logger.Error("恢复游戏失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
-//			return
-//		}
-//		err = setting.WriteDatabase()
-//		if err != nil {
-//			utils.Logger.Error("恢复存档文件写入数据库失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccessSaveFail", langStr), "data": nil})
-//			return
-//		}
-//
-//		// 写入dedicated_server_mods_setup.lua
-//		err = setting.DstModsSetup()
-//		if err != nil {
-//			utils.Logger.Error("mod配置保存失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
-//	}
-//
-//	func handleBackupDownload(c *gin.Context) {
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		type DownloadForm struct {
-//			Filename string `json:"filename"`
-//		}
-//		var downloadForm DownloadForm
-//		if err := c.ShouldBindJSON(&downloadForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		filePath := filepath.Join(utils.BackupPath, downloadForm.Filename)
-//		// 检查文件是否存在
-//		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileNotFound", langStr), "data": nil})
-//			return
-//		}
-//		// 读取文件内容
-//		fileData, err := os.ReadFile(filePath)
-//		if err != nil {
-//			utils.Logger.Error("读取备份文件失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileReadFail", langStr), "data": nil})
-//			return
-//		}
-//
-//		fileContentBase64 := base64.StdEncoding.EncodeToString(fileData)
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": fileContentBase64})
-//	}
-//
-//	func handleMultiDelete(c *gin.Context) {
-//		type MultiDeleteForm struct {
-//			Names []string `json:"names"`
-//		}
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var multiDeleteForm MultiDeleteForm
-//		if err := c.ShouldBindJSON(&multiDeleteForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		for _, file := range multiDeleteForm.Names {
-//			filePath := utils.BackupPath + "/" + file
-//			err := utils.RemoveFile(filePath)
-//			if err != nil {
-//				utils.Logger.Error("删除文件失败", "err", err, "file", filePath)
-//			}
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
-//	}
-//
+
+func handleBackupGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	type BackFiles struct {
+		Name       string `json:"name"`
+		CreateTime string `json:"createTime"`
+		Size       int64  `json:"size"`
+	}
+	var tmp []BackFiles
+
+	backupFiles, err := getBackupFiles(cluster)
+	if err != nil {
+		utils.Logger.Error("备份文件获取", "err", err)
+	}
+	for _, i := range backupFiles {
+		var a BackFiles
+		a.Name = i.Name
+		a.CreateTime = i.ModTime.Format("2006-01-02 15:04:05")
+		a.Size = i.Size
+		tmp = append(tmp, a)
+	}
+	diskUsage, err := utils.DiskUsage()
+	if err != nil {
+		utils.Logger.Error("磁盘使用率获取失败", "err", err)
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
+		"backupFiles": tmp,
+		"diskUsage":   diskUsage,
+	}})
+}
+
+func handleBackupPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	err = utils.BackupGame(cluster)
+	if err != nil {
+		utils.Logger.Error("游戏备份失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("backupFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("backupSuccess", langStr), "data": nil})
+}
+
+func handleBackupDelete(c *gin.Context) {
+	type DeleteForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+		Name        string `json:"name"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var deleteForm DeleteForm
+	if err := c.ShouldBindJSON(&deleteForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(deleteForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	filePath := cluster.GetBackupPath() + "/" + deleteForm.Name
+	err = utils.RemoveFile(filePath)
+	if err != nil {
+		utils.Logger.Error("备份文件删除失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteFail", langStr), "data": nil})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+	}
+}
+
+func handleBackupRestore(c *gin.Context) {
+	defer func() {
+		setting.ClearFiles()
+	}()
+
+	type RestoreForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+		Name        string `json:"name"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var restoreForm RestoreForm
+	if err := c.ShouldBindJSON(&restoreForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(restoreForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	// 关闭当前服务器
+	_ = utils.StopClusterAllWorlds(cluster)
+
+	filePath := cluster.GetBackupPath() + "/" + restoreForm.Name
+
+	// 解压tgz文件
+	cmd := fmt.Sprintf("tar zxf %s -C %s", filePath, utils.ImportFileUploadPath)
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		utils.Logger.Error("解压失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		return
+	}
+
+	// 生成zip压缩文件
+	cmd = fmt.Sprintf("cd %s%s && zip -r ../../../../tmp.zip .", utils.ImportFileUploadPath, cluster.GetMainPath()[1:])
+	utils.Logger.Info(cmd)
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		utils.Logger.Error("创建zip文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		return
+	}
+
+	cluster.Worlds = nil
+	result, _, cluster, lists, dstFiles := setting.DoImport("tmp.zip", cluster, langStr)
+	if !result {
+		utils.Logger.Error("处理配置文件失败")
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		return
+	}
+
+	//写入三个名单
+	clusterPath := cluster.GetMainPath() + "/"
+	err = utils.EnsureDirExists(clusterPath)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+
+		return
+	}
+	for key, value := range lists {
+		err = utils.EnsureFileExists(clusterPath + key)
+		if err != nil {
+			utils.Logger.Error("创建"+key+"文件失败", "err", err)
+			continue
+		}
+		err = utils.WriteLinesFromSlice(clusterPath+key, value)
+		if err != nil {
+			utils.Logger.Error("写入"+key+"文件失败", "err", err)
+			continue
+		}
+	}
+	//写入文件
+	err = setting.SaveSetting(cluster)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		return
+	}
+	//写入 save/ 和 backup/
+	for worldName, dirPaths := range dstFiles {
+		clusterFilePath := fmt.Sprintf("%s/%s", cluster.GetMainPath(), worldName)
+		for _, dirPath := range dirPaths {
+			cmd := fmt.Sprintf("cp -rf %s %s", dirPath, clusterFilePath)
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				utils.Logger.Error("复制游戏数据失败", "err", err, "dir", clusterFilePath)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+				return
+			}
+		}
+	}
+
+	err = cluster.ClearDstFiles()
+	if err != nil {
+		utils.Logger.Error("删除旧集群脏数据失败")
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
+}
+
+func handleBackupDownload(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type DownloadForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+		Filename    string `json:"filename"`
+	}
+	var downloadForm DownloadForm
+	if err := c.ShouldBindJSON(&downloadForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(downloadForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	filePath := filepath.Join(cluster.GetBackupPath(), downloadForm.Filename)
+	// 检查文件是否存在
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileNotFound", langStr), "data": nil})
+		return
+	}
+	// 读取文件内容
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		utils.Logger.Error("读取备份文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileReadFail", langStr), "data": nil})
+		return
+	}
+
+	fileContentBase64 := base64.StdEncoding.EncodeToString(fileData)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": fileContentBase64})
+}
+
+func handleMultiDelete(c *gin.Context) {
+	type MultiDeleteForm struct {
+		ClusterName string   `json:"clusterName" form:"clusterName"`
+		Names       []string `json:"names"`
+	}
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var multiDeleteForm MultiDeleteForm
+	if err := c.ShouldBindJSON(&multiDeleteForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(multiDeleteForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	for _, file := range multiDeleteForm.Names {
+		filePath := cluster.GetBackupPath() + "/" + file
+		err := utils.RemoveFile(filePath)
+		if err != nil {
+			utils.Logger.Error("删除文件失败", "err", err, "file", filePath)
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+}
+
 //	func handleStatisticsGet(c *gin.Context) {
 //		type stats struct {
 //			Num       int   `json:"num"`
@@ -472,7 +607,7 @@ func handleOSInfoGet(c *gin.Context) {
 //
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 //	}
-//
+
 //	func handleKeepaliveGet(c *gin.Context) {
 //		config, err := utils.ReadConfig()
 //		if err != nil {
@@ -485,7 +620,7 @@ func handleOSInfoGet(c *gin.Context) {
 //			"enable": config.Keepalive.Enable,
 //		}})
 //	}
-//
+
 //	func handleKeepalivePut(c *gin.Context) {
 //		defer scheduler.ReloadScheduler()
 //		type UpdateForm struct {
@@ -518,7 +653,7 @@ func handleOSInfoGet(c *gin.Context) {
 //
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
 //	}
-//
+
 //	func handleReplaceDSTSOFile(c *gin.Context) {
 //		lang, _ := c.Get("lang")
 //		langStr := "zh" // 默认语言
@@ -534,7 +669,7 @@ func handleOSInfoGet(c *gin.Context) {
 //
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("replaceSuccess", langStr), "data": nil})
 //	}
-//
+
 //	func handleCreateTokenPost(c *gin.Context) {
 //		type ApiForm struct {
 //			ExpiredTime int64 `json:"expiredTime"`
@@ -568,7 +703,6 @@ func handleOSInfoGet(c *gin.Context) {
 //		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
 //	}
 
-//
 //func handleMetricsGet(c *gin.Context) {
 //	type MetricsForm struct {
 //		// TimeRange 必须是分钟数
@@ -609,7 +743,7 @@ func handleOSInfoGet(c *gin.Context) {
 //
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": metrics})
 //}
-//
+
 //func handleVersionGet(c *gin.Context) {
 //	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.VERSION})
 //}
