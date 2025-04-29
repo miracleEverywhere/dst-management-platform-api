@@ -16,10 +16,16 @@ func (world World) GeneratePlayersListCMD() string {
 	return "screen -S \"" + world.ScreenName + "\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %s [%d] %s <-@dmp@-> %s <-@dmp@-> %s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n"
 }
 
-func (world World) GetProcessStatus() (bool, float64, float64, float64) {
+func (world World) GetProcessStatus(clusterName string) (bool, float64, float64, float64, int64) {
+	diskUsed, err := GetDirSize(world.GetMainPath(clusterName))
+	if err != nil {
+		Logger.Warn("获取世界磁盘使用量失败", "world", world.Name, "err", err)
+		diskUsed = 0
+	}
+
 	status := world.GetStatus()
 	if !status {
-		return false, 0, 0, 0
+		return false, 0, 0, 0, diskUsed
 	}
 
 	cmd := fmt.Sprintf("ps -ef | grep $(ps -ef | grep %s | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}'", world.ScreenName)
@@ -27,40 +33,40 @@ func (world World) GetProcessStatus() (bool, float64, float64, float64) {
 
 	if len(out) < 2 {
 		Logger.Warn("获取世界PID失败", "world", world.Name)
-		return true, 0, 0, 0
+		return true, 0, 0, 0, diskUsed
 	}
 
 	pid, err := strconv.Atoi(strings.TrimSpace(out))
 	if err != nil {
 		Logger.Warn("获取世界PID失败", "world", world.Name, "err", err)
-		return true, 0, 0, 0
+		return true, 0, 0, 0, diskUsed
 	}
 
 	p, err := process.NewProcess(int32(pid))
 	if err != nil {
 		Logger.Warn("获取世界进程失败", "world", world.Name, "err", err)
-		return true, 0, 0, 0
+		return true, 0, 0, 0, diskUsed
 	}
 
 	cpu, err := p.Percent(time.Millisecond * 100)
 	if err != nil {
 		Logger.Warn("获取世界CPU失败", "world", world.Name, "err", err)
-		return true, 0, 0, 0
+		return true, 0, 0, 0, diskUsed
 	}
 
 	mem, err := p.MemoryPercent()
 	if err != nil {
 		Logger.Warn("获取世界内存使用率失败", "world", world.Name, "err", err)
-		return true, cpu, 0, 0
+		return true, cpu, 0, 0, diskUsed
 	}
 
 	memSize, err := p.MemoryInfo()
 	if err != nil {
 		Logger.Warn("获取世界内存使用量失败", "world", world.Name, "err", err)
-		return true, cpu, 0, 0
+		return true, cpu, float64(mem), 0, diskUsed
 	}
 
-	return true, cpu, float64(mem), float64(memSize.RSS / 1024 / 1024)
+	return true, cpu, float64(mem), float64(memSize.RSS / 1024 / 1024), diskUsed
 }
 
 func (world World) GetWorldType() string {
