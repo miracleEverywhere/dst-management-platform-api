@@ -199,7 +199,7 @@ func handleClusterSavePost(c *gin.Context) {
 		return
 	}
 
-	err := saveSetting(reqCluster)
+	err := SaveSetting(reqCluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
@@ -207,6 +207,11 @@ func handleClusterSavePost(c *gin.Context) {
 			"data":    nil,
 		})
 		return
+	}
+
+	err = reqCluster.ClearDstFiles()
+	if err != nil {
+		utils.Logger.Error("删除旧集群脏数据失败")
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -237,7 +242,7 @@ func handleClusterSaveRestartPost(c *gin.Context) {
 
 	_ = utils.BashCMD("screen -wipe")
 
-	err := saveSetting(reqCluster)
+	err := SaveSetting(reqCluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
@@ -245,6 +250,11 @@ func handleClusterSaveRestartPost(c *gin.Context) {
 			"data":    nil,
 		})
 		return
+	}
+
+	err = reqCluster.ClearDstFiles()
+	if err != nil {
+		utils.Logger.Error("删除旧集群脏数据失败")
 	}
 
 	_ = utils.StopClusterAllWorlds(reqCluster)
@@ -294,7 +304,7 @@ func handleClusterSaveRegeneratePost(c *gin.Context) {
 		}
 	}
 
-	err := saveSetting(reqCluster)
+	err := SaveSetting(reqCluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
@@ -314,12 +324,17 @@ func handleClusterSaveRegeneratePost(c *gin.Context) {
 		return
 	}
 
+	err = reqCluster.ClearDstFiles()
+	if err != nil {
+		utils.Logger.Error("删除旧集群脏数据失败")
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
 }
 
 func handleImportPost(c *gin.Context) {
 	defer func() {
-		clearUpZipFile()
+		ClearFiles()
 	}()
 
 	lang, _ := c.Get("lang")
@@ -373,7 +388,7 @@ func handleImportPost(c *gin.Context) {
 		return
 	}
 	//执行导入
-	result, msg, cluster, lists, dstFiles := doImport(file.Filename, cluster, langStr)
+	result, msg, cluster, lists, dstFiles := DoImport(file.Filename, cluster, langStr)
 	if !result {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": responseImportError(msg, langStr), "data": nil})
 		return
@@ -402,7 +417,7 @@ func handleImportPost(c *gin.Context) {
 		}
 	}
 	//写入文件
-	err = saveSetting(cluster)
+	err = SaveSetting(cluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
@@ -1164,7 +1179,7 @@ func handleModConfigChangePost(c *gin.Context) {
 	cluster.Mod = luaString
 
 	// 保存
-	err = saveSetting(cluster)
+	err = SaveSetting(cluster)
 	if err != nil {
 		utils.Logger.Error("MOD配置文件写入失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
@@ -1378,7 +1393,7 @@ func handleEnableModPost(c *gin.Context) {
 
 	// 写入数据库
 	cluster.Mod = modOverridesLua
-	err = saveSetting(cluster)
+	err = SaveSetting(cluster)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
@@ -1447,7 +1462,7 @@ func handleDisableModPost(c *gin.Context) {
 
 	// 写入数据
 	cluster.Mod = newModOverridesLua
-	err = saveSetting(cluster)
+	err = SaveSetting(cluster)
 	if err != nil {
 		utils.Logger.Error("文件写入失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
@@ -1659,7 +1674,7 @@ func handleAddClientModsDisabledConfig(c *gin.Context) {
 	newModFileLines = append(newModFileLines, modFileLines[1:]...)
 	cluster.Mod = strings.Join(newModFileLines, "\n")
 
-	err = saveSetting(cluster)
+	err = SaveSetting(cluster)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
 		utils.RespondWithError(c, 500, "zh")
@@ -1710,7 +1725,7 @@ func handleDeleteClientModsDisabledConfig(c *gin.Context) {
 	luaScript = re.ReplaceAllString(luaScript, "")
 	cluster.Mod = luaScript
 
-	err = saveSetting(cluster)
+	err = SaveSetting(cluster)
 	if err != nil {
 		utils.Logger.Error("配置文件写入失败", "err", err)
 		utils.RespondWithError(c, 500, "zh")
@@ -1753,79 +1768,74 @@ func handleSystemSettingGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": systemResponse})
 }
 
-//func handleSystemSettingPut(c *gin.Context) {
-//	defer scheduler.ReloadScheduler()
-//	lang, _ := c.Get("lang")
-//	langStr := "zh" // 默认语言
-//	if strLang, ok := lang.(string); ok {
-//		langStr = strLang
-//	}
-//
-//	config, err := utils.ReadConfig()
-//	if err != nil {
-//		utils.Logger.Error("配置文件读取失败", "err", err)
-//		utils.RespondWithError(c, 500, "zh")
-//		return
-//	}
-//
-//	var systemSettingForm SystemSettingForm
-//	if err := c.ShouldBindJSON(&systemSettingForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	config.SysSetting.SchedulerSetting.SysMetricsGet.Disable = systemSettingForm.SysMetricsGet.Disable
-//	config.SysSetting.SchedulerSetting.UIDMaintain.Frequency = systemSettingForm.UIDMaintain.Frequency
-//	config.SysSetting.SchedulerSetting.UIDMaintain.Disable = systemSettingForm.UIDMaintain.Disable
-//	config.SysSetting.SchedulerSetting.PlayerGetFrequency = systemSettingForm.PlayerGetFrequency
-//	config.Keepalive.Frequency = systemSettingForm.KeepaliveFrequency
-//	config.Keepalive.Enable = !systemSettingForm.KeepaliveDisable
-//
-//	if config.TickRate != systemSettingForm.TickRate {
-//		config.TickRate = systemSettingForm.TickRate
-//		err = saveSetting(config)
-//		if err != nil {
-//			utils.Logger.Error("设置Tick Rate失败", "err", err)
-//		}
-//	}
-//
-//	if config.SysSetting.SchedulerSetting.SysMetricsGet.Disable {
-//		utils.SYSMETRICS = []utils.SysMetrics{}
-//	}
-//
-//	if config.Bit64 != systemSettingForm.Bit64 {
-//		config.Bit64 = systemSettingForm.Bit64
-//		if config.Bit64 {
-//			// 安装64位依赖
-//			go utils.ExecBashScript("tmp.sh", utils.Install64Dependency)
-//		} else {
-//			// 安装32位依赖
-//			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
-//		}
-//	}
-//
-//	if config.EncodeUserPath.Ground != systemSettingForm.EncodeUserPath.Ground {
-//		config.EncodeUserPath.Ground = systemSettingForm.EncodeUserPath.Ground
-//		err = saveSetting(config)
-//		if err != nil {
-//			utils.Logger.Error("生成游戏配置文件失败", "err", err)
-//		}
-//	}
-//	if config.EncodeUserPath.Cave != systemSettingForm.EncodeUserPath.Cave {
-//		config.EncodeUserPath.Cave = systemSettingForm.EncodeUserPath.Cave
-//		err = saveSetting(config)
-//		if err != nil {
-//			utils.Logger.Error("生成游戏配置文件失败", "err", err)
-//		}
-//	}
-//
-//	err = utils.WriteConfig(config)
-//	if err != nil {
-//		utils.Logger.Error("配置文件写入失败", "err", err)
-//		utils.RespondWithError(c, 500, langStr)
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
-//}
+func handleSystemSettingPut(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		Settings    System `json:"settings"`
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	var (
+		bit64Changed bool
+	)
+	if cluster.SysSetting.Bit64 != reqForm.Settings.SysSetting.Bit64 {
+		bit64Changed = true
+	}
+
+	cluster.SysSetting = reqForm.Settings.SysSetting
+	config.SchedulerSetting = reqForm.Settings.SchedulerSetting
+
+	for index, dbCluster := range config.Clusters {
+		if dbCluster.ClusterSetting.ClusterName == cluster.ClusterSetting.ClusterDisplayName {
+			config.Clusters[index] = cluster
+			break
+		}
+	}
+
+	err = SaveSetting(cluster)
+	if err != nil {
+		utils.Logger.Error("设置Tick Rate失败", "err", err)
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	if bit64Changed {
+		if cluster.SysSetting.Bit64 {
+			// 安装64位依赖
+			go utils.ExecBashScript("tmp.sh", utils.Install64Dependency)
+		} else {
+			// 安装32位依赖
+			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
+}

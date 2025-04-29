@@ -1,6 +1,7 @@
 package setting
 
 import (
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"math"
@@ -82,7 +83,10 @@ encode_user_path = ` + strconv.FormatBool(world.EncodeUserPath) + `
 	return content
 }
 
-func saveSetting(reqCluster utils.Cluster) error {
+func SaveSetting(reqCluster utils.Cluster) error {
+	defer func() {
+		scheduler.ReloadScheduler()
+	}()
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
@@ -106,8 +110,7 @@ func saveSetting(reqCluster utils.Cluster) error {
 	// 对world进行排序
 	var formattedCluster utils.Cluster
 
-	for i, world := range reqCluster.Worlds {
-		world.Name = fmt.Sprintf("World%d", i+1)
+	for _, world := range reqCluster.Worlds {
 		world.ScreenName = fmt.Sprintf("DST_%s_%s", reqCluster.ClusterSetting.ClusterName, world.Name)
 		formattedCluster.Worlds = append(formattedCluster.Worlds, world)
 	}
@@ -207,7 +210,7 @@ func saveSetting(reqCluster utils.Cluster) error {
 	return nil
 }
 
-func doImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster, map[string][]string, map[string][]string) {
+func DoImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster, map[string][]string, map[string][]string) {
 	var (
 		result    bool
 		errMsgKey string
@@ -425,6 +428,7 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 
 	for index, worldPath := range worldsPath {
 		var world utils.World
+		world.Name = fmt.Sprintf("World%d", index)
 		/* ======== server.ini ======== */
 		result, err = utils.FileDirectoryExists(worldPath + "/server.ini")
 		if !result || err != nil {
@@ -530,7 +534,7 @@ func doImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 	return true, "", cluster, lists, dstFiles
 }
 
-func clearUpZipFile() {
+func ClearFiles() {
 	err := utils.BashCMD("rm -rf " + utils.ImportFileUploadPath + "*")
 	if err != nil {
 		utils.Logger.Error("清理导入的压缩文件失败", "err", err)
