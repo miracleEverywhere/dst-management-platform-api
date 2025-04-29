@@ -277,7 +277,7 @@ func handleMenu(c *gin.Context) {
 		//},
 		{
 			MenuId:      10202,
-			MenuName:    "定时备份",
+			MenuName:    "备份管理",
 			EnName:      "Backup",
 			ParentId:    102,
 			MenuType:    "2",
