@@ -665,116 +665,83 @@ func handleMultiDelete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
 }
 
-//	func handleStatisticsGet(c *gin.Context) {
-//		type stats struct {
-//			Num       int   `json:"num"`
-//			Timestamp int64 `json:"timestamp"`
-//		}
-//		var data []stats
-//		for _, i := range utils.STATISTICS {
-//			var j stats
-//			j.Num = i.Num
-//			j.Timestamp = i.Timestamp
-//			data = append(data, j)
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
-//	}
+func handleStatisticsGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-//	func handleKeepaliveGet(c *gin.Context) {
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, "zh")
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-//			"enable": config.Keepalive.Enable,
-//		}})
-//	}
+	var statistics []utils.Statistics
+	for key, _ := range utils.STATISTICS {
+		if key == reqForm.ClusterName {
+			statistics = utils.STATISTICS[key]
+		}
+	}
 
-//	func handleKeepalivePut(c *gin.Context) {
-//		defer scheduler.ReloadScheduler()
-//		type UpdateForm struct {
-//			Enable bool `json:"enable"`
-//		}
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var updateForm UpdateForm
-//		if err := c.ShouldBindJSON(&updateForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		config.Keepalive.Enable = updateForm.Enable
-//		err = utils.WriteConfig(config)
-//		if err != nil {
-//			utils.Logger.Error("配置文件写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
-//	}
+	if len(statistics) == 0 {
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
 
-//	func handleReplaceDSTSOFile(c *gin.Context) {
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//
-//		err := utils.ReplaceDSTSOFile()
-//		if err != nil {
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("replaceSuccess", langStr), "data": nil})
-//	}
+	type stats struct {
+		Num       int   `json:"num"`
+		Timestamp int64 `json:"timestamp"`
+	}
+	var data []stats
 
-//	func handleCreateTokenPost(c *gin.Context) {
-//		type ApiForm struct {
-//			ExpiredTime int64 `json:"expiredTime"`
-//		}
-//
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, "zh")
-//			return
-//		}
-//
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var apiForm ApiForm
-//		if err := c.ShouldBindJSON(&apiForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		now := time.Now()
-//		nowTimestamp := now.UnixMilli()
-//		hours := (apiForm.ExpiredTime - nowTimestamp) / (60 * 60 * 1000)
-//
-//		jwtSecret := []byte(config.JwtSecret)
-//		token, _ := utils.GenerateJWT(config.Username, jwtSecret, int(hours))
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
-//	}
+	for _, i := range statistics {
+		var j stats
+		j.Num = i.Num
+		j.Timestamp = i.Timestamp
+		data = append(data, j)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func handleCreateTokenPost(c *gin.Context) {
+	type ApiForm struct {
+		ExpiredTime int64 `json:"expiredTime"`
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	var apiForm ApiForm
+	if err := c.ShouldBindJSON(&apiForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	jwtSecret := []byte(config.JwtSecret)
+	usernameValue, _ := c.Get("username")
+	username := fmt.Sprintf("%v", usernameValue)
+
+	for _, user := range config.Users {
+		if user.Username == username {
+			token, _ := utils.GenerateJWT(user, jwtSecret, int(apiForm.ExpiredTime))
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("createTokenFail", langStr), "data": nil})
+}
 
 //func handleMetricsGet(c *gin.Context) {
 //	type MetricsForm struct {
