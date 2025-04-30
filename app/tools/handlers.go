@@ -9,7 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -27,69 +29,69 @@ func handleOSInfoGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": osInfo})
 }
 
-//	func handleInstall(c *gin.Context) {
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		scriptPath := "install.sh"
-//
-//		// 检查文件是否存在，如果存在则删除
-//		if _, err := os.Stat(scriptPath); err == nil {
-//			err := os.Remove(scriptPath)
-//			if err != nil {
-//				utils.Logger.Error("删除文件失败", "err", err)
-//				utils.RespondWithError(c, 500, langStr)
-//				return
-//			}
-//		}
-//
-//		// 创建或打开文件
-//		file, err := os.OpenFile(scriptPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0775)
-//		if err != nil {
-//			utils.Logger.Error("打开文件失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		defer func(file *os.File) {
-//			err := file.Close()
-//			if err != nil {
-//				utils.Logger.Error("关闭文件失败", "err", err)
-//			}
-//		}(file)
-//
-//		// 写入内容
-//		content := []byte(utils.ShInstall)
-//		_, err = file.Write(content)
-//		if err != nil {
-//			utils.Logger.Error("写入文件失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//
-//		// 异步执行脚本
-//		go func() {
-//			cmd := exec.Command("/bin/bash", scriptPath) // 使用 /bin/bash 执行脚本
-//			e := cmd.Run()
-//			if e != nil {
-//				utils.Logger.Error("执行安装脚本失败", "err", e)
-//			}
-//		}()
-//
-//		// 返回成功响应
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("installing", langStr), "data": nil})
-//	}
+func handleInstall(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	scriptPath := "install.sh"
 
-//	func handleGetInstallStatus(c *gin.Context) {
-//		content, err := os.ReadFile("/tmp/install_status")
-//		utils.Logger.Error("读取文件失败", "err", err)
-//		status := string(content)
-//		statusSlice := strings.Split(status, "\t")
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-//			"process": statusSlice[0], "zh": statusSlice[1], "en": statusSlice[2],
-//		}})
-//	}
+	// 检查文件是否存在，如果存在则删除
+	if _, err := os.Stat(scriptPath); err == nil {
+		err := os.Remove(scriptPath)
+		if err != nil {
+			utils.Logger.Error("删除文件失败", "err", err)
+			utils.RespondWithError(c, 500, langStr)
+			return
+		}
+	}
+
+	// 创建或打开文件
+	file, err := os.OpenFile(scriptPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0775)
+	if err != nil {
+		utils.Logger.Error("打开文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			utils.Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
+
+	// 写入内容
+	content := []byte(utils.ShInstall)
+	_, err = file.Write(content)
+	if err != nil {
+		utils.Logger.Error("写入文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	// 异步执行脚本
+	go func() {
+		cmd := exec.Command("/bin/bash", scriptPath) // 使用 /bin/bash 执行脚本
+		e := cmd.Run()
+		if e != nil {
+			utils.Logger.Error("执行安装脚本失败", "err", e)
+		}
+	}()
+
+	// 返回成功响应
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("installing", langStr), "data": nil})
+}
+
+func handleGetInstallStatus(c *gin.Context) {
+	content, err := os.ReadFile("/tmp/install_status")
+	utils.Logger.Error("读取文件失败", "err", err)
+	status := string(content)
+	statusSlice := strings.Split(status, "\t")
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
+		"process": statusSlice[0], "zh": statusSlice[1], "en": statusSlice[2],
+	}})
+}
 
 func handleAnnounceGet(c *gin.Context) {
 	type ReqForm struct {
@@ -281,55 +283,6 @@ func handleAnnouncePut(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateFail", langStr), "data": nil})
 }
-
-//	func handleUpdateGet(c *gin.Context) {
-//		dstVersion, err := externalApi.GetDSTVersion()
-//		if err != nil {
-//			utils.Logger.Error("获取饥荒版本失败", "err", err)
-//		}
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, "zh")
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-//			"version":       dstVersion,
-//			"updateSetting": config.AutoUpdate,
-//		}})
-//	}
-
-//	func handleUpdatePut(c *gin.Context) {
-//		defer scheduler.ReloadScheduler()
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var updateForm utils.AutoUpdate
-//		if err := c.ShouldBindJSON(&updateForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		config.AutoUpdate.Time = updateForm.Time
-//		config.AutoUpdate.Enable = updateForm.Enable
-//		err = utils.WriteConfig(config)
-//		if err != nil {
-//			utils.Logger.Error("配置文件写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
-//	}
 
 func handleBackupGet(c *gin.Context) {
 	type ReqForm struct {
@@ -743,47 +696,47 @@ func handleCreateTokenPost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("createTokenFail", langStr), "data": nil})
 }
 
-//func handleMetricsGet(c *gin.Context) {
-//	type MetricsForm struct {
-//		// TimeRange 必须是分钟数
-//		TimeRange int `form:"timeRange" json:"timeRange"`
-//	}
-//	var metricsForm MetricsForm
-//	if err := c.ShouldBindQuery(&metricsForm); err != nil {
-//		// 如果绑定失败，返回 400 错误
-//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//		return
-//	}
-//
-//	metricsLength := len(utils.SYSMETRICS)
-//	var metrics []utils.SysMetrics
-//
-//	switch metricsForm.TimeRange {
-//	case 30:
-//		if metricsLength <= 60 {
-//			metrics = utils.SYSMETRICS
-//		} else {
-//			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-60:]
-//		}
-//	case 60:
-//		if metricsLength <= 120 {
-//			metrics = utils.SYSMETRICS
-//		} else {
-//			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-120:]
-//		}
-//	case 180:
-//		if metricsLength <= 360 {
-//			metrics = utils.SYSMETRICS
-//		} else {
-//			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-360:]
-//		}
-//	default:
-//		metrics = utils.SYSMETRICS
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": metrics})
-//}
+func handleMetricsGet(c *gin.Context) {
+	type MetricsForm struct {
+		// TimeRange 必须是分钟数
+		TimeRange int `form:"timeRange" json:"timeRange"`
+	}
+	var metricsForm MetricsForm
+	if err := c.ShouldBindQuery(&metricsForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-//func handleVersionGet(c *gin.Context) {
-//	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.VERSION})
-//}
+	metricsLength := len(utils.SYSMETRICS)
+	var metrics []utils.SysMetrics
+
+	switch metricsForm.TimeRange {
+	case 30:
+		if metricsLength <= 60 {
+			metrics = utils.SYSMETRICS
+		} else {
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-60:]
+		}
+	case 60:
+		if metricsLength <= 120 {
+			metrics = utils.SYSMETRICS
+		} else {
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-120:]
+		}
+	case 180:
+		if metricsLength <= 360 {
+			metrics = utils.SYSMETRICS
+		} else {
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-360:]
+		}
+	default:
+		metrics = utils.SYSMETRICS
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": metrics})
+}
+
+func handleVersionGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.VERSION})
+}

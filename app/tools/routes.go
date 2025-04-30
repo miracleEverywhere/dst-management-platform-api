@@ -12,8 +12,8 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 		{
 			//// 安装
 			tools.GET("/os_info", utils.MWtoken(), handleOSInfoGet)
-			//tools.POST("/install", utils.MWtoken(), handleInstall)
-			//tools.GET("/install/status", utils.MWtoken(), handleGetInstallStatus)
+			tools.POST("/install", utils.MWtoken(), utils.MWAdminOnly(), handleInstall)
+			tools.GET("/install/status", utils.MWtoken(), utils.MWAdminOnly(), handleGetInstallStatus)
 			//// 定时通知
 			tools.GET("/announce", utils.MWtoken(), handleAnnounceGet)
 			tools.POST("/announce", utils.MWtoken(), handleAnnouncePost)
@@ -31,9 +31,9 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			// 令牌
 			tools.POST("/token", utils.MWtoken(), handleCreateTokenPost)
 			//// 监控
-			//tools.GET("/metrics", utils.MWtoken(), handleMetricsGet)
+			tools.GET("/metrics", utils.MWtoken(), handleMetricsGet)
 			//// 版本
-			//tools.GET("/version", utils.MWtoken(), handleVersionGet)
+			tools.GET("/version", utils.MWtoken(), handleVersionGet)
 		}
 	}
 
