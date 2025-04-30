@@ -1030,7 +1030,18 @@ func handleModSettingFormatGet(c *gin.Context) {
 	}
 
 	var responseData []utils.ModFormattedData
+	complicatedMod := []int{
+		1438233888,
+	}
 	for _, i := range utils.ModOverridesToStruct(luaScript) {
+		if utils.Contains(complicatedMod, i.ID) {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response("complicatedMod", langStr),
+				"data":    5000,
+			})
+			return
+		}
 		item := utils.ModFormattedData{
 			ID: i.ID,
 			Name: func() string {

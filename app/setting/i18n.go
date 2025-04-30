@@ -46,6 +46,7 @@ func response(message string, lang string) string {
 		"executed":                   "已执行操作",
 		"cleanHistoryPlayersFail":    "清空历史玩家失败",
 		"cleanHistoryPlayersSuccess": "清空历史玩家成功",
+		"complicatedMod":             "含有复杂配置模组，请前往房间设置手动修改",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":                "Save Success",
@@ -92,6 +93,7 @@ func response(message string, lang string) string {
 		"executed":                   "Command Executed",
 		"cleanHistoryPlayersFail":    "Clean History Players Fail",
 		"cleanHistoryPlayersSuccess": "Clean History Players Success",
+		"complicatedMod":             "complicated Mod found, please go to room setting page to modify",
 	}
 
 	if lang == "zh" {
