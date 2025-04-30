@@ -62,28 +62,13 @@ func handleLogin(c *gin.Context) {
 }
 
 func handleUserinfo(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	token := c.Request.Header.Get("authorization")
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("读取配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-	tokenSecret := config.JwtSecret
-	claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
-	if err != nil {
-		utils.RespondWithError(c, 421, langStr)
-		return
-	}
+	username, _ := c.Get("username")
+	nickname, _ := c.Get("nickname")
+	role, _ := c.Get("role")
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-		"username": claims.Username,
-		"nickname": claims.Nickname,
-		"role":     claims.Role,
+		"username": username,
+		"nickname": nickname,
+		"role":     role,
 	}})
 }
 
