@@ -242,24 +242,6 @@ func handleMenu(c *gin.Context) {
 			Redirect:    "/tools/update",
 			ActiveMenu:  nil,
 		},
-		//{
-		//	MenuId:      10201,
-		//	MenuName:    "定时更新",
-		//	EnName:      "Update",
-		//	ParentId:    102,
-		//	MenuType:    "2",
-		//	Path:        "/tools/update",
-		//	Name:        "toolsUpdate",
-		//	Component:   "tools/update",
-		//	Icon:        "sc-icon-DownloadCloudFill",
-		//	IsHide:      "1",
-		//	IsLink:      "",
-		//	IsKeepAlive: "0",
-		//	IsFull:      "1",
-		//	IsAffix:     "1",
-		//	Redirect:    "",
-		//	ActiveMenu:  nil,
-		//},
 		{
 			MenuId:      10202,
 			MenuName:    "备份管理",
@@ -517,7 +499,7 @@ func handleMenu(c *gin.Context) {
 	nonAdminID := []int{
 		100,
 		101, 10101, 10102, 10103, 10104, 10105,
-		102, 10202, 10203, 10205, 10206, 10207, 10208,
+		102, 10202, 10203, 10206, 10207, 10208,
 		103, 10301, 10302, 10303, 10304, 10305,
 		105,
 	}
