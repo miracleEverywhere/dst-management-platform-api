@@ -142,14 +142,17 @@ func getPlayersList(world utils.World, clusterName string) ([]string, error) {
 	return players, nil
 }
 
-func execAnnounce(content string, cluster utils.Cluster) {
+// doAnnounce 定时通知
+func doAnnounce(content string, cluster utils.Cluster) {
 	cmd := "c_announce('" + content + "')"
 
 	for _, world := range cluster.Worlds {
-		if world.IsMaster {
+		if world.GetStatus() {
 			err := utils.ScreenCMD(cmd, world.ScreenName)
 			if err != nil {
 				utils.Logger.Error("执行ScreenCMD失败", "err", err, "cmd", cmd)
+			} else {
+				break
 			}
 		}
 	}
@@ -184,7 +187,7 @@ func checkUpdate(config utils.Config) {
 			for _, world := range cluster.Worlds {
 				if world.IsMaster {
 					go func() {
-						doAnnounce(world)
+						restartAnnounce(world)
 					}()
 				}
 			}
@@ -195,7 +198,8 @@ func checkUpdate(config utils.Config) {
 	}
 }
 
-func doAnnounce(world utils.World) {
+// restartAnnounce 重启前通知
+func restartAnnounce(world utils.World) {
 	var (
 		cmd string
 		err error

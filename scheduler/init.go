@@ -45,7 +45,7 @@ func InitTasks() {
 	for _, cluster := range config.Clusters {
 		for _, announce := range cluster.SysSetting.AutoAnnounce {
 			if announce.Enable {
-				_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(execAnnounce, announce.Content, cluster)
+				_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(doAnnounce, announce.Content, cluster)
 				utils.Logger.Info(fmt.Sprintf("[%s]-[%s]定时通知定时任务已配置", cluster.ClusterSetting.ClusterName, announce.Name))
 			}
 		}
