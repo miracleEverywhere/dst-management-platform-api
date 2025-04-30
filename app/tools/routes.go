@@ -15,10 +15,10 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			//tools.POST("/install", utils.MWtoken(), handleInstall)
 			//tools.GET("/install/status", utils.MWtoken(), handleGetInstallStatus)
 			//// 定时通知
-			//tools.GET("/announce", utils.MWtoken(), handleAnnounceGet)
-			//tools.POST("/announce", utils.MWtoken(), handleAnnouncePost)
-			//tools.DELETE("/announce", utils.MWtoken(), handleAnnounceDelete)
-			//tools.PUT("/announce", utils.MWtoken(), handleAnnouncePut)
+			tools.GET("/announce", utils.MWtoken(), handleAnnounceGet)
+			tools.POST("/announce", utils.MWtoken(), handleAnnouncePost)
+			tools.DELETE("/announce", utils.MWtoken(), handleAnnounceDelete)
+			tools.PUT("/announce", utils.MWtoken(), handleAnnouncePut)
 			// 备份管理
 			tools.GET("/backup", utils.MWtoken(), handleBackupGet)
 			tools.POST("/backup", utils.MWtoken(), handleBackupPost) // 手动创建备份

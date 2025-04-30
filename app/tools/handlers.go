@@ -2,6 +2,7 @@ package tools
 
 import (
 	"dst-management-platform-api/app/setting"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"encoding/base64"
 	"fmt"
@@ -90,124 +91,196 @@ func handleOSInfoGet(c *gin.Context) {
 //		}})
 //	}
 
-//	func handleAnnounceGet(c *gin.Context) {
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, "zh")
-//			return
-//		}
-//		if config.AutoAnnounce == nil {
-//			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{}})
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.AutoAnnounce})
-//	}
+func handleAnnounceGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-//	func handleAnnouncePost(c *gin.Context) {
-//		defer scheduler.ReloadScheduler()
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var announceForm utils.AutoAnnounce
-//		if err := c.ShouldBindJSON(&announceForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		for _, announce := range config.AutoAnnounce {
-//			if announce.Name == announceForm.Name {
-//				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("duplicatedName", langStr), "data": nil})
-//				return
-//			}
-//		}
-//		config.AutoAnnounce = append(config.AutoAnnounce, announceForm)
-//		err = utils.WriteConfig(config)
-//		if err != nil {
-//			utils.Logger.Error("配置文件写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createSuccess", langStr), "data": nil})
-//	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
 
-//	func handleAnnounceDelete(c *gin.Context) {
-//		defer scheduler.ReloadScheduler()
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var announceForm utils.AutoAnnounce
-//		if err := c.ShouldBindJSON(&announceForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		// 删除，遍历不添加
-//		for i := 0; i < len(config.AutoAnnounce); i++ {
-//			if config.AutoAnnounce[i].Name == announceForm.Name {
-//				config.AutoAnnounce = append(config.AutoAnnounce[:i], config.AutoAnnounce[i+1:]...)
-//				i--
-//			}
-//		}
-//		err = utils.WriteConfig(config)
-//		if err != nil {
-//			utils.Logger.Error("配置文件写入失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
-//	}
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
 
-//	func handleAnnouncePut(c *gin.Context) {
-//		defer scheduler.ReloadScheduler()
-//		lang, _ := c.Get("lang")
-//		langStr := "zh" // 默认语言
-//		if strLang, ok := lang.(string); ok {
-//			langStr = strLang
-//		}
-//		var announceForm utils.AutoAnnounce
-//		if err := c.ShouldBindJSON(&announceForm); err != nil {
-//			// 如果绑定失败，返回 400 错误
-//			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-//			return
-//		}
-//		config, err := utils.ReadConfig()
-//		if err != nil {
-//			utils.Logger.Error("配置文件读取失败", "err", err)
-//			utils.RespondWithError(c, 500, langStr)
-//			return
-//		}
-//		for index, announce := range config.AutoAnnounce {
-//			if announce.Name == announceForm.Name {
-//				config.AutoAnnounce[index] = announceForm
-//				err = utils.WriteConfig(config)
-//				if err != nil {
-//					utils.Logger.Error("配置文件写入失败", "err", err)
-//					utils.RespondWithError(c, 500, langStr)
-//					return
-//				}
-//				c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
-//				return
-//			}
-//		}
-//		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateFail", langStr), "data": nil})
-//	}
+	if cluster.SysSetting.AutoAnnounce == nil {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cluster.SysSetting.AutoAnnounce})
+}
+
+func handleAnnouncePost(c *gin.Context) {
+	defer scheduler.ReloadScheduler()
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		AutoAnnounce utils.AutoAnnounce `json:"autoAnnounce"`
+		ClusterName  string             `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	for _, announce := range cluster.SysSetting.AutoAnnounce {
+		if announce.Name == reqForm.AutoAnnounce.Name {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("duplicatedName", langStr), "data": nil})
+			return
+		}
+	}
+	cluster.SysSetting.AutoAnnounce = append(cluster.SysSetting.AutoAnnounce, reqForm.AutoAnnounce)
+	for index, dbCluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == dbCluster.ClusterSetting.ClusterName {
+			config.Clusters[index] = cluster
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("配置文件写入失败", "err", err)
+				utils.RespondWithError(c, 500, langStr)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createSuccess", langStr), "data": nil})
+			return
+		}
+	}
+
+	utils.RespondWithError(c, 404, langStr)
+}
+
+func handleAnnounceDelete(c *gin.Context) {
+	defer scheduler.ReloadScheduler()
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		AutoAnnounce utils.AutoAnnounce `json:"autoAnnounce"`
+		ClusterName  string             `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+	// 删除，遍历不添加
+	for i := 0; i < len(cluster.SysSetting.AutoAnnounce); i++ {
+		if cluster.SysSetting.AutoAnnounce[i].Name == reqForm.AutoAnnounce.Name {
+			cluster.SysSetting.AutoAnnounce = append(cluster.SysSetting.AutoAnnounce[:i], cluster.SysSetting.AutoAnnounce[i+1:]...)
+			i--
+		}
+	}
+	for index, dbCluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == dbCluster.ClusterSetting.ClusterName {
+			config.Clusters[index] = cluster
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("配置文件写入失败", "err", err)
+				utils.RespondWithError(c, 500, langStr)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+			return
+		}
+	}
+
+	utils.RespondWithError(c, 404, langStr)
+}
+
+func handleAnnouncePut(c *gin.Context) {
+	defer scheduler.ReloadScheduler()
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		AutoAnnounce utils.AutoAnnounce `json:"autoAnnounce"`
+		ClusterName  string             `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	for index, announce := range cluster.SysSetting.AutoAnnounce {
+		if announce.Name == reqForm.AutoAnnounce.Name {
+			cluster.SysSetting.AutoAnnounce[index] = reqForm.AutoAnnounce
+			for dbIndex, dbCluster := range config.Clusters {
+				if cluster.ClusterSetting.ClusterName == dbCluster.ClusterSetting.ClusterName {
+					config.Clusters[dbIndex] = cluster
+					err = utils.WriteConfig(config)
+					if err != nil {
+						utils.Logger.Error("配置文件写入失败", "err", err)
+						utils.RespondWithError(c, 500, langStr)
+						return
+					}
+					c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
+					return
+				}
+			}
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateFail", langStr), "data": nil})
+}
 
 //	func handleUpdateGet(c *gin.Context) {
 //		dstVersion, err := externalApi.GetDSTVersion()
