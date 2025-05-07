@@ -263,7 +263,7 @@ func handleExecPost(c *gin.Context) {
 	case "update":
 		go func() {
 			_ = utils.StopAllClusters(config.Clusters)
-			_ = utils.BashCMD(utils.UpdateGameCMD)
+			_ = utils.BashCMD(utils.GetDSTUpdateCmd())
 			_ = utils.StartAllClusters(config.Clusters)
 		}()
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updating", langStr), "data": nil})

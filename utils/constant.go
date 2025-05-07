@@ -24,8 +24,6 @@ const ModUgcDownloadPath = ModDownloadPath + "/steamapps/workshop/content/322330
 
 const ModNoUgcDownloadPath = ModDownloadPath + "/not_ugc"
 
-/* ---- 重构 ---- */
-
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
 const DSTLocalVersionPath = "dst/version.txt"

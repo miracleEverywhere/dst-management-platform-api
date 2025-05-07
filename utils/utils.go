@@ -594,9 +594,9 @@ func BackupGame(cluster Cluster) error {
 func (world World) StopGame(clusterName string) error {
 	var err error
 	if world.GetStatus() {
-		err = ScreenCMD(ShutdownScreenCMD, world.ScreenName)
+		err = ScreenCMD("c_shutdown()", world.ScreenName)
 		if err != nil {
-			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", ShutdownScreenCMD)
+			Logger.Info("执行ScreenCMD失败", "msg", err, "cmd", "c_shutdown()")
 		}
 		time.Sleep(1 * time.Second)
 	}

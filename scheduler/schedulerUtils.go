@@ -236,9 +236,9 @@ func doUpdate(config utils.Config) error {
 	_ = utils.StopAllClusters(config.Clusters)
 
 	go func() {
-		err := utils.BashCMD(utils.UpdateGameCMD)
+		err := utils.BashCMD(utils.GetDSTUpdateCmd())
 		if err != nil {
-			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.UpdateGameCMD)
+			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.GetDSTUpdateCmd())
 		}
 		_ = utils.StartAllClusters(config.Clusters)
 	}()

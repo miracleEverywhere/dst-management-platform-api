@@ -68,7 +68,7 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 	dstVersion.Local = -1
 
 	if utils.Platform == "darwin" {
-		out, _, err := utils.BashCMDOutput(utils.MacDSTVersionCMD)
+		out, _, err := utils.BashCMDOutput(utils.GetMacVersionCmd())
 		if err != nil {
 			utils.Logger.Error("获取饥荒版本失败", "err", err)
 			return dstVersion, err
