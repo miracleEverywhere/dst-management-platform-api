@@ -556,18 +556,18 @@ func handleUpdatePassword(c *gin.Context) {
 		if user.Username == updatePasswordForm.Username {
 			if user.Password == updatePasswordForm.OldPassword {
 				config.Users[userIndex].Password = updatePasswordForm.Password
-				c.JSON(http.StatusOK, gin.H{
-					"code":    200,
-					"message": Response("updatePassword", langStr),
-					"data":    nil,
-				})
 				err = utils.WriteConfig(config)
 				if err != nil {
 					utils.Logger.Error("写入配置文件失败", "err", err)
 					utils.RespondWithError(c, 500, langStr)
 					return
 				}
-
+				utils.UserCache[user.Username] = config.Users[userIndex]
+				c.JSON(http.StatusOK, gin.H{
+					"code":    200,
+					"message": Response("updatePassword", langStr),
+					"data":    nil,
+				})
 				return
 			} else {
 				utils.RespondWithError(c, 424, langStr)
@@ -580,18 +580,6 @@ func handleUpdatePassword(c *gin.Context) {
 }
 
 func handleUserListGet(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("读取配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
 
 	type UserResponse struct {
 		Username          string   `json:"username"`
@@ -603,7 +591,7 @@ func handleUserListGet(c *gin.Context) {
 
 	var userResponse []UserResponse
 
-	for _, i := range config.Users {
+	for _, i := range utils.UserCache {
 		user := UserResponse{
 			Username:          i.Username,
 			Nickname:          i.Nickname,
@@ -650,6 +638,7 @@ func handleUserCreatePost(c *gin.Context) {
 	}
 
 	config.Users = append(config.Users, user)
+	utils.UserCache[user.Username] = user
 
 	err = utils.WriteConfig(config)
 	if err != nil {
@@ -697,6 +686,7 @@ func handleUserUpdatePut(c *gin.Context) {
 				ClusterPermission: user.ClusterPermission,
 			}
 			config.Users[index] = newUser
+			utils.UserCache[user.Username] = config.Users[index]
 			err = utils.WriteConfig(config)
 			if err != nil {
 				utils.Logger.Error("写入配置文件失败", "err", err)
@@ -741,15 +731,16 @@ func handleUserDeleteDelete(c *gin.Context) {
 		return
 	}
 
-	for _, i := range config.Users {
-		if i.Username != user.Username {
-			users = append(users, i)
+	for _, dbUser := range config.Users {
+		if dbUser.Username != user.Username {
+			users = append(users, dbUser)
 		} else {
 			deleted = true
 		}
 	}
 
 	config.Users = users
+	delete(utils.UserCache, user.Username)
 
 	err = utils.WriteConfig(config)
 	if err != nil {
@@ -802,6 +793,8 @@ func handleRegisterPost(c *gin.Context) {
 	config.Registered = true
 	utils.Registered = true
 
+	utils.UserCache[user.Username] = user
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("写入配置文件失败", "err", err)
@@ -828,16 +821,9 @@ func handleUserAnnounceIDGet(c *gin.Context) {
 		return
 	}
 
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("读取配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
+	announceID := utils.UserCache[usernameStr].AnnounceID
 
-	user := config.GetUserWithUsername(usernameStr)
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": user.AnnounceID})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": announceID})
 }
 
 func handleUserAnnounceIDPost(c *gin.Context) {
@@ -871,6 +857,7 @@ func handleUserAnnounceIDPost(c *gin.Context) {
 	for index, user := range config.Users {
 		if usernameStr == user.Username {
 			config.Users[index].AnnounceID = announcedForm.ID
+			utils.UserCache[user.Username] = config.Users[index]
 			break
 		}
 	}
