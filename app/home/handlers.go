@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -130,7 +129,7 @@ func handleWorldInfoGet(c *gin.Context) {
 		ClusterName string `json:"clusterName" form:"clusterName"`
 	}
 	type WorldStat struct {
-		ID       string  `json:"id"`
+		ID       int     `json:"id"`
 		Stat     bool    `json:"stat"`
 		World    string  `json:"world"`
 		IsMaster bool    `json:"isMaster"`
@@ -168,7 +167,7 @@ func handleWorldInfoGet(c *gin.Context) {
 		stat, cpu, mem, memSize, diskUsed := world.GetProcessStatus(cluster.ClusterSetting.ClusterName)
 
 		status := WorldStat{
-			ID:       strings.ReplaceAll(world.Name, "World", ""),
+			ID:       world.ID,
 			Stat:     stat,
 			World:    world.Name,
 			IsMaster: world.IsMaster,
@@ -197,8 +196,8 @@ func handleExecPost(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	var reqFrom ReqForm
-	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -211,25 +210,25 @@ func handleExecPost(c *gin.Context) {
 		return
 	}
 
-	cluster, err := config.GetClusterWithName(reqFrom.ClusterName)
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
 	if err != nil {
 		utils.RespondWithError(c, 404, langStr)
 		return
 	}
 
-	switch reqFrom.Type {
+	switch reqForm.Type {
 	case "switch":
-		world, err := config.GetWorldWithName(reqFrom.ClusterName, reqFrom.WorldName)
+		world, err := config.GetWorldWithName(reqForm.ClusterName, reqForm.WorldName)
 		if err != nil {
 			utils.RespondWithError(c, 404, langStr)
 			return
 		}
 		if world.GetStatus() {
-			_ = world.StopGame(reqFrom.ClusterName)
+			_ = world.StopGame(reqForm.ClusterName)
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
 			return
 		} else {
-			err = world.StartGame(reqFrom.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
+			err = world.StartGame(reqForm.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
 			if err != nil {
 				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
 				return
@@ -281,7 +280,7 @@ func handleExecPost(c *gin.Context) {
 	case "rollback":
 		days := func() string {
 			// 只存在float64的情况
-			switch v := reqFrom.ExtraData.(type) {
+			switch v := reqForm.ExtraData.(type) {
 			case float64:
 				return fmt.Sprintf("%d", int64(v))
 			default:
@@ -336,7 +335,7 @@ func handleExecPost(c *gin.Context) {
 	case "announce":
 		message := func() string {
 			// 只存在string的情况
-			switch v := reqFrom.ExtraData.(type) {
+			switch v := reqForm.ExtraData.(type) {
 			case string:
 				return v
 			default:
@@ -360,14 +359,14 @@ func handleExecPost(c *gin.Context) {
 	case "console":
 		cmd := func() string {
 			// 只存在string的情况
-			switch v := reqFrom.ExtraData.(type) {
+			switch v := reqForm.ExtraData.(type) {
 			case string:
 				return v
 			default:
 				return ""
 			}
 		}()
-		world, err := config.GetWorldWithName(reqFrom.ClusterName, reqFrom.WorldName)
+		world, err := config.GetWorldWithName(reqForm.ClusterName, reqForm.WorldName)
 		if err != nil {
 			utils.RespondWithError(c, 404, langStr)
 			return
@@ -383,4 +382,63 @@ func handleExecPost(c *gin.Context) {
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 	}
+}
+
+func handleGetClusterAllScreensGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if reqForm.ClusterName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	screenNames := GetClusterScreens(reqForm.ClusterName)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": screenNames})
+}
+
+func handleKillScreenManualPost(c *gin.Context) {
+	defer func() {
+		time.Sleep(500 * time.Millisecond)
+		_ = utils.BashCMD("screen -wipe")
+	}()
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type ReqForm struct {
+		ScreenName string `json:"screenName" form:"screenName"`
+	}
+
+	var (
+		reqForm ReqForm
+		err     error
+	)
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	killCMD := fmt.Sprintf("ps -ef | grep %s | grep -v grep | awk '{print $2}' | xargs kill -9", reqForm.ScreenName)
+	err = utils.BashCMD(killCMD)
+	if err != nil {
+		utils.Logger.Error("执行命令失败", "err", err, "cmd", killCMD)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("shutdownFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
 }

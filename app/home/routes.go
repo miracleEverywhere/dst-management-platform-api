@@ -17,6 +17,8 @@ func RouteHome(r *gin.Engine) *gin.Engine {
 			// 获取系统资源监控
 			home.GET("/sys_info", handleSystemInfoGet)
 			home.GET("/world_info", handleWorldInfoGet)
+			home.GET("/cluster/all_screens", handleGetClusterAllScreensGet)
+			home.POST("/cluster/screen_kill", handleKillScreenManualPost)
 			home.POST("/exec", handleExecPost)
 		}
 	}
