@@ -30,12 +30,6 @@ var (
 	ConsoleOutput bool
 	VersionShow   bool
 	ConfDir       string
-
-	Platform   string
-	Registered bool
-	HomeDir    string
-	STATISTICS = make(map[string][]Statistics) // 玩家统计
-	SYSMETRICS []SysMetrics                    // 系统监控
 )
 
 type Claims struct {
@@ -77,6 +71,10 @@ func SetGlobalVariables() {
 	Platform = osInfo.Platform
 
 	Registered = config.Registered
+
+	for _, user := range config.Users {
+		UserCache[user.Username] = user
+	}
 }
 
 func GenerateJWTSecret() string {
