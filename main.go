@@ -66,8 +66,6 @@ func initialize() {
 	utils.SetGlobalVariables()
 	// 检查目录
 	utils.CheckDirs()
-	// 检查文件
-	utils.CheckFiles("all")
 	// 创建DST手动安装脚本
 	utils.CreateManualInstallScript()
 	gin.SetMode(gin.ReleaseMode)

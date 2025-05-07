@@ -20,7 +20,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -210,14 +209,6 @@ func CheckDirs() {
 		Logger.Error("目录检查未通过", "path", BackupPath)
 		panic("目录检查未通过")
 	}
-}
-
-func CheckFiles(checkItem string) {
-
-}
-
-func CheckPlatform() {
-
 }
 
 func BindFlags() {
@@ -648,10 +639,10 @@ func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 		err error
 	)
 	if Platform == "darwin" {
-		cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+		cmd = fmt.Sprintf("cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/steamcmd && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		err = BashCMD(cmd)
 		if err != nil {
-			Logger.Error("执行BashCMD失败", "err", err, "cmd", MacStartMasterCMD)
+			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
 		}
 	} else {
 		_ = ReplaceDSTSOFile()
@@ -723,59 +714,6 @@ func (cluster Cluster) ClearDstFiles() error {
 	}
 
 	return err
-}
-
-func RecoveryGame(backupFile string) error {
-	// 检查文件是否存在
-	exist, err := FileDirectoryExists(backupFile)
-	if !exist || err != nil {
-		return fmt.Errorf("文件不存在，%w", err)
-	}
-	// 停止进程
-	cmd := "c_shutdown()"
-	err = ScreenCMD(cmd, MasterName)
-	if err != nil {
-		Logger.Warn("ScreenCMD执行失败", "err", err, "cmd", cmd, "world", MasterName)
-	}
-
-	err = ScreenCMD(cmd, CavesName)
-	if err != nil {
-		Logger.Warn("ScreenCMD执行失败", "err", err, "cmd", cmd, "world", CavesName)
-	}
-
-	time.Sleep(2 * time.Second)
-
-	err = BashCMD(StopMasterCMD)
-	if err != nil {
-		Logger.Error("BashCMD执行失败", "err", err, "cmd", StopMasterCMD)
-	}
-
-	err = BashCMD(StopCavesCMD)
-	if err != nil {
-		Logger.Error("BashCMD执行失败", "err", err, "cmd", StopCavesCMD)
-	}
-
-	err = BashCMD(ClearScreenCMD)
-	if err != nil {
-		Logger.Error("BashCMD执行失败", "err", err, "cmd", ClearScreenCMD)
-	}
-
-	// 删除主目录
-	err = RemoveDir(ServerPath)
-	if err != nil {
-		Logger.Error("删除主目录失败", "err", err)
-		return err
-	}
-
-	// 解压备份文件
-	cmd = "tar zxvf " + backupFile
-	err = BashCMD(cmd)
-	if err != nil {
-		Logger.Error("BashCMD执行失败", "err", err, "cmd", cmd)
-		return err
-	}
-
-	return nil
 }
 
 func GetTimestamp() int64 {
@@ -889,122 +827,6 @@ func GetFiles(dirPath string) ([]string, error) {
 	}
 
 	return fileNames, nil
-}
-
-//func GetRoomSettingBase() (RoomSettingCluster, error) {
-//roomSettings := RoomSettingBase{}
-//// 打开文件
-//file, err := os.Open(ServerSettingPath)
-//if err != nil {
-//	Logger.Error("打开cluster.ini文件失败", "err", err)
-//	return RoomSettingBase{}, err
-//}
-//defer func(file *os.File) {
-//	err := file.Close()
-//	if err != nil {
-//		Logger.Error("关闭cluster.ini文件失败", "err", err)
-//	}
-//}(file)
-//
-//// 定义要读取的字段映射
-//fieldsToRead := map[string]string{
-//	"cluster_name":        "Name",
-//	"cluster_description": "Description",
-//	"game_mode":           "GameMode",
-//	"pvp":                 "PVP",
-//	"max_players":         "PlayerNum",
-//	"vote_enabled":        "Vote",
-//	"cluster_password":    "Password",
-//}
-//
-//// 使用bufio.Scanner逐行读取文件内容
-//scanner := bufio.NewScanner(file)
-//for scanner.Scan() {
-//	line := scanner.Text()
-//	line = strings.TrimSpace(line)
-//	// 跳过注释和空行
-//	if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
-//		continue
-//	}
-//	// 解析字段和值
-//	for field, structField := range fieldsToRead {
-//		if strings.HasPrefix(line, field+" =") {
-//			value := strings.TrimPrefix(line, field+" =")
-//			value = strings.TrimSpace(value)
-//
-//			// 根据结构体字段类型设置值
-//			switch structField {
-//			case "Name":
-//				roomSettings.Name = value
-//			case "Description":
-//				roomSettings.Description = value
-//			case "GameMode":
-//				roomSettings.GameMode = value
-//			case "PVP":
-//				roomSettings.PVP, _ = strconv.ParseBool(value)
-//			case "PlayerNum":
-//				roomSettings.PlayerNum, _ = strconv.Atoi(value)
-//			case "Vote":
-//				roomSettings.Vote, _ = strconv.ParseBool(value)
-//			case "Password":
-//				roomSettings.Password = value
-//			}
-//			break
-//		}
-//	}
-//}
-//
-//// 检查是否有错误
-//if err := scanner.Err(); err != nil {
-//	Logger.Error("读取cluster.ini文件失败", "err", err)
-//	return RoomSettingBase{}, err
-//}
-//
-////token文件
-//token, err := GetFileAllContent(ServerTokenPath)
-//if err != nil {
-//	Logger.Error("读取token文件失败", "err", err)
-//	return RoomSettingBase{}, err
-//}
-//roomSettings.Token = token
-
-//	return RoomSettingCluster{}, nil
-//}
-
-func GetServerPort(serverFile string) (int, error) {
-	file, err := os.Open(serverFile)
-	if err != nil {
-		Logger.Error("打开"+serverFile+"文件失败", "err", err)
-		return 0, err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			Logger.Error("关闭"+serverFile+"文件失败", "err", err)
-		}
-	}(file)
-	// 使用bufio.Scanner逐行读取文件内容
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
-		// 跳过注释和空行
-		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || line == "" {
-			continue
-		}
-		// 解析字段和值
-		if strings.HasPrefix(line, "server_port =") {
-			value := strings.TrimPrefix(line, "server_port =")
-			value = strings.TrimSpace(value)
-			port, err := strconv.Atoi(value)
-			if err != nil {
-				Logger.Error("获取端口失败，端口必须为数字", "err", err)
-				return 0, err
-			}
-			return port, nil
-		}
-	}
-	return 0, fmt.Errorf("没有找到端口配置")
 }
 
 func Bool2String(b bool, lang string) string {
