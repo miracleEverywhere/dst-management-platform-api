@@ -31,6 +31,7 @@ type ClusterSetting struct {
 }
 
 type World struct {
+	ID                      int    `json:"id"`
 	Name                    string `json:"name"`       // Master
 	ScreenName              string `json:"screenName"` // DST_Master
 	LevelData               string `json:"levelData"`
@@ -127,7 +128,6 @@ type Config struct {
 	JwtSecret        string           `json:"jwtSecret"`
 	Clusters         []Cluster        `json:"clusters"`
 	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
-	AnnouncedID      int              `json:"announcedID"`
 	Registered       bool             `json:"registered"`
 }
 
@@ -148,29 +148,6 @@ func (config Config) Init() {
 			Enable: true,
 		},
 	}
-	//config.SysSetting = SysSetting{
-	//
-	//	AutoUpdate: AutoUpdate{
-	//		Time:   "06:19:23",
-	//		Enable: true,
-	//	},
-	//	AutoRestart: AutoRestart{
-	//		Time:   "06:47:19",
-	//		Enable: true,
-	//	},
-	//	AutoAnnounce: nil,
-	//	AutoBackup: AutoBackup{
-	//		Time:   "06:13:57",
-	//		Enable: true,
-	//	},
-	//	Keepalive: Keepalive{
-	//		Frequency: 30,
-	//		Enable:    true,
-	//	},
-	//	Bit64:    false,
-	//	TickRate: 15,
-	//}
-	config.AnnouncedID = 0
 	config.Registered = false
 	err := WriteConfig(config)
 	if err != nil {
@@ -181,6 +158,21 @@ func (config Config) Init() {
 
 func ReadConfig() (Config, error) {
 	content, err := os.ReadFile(ConfDir + "/DstMP.sdb")
+	if err != nil {
+		return Config{}, err
+	}
+
+	jsonData := string(content)
+	var config Config
+	err = json.Unmarshal([]byte(jsonData), &config)
+	if err != nil {
+		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
+	}
+	return config, nil
+}
+
+func ReadBackupConfig(configPath string) (Config, error) {
+	content, err := os.ReadFile(configPath)
 	if err != nil {
 		return Config{}, err
 	}
