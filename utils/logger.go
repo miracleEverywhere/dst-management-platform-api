@@ -8,7 +8,7 @@ import (
 var Logger *slog.Logger
 
 func init() {
-	logFile, err := os.OpenFile(ProcessLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(DMPRuntimeLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
 	}

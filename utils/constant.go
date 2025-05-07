@@ -38,8 +38,6 @@ const SteamApiModDetail = "http://api.steampowered.com/IPublishedFileService/Get
 
 const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/QueryFiles/v1/"
 
-const ProcessLogFile = "dmpProcess.log"
-
 const MacGameModSettingPath = "dst/dontstarve_dedicated_server_nullrenderer.app/Contents/mods/dedicated_server_mods_setup.lua"
 
 const MacModExportPath = "$HOME/Desktop/dmp_exported_mod"
