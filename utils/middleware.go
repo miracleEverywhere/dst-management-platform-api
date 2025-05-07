@@ -163,6 +163,7 @@ func (l *IPRateLimiter) Stop() {
 	}
 }
 
+// MWAdminOnly 仅管理员接口
 func MWAdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exist := c.Get("role")
@@ -174,6 +175,39 @@ func MWAdminOnly() gin.HandlerFunc {
 		Logger.Info("越权请求已中断")
 		lang := c.Request.Header.Get("X-I18n-Lang")
 		RespondWithError(c, 425, lang)
+		c.Abort()
+		return
+	}
+}
+
+// MWUserCheck 用户状态检查
+func MWUserCheck() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		lang := c.Request.Header.Get("X-I18n-Lang")
+		username, exist := c.Get("username")
+		if exist {
+			usernameStr, ok := username.(string)
+			if ok {
+				user := UserCache[usernameStr]
+				if len(user.Username) != 0 {
+					if !user.Disabled {
+						c.Next()
+						return
+					} else {
+						RespondWithError(c, 423, lang)
+						c.Abort()
+						return
+					}
+				} else {
+					RespondWithError(c, 421, lang)
+					c.Abort()
+					return
+				}
+			}
+
+		}
+
+		RespondWithError(c, 500, lang)
 		c.Abort()
 		return
 	}
