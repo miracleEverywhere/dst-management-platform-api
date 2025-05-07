@@ -809,6 +809,14 @@ func handleRegisterPost(c *gin.Context) {
 	})
 }
 
+func handleRegisterGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data":    utils.Registered,
+	})
+}
+
 func handleUserAnnounceIDGet(c *gin.Context) {
 	username, exist := c.Get("username")
 	if !exist {
