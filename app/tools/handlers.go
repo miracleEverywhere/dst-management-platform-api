@@ -459,67 +459,47 @@ func handleBackupRestore(c *gin.Context) {
 	cmd := fmt.Sprintf("tar zxf %s -C %s", filePath, utils.ImportFileUploadPath)
 	err = utils.BashCMD(cmd)
 	if err != nil {
-		utils.Logger.Error("解压失败", "err", err)
+		utils.Logger.Error("解压失败", "err", err, "cmd", cmd)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
 		return
 	}
 
-	// 生成zip压缩文件
-	cmd = fmt.Sprintf("cd %s%s && zip -r ../../../../tmp.zip .", utils.ImportFileUploadPath, cluster.GetMainPath()[1:])
-	utils.Logger.Info(cmd)
+	// 还原备份文件
+	cmd = fmt.Sprintf("rm -rf %s", cluster.GetMainPath())
 	err = utils.BashCMD(cmd)
 	if err != nil {
-		utils.Logger.Error("创建zip文件失败", "err", err)
+		utils.Logger.Error("删除旧集群文件失败", "err", err, "cmd", cmd)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
 		return
 	}
-
-	cluster.Worlds = nil
-	result, _, cluster, lists, dstFiles := setting.DoImport("tmp.zip", cluster, langStr)
-	if !result {
-		utils.Logger.Error("处理配置文件失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
-		return
-	}
-
-	//写入三个名单
-	clusterPath := cluster.GetMainPath() + "/"
-	err = utils.EnsureDirExists(clusterPath)
+	cmd = fmt.Sprintf("mv %s%s %s", utils.ImportFileUploadPath, cluster.GetMainPath(), cluster.GetMainPath())
+	err = utils.BashCMD(cmd)
 	if err != nil {
+		utils.Logger.Error("创建新集群文件失败", "err", err, "cmd", cmd)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
-
 		return
 	}
-	for key, value := range lists {
-		err = utils.EnsureFileExists(clusterPath + key)
-		if err != nil {
-			utils.Logger.Error("创建"+key+"文件失败", "err", err)
-			continue
-		}
-		err = utils.WriteLinesFromSlice(clusterPath+key, value)
-		if err != nil {
-			utils.Logger.Error("写入"+key+"文件失败", "err", err)
-			continue
-		}
-	}
-	//写入文件
-	err = setting.SaveSetting(cluster)
+	// 读取备份的配置文件
+	backupConfig, err := utils.ReadBackupConfig(utils.ImportFileUploadPath + "/DstMP.sdb")
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	//写入 save/ 和 backup/
-	for worldName, dirPaths := range dstFiles {
-		clusterFilePath := fmt.Sprintf("%s/%s", cluster.GetMainPath(), worldName)
-		for _, dirPath := range dirPaths {
-			cmd := fmt.Sprintf("cp -rf %s %s", dirPath, clusterFilePath)
-			err = utils.BashCMD(cmd)
-			if err != nil {
-				utils.Logger.Error("复制游戏数据失败", "err", err, "dir", clusterFilePath)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
-				return
-			}
-		}
+
+	config.Clusters = backupConfig.Clusters
+
+	cluster, err = config.GetClusterWithName(restoreForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
 	}
 
 	err = cluster.ClearDstFiles()
