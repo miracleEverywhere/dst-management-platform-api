@@ -9,21 +9,6 @@ DST_SETTING_DIR="$HOME/.klei"
 
 
 # 工具函数
-function check_directory() {
-    if [ -d "$STEAM_DIR" ]; then
-        mv $STEAM_DIR $STEAM_DIR.$(date +%s)
-    fi
-
-    if [ -d "$DST_DIR" ]; then
-        mv $DST_DIR $DST_DIR.$(date +%s)
-    fi
-
-    if [ -d "$DST_SETTING_DIR" ]; then
-        mv $DST_SETTING_DIR $DST_SETTING_DIR.$(date +%s)
-    fi
-
-}
-
 function install_ubuntu() {
     dpkg --add-architecture i386 2>&1 > /dev/null
 	apt update 2>&1 > /dev/null
@@ -52,9 +37,6 @@ function check_screen() {
 
 # 清空status文件
 > /tmp/install_status
-
-# 创建、备份目录
-check_directory
 
 # 安装依赖
 echo -e "17\t正在安装依赖\tInstalling dependencies" > /tmp/install_status
@@ -110,30 +92,6 @@ do
 done
 
 cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
-
-# 解决无法自动下载MOD的问题
-# 备份
-mv ~/dst/bin/lib32/steamclient.so ~/dst/bin/lib32/steamclient.so.bak
-mv ~/dst/steamclient.so ~/dst/steamclient.so.bak
-# 替换
-cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/steamclient.so
-cp ~/steamcmd/linux32/steamclient.so ~/dst/steamclient.so
-
-# 初始化一些目录和文件
-mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Master
-mkdir -p ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/Caves
-mkdir -p ${DST_SETTING_DIR}/DMP_BACKUP
-mkdir -p ${DST_SETTING_DIR}/DMP_MOD/not_ugc
-mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Master/content/322330
-mkdir -p ${DST_DIR}/ugc_mods/MyDediServer/Caves/content/322330
-# UID MAP
-> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/uid_map.json
-# 管理员
-> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/adminlist.txt
-# 黑名单
-> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/blocklist.txt
-# 预留位
-> ${DST_SETTING_DIR}/DoNotStarveTogether/MyDediServer/whitelist.txt
 
 # 清理
 cd ~
