@@ -26,11 +26,6 @@ const ModNoUgcDownloadPath = ModDownloadPath + "/not_ugc"
 
 /* ---- 重构 ---- */
 
-const MasterName = "Master"
-const CavesName = "Caves"
-const MasterScreenName = "DST_MASTER"
-const CavesScreenName = "DST_CAVES"
-
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
 const DSTLocalVersionPath = "dst/version.txt"
