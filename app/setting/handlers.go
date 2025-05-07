@@ -199,7 +199,22 @@ func handleClusterSavePost(c *gin.Context) {
 		return
 	}
 
-	err := SaveSetting(reqCluster)
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	cluster, err := config.GetClusterWithName(reqCluster.ClusterSetting.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	KillInvalidScreen(cluster.Worlds, reqCluster.Worlds)
+
+	err = SaveSetting(reqCluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
@@ -242,7 +257,22 @@ func handleClusterSaveRestartPost(c *gin.Context) {
 
 	_ = utils.BashCMD("screen -wipe")
 
-	err := SaveSetting(reqCluster)
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	cluster, err := config.GetClusterWithName(reqCluster.ClusterSetting.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	KillInvalidScreen(cluster.Worlds, reqCluster.Worlds)
+
+	err = SaveSetting(reqCluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,
@@ -290,21 +320,22 @@ func handleClusterSaveRegeneratePost(c *gin.Context) {
 		return
 	}
 
-	_ = utils.BashCMD("screen -wipe")
-
-	_ = utils.StopClusterAllWorlds(reqCluster)
-
-	for _, world := range reqCluster.Worlds {
-		cmd := fmt.Sprintf("rm -rf %s", world.GetMainPath(reqCluster.ClusterSetting.ClusterName))
-		err := utils.BashCMD(cmd)
-		if err != nil {
-			utils.Logger.Error("删除旧世界目录失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteOldServerFail", langStr), "data": nil})
-			return
-		}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	cluster, err := config.GetClusterWithName(reqCluster.ClusterSetting.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
 	}
 
-	err := SaveSetting(reqCluster)
+	KillInvalidScreen(cluster.Worlds, reqCluster.Worlds)
+
+	err = SaveSetting(reqCluster)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    201,

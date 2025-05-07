@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+type System struct {
+	SysSetting       utils.SysSetting       `json:"sysSetting"`
+	SchedulerSetting utils.SchedulerSetting `json:"schedulerSetting"`
+}
+
 func clusterTemplate(cluster utils.Cluster) string {
 	var (
 		masterIP   string
@@ -641,7 +646,28 @@ func GetPlayerAgePrefab(uid string, cluster utils.Cluster) (int, string, error) 
 	return ageInt, prefab, nil
 }
 
-type System struct {
-	SysSetting       utils.SysSetting       `json:"sysSetting"`
-	SchedulerSetting utils.SchedulerSetting `json:"schedulerSetting"`
+func KillInvalidScreen(oldWorlds, newWorlds []utils.World) {
+	var (
+		oldWorldScreenNames []string
+		newWorldScreenNames []string
+	)
+
+	for _, i := range oldWorlds {
+		oldWorldScreenNames = append(oldWorldScreenNames, i.ScreenName)
+	}
+	for _, i := range newWorlds {
+		newWorldScreenNames = append(newWorldScreenNames, i.ScreenName)
+	}
+
+	for _, oldWorld := range oldWorldScreenNames {
+		if !utils.Contains(newWorldScreenNames, oldWorld) {
+			killCMD := fmt.Sprintf("ps -ef | grep %s | grep -v grep | awk '{print $2}' | xargs kill -9", oldWorld)
+			err := utils.BashCMD(killCMD)
+			if err != nil {
+				utils.Logger.Info("执行Bash命令失败", "msg", err, "cmd", killCMD)
+			}
+		}
+	}
+
+	_ = utils.BashCMD("screen -wipe")
 }

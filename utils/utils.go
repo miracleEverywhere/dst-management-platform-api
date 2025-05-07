@@ -1145,6 +1145,7 @@ func CountFiles(path string) (int, error) {
 	return fileCount, err
 }
 
+// Contains 是否含有元素
 func Contains[T comparable](s []T, i T) bool {
 	for _, v := range s {
 		if v == i {
@@ -1153,6 +1154,16 @@ func Contains[T comparable](s []T, i T) bool {
 	}
 
 	return false
+}
+
+// RemoveSliceOne 删除切片中的一个元素
+func RemoveSliceOne[T comparable](s []T, elem T) []T {
+	for i, v := range s {
+		if v == elem {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
 }
 
 func DstModsSetup(mod string) error {
