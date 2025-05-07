@@ -69,7 +69,7 @@ func worldTemplate(world utils.World) string {
 server_port = ` + strconv.Itoa(world.ServerPort) + `
 
 [SHARD]
-id = ` + strings.ReplaceAll(world.Name, "World", "") + `
+id = ` + strconv.Itoa(world.ID) + `
 is_master = ` + strconv.FormatBool(world.IsMaster) + `
 name = ` + world.Name + `
 
@@ -111,7 +111,7 @@ func SaveSetting(reqCluster utils.Cluster) error {
 	var formattedCluster utils.Cluster
 
 	for _, world := range reqCluster.Worlds {
-		world.ScreenName = fmt.Sprintf("DST_%s_%s", reqCluster.ClusterSetting.ClusterName, world.Name)
+		world.ScreenName = fmt.Sprintf("DST_%s_%d", reqCluster.ClusterSetting.ClusterName, world.ID)
 		formattedCluster.Worlds = append(formattedCluster.Worlds, world)
 	}
 	reqCluster.Worlds = formattedCluster.Worlds
@@ -428,7 +428,9 @@ func DoImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 
 	for index, worldPath := range worldsPath {
 		var world utils.World
-		world.Name = fmt.Sprintf("World%d", index)
+		world.ID = index + 1
+		world.Name = fmt.Sprintf("World%d", world.ID)
+
 		/* ======== server.ini ======== */
 		result, err = utils.FileDirectoryExists(worldPath + "/server.ini")
 		if !result || err != nil {
@@ -545,7 +547,7 @@ func getList(filepath string) []string {
 	// 预留位 黑名单 管理员
 	al, err := utils.ReadLinesToSlice(filepath)
 	if err != nil {
-		utils.Logger.Error("读取文件失败", "err", err, "file", filepath)
+		utils.Logger.Warn("读取文件失败", "err", err, "file", filepath)
 		return []string{}
 	}
 	var uidList []string
