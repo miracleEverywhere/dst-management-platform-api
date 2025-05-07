@@ -594,7 +594,7 @@ func BackupGame(cluster Cluster) error {
 		return err
 	}
 	currentTime := time.Now().Format("2006-01-02-15-04-05")
-	cmd := "tar zcvf " + cluster.GetBackupPath() + "/" + currentTime + ".tgz " + cluster.GetMainPath()
+	cmd := fmt.Sprintf("tar zcvf %s/%s.tgz %s %s/DstMP.sdb", cluster.GetBackupPath(), currentTime, cluster.GetMainPath(), ConfDir)
 	err = BashCMD(cmd)
 	if err != nil {
 		return err
