@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/shirou/gopsutil/v3/process"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -252,6 +253,16 @@ func GetDSTUpdateCmd() string {
 
 func GetMacVersionCmd() string {
 	return "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && strings dontstarve_dedicated_server_nullrenderer | grep -A 1 PRODUCTION | grep -E '\\d+'"
+}
+
+func GenerateUpdateModID() string {
+	charset := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b := make([]byte, 5)
+	for i := range b {
+		b[i] = charset[r.Intn(len(charset))]
+	}
+	return string(b)
 }
 
 /* Linux交叉编译：CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
