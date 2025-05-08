@@ -112,6 +112,7 @@ type SchedulerSetting struct {
 	UIDMaintain        SchedulerSettingItem `json:"UIDMaintain"`
 	SysMetricsGet      SchedulerSettingItem `json:"sysMetricsGet"`
 	AutoUpdate         AutoUpdate           `json:"autoUpdate"`
+	PlayerUpdateMod    SchedulerSettingItem `json:"playerUpdateMod"`
 }
 
 type SysSetting struct {
@@ -146,6 +147,10 @@ func (config Config) Init() {
 		AutoUpdate: AutoUpdate{
 			Time:   "06:19:23",
 			Enable: true,
+		},
+		PlayerUpdateMod: SchedulerSettingItem{
+			Disable:   false,
+			Frequency: 10,
 		},
 	}
 	config.Registered = false
