@@ -43,7 +43,7 @@ func InitTasks() {
 	if !config.SchedulerSetting.PlayerUpdateMod.Disable {
 		for _, cluster := range config.Clusters {
 			_, _ = Scheduler.Every(config.SchedulerSetting.PlayerUpdateMod.Frequency).Minute().Do(modUpdate, cluster, false)
-			_, _ = Scheduler.Every(10).Seconds().Do(modUpdate, cluster, true)
+			_, _ = Scheduler.Every(60).Seconds().Do(modUpdate, cluster, true)
 			utils.Logger.Info(fmt.Sprintf("[%s]玩家更新模组定时任务已配置", cluster.ClusterSetting.ClusterName))
 		}
 	}
