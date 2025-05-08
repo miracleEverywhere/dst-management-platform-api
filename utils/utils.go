@@ -74,6 +74,8 @@ func SetGlobalVariables() {
 	for _, user := range config.Users {
 		UserCache[user.Username] = user
 	}
+
+	UpdateModID = GenerateUpdateModID()
 }
 
 func GenerateJWTSecret() string {
@@ -1122,4 +1124,33 @@ func GetWorldPortFactor(clusterName string) (int, error) {
 	}
 
 	return 0, fmt.Errorf("没有对应的集群")
+}
+
+func GetFileLastNLines(filename string, n int) ([]string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("文件关闭失败", "err", err)
+		}
+	}(file)
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+		if len(lines) > n {
+			lines = lines[1:] // 移除前面的行，保持最后 n 行
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return lines, nil
 }
