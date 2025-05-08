@@ -478,6 +478,24 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      105,
+			MenuName:    "集群管理",
+			EnName:      "Clusters",
+			ParentId:    0,
+			MenuType:    "2",
+			Path:        "/clusters",
+			Name:        "Cluster",
+			Component:   "clusters/index",
+			Icon:        "sc-icon-AppsFill",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/clusters",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      106,
 			MenuName:    "帮助",
 			EnName:      "Help",
 			ParentId:    0,
@@ -501,7 +519,7 @@ func handleMenu(c *gin.Context) {
 		101, 10101, 10102, 10103, 10104, 10105,
 		102, 10202, 10203, 10206, 10207, 10208,
 		103, 10301, 10302, 10303, 10304, 10305,
-		105,
+		106,
 	}
 
 	var response Response
@@ -684,6 +702,7 @@ func handleUserUpdatePut(c *gin.Context) {
 				Disabled:          user.Disabled,
 				Role:              user.Role,
 				ClusterPermission: user.ClusterPermission,
+				AnnounceID:        i.AnnounceID,
 			}
 			config.Users[index] = newUser
 			utils.UserCache[user.Username] = config.Users[index]
