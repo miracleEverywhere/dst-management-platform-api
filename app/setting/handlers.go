@@ -34,7 +34,6 @@ func handleClustersGet(c *gin.Context) {
 
 	if role == "admin" {
 		// 管理员返回所有cluster
-
 		for _, cluster := range config.Clusters {
 			var worlds []string
 			for _, world := range cluster.Worlds {
@@ -46,7 +45,6 @@ func handleClustersGet(c *gin.Context) {
 				Worlds:             worlds,
 			})
 		}
-
 	} else {
 		for i, user := range config.Users {
 			if user.Username == username {
@@ -71,6 +69,38 @@ func handleClustersGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func handleClustersWorldPortGet(c *gin.Context) {
+	type ResponseCluster struct {
+		ClusterName        string `json:"clusterName"`
+		ClusterDisplayName string `json:"clusterDisplayName"`
+		WorldPort          []int  `json:"worldPort"`
+	}
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	var responseClusters []ResponseCluster
+	for _, cluster := range config.Clusters {
+		var worldPort []int
+		for _, world := range cluster.Worlds {
+			worldPort = append(worldPort, world.ServerPort)
+			worldPort = append(worldPort, world.ShardMasterPort)
+			worldPort = append(worldPort, world.SteamMasterPort)
+			worldPort = append(worldPort, world.SteamAuthenticationPort)
+		}
+		responseClusters = append(responseClusters, ResponseCluster{
+			ClusterName:        cluster.ClusterSetting.ClusterName,
+			ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+			WorldPort:          worldPort,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": responseClusters})
 }
 
 func handleClusterGet(c *gin.Context) {
@@ -1851,15 +1881,17 @@ func handleSystemSettingPut(c *gin.Context) {
 	config.SchedulerSetting = reqForm.Settings.SchedulerSetting
 
 	for index, dbCluster := range config.Clusters {
-		if dbCluster.ClusterSetting.ClusterName == cluster.ClusterSetting.ClusterDisplayName {
+		if dbCluster.ClusterSetting.ClusterName == cluster.ClusterSetting.ClusterName {
 			config.Clusters[index] = cluster
 			break
 		}
 	}
 
-	err = SaveSetting(cluster)
-	if err != nil {
-		utils.Logger.Error("设置Tick Rate失败", "err", err)
+	if cluster.Worlds != nil {
+		err = SaveSetting(cluster)
+		if err != nil {
+			utils.Logger.Error("设置Tick Rate失败", "err", err)
+		}
 	}
 
 	err = utils.WriteConfig(config)
