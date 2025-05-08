@@ -3,6 +3,10 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"crypto/hmac"
+	cRand "crypto/rand"
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -74,8 +78,6 @@ func SetGlobalVariables() {
 	for _, user := range config.Users {
 		UserCache[user.Username] = user
 	}
-
-	UpdateModID = GenerateUpdateModID()
 }
 
 func GenerateJWTSecret() string {
@@ -1153,4 +1155,64 @@ func GetFileLastNLines(filename string, n int) ([]string, error) {
 	}
 
 	return lines, nil
+}
+
+const (
+	nonceSize   = 1 // 1字节Nonce（8位）
+	sigSize     = 4 // 4字节签名（32位）
+	maxSigChars = 7 // Base32编码后最多7字符
+)
+
+func GenerateUpdateModID() string {
+	key := []byte("x")
+	data := []byte("y")
+
+	// 1. 生成随机Nonce（使用crypto/rand）
+	nonce := make([]byte, nonceSize)
+	if _, err := cRand.Read(nonce); err != nil {
+		return ""
+	}
+
+	// 2. 计算 HMAC-SHA256(Nonce || data)
+	h := hmac.New(sha256.New, key)
+	h.Write(nonce)
+	h.Write(data)
+	sig := h.Sum(nil)[:sigSize] // 取前4字节
+
+	// 3. Base32编码并截断
+	combined := append(nonce, sig...)
+	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(combined)
+	if len(encoded) > maxSigChars {
+		encoded = encoded[:maxSigChars]
+	}
+	return encoded
+}
+
+func VerifyUpdateModID(signature string) bool {
+	key := []byte("x")
+	data := []byte("y")
+	// 1. 长度检查
+	if len(signature) != maxSigChars {
+		return false
+	}
+
+	// 2. Base32解码
+	decoded, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(signature)
+	if err != nil {
+		return false
+	}
+
+	// 3. 数据完整性检查
+	if len(decoded) < nonceSize+sigSize/2 { // 至少需要Nonce+部分签名
+		return false
+	}
+
+	// 4. 重新计算HMAC
+	h := hmac.New(sha256.New, key)
+	h.Write(decoded[:nonceSize])
+	h.Write(data)
+	expectedSig := h.Sum(nil)[:min(sigSize, len(decoded)-nonceSize)]
+
+	// 5. 安全比对
+	return hmac.Equal(expectedSig, decoded[nonceSize:])
 }

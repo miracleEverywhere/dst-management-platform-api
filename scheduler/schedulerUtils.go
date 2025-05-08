@@ -427,27 +427,37 @@ func modUpdate(cluster utils.Cluster, check bool) {
 	}
 
 	if check {
+		// LKGX 立刻更新
+		pattern := `([A-Z0-9]{7})-LKGX`
+		re := regexp.MustCompile(pattern)
 		for _, line := range chatLogLines {
-			// LKGX 立刻更新
-			if strings.Contains(line, fmt.Sprintf("%s-LKGX", utils.UpdateModID)) {
-				cmd = "c_announce('模组更新命令校验成功 (Updating mods command check success)')"
-				_ = utils.ScreenCMD(cmd, screenName)
-				time.Sleep(500 * time.Millisecond)
-				cmd = "c_announce('将在1分钟后自动重启服务器并更新模组 (The server will automatically restart in 1 minute to update mods)')"
-				_ = utils.ScreenCMD(cmd, screenName)
-				time.Sleep(1 * time.Minute)
-				_ = utils.StopClusterAllWorlds(cluster)
-				time.Sleep(3 * time.Second)
-				_ = utils.StartClusterAllWorlds(cluster)
-				utils.UpdateModProcessing = false
-				return
+			subMatches := re.FindStringSubmatch(line)
+			if len(subMatches) > 1 {
+				if utils.VerifyUpdateModID(subMatches[1]) {
+					utils.UpdateModProcessing = true
+					cmd = "c_announce('模组更新命令校验成功 (Updating mods command check success)')"
+					_ = utils.ScreenCMD(cmd, screenName)
+					time.Sleep(500 * time.Millisecond)
+					cmd = "c_announce('将在1分钟后自动重启服务器并更新模组 (The server will automatically restart in 1 minute to update mods)')"
+					_ = utils.ScreenCMD(cmd, screenName)
+					time.Sleep(1 * time.Minute)
+					_ = utils.StopClusterAllWorlds(cluster)
+					time.Sleep(3 * time.Second)
+					_ = utils.StartClusterAllWorlds(cluster)
+					time.Sleep(10 * time.Minute)
+					utils.UpdateModProcessing = false
+					return
+				}
 			}
 		}
 	} else {
 		for _, line := range chatLogLines {
 			if strings.Contains(line, "模组需要更新啦") {
-				utils.UpdateModID = utils.GenerateUpdateModID()
-				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新 (DMP found mods need to be updated, update ID is %s, input ID-LKGX to update)')", utils.UpdateModID, utils.UpdateModID)
+				updateModID := utils.GenerateUpdateModID()
+				if len(updateModID) == 0 {
+					return
+				}
+				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新 (DMP found mods need to be updated, update ID is %s, input ID-LKGX to update)')", updateModID, updateModID)
 				_ = utils.ScreenCMD(cmd, screenName)
 				return
 			}
