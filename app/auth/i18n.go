@@ -10,8 +10,8 @@ func Response(message string, lang string) string {
 		"deleteSuccess":  "删除成功",
 	}
 	en := map[string]string{
-		"loginSuccess":   "Login Response",
-		"updatePassword": "Update Password Response",
+		"loginSuccess":   "Login Success",
+		"updatePassword": "Update Password Success",
 		"userExist":      "Username already exist",
 		"createSuccess":  "Create Success",
 		"updateSuccess":  "Update Success",
