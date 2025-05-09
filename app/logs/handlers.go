@@ -2,9 +2,11 @@ package logs
 
 import (
 	"dst-management-platform-api/utils"
+	"encoding/base64"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -266,4 +268,81 @@ func handleCleanLogsPost(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message, "data": nil})
 	}
+}
+
+func handleLogDownloadPost(c *gin.Context) {
+	defer func() {
+		var cmdClean = "cd /tmp/dmp_tmp_logs && rm -f *"
+		err := utils.BashCMD(cmdClean)
+		if err != nil {
+			utils.Logger.Error("清理日志文件失败", "err", err)
+		}
+	}()
+
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+	}
+	var reqForm ReqForm
+
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	var (
+		cmds    []string
+		logPath string
+	)
+	// 创建临时压缩目录
+	cmds = append(cmds, "mkdir -p /tmp/dmp_tmp_logs")
+	// 添加dmp日志
+	cmds = append(cmds, "cp dmp.log /tmp/dmp_tmp_logs && cp dmpProcess.log /tmp/dmp_tmp_logs")
+	// 添加dst日志
+	for _, world := range cluster.Worlds {
+		logPath = world.GetServerLogFile(cluster.ClusterSetting.ClusterName)
+		cmds = append(cmds, fmt.Sprintf("cp %s /tmp/dmp_tmp_logs/%s.log", logPath, world.Name))
+	}
+	// 添加压缩命令
+	cmds = append(cmds, "cd /tmp/dmp_tmp_logs && tar zcvf logs.tgz *")
+
+	// 执行命令
+	for _, cmd := range cmds {
+		err = utils.BashCMD(cmd)
+		if err != nil {
+			utils.Logger.Error("创建压缩文件失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("tarFail", langStr), "data": nil})
+			return
+		}
+	}
+	// 读取文件内容
+	fileData, err := os.ReadFile("/tmp/dmp_tmp_logs/logs.tgz")
+	if err != nil {
+		utils.Logger.Error("读取日志压缩文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileReadFail", langStr), "data": nil})
+		return
+	}
+	fileContentBase64 := base64.StdEncoding.EncodeToString(fileData)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": fileContentBase64})
 }
