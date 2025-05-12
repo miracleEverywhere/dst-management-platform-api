@@ -1196,7 +1196,7 @@ func handleModConfigOptionsGet(c *gin.Context) {
 	}
 
 	if !isUgcMod {
-		modInfoLuaFile = fmt.Sprintf("%s/workshop-%d/modinfo.lu", cluster.GetModNoUgcPath(), modID)
+		modInfoLuaFile = fmt.Sprintf("%s/workshop-%d/modinfo.lua", cluster.GetModNoUgcPath(), modID)
 		exist, err := utils.FileDirectoryExists(modInfoLuaFile)
 		if err != nil {
 			utils.RespondWithError(c, 500, langStr)
