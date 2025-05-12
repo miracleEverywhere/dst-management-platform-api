@@ -16,20 +16,46 @@ func getPlayers(config utils.Config) {
 		players    []string
 		playerList []utils.Players
 		err        error
+		hasMaster  bool
+		playersGot bool
 	)
 
 	for _, cluster := range config.Clusters {
 		err = nil
+		hasMaster = false
+		playersGot = false
 		for _, world := range cluster.Worlds {
-			if world.GetStatus() {
-				players, err = getPlayersList(world, cluster.ClusterSetting.ClusterName)
-				if err == nil {
-					break
+			// 优先获取master的列表，没有的话获取第一个
+			if world.IsMaster {
+				if world.GetStatus() {
+					players, err = getPlayersList(world, cluster.ClusterSetting.ClusterName)
+					if err == nil {
+						hasMaster = true
+						playersGot = true
+						break
+					}
 				}
 			}
 		}
+
+		if !hasMaster {
+			for _, world := range cluster.Worlds {
+				if world.GetStatus() {
+					players, err = getPlayersList(world, cluster.ClusterSetting.ClusterName)
+					if err == nil {
+						playersGot = true
+						break
+					}
+				}
+			}
+		}
+
 		if err != nil {
 			utils.Logger.Warn("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
+			continue
+		}
+		if !playersGot {
+			utils.Logger.Warn("没有发现正常运行的世界", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
 			continue
 		}
 
