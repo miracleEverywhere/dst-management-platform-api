@@ -1,4 +1,12 @@
 # [[中文文档]](../README.md) | [English README]
+## :warning: 2.x版本与1.x版本不兼容
+>:warning: **Version 1.x will be discontinued in August 2025, after which features like mod search will no longer be available. Please upgrade to Version 2.x as soon as possible**
+
+[Click to view the migration guide](README_migration_zh.md)
+
+## :lemon: DMP desktop App is available now
+[Click for details](https://github.com/miracleEverywhere/dst-management-platform-desktop)
+
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
@@ -94,7 +102,7 @@ ghcr.io/miracleeverywhere/dst-management-platform-api:tag
 Stop the old version container, pull the new version image, and start using the above command.  
 If the config, dst, and .klei directories are mapped, there is no need to reinstall the game or perform other operations.  
 
-**MacOS Installation**
+**MacOS Installation(Beta Version - No Official Support)**
 > Only supports Mac with M-series CPUs.
 ```shell
 cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
@@ -121,85 +129,25 @@ Enter 0 to download and start, after startup is complete, run the manual_install
 ---
 
 ## :cherries: DMP screenshot
-![home-en](images/home-en.png)
-  
-
-![mobile-en](images/mobile-en.png)
-  
-
-![room-en](images/room-en.png)
+![en-home](images/en-home.png)
 
 
-![world-en](images/world-en.png)
+![en-room](images/en-room.png)
 
 
-![mod1-en](images/mod1-en.jpg)
+![en-mod](images/en-mod.png)
 
 
-![mod2-en](images/mod2-en.jpg)
-  
+![en-backup](images/en-backup.png)
 
-![player-en](images/player-en.png)
-  
 
-![statistics-en](images/statistics-en.png)
-  
+![en-logs](images/en-logs.png)
 
-![menu-tools-en](images/menu-tools-en.png)
-  
+
+![en-clusters](images/en-clusters.png)
 
 ---
 
-## :strawberry: File Introduction
-```text
-.
-├── dmp                 # Main
-├── dmp.log             # Access Log
-├── dmpProcess.log      # Runtime Log
-├── DstMP.sdb           # Database
-├── manual_install.sh   # DST manual install script
-└── run.sh              # startup script
-```
-
----
-
-## :peach: Project Introduction
-```text
-.
-├── app
-│   ├── auth                    # Auth Module
-│   ├── externalApi             # External Api
-│   ├── home                    # Home Page
-│   ├── logs                    # DST logs
-│   ├── setting                 # Settings
-│   └── tools                   # Tools
-├── dist                        # Static Resources
-│   ├── assets 
-│   ├── index.html
-│   ├── index.html.gz
-│   └── vite.png
-├── docker                      # Docker
-│   ├── Dockerfile
-│   └── entry-point.sh
-├── docs                        # Docs
-│   └── images
-├── DstMP.sdb                   # Database
-├── go.mod
-├── go.sum
-├── LICENSE
-├── main.go
-├── README.md
-├── scheduler                   # Scheduler Tasks
-│   ├── init.go
-│   └── schedulerUtils.go
-└── utils                       # Utils
-    ├── constant.go
-    ├── exceptions.go
-    ├── install.go
-    ├── logger.go
-    ├── scripts.go
-    └── utils.go
-```
 ##  :sparkling_heart: Thanks
 The [front-end page](https://github.com/miracleEverywhere/dst-management-platform-web) of this project is based on the secondary development of **koi-ui**, thanks to open source  
 [[koi-ui gitee]](https://gitee.com/BigCatHome/koi-ui)  
