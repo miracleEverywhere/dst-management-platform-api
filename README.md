@@ -1,7 +1,7 @@
-# [中文文档] | [[English README]](docs/README_EN.md)
+# [中文文档] | [[README]](docs/README_EN.md)
 
 ## :warning: 2.x版本与1.x版本不兼容
->:warning: **1.x版本将于2025年8月停止维护，届时模组搜索等功能将无法使用，请尽快更新至2.x版本**
+>**1.x版本将于2025年8月停止维护，届时模组搜索等功能将无法使用，请尽快更新至2.x版本**
 
 [点击查看迁移文档](docs/README_migration_zh.md)
 

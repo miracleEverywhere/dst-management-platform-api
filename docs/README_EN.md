@@ -1,11 +1,9 @@
-# [[中文文档]](../README.md) | [English README]
-## :warning: 2.x版本与1.x版本不兼容
->:warning: **Version 1.x will be discontinued in August 2025, after which features like mod search will no longer be available. Please upgrade to Version 2.x as soon as possible**
+# [[中文文档]](../README.md) | [README]
+
+## :warning: Version 2.x is NOT compatible with Version 1.x
+>**Version 1.x will be discontinued in August 2025, after which features like mod search will no longer be available. Please upgrade to Version 2.x as soon as possible**
 
 [Click to view the migration guide](README_migration_zh.md)
-
-## :lemon: DMP desktop App is available now
-[Click for details](https://github.com/miracleEverywhere/dst-management-platform-desktop)
 
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
