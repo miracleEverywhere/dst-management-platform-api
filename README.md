@@ -72,10 +72,11 @@ docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 ```shell
 # 绑定8000端口 映射到/app目录下
@@ -83,10 +84,11 @@ docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 ```shell
 # 使用host网络，并绑定8080端口
@@ -95,10 +97,11 @@ docker run -itd --name dmp --net=host \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 **docker更新**  
 停止旧版本容器，拉取新版本镜像，使用上述启动命令启动即可  

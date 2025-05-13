@@ -68,10 +68,11 @@ docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 ```shell
 # bind port 8000, and map directories to /app
@@ -79,10 +80,11 @@ docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 ```shell
 # bind port 8000, use host network, and map directories to /app
@@ -91,10 +93,11 @@ docker run -itd --name dmp --net=host \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 **Docker image update**  
 Stop the old version container, pull the new version image, and start using the above command.  

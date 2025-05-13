@@ -19,9 +19,10 @@
   - Download the generated `.tgz` file.
   - Extract it locally and recompress it into a `.zip` file according to the import format.
 - **Clear old data**
-  - Delete Mapped Directories (e.g., config, .klei, etc.)
+  - Delete Mapped Directories (e.g., config, .klei, etc.), the DST Game directory does not need to be deleted.
 - **Update the DMP to the latest version**
   - Pull the Latest Docker Image and Restart
+  - Please note that the Docker startup command has been updated in the new version.
 - **Import old saves**
   - Refresh the webpage, register an account, and log in.
   - Create a new cluster.
