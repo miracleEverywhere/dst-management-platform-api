@@ -196,6 +196,11 @@ func CheckDirs() {
 		Logger.Error("目录检查未通过", "path", DmpFilesPath)
 		panic("目录检查未通过")
 	}
+	err = EnsureDirExists(ImportFileUploadPath)
+	if err != nil {
+		Logger.Error("目录检查未通过", "path", ImportFileUploadPath)
+		panic("目录检查未通过")
+	}
 	// mod下载目录
 	err = EnsureDirExists(ModUgcDownloadPath)
 	if err != nil {
