@@ -3,13 +3,13 @@
 ## :warning: Version 2.x is NOT compatible with Version 1.x
 >**Version 1.x will be discontinued in August 2025, after which features like mod search will no longer be available. Please upgrade to Version 2.x as soon as possible**
 
-[Click to view the migration guide](README_migration_zh.md)
+[Click to view the migration guide](README_migration_en.md)
 
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
 ```shell
 # Please execute the following command to download the script.
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
+cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
 ```
 ```shell
 # Customize the startup port.(Change 8082 to the port you want to use)，please change PORT manually, or
@@ -106,7 +106,7 @@ If the config, dst, and .klei directories are mapped, there is no need to reinst
 **MacOS Installation(Beta Version - No Official Support)**
 > Only supports Mac with M-series CPUs.
 ```shell
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
+cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run_macos.sh && chmod +x run_macos.sh && ./run_macos.sh
 # 请输入需要执行的操作(Please enter the operation to be performed): 
 # [0]: 下载并启动服务(Download and start the service) 
 # [1]: 启动服务(Start the service) 
