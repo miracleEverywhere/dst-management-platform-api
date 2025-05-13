@@ -254,4 +254,8 @@ func GetMacVersionCmd() string {
 	return "cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && strings dontstarve_dedicated_server_nullrenderer | grep -A 1 PRODUCTION | grep -E '\\d+'"
 }
 
+func GetDSTRoomsApi(region string) string {
+	return fmt.Sprintf("https://lobby-v2-cdn.klei.com/ap-east-1-Steam.json.gz")
+}
+
 /* Linux交叉编译：CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
