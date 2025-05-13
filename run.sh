@@ -1,17 +1,24 @@
 #!/bin/bash
 
-########################################################
-# 用户自定义设置请修改下方变量，其他变量请不要修改
+###########################################
+# 用户自定义设置请修改下方变量，其他变量请不要修改 #
+###########################################
 
+# --------------- ↓可修改↓ --------------- #
 # dmp暴露端口，即网页打开时所用的端口
 PORT=80
 
 # 数据库文件所在目录，例如：./config
 CONFIG_DIR="./"
 
-########################################################
+# 虚拟内存大小，例如 1G 4G等
+SWAPSIZE=2G
+# --------------- ↑可修改↑ --------------- #
 
-# 下方变量请不要修改，否则可能会出现异常
+###########################################
+#     下方变量请不要修改，否则可能会出现异常     #
+###########################################
+
 USER=$(whoami)
 ExeFile="$HOME/dmp"
 
@@ -72,7 +79,7 @@ function check_curl() {
 }
 
 function check_strings() {
-    echo -e "\e[36m正在检查strings命令(Checking curl command) \e[0m"
+    echo -e "\e[36m正在检查strings命令(Checking strings command) \e[0m"
     if ! strings --version >/dev/null 2>&1; then
         OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
         if [[ ${OS} == "ubuntu" ]]; then
@@ -243,9 +250,7 @@ update_script() {
 
 # 设置虚拟内存
 function set_swap() {
-    # 创建一个2GB的交换文件
     SWAPFILE=/swapfile
-    SWAPSIZE=2G
 
     # 检查是否已经存在交换文件
     if [ -f $SWAPFILE ]; then
