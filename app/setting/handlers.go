@@ -89,10 +89,14 @@ func handleClustersWorldPortGet(c *gin.Context) {
 		var worldPort []int
 		for _, world := range cluster.Worlds {
 			worldPort = append(worldPort, world.ServerPort)
-			worldPort = append(worldPort, world.ShardMasterPort)
 			worldPort = append(worldPort, world.SteamMasterPort)
 			worldPort = append(worldPort, world.SteamAuthenticationPort)
 		}
+		// master port一致 不重复添加
+		if cluster.Worlds != nil {
+			worldPort = append(worldPort, cluster.Worlds[0].ShardMasterPort)
+		}
+
 		responseClusters = append(responseClusters, ResponseCluster{
 			ClusterName:        cluster.ClusterSetting.ClusterName,
 			ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
