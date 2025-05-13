@@ -147,6 +147,4 @@ cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/ra
 ---
 
 ##  :sparkling_heart: 致谢
-本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)基于**koi-ui**二次开发，感谢开源 [@yuxintao6](https://github.com/yuxintao6)  
-[[koi-ui gitee]](https://gitee.com/BigCatHome/koi-ui)  
-[[koi-ui github]](https://github.com/yuxintao6/koi-ui)  
+本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感谢开源 [@KoiKite](https://github.com/KoiKite)  

@@ -150,6 +150,4 @@ Enter 0 to download and start, after startup is complete, run the manual_install
 ---
 
 ##  :sparkling_heart: Thanks
-The [front-end page](https://github.com/miracleEverywhere/dst-management-platform-web) of this project is based on the secondary development of **koi-ui**, thanks to open source  
-[[koi-ui gitee]](https://gitee.com/BigCatHome/koi-ui)  
-[[koi-ui github]](https://github.com/yuxintao6/koi-ui)  
+The [front-end page](https://github.com/miracleEverywhere/dst-management-platform-web) of this project is based on the secondary development of [koi-ui](https://github.com/KoiKite/koi-ui) , thanks [@KoiKite](https://github.com/KoiKite) to open source
