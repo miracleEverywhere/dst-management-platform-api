@@ -224,3 +224,56 @@ func handleDownloadedModInfoGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modInfo})
 }
+
+func handleLobbyCheckPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type ReqForm struct {
+		ClusterName string   `json:"clusterName"`
+		Regions     []string `json:"regions"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	var urls []string
+	for _, region := range reqForm.Regions {
+		urls = append(urls, utils.GetDSTRoomsApi(region))
+	}
+
+	rooms, err := CheckDstLobbyRoom(urls, cluster.ClusterSetting.Name)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("checkLobbyFail", langStr), "data": false})
+		return
+	}
+
+	for _, room := range rooms {
+		if room.MaxConnections == cluster.ClusterSetting.PlayerNum {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": true})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": false})
+}

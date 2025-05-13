@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -60,6 +61,14 @@ type Data struct {
 type DSTVersion struct {
 	Local  int `json:"local"`
 	Server int `json:"server"`
+}
+
+type Room struct {
+	Name           string `json:"name"`
+	MaxConnections int    `json:"maxconnections"`
+}
+type NeededResponse struct {
+	GET []Room `json:"GET"`
 }
 
 func GetDSTVersion() (DSTVersion, error) { // 打开文件
@@ -600,4 +609,65 @@ func GetDownloadedModInfo(mods []string, lang string) ([]ModInfo, error) {
 	}
 
 	return modInfoList, nil
+}
+
+func CheckDstLobbyRoom(urls []string, clusterName string) ([]Room, error) {
+	var (
+		mu        sync.Mutex
+		wg        sync.WaitGroup
+		rooms     []Room
+		errChanel = make(chan error, len(urls))
+	)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	for _, url := range urls {
+		wg.Add(1)
+		go func(u string) {
+			defer wg.Done()
+			resp, err := client.Get(u)
+			if err != nil {
+				utils.Logger.Error("请求失败", "url", u, "err", err)
+				errChanel <- err
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				utils.Logger.Warn("非200相应，跳过", "url", u)
+				errChanel <- fmt.Errorf("非200响应")
+				return
+			}
+
+			var neededResponse NeededResponse
+			if err := json.NewDecoder(resp.Body).Decode(&neededResponse); err != nil {
+				utils.Logger.Error("解析JSON失败", "err", err)
+				errChanel <- err
+				return
+			}
+
+			mu.Lock()
+			for _, room := range neededResponse.GET {
+				if room.Name == clusterName {
+					rooms = append(rooms, room)
+				}
+			}
+			mu.Unlock()
+		}(url)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errChanel)
+	}()
+
+	for err := range errChanel {
+		if err != nil {
+			return []Room{}, err
+		}
+	}
+
+	return rooms, nil
 }

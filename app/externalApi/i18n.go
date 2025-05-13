@@ -7,6 +7,7 @@ func response(message string, lang string) string {
 		"getModInfoFail":        "获取模组信息失败",
 		"downloadModSuccess":    "模组下载成功",
 		"invalidModID":          "模组ID非法",
+		"checkLobbyFail":        "检查大厅失败",
 	}
 	successEN := map[string]string{
 		"getVersionFail":        "get DST version fail",
@@ -14,6 +15,7 @@ func response(message string, lang string) string {
 		"getModInfoFail":        "get mods info fail",
 		"downloadModSuccess":    "Mod Download Success",
 		"invalidModID":          "Invalid Mod ID",
+		"checkLobbyFail":        "check lobby fail",
 	}
 	if lang == "zh" {
 		return successZH[message]
