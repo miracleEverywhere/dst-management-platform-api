@@ -255,7 +255,7 @@ func GetMacVersionCmd() string {
 }
 
 func GetDSTRoomsApi(region string) string {
-	return fmt.Sprintf("https://lobby-v2-cdn.klei.com/ap-east-1-Steam.json.gz")
+	return fmt.Sprintf("https://lobby-v2-cdn.klei.com/%s-Steam.json.gz", region)
 }
 
 /* Linux交叉编译：CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
