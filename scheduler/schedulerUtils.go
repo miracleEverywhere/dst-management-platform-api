@@ -478,7 +478,7 @@ func modUpdate(cluster utils.Cluster, check bool) {
 		}
 	} else {
 		for _, line := range chatLogLines {
-			if strings.Contains(line, "模组需要更新啦") {
+			if strings.Contains(line, "服务器需要从Steam创意工坊获得最新版本") {
 				updateModID := utils.GenerateUpdateModID()
 				if len(updateModID) == 0 {
 					return
