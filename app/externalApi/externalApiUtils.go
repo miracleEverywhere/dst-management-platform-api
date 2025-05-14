@@ -620,7 +620,7 @@ func CheckDstLobbyRoom(urls []string, clusterName string) ([]Room, error) {
 	)
 
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 30 * time.Second,
 	}
 
 	for _, url := range urls {
