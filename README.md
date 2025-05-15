@@ -1,12 +1,18 @@
-# [中文文档] | [[English README]](README_EN.md)
+# [中文文档] | [[README]](docs/README_EN.md)
+
+## :warning: 2.x版本与1.x版本不兼容
+>**1.x版本将于2025年8月停止维护，届时模组搜索等功能将无法使用，请尽快更新至2.x版本**
+
+[点击查看迁移文档](docs/README_migration_zh.md)
+
 ## :lemon: 饥荒管理平台App来啦  
-[https://github.com/miracleEverywhere/dst-management-platform-desktop](https://github.com/miracleEverywhere/dst-management-platform-desktop)  
+[点击查看详情](https://github.com/miracleEverywhere/dst-management-platform-desktop)  
 
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
 # 执行以下命令，下载脚本
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run.sh && chmod +x run.sh
+cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
 ```
 ```shell
 # 自定义启动端口（8082改为你要用的端口），请手动修改run.sh文件或者
@@ -66,10 +72,11 @@ docker run -itd --name dmp -p 80:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 ```shell
 # 绑定8000端口 映射到/app目录下
@@ -77,10 +84,11 @@ docker run -itd --name dmp -p 8000:80 \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 ```shell
 # 使用host网络，并绑定8080端口
@@ -89,19 +97,20 @@ docker run -itd --name dmp --net=host \
 -v /app/config:/root/config \
 -v /app/dst:/root/dst \
 -v /app/.klei:/root/.klei \
+-v /app/dmp_files:/root/dmp_files \
 -v /app/steamcmd:/root/steamcmd \
 -v /etc/localtime:/etc/localtime:ro \
 -v /etc/timezone:/etc/timezone:ro \
-ghcr.io/miracleeverywhere/dst-management-platform-api:tag
+ghcr.io/miracleeverywhere/dst-management-platform-api:latest
 ```
 **docker更新**  
 停止旧版本容器，拉取新版本镜像，使用上述启动命令启动即可  
 如果有映射config、dst和.klei目录，则无需重复安装游戏等操作  
 
-**MacOS安装**  
+**MacOS安装(测试版，不提供支持)**  
 > 只支持M系列CPU的Mac
 ```shell
-cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && chmod +x run_macos.sh
+cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run_macos.sh
 # 请输入需要执行的操作(Please enter the operation to be performed): 
 # [0]: 下载并启动服务(Download and start the service) 
 # [1]: 启动服务(Start the service) 
@@ -114,96 +123,28 @@ cd ~ && wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/run_macos.sh && 
 ./manual_install.sh
 ```
 >注意：MacOS由于系统原因，模组配置暂不可用，需要点击设置-模组-添加模组页面的导出按钮，点击后会在桌面生成名为dmp_exported_mod的目录，用户需使用 **访达** 将改目录中的模组复制到~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods目录下。更新模组需要在设置-模组-添加模组页面删除对应要更新的模组，然后重新下载该模组，执行导出和复制操作后，重启游戏服务器。
----
-
-## :grapes: 默认用户名密码
->登录后请尽快到右上角用户名-个人中心页面修改密码
->
->>初始密码：
->>admin/123456
 
 ---
 
 ## :cherries: 平台截图
-![home-zh](docs/images/home-zh.png)
+![zh-home](docs/images/zh-home.png)
   
 
-![mobile-zh](docs/images/mobile-zh.png)
+![zh-room](docs/images/zh-room.png)
   
 
-![room-zh](docs/images/room-zh.png)
+![zh-mod](docs/images/zh-mod.png)
   
 
-![world-zh](docs/images/world-zh.png)
+![zh-backup](docs/images/zh-backup.png)
 
 
-![mod1-zh](docs/images/mod1-zh.jpg)
+![zh-logs](docs/images/zh-logs.png)
 
 
-![mod2-zh](docs/images/mod2-zh.jpg)
-  
-
-![player-zh](docs/images/player-zh.png)
-  
-
-![statistics-zh](docs/images/statistics-zh.png)
-  
-
-![menu-tools-zh](docs/images/menu-tools-zh.png)  
+![zh-clusters](docs/images/zh-clusters.png) 
 
 ---
 
-## :strawberry: 文件介绍
-```text
-.
-├── dmp                 # 主程序
-├── dmp.log             # 请求日志
-├── dmpProcess.log      # 运行日志
-├── DstMP.sdb           # 数据库
-├── manual_install.sh   # 饥荒手动安装脚本
-└── run.sh              # 运行脚本
-```
-
----
-
-## :peach: 项目介绍
-```text
-.
-├── app
-│   ├── auth                    # 登录鉴权
-│   ├── externalApi             # 外部接口
-│   ├── home                    # 首页
-│   ├── logs                    # 日志
-│   ├── setting                 # 配置
-│   └── tools                   # 工具
-├── dist                        # 静态资源
-│   ├── assets 
-│   ├── index.html
-│   ├── index.html.gz
-│   └── vite.png
-├── docker                      # 容器镜像
-│   ├── Dockerfile
-│   └── entry-point.sh
-├── docs                        # 帮助文档
-│   └── images
-├── DstMP.sdb                   # 数据库
-├── go.mod
-├── go.sum
-├── LICENSE
-├── main.go
-├── README.md
-├── scheduler                   # 定时任务
-│   ├── init.go
-│   └── schedulerUtils.go
-└── utils                       # 工具集
-    ├── constant.go
-    ├── exceptions.go
-    ├── install.go
-    ├── logger.go
-    ├── scripts.go
-    └── utils.go
-```
 ##  :sparkling_heart: 致谢
-本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)基于**koi-ui**二次开发，感谢开源 [@yuxintao6](https://github.com/yuxintao6)  
-[[koi-ui gitee]](https://gitee.com/BigCatHome/koi-ui)  
-[[koi-ui github]](https://github.com/yuxintao6/koi-ui)  
+本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感谢开源 [@KoiKite](https://github.com/KoiKite)  

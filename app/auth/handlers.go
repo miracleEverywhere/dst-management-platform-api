@@ -16,7 +16,9 @@ type JsonBody struct {
 }
 
 type UpdatePasswordForm struct {
-	Password string `json:"password"`
+	Username    string `json:"username"`
+	OldPassword string `json:"oldPassword"`
+	Password    string `json:"password"`
 }
 
 func handleLogin(c *gin.Context) {
@@ -38,30 +40,35 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 	// 校验用户名和密码
-	if loginForm.LoginForm.Username != config.Username {
-		utils.RespondWithError(c, 421, langStr)
-		return
-	}
-	if loginForm.LoginForm.Password != config.Password {
-		utils.RespondWithError(c, 422, langStr)
-		return
+	for _, user := range config.Users {
+		if loginForm.LoginForm.Username == user.Username {
+			if user.Disabled {
+				utils.RespondWithError(c, 423, langStr)
+				return
+			}
+			if loginForm.LoginForm.Password == user.Password {
+				jwtSecret := []byte(config.JwtSecret)
+				token, _ := utils.GenerateJWT(user, jwtSecret, 12)
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": Response("loginSuccess", langStr), "data": gin.H{"token": token}})
+				return
+			} else {
+				utils.RespondWithError(c, 422, langStr)
+				return
+			}
+		}
 	}
 
-	jwtSecret := []byte(config.JwtSecret)
-	token, _ := utils.GenerateJWT(config.Username, jwtSecret, 12)
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("loginSuccess", langStr), "data": gin.H{"token": token}})
+	utils.RespondWithError(c, 421, langStr)
 }
 
 func handleUserinfo(c *gin.Context) {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("读取配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
+	username, _ := c.Get("username")
+	nickname, _ := c.Get("nickname")
+	role, _ := c.Get("role")
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-		"username": config.Username,
-		"nickname": config.Nickname,
+		"username": username,
+		"nickname": nickname,
+		"role":     role,
 	}})
 }
 
@@ -236,26 +243,8 @@ func handleMenu(c *gin.Context) {
 			ActiveMenu:  nil,
 		},
 		{
-			MenuId:      10201,
-			MenuName:    "定时更新",
-			EnName:      "Update",
-			ParentId:    102,
-			MenuType:    "2",
-			Path:        "/tools/update",
-			Name:        "toolsUpdate",
-			Component:   "tools/update",
-			Icon:        "sc-icon-DownloadCloudFill",
-			IsHide:      "1",
-			IsLink:      "",
-			IsKeepAlive: "0",
-			IsFull:      "1",
-			IsAffix:     "1",
-			Redirect:    "",
-			ActiveMenu:  nil,
-		},
-		{
 			MenuId:      10202,
-			MenuName:    "定时备份",
+			MenuName:    "备份管理",
 			EnName:      "Backup",
 			ParentId:    102,
 			MenuType:    "2",
@@ -289,24 +278,6 @@ func handleMenu(c *gin.Context) {
 			Redirect:    "",
 			ActiveMenu:  nil,
 		},
-		//{
-		//	MenuId:      10204,
-		//	MenuName:    "自动保活",
-		//	EnName:      "Keepalive",
-		//	ParentId:    102,
-		//	MenuType:    "2",
-		//	Path:        "/tools/keepalive",
-		//	Name:        "toolsKeepalive",
-		//	Component:   "tools/keepalive",
-		//	Icon:        "sc-icon-PulseFill",
-		//	IsHide:      "1",
-		//	IsLink:      "",
-		//	IsKeepAlive: "0",
-		//	IsFull:      "1",
-		//	IsAffix:     "1",
-		//	Redirect:    "",
-		//	ActiveMenu:  nil,
-		//},
 		{
 			MenuId:      10205,
 			MenuName:    "安装游戏",
@@ -325,24 +296,6 @@ func handleMenu(c *gin.Context) {
 			Redirect:    "",
 			ActiveMenu:  nil,
 		},
-		//{
-		//	MenuId:      10205,
-		//	MenuName:    "模组安装",
-		//	EnName:      "Mod",
-		//	ParentId:    102,
-		//	MenuType:    "2",
-		//	Path:        "/tools/mod",
-		//	Name:        "toolsMod",
-		//	Component:   "tools/mod",
-		//	Icon:        "sc-icon-DashboardFill",
-		//	IsHide:      "1",
-		//	IsLink:      "",
-		//	IsKeepAlive: "0",
-		//	IsFull:      "1",
-		//	IsAffix:     "1",
-		//	Redirect:    "",
-		//	ActiveMenu:  nil,
-		//},
 		{
 			MenuId:      10206,
 			MenuName:    "玩家统计",
@@ -417,32 +370,14 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      10301,
-			MenuName:    "地面",
-			EnName:      "Ground",
+			MenuName:    "世界日志",
+			EnName:      "World",
 			ParentId:    103,
 			MenuType:    "2",
-			Path:        "/logs/ground",
-			Name:        "logsGround",
-			Component:   "logs/ground",
-			Icon:        "sc-icon-SunFill",
-			IsHide:      "1",
-			IsLink:      "",
-			IsKeepAlive: "1",
-			IsFull:      "1",
-			IsAffix:     "1",
-			Redirect:    "",
-			ActiveMenu:  nil,
-		},
-		{
-			MenuId:      10302,
-			MenuName:    "洞穴",
-			EnName:      "Cave",
-			ParentId:    103,
-			MenuType:    "2",
-			Path:        "/logs/cave",
-			Name:        "logsCave",
-			Component:   "logs/cave",
-			Icon:        "sc-icon-TyphoonFill",
+			Path:        "/logs/world",
+			Name:        "logsWorld",
+			Component:   "logs/world",
+			Icon:        "sc-icon-EarthFill",
 			IsHide:      "1",
 			IsLink:      "",
 			IsKeepAlive: "1",
@@ -453,14 +388,14 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      10303,
-			MenuName:    "聊天",
+			MenuName:    "聊天日志",
 			EnName:      "Chat",
 			ParentId:    103,
 			MenuType:    "2",
 			Path:        "/logs/chat",
 			Name:        "logsChat",
 			Component:   "logs/chat",
-			Icon:        "sc-icon-MessageFill",
+			Icon:        "sc-icon-ChatSmileFill",
 			IsHide:      "1",
 			IsLink:      "",
 			IsKeepAlive: "1",
@@ -475,9 +410,9 @@ func handleMenu(c *gin.Context) {
 			EnName:      "Access",
 			ParentId:    103,
 			MenuType:    "2",
-			Path:        "/logs/dmp",
-			Name:        "logsDMP",
-			Component:   "logs/dmp",
+			Path:        "/logs/access",
+			Name:        "logsAccess",
+			Component:   "logs/access",
 			Icon:        "sc-icon-CodeBoxFill",
 			IsHide:      "1",
 			IsLink:      "",
@@ -489,14 +424,14 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      10304,
-			MenuName:    "运行日志",
+			MenuName:    "平台日志",
 			EnName:      "Runtime",
 			ParentId:    103,
 			MenuType:    "2",
 			Path:        "/logs/runtime",
 			Name:        "logsRuntime",
 			Component:   "logs/runtime",
-			Icon:        "sc-icon-CpuLine",
+			Icon:        "sc-icon-CpuFill",
 			IsHide:      "1",
 			IsLink:      "",
 			IsKeepAlive: "1",
@@ -514,7 +449,7 @@ func handleMenu(c *gin.Context) {
 			Path:        "/logs/clean",
 			Name:        "logsClean",
 			Component:   "logs/clean",
-			Icon:        "sc-icon-FileDamageFill",
+			Icon:        "sc-icon-FileShredFill",
 			IsHide:      "1",
 			IsLink:      "",
 			IsKeepAlive: "1",
@@ -525,6 +460,42 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      104,
+			MenuName:    "用户管理",
+			EnName:      "Users",
+			ParentId:    0,
+			MenuType:    "2",
+			Path:        "/users",
+			Name:        "Users",
+			Component:   "users/index",
+			Icon:        "sc-icon-UserSettingsFill",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/users",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      105,
+			MenuName:    "集群管理",
+			EnName:      "Clusters",
+			ParentId:    0,
+			MenuType:    "2",
+			Path:        "/clusters",
+			Name:        "Cluster",
+			Component:   "clusters/index",
+			Icon:        "sc-icon-AppsFill",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "/clusters",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      106,
 			MenuName:    "帮助",
 			EnName:      "Help",
 			ParentId:    0,
@@ -542,10 +513,38 @@ func handleMenu(c *gin.Context) {
 			ActiveMenu:  nil,
 		},
 	}
-	response := Response{
-		Code:    200,
-		Message: "success",
-		Data:    menuItems,
+
+	nonAdminID := []int{
+		100,
+		101, 10101, 10102, 10103, 10104, 10105,
+		102, 10202, 10203, 10206, 10207, 10208,
+		103, 10301, 10302, 10303, 10304, 10305,
+		106,
+	}
+
+	var response Response
+
+	role, exist := c.Get("role")
+	if exist && role == "admin" {
+		response = Response{
+			Code:    200,
+			Message: "success",
+			Data:    menuItems,
+		}
+	} else {
+		var nonAdminMenu []MenuItem
+		for _, i := range nonAdminID {
+			for _, item := range menuItems {
+				if i == item.MenuId {
+					nonAdminMenu = append(nonAdminMenu, item)
+				}
+			}
+		}
+		response = Response{
+			Code:    200,
+			Message: "success",
+			Data:    nonAdminMenu,
+		}
 	}
 
 	// 返回 JSON 响应
@@ -570,12 +569,332 @@ func handleUpdatePassword(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	config.Password = updatePasswordForm.Password
+
+	for userIndex, user := range config.Users {
+		if user.Username == updatePasswordForm.Username {
+			if user.Password == updatePasswordForm.OldPassword {
+				config.Users[userIndex].Password = updatePasswordForm.Password
+				err = utils.WriteConfig(config)
+				if err != nil {
+					utils.Logger.Error("写入配置文件失败", "err", err)
+					utils.RespondWithError(c, 500, langStr)
+					return
+				}
+				utils.UserCache[user.Username] = config.Users[userIndex]
+				c.JSON(http.StatusOK, gin.H{
+					"code":    200,
+					"message": Response("updatePassword", langStr),
+					"data":    nil,
+				})
+				return
+			} else {
+				utils.RespondWithError(c, 424, langStr)
+				return
+			}
+		}
+	}
+
+	utils.RespondWithError(c, 421, langStr)
+}
+
+func handleUserListGet(c *gin.Context) {
+
+	type UserResponse struct {
+		Username          string   `json:"username"`
+		Nickname          string   `json:"nickname"`
+		Disabled          bool     `json:"disabled"`
+		Role              string   `json:"role"`
+		ClusterPermission []string `json:"clusterPermission"`
+	}
+
+	var userResponse []UserResponse
+
+	for _, i := range utils.UserCache {
+		user := UserResponse{
+			Username:          i.Username,
+			Nickname:          i.Nickname,
+			Disabled:          i.Disabled,
+			Role:              i.Role,
+			ClusterPermission: i.ClusterPermission,
+		}
+		userResponse = append(userResponse, user)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": userResponse})
+}
+
+func handleUserCreatePost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var user utils.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	for _, i := range config.Users {
+		if i.Username == user.Username {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    201,
+				"message": Response("userExist", langStr),
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	config.Users = append(config.Users, user)
+	utils.UserCache[user.Username] = user
+
 	err = utils.WriteConfig(config)
 	if err != nil {
 		utils.Logger.Error("写入配置文件失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": Success("updatePassword", langStr), "data": nil})
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": Response("createSuccess", langStr),
+		"data":    nil,
+	})
+}
+
+func handleUserUpdatePut(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var user utils.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	for index, i := range config.Users {
+		if i.Username == user.Username {
+			newUser := utils.User{
+				Username:          i.Username,
+				Nickname:          user.Nickname,
+				Password:          i.Password,
+				Disabled:          user.Disabled,
+				Role:              user.Role,
+				ClusterPermission: user.ClusterPermission,
+				AnnounceID:        i.AnnounceID,
+			}
+			config.Users[index] = newUser
+			utils.UserCache[user.Username] = config.Users[index]
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("写入配置文件失败", "err", err)
+				utils.RespondWithError(c, 500, langStr)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": Response("updateSuccess", langStr),
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	utils.RespondWithError(c, 421, langStr)
+}
+
+func handleUserDeleteDelete(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	var (
+		user    utils.User
+		users   []utils.User
+		deleted bool
+	)
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	for _, dbUser := range config.Users {
+		if dbUser.Username != user.Username {
+			users = append(users, dbUser)
+		} else {
+			deleted = true
+		}
+	}
+
+	config.Users = users
+	delete(utils.UserCache, user.Username)
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	if deleted {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    200,
+			"message": Response("deleteSuccess", langStr),
+			"data":    nil,
+		})
+	} else {
+		utils.RespondWithError(c, 421, langStr)
+	}
+
+}
+
+func handleRegisterPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	if utils.Registered {
+		utils.RespondWithError(c, 425, langStr)
+		return
+	}
+
+	var user utils.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	user.Role = "admin"
+	user.Disabled = false
+	config.Users = append(config.Users, user)
+	config.Registered = true
+	utils.Registered = true
+
+	utils.UserCache[user.Username] = user
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": Response("createSuccess", langStr),
+		"data":    nil,
+	})
+}
+
+func handleRegisterGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data":    utils.Registered,
+	})
+}
+
+func handleUserAnnounceIDGet(c *gin.Context) {
+	username, exist := c.Get("username")
+	if !exist {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+	usernameStr, ok := username.(string)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+
+	announceID := utils.UserCache[usernameStr].AnnounceID
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": announceID})
+}
+
+func handleUserAnnounceIDPost(c *gin.Context) {
+	type AnnouncedForm struct {
+		ID int `json:"id"`
+	}
+	var announcedForm AnnouncedForm
+	if err := c.ShouldBindJSON(&announcedForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	username, exist := c.Get("username")
+	if !exist {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+	usernameStr, ok := username.(string)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": 0})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for index, user := range config.Users {
+		if usernameStr == user.Username {
+			config.Users[index].AnnounceID = announcedForm.ID
+			utils.UserCache[user.Username] = config.Users[index]
+			break
+		}
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
 }

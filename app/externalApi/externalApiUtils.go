@@ -10,12 +10,65 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+type Tags struct {
+	Tag         string `json:"tag"`
+	DisplayName string `json:"display_name"`
+}
+type VoteData struct {
+	Score     float64 `json:"score"`
+	VotesUp   int     `json:"votes_up"`
+	VotesDown int     `json:"votes_down"`
+}
+type PublishedFileDetails struct {
+	ID              string   `json:"publishedfileid"`
+	FileSize        string   `json:"file_size"`
+	FileDescription string   `json:"file_description"`
+	FileUrl         string   `json:"file_url"`
+	Title           string   `json:"title"`
+	Tags            []Tags   `json:"tags"`
+	PreviewUrl      string   `json:"preview_url"`
+	VoteData        VoteData `json:"vote_data"`
+}
+type Response struct {
+	Total                int                    `json:"total"`
+	Publishedfiledetails []PublishedFileDetails `json:"publishedfiledetails"`
+}
+type JSONResponse struct {
+	Response Response `json:"response"`
+}
+type ModInfo struct {
+	Name            string   `json:"name"`
+	ID              int      `json:"id"`
+	Size            string   `json:"size"`
+	Tags            []Tags   `json:"tags"`
+	PreviewUrl      string   `json:"preview_url"`
+	FileDescription string   `json:"file_description"`
+	FileUrl         string   `json:"file_url"`
+	VoteData        VoteData `json:"vote_data"`
+	DownloadedReady bool     `json:"downloadedReady"`
+}
+type Data struct {
+	Total    int       `json:"total"`
+	Page     int       `json:"page"`
+	PageSize int       `json:"pageSize"`
+	Rows     []ModInfo `json:"rows"`
+}
 
 type DSTVersion struct {
 	Local  int `json:"local"`
 	Server int `json:"server"`
+}
+
+type Room struct {
+	Name           string `json:"name"`
+	MaxConnections int    `json:"maxconnections"`
+}
+type NeededResponse struct {
+	GET []Room `json:"GET"`
 }
 
 func GetDSTVersion() (DSTVersion, error) { // 打开文件
@@ -23,14 +76,8 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 	dstVersion.Server = -1
 	dstVersion.Local = -1
 
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("打开配置文件失败", "err", err)
-		return dstVersion, err
-	}
-
-	if config.Platform == "darwin" {
-		out, _, err := utils.BashCMDOutput(utils.MacDSTVersionCMD)
+	if utils.Platform == "darwin" {
+		out, _, err := utils.BashCMDOutput(utils.GetMacVersionCmd())
 		if err != nil {
 			utils.Logger.Error("获取饥荒版本失败", "err", err)
 			return dstVersion, err
@@ -223,50 +270,6 @@ func GetInternetIP2() (string, error) {
 	return jsonResp.Ip, nil
 }
 
-type Tags struct {
-	Tag         string `json:"tag"`
-	DisplayName string `json:"display_name"`
-}
-type VoteData struct {
-	Score     float64 `json:"score"`
-	VotesUp   int     `json:"votes_up"`
-	VotesDown int     `json:"votes_down"`
-}
-type PublishedFileDetails struct {
-	ID              string   `json:"publishedfileid"`
-	FileSize        string   `json:"file_size"`
-	FileDescription string   `json:"file_description"`
-	FileUrl         string   `json:"file_url"`
-	Title           string   `json:"title"`
-	Tags            []Tags   `json:"tags"`
-	PreviewUrl      string   `json:"preview_url"`
-	VoteData        VoteData `json:"vote_data"`
-}
-type Response struct {
-	Total                int                    `json:"total"`
-	Publishedfiledetails []PublishedFileDetails `json:"publishedfiledetails"`
-}
-type JSONResponse struct {
-	Response Response `json:"response"`
-}
-type ModInfo struct {
-	Name            string   `json:"name"`
-	ID              int      `json:"id"`
-	Size            string   `json:"size"`
-	Tags            []Tags   `json:"tags"`
-	PreviewUrl      string   `json:"preview_url"`
-	FileDescription string   `json:"file_description"`
-	FileUrl         string   `json:"file_url"`
-	VoteData        VoteData `json:"vote_data"`
-	DownloadedReady bool     `json:"downloadedReady"`
-}
-type Data struct {
-	Total    int       `json:"total"`
-	Page     int       `json:"page"`
-	PageSize int       `json:"pageSize"`
-	Rows     []ModInfo `json:"rows"`
-}
-
 func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 	var language int
 	if lang == "zh" {
@@ -275,7 +278,7 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 		language = 0
 	}
 	mods := utils.ModOverridesToStruct(luaScriptContent)
-	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.SteamApiKey)
+	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
 	for index, mod := range mods {
 		url = url + fmt.Sprintf("&publishedfileids[%d]=%d", index, mod.ID)
 	}
@@ -320,76 +323,6 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 	}
 
 	return modInfoList, nil
-
-	//L := lua.NewState()
-	//defer L.Close()
-	//
-	//if err := L.DoString(luaScriptContent); err != nil {
-	//	return nil, fmt.Errorf("加载 Lua 文件失败: %w", err)
-	//}
-	//
-	//modsLuaTable := L.Get(-1)
-	//var modInfoList []ModInfo
-	//var wg sync.WaitGroup
-	//var mu sync.Mutex
-	//
-	//if tbl, ok := modsLuaTable.(*lua.LTable); ok {
-	//	re := regexp.MustCompile(`\d+`)
-	//
-	//	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-	//		// 检查键是否是字符串，并且以 "workshop-" 开头
-	//		if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
-	//			// 提取 "workshop-" 后面的数字
-	//			modID := re.FindString(string(strKey))
-	//
-	//			wg.Add(1)
-	//			go func(modID string) {
-	//				defer wg.Done()
-	//
-	//				url := fmt.Sprintf("%s?language=%d&publishedfileids[0]=%s&key=%s", utils.SteamApiModDetail, 6, modID, utils.SteamApiKey)
-	//				client := &http.Client{
-	//					Timeout: 5 * time.Second, // 设置超时时间为5秒
-	//				}
-	//				httpResponse, err := client.Get(url)
-	//				if err != nil {
-	//					return
-	//				}
-	//				defer func(Body io.ReadCloser) {
-	//					err := Body.Close()
-	//					if err != nil {
-	//						utils.Logger.Error("请求关闭失败", "err", err)
-	//					}
-	//				}(httpResponse.Body) // 确保在函数结束时关闭响应体
-	//
-	//				// 检查 HTTP 状态码
-	//				if httpResponse.StatusCode != http.StatusOK {
-	//					return
-	//				}
-	//
-	//				var jsonResp JSONResponse
-	//				if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-	//					utils.Logger.Error("解析JSON失败", "err", err)
-	//					return
-	//				}
-	//
-	//				modInfo := ModInfo{
-	//					ID:         modID,
-	//					Name:       jsonResp.Response.Publishedfiledetails[0].Title,
-	//					Size:       jsonResp.Response.Publishedfiledetails[0].FileSize,
-	//					Tags:       jsonResp.Response.Publishedfiledetails[0].Tags,
-	//					PreviewUrl: jsonResp.Response.Publishedfiledetails[0].PreviewUrl,
-	//				}
-	//
-	//				mu.Lock()
-	//				modInfoList = append(modInfoList, modInfo)
-	//				mu.Unlock()
-	//			}(modID)
-	//		}
-	//	})
-	//}
-	//
-	//wg.Wait()
-	//return modInfoList, nil
 }
 
 func SearchMod(page int, pageSize int, searchText string, lang string) (Data, error) {
@@ -407,14 +340,14 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	if searchText == "" {
 		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d",
 			language,
-			utils.SteamApiKey,
+			utils.GetSteamApiKey(),
 			page,
 			pageSize,
 		)
 	} else {
 		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d&search_text=%s",
 			language,
-			utils.SteamApiKey,
+			utils.GetSteamApiKey(),
 			page,
 			pageSize,
 			searchText,
@@ -480,7 +413,7 @@ func SearchModById(id int, lang string) (Data, error) {
 		language = 0
 	}
 
-	url = fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.SteamApiKey)
+	url = fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
 	url = url + fmt.Sprintf("&publishedfileids[0]=%d", id)
 
 	client := &http.Client{
@@ -618,7 +551,7 @@ func GetDownloadedModInfo(mods []string, lang string) ([]ModInfo, error) {
 		language = 0
 	}
 
-	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.SteamApiKey)
+	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
 	for index, modID := range mods {
 		url = url + fmt.Sprintf("&publishedfileids[%d]=%s", index, modID)
 	}
@@ -676,4 +609,65 @@ func GetDownloadedModInfo(mods []string, lang string) ([]ModInfo, error) {
 	}
 
 	return modInfoList, nil
+}
+
+func CheckDstLobbyRoom(urls []string, clusterName string) ([]Room, error) {
+	var (
+		mu        sync.Mutex
+		wg        sync.WaitGroup
+		rooms     []Room
+		errChanel = make(chan error, len(urls))
+	)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	for _, url := range urls {
+		wg.Add(1)
+		go func(u string) {
+			defer wg.Done()
+			resp, err := client.Get(u)
+			if err != nil {
+				utils.Logger.Error("请求失败", "url", u, "err", err)
+				errChanel <- err
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				utils.Logger.Warn("非200相应，跳过", "url", u)
+				errChanel <- fmt.Errorf("非200响应")
+				return
+			}
+
+			var neededResponse NeededResponse
+			if err := json.NewDecoder(resp.Body).Decode(&neededResponse); err != nil {
+				utils.Logger.Error("解析JSON失败", "err", err)
+				errChanel <- err
+				return
+			}
+
+			mu.Lock()
+			for _, room := range neededResponse.GET {
+				if room.Name == clusterName {
+					rooms = append(rooms, room)
+				}
+			}
+			mu.Unlock()
+		}(url)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errChanel)
+	}()
+
+	for err := range errChanel {
+		if err != nil {
+			return []Room{}, err
+		}
+	}
+
+	return rooms, nil
 }

@@ -21,7 +21,7 @@ import (
 var EmbedFS embed.FS
 
 func main() {
-	//一些启动前检查
+	// 一些启动前检查
 	initialize()
 
 	if !utils.ConsoleOutput {
@@ -32,21 +32,21 @@ func main() {
 		return
 	}
 	r := gin.Default()
-	//全局中间件，获取语言
+	// 全局中间件，获取语言
 	r.Use(utils.MWlang())
-	//用户、鉴权模块
+	// 用户、鉴权模块
 	r = auth.RouteAuth(r)
-	//主页模块
+	// 主页模块
 	r = home.RouteHome(r)
-	//设置模块
+	// 设置模块
 	r = setting.RouteSetting(r)
-	//工具模块
+	// 工具模块
 	r = tools.RouteTools(r)
-	//工具模块
+	// 日志模块
 	r = logs.RouteLogs(r)
 	// 外部接口
 	r = externalApi.RouteExternalApi(r)
-	//静态资源，放在最后
+	// 静态资源，放在最后
 	r.Use(static.ServeEmbed("dist", EmbedFS))
 
 	// 启动服务器
@@ -58,26 +58,21 @@ func main() {
 }
 
 func initialize() {
-	//绑定flag
+	// 绑定flag
 	utils.BindFlags()
-	//数据库检查
-	utils.CreateConfig()
-	//检查平台
-	utils.CheckPlatform()
-	//检查目录
+	// 数据库检查
+	utils.CheckConfig()
+	// 设置全局变量
+	utils.SetGlobalVariables()
+	// 检查目录
 	utils.CheckDirs()
-	//检查文件
-	utils.CheckFiles("all")
-	//创建DST手动安装脚本
+	// 创建DST手动安装脚本
 	utils.CreateManualInstallScript()
-	//配置必要的数据
-	utils.SetInitInfo()
-	//gin.SetMode(gin.DebugMode)
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
-	//加载定时任务
+	// 加载定时任务
 	scheduler.InitTasks()
-	//启动定时任务调度器
+	// 启动定时任务调度器
 	go scheduler.Scheduler.StartAsync()
 	utils.Logger.Info("定时任务已启动")
 }

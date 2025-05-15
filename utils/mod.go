@@ -302,16 +302,18 @@ func GetModDefaultConfigs(id int) {
 
 }
 
-func SyncMods() error {
+func SyncMods(cluster Cluster) error {
 	// 处理UGC模组
-	cmd := "cp -r " + MasterModUgcPath + "/* " + ModDownloadPath + "/steamapps/workshop/content/322330"
+	ugcModPath := cluster.GetModUgcPath()[0]
+	cmd := fmt.Sprintf("cp -rf %s/* %s", ugcModPath, ModUgcDownloadPath)
 	err := BashCMD(cmd)
 	if err != nil {
 		Logger.Error("同步UGC模组失败", "err", err)
 		return err
 	}
 	// 处理非UGC模组
-	cmd = "for dir in " + ModNoUgcPath + "/workshop-*; do [ -d \"$dir\" ] && cp -r \"$dir\" \"" + ModDownloadPath + "/not_ugc/$(basename \"$dir\" | sed 's/workshop-//')\"; done"
+	noUgcModPath := cluster.GetModNoUgcPath()
+	cmd = "for dir in " + noUgcModPath + "/workshop-*; do [ -d \"$dir\" ] && cp -rf \"$dir\" \"" + ModNoUgcDownloadPath + "/$(basename \"$dir\" | sed 's/workshop-//')\"; done"
 	if err != nil {
 		Logger.Error("同步非UGC模组失败", "err", err)
 		return err
@@ -321,17 +323,22 @@ func SyncMods() error {
 }
 
 func DeleteDownloadedMod(isUgc bool, id int) error {
-	var err error
+	var (
+		err     error
+		dirPath string
+	)
 	if isUgc {
-		err = RemoveDir(ModDownloadPath + "/steamapps/workshop/content/322330/" + strconv.Itoa(id))
+		dirPath = fmt.Sprintf("%s/%d", ModUgcDownloadPath, id)
 	} else {
-		err = RemoveDir(ModDownloadPath + "/not_ugc/" + strconv.Itoa(id))
+		dirPath = fmt.Sprintf("%s/%d", ModNoUgcDownloadPath, id)
 	}
+
+	err = RemoveDir(dirPath)
 
 	return err
 }
 
-func AddModDefaultConfig(newModLuaScript string, id int, langStr string) []ModOverrides {
+func AddModDefaultConfig(newModLuaScript string, id int, langStr string, cluster Cluster) []ModOverrides {
 	var modDefaultConfig ModOverrides
 	modConfig := GetModConfigOptions(newModLuaScript, langStr)
 	modDefaultConfig.ID = id
@@ -341,12 +348,7 @@ func AddModDefaultConfig(newModLuaScript string, id int, langStr string) []ModOv
 	for _, option := range modConfig {
 		modDefaultConfig.ConfigurationOptions[option.Name] = option.Default
 	}
-	config, err := ReadConfig()
-	if err != nil {
-		Logger.Error("配置文件读取失败", "err", err)
-		return []ModOverrides{}
-	}
-	modOverridesLuaScript := config.RoomSetting.Mod
+	modOverridesLuaScript := cluster.Mod
 	modOverrides := ModOverridesToStruct(modOverridesLuaScript)
 	modOverrides = append(modOverrides, modDefaultConfig)
 

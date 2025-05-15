@@ -1,18 +1,17 @@
 package tools
 
 import (
-	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"encoding/base64"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -95,17 +94,35 @@ func handleGetInstallStatus(c *gin.Context) {
 }
 
 func handleAnnounceGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	config, err := utils.ReadConfig()
 	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.Logger.Error("读取配置文件失败", "err", err)
 		utils.RespondWithError(c, 500, "zh")
 		return
 	}
-	if config.AutoAnnounce == nil {
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	if cluster.SysSetting.AutoAnnounce == nil {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": []string{}})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": config.AutoAnnounce})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cluster.SysSetting.AutoAnnounce})
 }
 
 func handleAnnouncePost(c *gin.Context) {
@@ -115,32 +132,52 @@ func handleAnnouncePost(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	var announceForm utils.AutoAnnounce
-	if err := c.ShouldBindJSON(&announceForm); err != nil {
+	type ReqForm struct {
+		AutoAnnounce utils.AutoAnnounce `json:"autoAnnounce"`
+		ClusterName  string             `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	for _, announce := range config.AutoAnnounce {
-		if announce.Name == announceForm.Name {
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	for _, announce := range cluster.SysSetting.AutoAnnounce {
+		if announce.Name == reqForm.AutoAnnounce.Name {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("duplicatedName", langStr), "data": nil})
 			return
 		}
 	}
-	config.AutoAnnounce = append(config.AutoAnnounce, announceForm)
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
+	cluster.SysSetting.AutoAnnounce = append(cluster.SysSetting.AutoAnnounce, reqForm.AutoAnnounce)
+	for index, dbCluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == dbCluster.ClusterSetting.ClusterName {
+			config.Clusters[index] = cluster
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("配置文件写入失败", "err", err)
+				utils.RespondWithError(c, 500, langStr)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createSuccess", langStr), "data": nil})
+			return
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createSuccess", langStr), "data": nil})
+
+	utils.RespondWithError(c, 404, langStr)
 }
 
 func handleAnnounceDelete(c *gin.Context) {
@@ -150,8 +187,12 @@ func handleAnnounceDelete(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	var announceForm utils.AutoAnnounce
-	if err := c.ShouldBindJSON(&announceForm); err != nil {
+	type ReqForm struct {
+		AutoAnnounce utils.AutoAnnounce `json:"autoAnnounce"`
+		ClusterName  string             `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -162,20 +203,34 @@ func handleAnnounceDelete(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
 	// 删除，遍历不添加
-	for i := 0; i < len(config.AutoAnnounce); i++ {
-		if config.AutoAnnounce[i].Name == announceForm.Name {
-			config.AutoAnnounce = append(config.AutoAnnounce[:i], config.AutoAnnounce[i+1:]...)
+	for i := 0; i < len(cluster.SysSetting.AutoAnnounce); i++ {
+		if cluster.SysSetting.AutoAnnounce[i].Name == reqForm.AutoAnnounce.Name {
+			cluster.SysSetting.AutoAnnounce = append(cluster.SysSetting.AutoAnnounce[:i], cluster.SysSetting.AutoAnnounce[i+1:]...)
 			i--
 		}
 	}
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
+	for index, dbCluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == dbCluster.ClusterSetting.ClusterName {
+			config.Clusters[index] = cluster
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("配置文件写入失败", "err", err)
+				utils.RespondWithError(c, 500, langStr)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+			return
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteSuccess", langStr), "data": nil})
+
+	utils.RespondWithError(c, 404, langStr)
 }
 
 func handleAnnouncePut(c *gin.Context) {
@@ -185,8 +240,12 @@ func handleAnnouncePut(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	var announceForm utils.AutoAnnounce
-	if err := c.ShouldBindJSON(&announceForm); err != nil {
+	type ReqForm struct {
+		AutoAnnounce utils.AutoAnnounce `json:"autoAnnounce"`
+		ClusterName  string             `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -197,85 +256,67 @@ func handleAnnouncePut(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	for index, announce := range config.AutoAnnounce {
-		if announce.Name == announceForm.Name {
-			config.AutoAnnounce[index] = announceForm
-			err = utils.WriteConfig(config)
-			if err != nil {
-				utils.Logger.Error("配置文件写入失败", "err", err)
-				utils.RespondWithError(c, 500, langStr)
-				return
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	for index, announce := range cluster.SysSetting.AutoAnnounce {
+		if announce.Name == reqForm.AutoAnnounce.Name {
+			cluster.SysSetting.AutoAnnounce[index] = reqForm.AutoAnnounce
+			for dbIndex, dbCluster := range config.Clusters {
+				if cluster.ClusterSetting.ClusterName == dbCluster.ClusterSetting.ClusterName {
+					config.Clusters[dbIndex] = cluster
+					err = utils.WriteConfig(config)
+					if err != nil {
+						utils.Logger.Error("配置文件写入失败", "err", err)
+						utils.RespondWithError(c, 500, langStr)
+						return
+					}
+					c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
+					return
+				}
 			}
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
-			return
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("updateFail", langStr), "data": nil})
 }
 
-func handleUpdateGet(c *gin.Context) {
-	dstVersion, err := externalApi.GetDSTVersion()
-	if err != nil {
-		utils.Logger.Error("获取饥荒版本失败", "err", err)
+func handleBackupGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
 	}
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-		"version":       dstVersion,
-		"updateSetting": config.AutoUpdate,
-	}})
-}
-
-func handleUpdatePut(c *gin.Context) {
-	defer scheduler.ReloadScheduler()
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	var updateForm utils.AutoUpdate
-	if err := c.ShouldBindJSON(&updateForm); err != nil {
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	config, err := utils.ReadConfig()
 	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
 		return
 	}
-	config.AutoUpdate.Time = updateForm.Time
-	config.AutoUpdate.Enable = updateForm.Enable
-	err = utils.WriteConfig(config)
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
 	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
-}
-
-func handleBackupGet(c *gin.Context) {
 	type BackFiles struct {
 		Name       string `json:"name"`
 		CreateTime string `json:"createTime"`
 		Size       int64  `json:"size"`
 	}
 	var tmp []BackFiles
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-	backupFiles, err := getBackupFiles()
+
+	backupFiles, err := getBackupFiles(cluster)
 	if err != nil {
 		utils.Logger.Error("备份文件获取", "err", err)
 	}
@@ -291,9 +332,8 @@ func handleBackupGet(c *gin.Context) {
 		utils.Logger.Error("磁盘使用率获取失败", "err", err)
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-		"backupSetting": config.AutoBackup,
-		"backupFiles":   tmp,
-		"diskUsage":     diskUsage,
+		"backupFiles": tmp,
+		"diskUsage":   diskUsage,
 	}})
 }
 
@@ -303,49 +343,43 @@ func handleBackupPost(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	err := utils.BackupGame()
-	if err != nil {
-		utils.Logger.Error("游戏备份失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("backupFail", langStr), "data": nil})
-		return
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("backupSuccess", langStr), "data": nil})
-}
-
-func handleBackupPut(c *gin.Context) {
-	defer scheduler.ReloadScheduler()
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	var backupForm utils.AutoBackup
-	if err := c.ShouldBindJSON(&backupForm); err != nil {
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
-	config.AutoBackup.Time = backupForm.Time
-	config.AutoBackup.Enable = backupForm.Enable
-	err = utils.WriteConfig(config)
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
 	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
+		utils.RespondWithError(c, 404, langStr)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
+	err = utils.BackupGame(cluster)
+	if err != nil {
+		utils.Logger.Error("游戏备份失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("backupFail", langStr), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("backupSuccess", langStr), "data": nil})
 }
 
 func handleBackupDelete(c *gin.Context) {
 	type DeleteForm struct {
-		Name string `json:"name"`
+		ClusterName string `json:"clusterName" form:"clusterName"`
+		Name        string `json:"name"`
 	}
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -358,8 +392,22 @@ func handleBackupDelete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	filePath := utils.BackupPath + "/" + deleteForm.Name
-	err := utils.RemoveFile(filePath)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(deleteForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	filePath := cluster.GetBackupPath() + "/" + deleteForm.Name
+	err = utils.RemoveFile(filePath)
 	if err != nil {
 		utils.Logger.Error("备份文件删除失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteFail", langStr), "data": nil})
@@ -369,8 +417,13 @@ func handleBackupDelete(c *gin.Context) {
 }
 
 func handleBackupRestore(c *gin.Context) {
+	defer func() {
+		setting.ClearFiles()
+	}()
+
 	type RestoreForm struct {
-		Name string `json:"name"`
+		ClusterName string `json:"clusterName" form:"clusterName"`
+		Name        string `json:"name"`
 	}
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -383,26 +436,75 @@ func handleBackupRestore(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	filePath := utils.BackupPath + "/" + restoreForm.Name
-	err := utils.RecoveryGame(filePath)
+
+	config, err := utils.ReadConfig()
 	if err != nil {
-		utils.Logger.Error("恢复游戏失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
-		return
-	}
-	err = setting.WriteDatabase()
-	if err != nil {
-		utils.Logger.Error("恢复存档文件写入数据库失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccessSaveFail", langStr), "data": nil})
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
 		return
 	}
 
-	// 写入dedicated_server_mods_setup.lua
-	err = setting.DstModsSetup()
+	cluster, err := config.GetClusterWithName(restoreForm.ClusterName)
 	if err != nil {
-		utils.Logger.Error("mod配置保存失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("saveFail", langStr), "data": nil})
+		utils.RespondWithError(c, 404, langStr)
 		return
+	}
+
+	// 关闭当前服务器
+	_ = utils.StopClusterAllWorlds(cluster)
+
+	filePath := cluster.GetBackupPath() + "/" + restoreForm.Name
+
+	// 解压tgz文件
+	cmd := fmt.Sprintf("tar zxf %s -C %s", filePath, utils.ImportFileUploadPath)
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		utils.Logger.Error("解压失败", "err", err, "cmd", cmd)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		return
+	}
+
+	// 还原备份文件
+	cmd = fmt.Sprintf("rm -rf %s", cluster.GetMainPath())
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		utils.Logger.Error("删除旧集群文件失败", "err", err, "cmd", cmd)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		return
+	}
+	cmd = fmt.Sprintf("mv %s%s %s", utils.ImportFileUploadPath, cluster.GetMainPath(), cluster.GetMainPath())
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		utils.Logger.Error("创建新集群文件失败", "err", err, "cmd", cmd)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFail", langStr), "data": nil})
+		return
+	}
+	// 读取备份的配置文件
+	backupConfig, err := utils.ReadBackupConfig(utils.ImportFileUploadPath + "/DstMP.sdb")
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	config.Clusters = backupConfig.Clusters
+
+	cluster, err = config.GetClusterWithName(restoreForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	err = cluster.ClearDstFiles()
+	if err != nil {
+		utils.Logger.Error("删除旧集群脏数据失败")
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
@@ -415,7 +517,8 @@ func handleBackupDownload(c *gin.Context) {
 		langStr = strLang
 	}
 	type DownloadForm struct {
-		Filename string `json:"filename"`
+		ClusterName string `json:"clusterName" form:"clusterName"`
+		Filename    string `json:"filename"`
 	}
 	var downloadForm DownloadForm
 	if err := c.ShouldBindJSON(&downloadForm); err != nil {
@@ -423,7 +526,21 @@ func handleBackupDownload(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	filePath := filepath.Join(utils.BackupPath, downloadForm.Filename)
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(downloadForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	filePath := filepath.Join(cluster.GetBackupPath(), downloadForm.Filename)
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("fileNotFound", langStr), "data": nil})
@@ -443,7 +560,8 @@ func handleBackupDownload(c *gin.Context) {
 
 func handleMultiDelete(c *gin.Context) {
 	type MultiDeleteForm struct {
-		Names []string `json:"names"`
+		ClusterName string   `json:"clusterName" form:"clusterName"`
+		Names       []string `json:"names"`
 	}
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -456,8 +574,22 @@ func handleMultiDelete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(multiDeleteForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
 	for _, file := range multiDeleteForm.Names {
-		filePath := utils.BackupPath + "/" + file
+		filePath := cluster.GetBackupPath() + "/" + file
 		err := utils.RemoveFile(filePath)
 		if err != nil {
 			utils.Logger.Error("删除文件失败", "err", err, "file", filePath)
@@ -467,12 +599,35 @@ func handleMultiDelete(c *gin.Context) {
 }
 
 func handleStatisticsGet(c *gin.Context) {
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var statistics []utils.Statistics
+	for key, _ := range utils.STATISTICS {
+		if key == reqForm.ClusterName {
+			statistics = utils.STATISTICS[key]
+		}
+	}
+
+	if len(statistics) == 0 {
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
 	type stats struct {
 		Num       int   `json:"num"`
 		Timestamp int64 `json:"timestamp"`
 	}
 	var data []stats
-	for _, i := range utils.STATISTICS {
+
+	for _, i := range statistics {
 		var j stats
 		j.Num = i.Num
 		j.Timestamp = i.Timestamp
@@ -480,68 +635,6 @@ func handleStatisticsGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
-}
-
-func handleKeepaliveGet(c *gin.Context) {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-		"enable": config.Keepalive.Enable,
-	}})
-}
-
-func handleKeepalivePut(c *gin.Context) {
-	defer scheduler.ReloadScheduler()
-	type UpdateForm struct {
-		Enable bool `json:"enable"`
-	}
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-	var updateForm UpdateForm
-	if err := c.ShouldBindJSON(&updateForm); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
-	config.Keepalive.Enable = updateForm.Enable
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updateSuccess", langStr), "data": nil})
-}
-
-func handleReplaceDSTSOFile(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
-
-	err := utils.ReplaceDSTSOFile()
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("replaceFail", langStr), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("replaceSuccess", langStr), "data": nil})
 }
 
 func handleCreateTokenPost(c *gin.Context) {
@@ -567,52 +660,20 @@ func handleCreateTokenPost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	now := time.Now()
-	nowTimestamp := now.UnixMilli()
-	hours := (apiForm.ExpiredTime - nowTimestamp) / (60 * 60 * 1000)
 
 	jwtSecret := []byte(config.JwtSecret)
-	token, _ := utils.GenerateJWT(config.Username, jwtSecret, int(hours))
+	usernameValue, _ := c.Get("username")
+	username := fmt.Sprintf("%v", usernameValue)
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
-}
-
-func handleAnnouncedGet(c *gin.Context) {
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": 0})
-		return
+	for _, user := range config.Users {
+		if user.Username == username {
+			token, _ := utils.GenerateJWT(user, jwtSecret, int(apiForm.ExpiredTime))
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("createTokenSuccess", langStr), "data": token})
+			return
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": config.AnnouncedID})
-}
-
-func handleAnnouncedPost(c *gin.Context) {
-	type AnnouncedForm struct {
-		ID int `json:"id"`
-	}
-	var announcedForm AnnouncedForm
-	if err := c.ShouldBindJSON(&announcedForm); err != nil {
-		// 如果绑定失败，返回 400 错误
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": err, "data": nil})
-		return
-	}
-
-	config.AnnouncedID = announcedForm.ID
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": err, "data": nil})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "", "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("createTokenFail", langStr), "data": nil})
 }
 
 func handleMetricsGet(c *gin.Context) {
@@ -627,30 +688,30 @@ func handleMetricsGet(c *gin.Context) {
 		return
 	}
 
-	metricsLength := len(utils.SYS_METRICS)
+	metricsLength := len(utils.SYSMETRICS)
 	var metrics []utils.SysMetrics
 
 	switch metricsForm.TimeRange {
 	case 30:
 		if metricsLength <= 60 {
-			metrics = utils.SYS_METRICS
+			metrics = utils.SYSMETRICS
 		} else {
-			metrics = utils.SYS_METRICS[len(utils.SYS_METRICS)-60:]
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-60:]
 		}
 	case 60:
 		if metricsLength <= 120 {
-			metrics = utils.SYS_METRICS
+			metrics = utils.SYSMETRICS
 		} else {
-			metrics = utils.SYS_METRICS[len(utils.SYS_METRICS)-120:]
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-120:]
 		}
 	case 180:
 		if metricsLength <= 360 {
-			metrics = utils.SYS_METRICS
+			metrics = utils.SYSMETRICS
 		} else {
-			metrics = utils.SYS_METRICS[len(utils.SYS_METRICS)-360:]
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-360:]
 		}
 	default:
-		metrics = utils.SYS_METRICS
+		metrics = utils.SYSMETRICS
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "error", "data": metrics})

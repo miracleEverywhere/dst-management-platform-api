@@ -30,6 +30,10 @@ type metaInfo struct {
 	SeasonLength seasonLength `json:"seasonLength"`
 }
 
+type AllScreens struct {
+	ScreenName string `json:"screenName"`
+}
+
 func FindLatestMetaFile(directory string) (string, error) {
 	// 检查指定目录是否存在
 	_, err := os.Stat(directory)
@@ -223,4 +227,21 @@ func countMods(luaScript string) (int, error) {
 		})
 	}
 	return count, nil
+}
+
+func GetClusterScreens(clusterName string) []AllScreens {
+	cmd := fmt.Sprintf("ps -ef | grep DST_%s | grep -v grep | awk '{print $12}'", clusterName)
+	out, _, _ := utils.BashCMDOutput(cmd)
+	screenNamesStr := strings.TrimSpace(out)
+
+	screenNames := strings.Split(screenNamesStr, "\n")
+
+	var allScreens []AllScreens
+	for _, i := range screenNames {
+		if i != "" {
+			allScreens = append(allScreens, AllScreens{ScreenName: i})
+		}
+	}
+
+	return allScreens
 }

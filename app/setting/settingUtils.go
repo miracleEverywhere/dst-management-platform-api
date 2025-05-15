@@ -1,578 +1,598 @@
 package setting
 
 import (
-	"bufio"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
-	lua "github.com/yuin/gopher-lua"
+	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
-func clusterTemplate(config utils.Config) string {
-	var bindIP string
-	if !config.MultiHost {
-		bindIP = "127.0.0.1"
-	} else {
-		bindIP = "0.0.0.0"
+type System struct {
+	SysSetting       utils.SysSetting       `json:"sysSetting"`
+	SchedulerSetting utils.SchedulerSetting `json:"schedulerSetting"`
+}
+
+func clusterTemplate(cluster utils.Cluster) string {
+	var (
+		masterIP   string
+		masterPort int
+		clusterKey string
+		hasMaster  bool
+	)
+
+	for _, world := range cluster.Worlds {
+		if world.IsMaster {
+			masterIP = world.ShardMasterIp
+			masterPort = world.ShardMasterPort
+			clusterKey = world.ClusterKey
+			hasMaster = true
+		}
 	}
-	base := config.RoomSetting.Base
+
+	if !hasMaster {
+		masterIP = cluster.Worlds[0].ShardMasterIp
+		masterPort = cluster.Worlds[0].ShardMasterPort
+		clusterKey = cluster.Worlds[0].ClusterKey
+	}
+
 	contents := `
 [GAMEPLAY]
-game_mode = ` + base.GameMode + `
-max_players = ` + strconv.Itoa(base.PlayerNum) + `
-pvp = ` + strconv.FormatBool(base.PVP) + `
+game_mode = ` + cluster.ClusterSetting.GameMode + `
+max_players = ` + strconv.Itoa(cluster.ClusterSetting.PlayerNum) + `
+pvp = ` + strconv.FormatBool(cluster.ClusterSetting.PVP) + `
 pause_when_empty = true
-vote_enabled = ` + strconv.FormatBool(base.Vote) + `
-vote_kick_enabled = ` + strconv.FormatBool(base.Vote) + `
+vote_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
+vote_kick_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
 
 [NETWORK]
-cluster_description = ` + base.Description + `
-whitelist_slots = 0
-cluster_name = ` + base.Name + `
-cluster_password = ` + base.Password + `
+cluster_description = ` + cluster.ClusterSetting.Description + `
+whitelist_slots = ` + strconv.Itoa(cluster.GetWhiteListSlot()) + `
+cluster_name = ` + cluster.ClusterSetting.Name + `
+cluster_password = ` + cluster.ClusterSetting.Password + `
 cluster_language = zh
-tick_rate = ` + strconv.Itoa(config.TickRate) + `
+tick_rate = ` + strconv.Itoa(cluster.SysSetting.TickRate) + `
 
 [MISC]
 console_enabled = true
-max_snapshots = ` + strconv.Itoa(base.BackDays) + `
+max_snapshots = ` + strconv.Itoa(cluster.ClusterSetting.BackDays) + `
 
 [SHARD]
 shard_enabled = true
-bind_ip = ` + bindIP + `
-master_ip = ` + base.ShardMasterIp + `
-master_port = ` + strconv.Itoa(base.ShardMasterPort) + `
-cluster_key = ` + base.ClusterKey + `
+bind_ip = 0.0.0.0
+master_ip = ` + masterIP + `
+master_port = ` + strconv.Itoa(masterPort) + `
+cluster_key = ` + clusterKey + `
 `
 	return contents
 }
 
-func masterServerTemplate(config utils.Config) string {
-	base := config.RoomSetting.Base
+func worldTemplate(world utils.World) string {
 	content := `
 [NETWORK]
-server_port = ` + strconv.Itoa(base.MasterPort) + `
+server_port = ` + strconv.Itoa(world.ServerPort) + `
 
 [SHARD]
-is_master = true
+id = ` + strconv.Itoa(world.ID) + `
+is_master = ` + strconv.FormatBool(world.IsMaster) + `
+name = ` + world.Name + `
 
 [STEAM]
-master_server_port = ` + strconv.Itoa(base.SteamMasterPort) + `
-authentication_port = ` + strconv.Itoa(base.SteamAuthenticationPort) + `
+master_server_port = ` + strconv.Itoa(world.SteamMasterPort) + `
+authentication_port = ` + strconv.Itoa(world.SteamAuthenticationPort) + `
 
 [ACCOUNT]
-encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Ground) + `
+encode_user_path = ` + strconv.FormatBool(world.EncodeUserPath) + `
 `
 	return content
 }
 
-func cavesServerTemplate(config utils.Config) string {
-	var (
-		SteamMasterPort         int
-		SteamAuthenticationPort int
-	)
-	if !config.MultiHost {
-		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort + 1
-		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort + 1
-	} else {
-		SteamMasterPort = config.RoomSetting.Base.SteamMasterPort
-		SteamAuthenticationPort = config.RoomSetting.Base.SteamAuthenticationPort
-	}
-	base := config.RoomSetting.Base
-	content := `
-[NETWORK]
-server_port = ` + strconv.Itoa(base.CavesPort) + `
-
-[SHARD]
-is_master = false
-name = Caves
-
-[STEAM]
-master_server_port = ` + strconv.Itoa(SteamMasterPort) + `
-authentication_port = ` + strconv.Itoa(SteamAuthenticationPort) + `
-
-[ACCOUNT]
-encode_user_path = ` + strconv.FormatBool(config.EncodeUserPath.Cave) + `
-`
-	return content
-}
-
-func saveSetting(config utils.Config) error {
-	clusterIniFileContent := clusterTemplate(config)
-
-	//cluster.ini
-	err := utils.TruncAndWriteFile(utils.ServerSettingPath, clusterIniFileContent)
-	if err != nil {
-		return err
-	}
-
-	//cluster_token.txt
-	err = utils.TruncAndWriteFile(utils.ServerTokenPath, config.RoomSetting.Base.Token)
-	if err != nil {
-		return err
-	}
-
-	if config.RoomSetting.Ground != "" {
-		err = utils.EnsureDirExists(utils.ServerPath + utils.MasterName)
-		if err != nil {
-			utils.Logger.Error("创建Master目录失败", "err", err)
-		}
-		//Master/leveldataoverride.lua
-		err = utils.TruncAndWriteFile(utils.MasterSettingPath, config.RoomSetting.Ground)
-		if err != nil {
-			return err
-		}
-
-		//Master/modoverrides.lua
-		err = utils.TruncAndWriteFile(utils.MasterModPath, config.RoomSetting.Mod)
-		if err != nil {
-			return err
-		}
-
-		//Master/server.ini
-		err = utils.TruncAndWriteFile(utils.MasterServerPath, masterServerTemplate(config))
-		if err != nil {
-			return err
-		}
-	} else {
-		err = utils.RemoveDir(utils.ServerPath + utils.MasterName)
-		if err != nil {
-			utils.Logger.Error("删除目录下文件失败", "err", err)
-		}
-	}
-
-	if config.RoomSetting.Cave != "" {
-		//Caves/leveldataoverride.lua
-		err = utils.EnsureDirExists(utils.ServerPath + utils.CavesName)
-		if err != nil {
-			utils.Logger.Error("创建Caves目录失败", "err", err)
-		}
-		err = utils.TruncAndWriteFile(utils.CavesSettingPath, config.RoomSetting.Cave)
-		if err != nil {
-			return err
-		}
-		//Caves/modoverrides.lua
-		err = utils.TruncAndWriteFile(utils.CavesModPath, config.RoomSetting.Mod)
-		if err != nil {
-			return err
-		}
-		//Caves/server.ini
-		err = utils.TruncAndWriteFile(utils.CavesServerPath, cavesServerTemplate(config))
-		if err != nil {
-			return err
-		}
-	} else {
-		err = utils.RemoveDir(utils.ServerPath + utils.CavesName)
-		if err != nil {
-			utils.Logger.Error("删除目录下文件失败", "err", err)
-		}
-	}
-
-	return nil
-}
-
-func generateWorld() {
-	//关闭Master进程
-	/*cmdStopMaster := exec.Command("/bin/bash", "-c", utils.StopMasterCMD)
-	err := cmdStopMaster.Run()
-	if err != nil {
-		utils.Logger.Error("关闭地面失败", "err", err)
-	}
-	//关闭Caves进程
-	cmdStopCaves := exec.Command("/bin/bash", "-c", utils.StopCavesCMD)
-	err = cmdStopCaves.Run()
-	if err != nil {
-		utils.Logger.Error("关闭洞穴失败", "err", err)
-	}*/
-	err := utils.StopGame()
-	if err != nil {
-		utils.Logger.Error("关闭游戏失败", "err", err)
-	}
-	//删除Master/save目录
-	err = utils.DeleteDir(utils.MasterSavePath)
-	if err != nil {
-		utils.Logger.Error("删除地面文件失败", "err", err, "dir", utils.MasterSavePath)
-	}
-	//等待3秒
-	time.Sleep(3 * time.Second)
-	//启动Master
-	/*cmdStartMaster := exec.Command("/bin/bash", "-c", utils.StartMasterCMD)
-	err = cmdStartMaster.Run()
-	if err != nil {
-		utils.Logger.Error("启动地面失败", "err", err)
-		utils.RespondWithError(c, 500, langStr)
-		return
-	}
-	if config.RoomSetting.Cave != "" {
-		//删除Caves/save目录
-		err = utils.DeleteDir(utils.CavesSavePath)
-		if err != nil {
-			utils.Logger.Error("删除洞穴文件失败", "err", err, "dir", utils.CavesSavePath)
-		}
-		//启动Caves
-		cmdStartCaves := exec.Command("/bin/bash", "-c", utils.StartCavesCMD)
-		err = cmdStartCaves.Run()
-		if err != nil {
-			utils.Logger.Error("启动洞穴失败", "err", err)
-			utils.RespondWithError(c, 500, langStr)
-			return
-		}
-	}*/
-	err = utils.StartGame()
-	if err != nil {
-		utils.Logger.Error("启动游戏失败", "err", err)
-	}
-}
-
-func DstModsSetup() error {
+func SaveSetting(reqCluster utils.Cluster) error {
+	defer func() {
+		scheduler.ReloadScheduler()
+	}()
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		return err
 	}
 
-	L := lua.NewState()
-	defer L.Close()
-	if err := L.DoString(config.RoomSetting.Mod); err != nil {
-		utils.Logger.Error("加载 Lua 文件失败:", "err", err)
-		return err
-	}
-	modsTable := L.Get(-1)
-	fileContent := ""
-	if tbl, ok := modsTable.(*lua.LTable); ok {
-		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-			// 检查键是否是字符串，并且以 "workshop-" 开头
-			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
-				// 提取 "workshop-" 后面的数字
-				workshopID := strings.TrimPrefix(string(strKey), "workshop-")
-				fileContent = fileContent + "ServerModSetup(\"" + workshopID + "\")\n"
-			}
-		})
-		var modFilePath string
-		if config.Platform == "darwin" {
-			modFilePath = utils.MacGameModSettingPath
-		} else {
-			modFilePath = utils.GameModSettingPath
-		}
-		err := utils.TruncAndWriteFile(modFilePath, fileContent)
-		if err != nil {
-			utils.Logger.Error("mod配置文件写入失败", "err", err, "file", modFilePath)
-			return err
-		}
-	}
+	var clusterIndex = -1
 
-	return nil
-}
-
-func getList(filepath string) []string {
-	// 预留位 黑名单 管理员
-	al, err := readLines(filepath)
-	if err != nil {
-		utils.Logger.Error("读取文件失败", "err", err, "file", filepath)
-		return []string{}
-	}
-	var uidList []string
-	for _, a := range al {
-		uid := strings.TrimSpace(a)
-		uidList = append(uidList, uid)
-	}
-	if uidList == nil {
-		return []string{}
-	}
-	return uidList
-}
-
-func addList(uid string, filePath string) error {
-	// 要追加的内容
-	content := "\n" + uid
-	// 打开文件，使用 os.O_APPEND | os.O_CREATE | os.O_WRONLY 选项
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer func(file *os.File) {
-		err = file.Close()
-		if err != nil {
-			utils.Logger.Error("关闭文件失败", "err", err)
-		}
-	}(file) // 确保在函数结束时关闭文件
-	// 写入内容到文件
-	if _, err = file.WriteString(content); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func deleteList(uid string, filePath string) error {
-	// 读取文件内容
-	lines, err := readLines(filePath)
-	if err != nil {
-		return err
-	}
-
-	// 删除指定行
-	for i := 0; i < len(lines); i++ {
-		if lines[i] == uid {
-			lines = append(lines[:i], lines[i+1:]...)
+	for i, dbCluster := range config.Clusters {
+		if dbCluster.ClusterSetting.ClusterName == reqCluster.ClusterSetting.ClusterName {
+			clusterIndex = i
+			reqCluster.SysSetting = dbCluster.SysSetting
 			break
 		}
 	}
 
-	// 将修改后的内容写回文件
-	err = writeLines(filePath, lines)
+	if clusterIndex == -1 {
+		return fmt.Errorf("集群不存在")
+	}
+
+	// 对world进行排序
+	var formattedCluster utils.Cluster
+
+	for _, world := range reqCluster.Worlds {
+		world.ScreenName = fmt.Sprintf("DST_%s_%d", reqCluster.ClusterSetting.ClusterName, world.ID)
+		formattedCluster.Worlds = append(formattedCluster.Worlds, world)
+	}
+	reqCluster.Worlds = formattedCluster.Worlds
+
+	// 写入文件
+	err = utils.EnsureDirExists(utils.DstPath)
 	if err != nil {
+		utils.Logger.Error("创建饥荒目录失败", "err", err)
+		return err
+	}
+
+	err = utils.EnsureDirExists(reqCluster.GetMainPath())
+	if err != nil {
+		utils.Logger.Error("创建集群目录失败", "err", err)
+		return err
+	}
+
+	//cluster.ini
+	err = utils.EnsureFileExists(reqCluster.GetIniFile())
+	if err != nil {
+		utils.Logger.Error("创建cluster.ini失败", "err", err)
+		return err
+	}
+
+	clusterIniFileContent := clusterTemplate(reqCluster)
+	err = utils.TruncAndWriteFile(reqCluster.GetIniFile(), clusterIniFileContent)
+	if err != nil {
+		utils.Logger.Error("写入cluster.ini失败", "err", err)
+		return err
+	}
+
+	//cluster_token.txt
+	err = utils.EnsureFileExists(reqCluster.GetTokenFile())
+	if err != nil {
+		utils.Logger.Error("创建cluster_token.txt失败", "err", err)
+		return err
+	}
+	err = utils.TruncAndWriteFile(reqCluster.GetTokenFile(), reqCluster.ClusterSetting.Token)
+	if err != nil {
+		utils.Logger.Error("写入cluster_token.txt失败", "err", err)
+		return err
+	}
+
+	for _, world := range reqCluster.Worlds {
+		err = utils.EnsureDirExists(world.GetMainPath(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建世界目录失败", "err", err)
+			return err
+		}
+
+		// leveldataoverride.lua
+		err = utils.EnsureFileExists(world.GetLevelDataFile(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建leveldataoverride.lua失败", "err", err)
+			return err
+		}
+		err = utils.TruncAndWriteFile(world.GetLevelDataFile(reqCluster.ClusterSetting.ClusterName), world.LevelData)
+		if err != nil {
+			utils.Logger.Error("写入leveldataoverride.lua失败", "err", err)
+			return err
+		}
+
+		// modoverrides.lua
+		err = utils.EnsureFileExists(world.GetModFile(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建modoverrides.lua失败", "err", err)
+			return err
+		}
+		err = utils.TruncAndWriteFile(world.GetModFile(reqCluster.ClusterSetting.ClusterName), reqCluster.Mod)
+		if err != nil {
+			utils.Logger.Error("写入modoverrides.lua失败", "err", err)
+			return err
+		}
+
+		// server.ini
+		err = utils.EnsureFileExists(world.GetIniFile(reqCluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("创建server.ini失败", "err", err)
+			return err
+		}
+		worldIniContent := worldTemplate(world)
+		err = utils.TruncAndWriteFile(world.GetIniFile(reqCluster.ClusterSetting.ClusterName), worldIniContent)
+		if err != nil {
+			utils.Logger.Error("写入server.ini失败", "err", err)
+			return err
+		}
+	}
+
+	config.Clusters[clusterIndex] = reqCluster
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
 		return err
 	}
 
 	return nil
 }
 
-// 读取文件内容到切片中
-func readLines(filePath string) ([]string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			utils.Logger.Error("关闭文件失败", "err", err)
-		}
-	}(file)
+func DoImport(filename string, cluster utils.Cluster, langStr string) (bool, string, utils.Cluster, map[string][]string, map[string][]string) {
+	var (
+		result    bool
+		errMsgKey string
+	)
 
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines, scanner.Err()
-}
-
-// 将切片内容写回文件
-func writeLines(filePath string, lines []string) error {
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			utils.Logger.Error("关闭文件失败", "err", err)
-		}
-	}(file)
-
-	writer := bufio.NewWriter(file)
-	for _, line := range lines {
-		_, _ = writer.WriteString(line + "\n")
-	}
-	return writer.Flush()
-}
-
-type UIDForm struct {
-	UID string `json:"uid"`
-}
-
-func kick(uid string, world string) error {
-	cmd := "TheNet:Kick('" + uid + "')"
-	return utils.ScreenCMD(cmd, world)
-}
-
-func checkZipFile(filename string) (bool, error) {
 	filePath := utils.ImportFileUploadPath + filename
 	err := utils.EnsureDirExists(utils.ImportFileUnzipPath)
 	if err != nil {
-		utils.Logger.Error("解压目录创建失败", "err", err)
-		return false, err
+		errMsgKey = "createUnzipDir"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 	err = utils.BashCMD("unzip -qo " + filePath + " -d " + utils.ImportFileUnzipPath)
 	if err != nil {
-		utils.Logger.Error("解压失败", "err", err)
-		return false, err
+		errMsgKey = "unzipProcess"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
 	}
 
-	var result bool
-	checkItems := []string{"cluster.ini", "cluster_token.txt", "Master/leveldataoverride.lua", "Master/modoverrides.lua", "Master/server.ini"}
-	for _, item := range checkItems {
-		filePath = utils.ImportFileUnzipPath + item
-		result, err = utils.FileDirectoryExists(filePath)
+	/* ======== cluster.ini ======== */
+	clusterIniFilePath := utils.ImportFileUnzipPath + "cluster.ini"
+	result, err = utils.FileDirectoryExists(clusterIniFilePath)
+	if !result || err != nil {
+		errMsgKey = "clusterIniNotFound"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+
+	clusterIni, err := utils.ParseIniToMap(clusterIniFilePath)
+	if err != nil {
+		errMsgKey = "clusterIniReadFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+
+	if clusterIni["cluster_name"] == "" {
+		errMsgKey = "cluster_name_NotSet"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+	cluster.ClusterSetting.Name = clusterIni["cluster_name"]
+
+	cluster.ClusterSetting.Description = clusterIni["cluster_description"]
+
+	if clusterIni["game_mode"] == "" {
+		errMsgKey = "game_mode_NotSet"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+	cluster.ClusterSetting.GameMode = clusterIni["game_mode"]
+
+	if clusterIni["pvp"] == "" {
+		cluster.ClusterSetting.PVP = false
+	} else {
+		pvp, err := strconv.ParseBool(clusterIni["pvp"])
 		if err != nil {
-			utils.Logger.Error("检查文件"+filePath+"失败", "err", err)
-			return false, err
-		}
-		if !result {
-			utils.Logger.Error("文件" + filePath + "不存在")
-			return false, nil
+			cluster.ClusterSetting.PVP = false
+		} else {
+			cluster.ClusterSetting.PVP = pvp
 		}
 	}
-	return true, nil
+
+	if clusterIni["max_players"] == "" {
+		errMsgKey = "max_players_NotSet"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+	playnum, err := strconv.Atoi(clusterIni["max_players"])
+	if err != nil {
+		utils.Logger.Warn("最大玩家数获取异常，设置为默认值6")
+		cluster.ClusterSetting.PlayerNum = 6
+	} else {
+		cluster.ClusterSetting.PlayerNum = playnum
+	}
+
+	if clusterIni["max_snapshots"] == "" {
+		utils.Logger.Info("未获取到最大回档天数，设置为默认值10")
+		cluster.ClusterSetting.BackDays = 10
+	} else {
+		backdays, err := strconv.Atoi(clusterIni["max_snapshots"])
+		if err != nil {
+			utils.Logger.Warn("最大回档天数获取异常，设置为默认值10")
+			cluster.ClusterSetting.BackDays = 10
+		} else {
+			cluster.ClusterSetting.BackDays = backdays
+		}
+	}
+
+	if clusterIni["vote_enabled"] == "" {
+		utils.Logger.Info("未获取到是否开启玩家投票，设置为默认值关闭")
+		cluster.ClusterSetting.Vote = false
+	} else {
+		vote, err := strconv.ParseBool(clusterIni["vote_enabled"])
+		if err != nil {
+			utils.Logger.Warn("是否开启玩家投票获取异常，设置为默认值关闭")
+			cluster.ClusterSetting.Vote = false
+		} else {
+			cluster.ClusterSetting.Vote = vote
+		}
+	}
+
+	cluster.ClusterSetting.Password = clusterIni["cluster_password"]
+
+	if clusterIni["tick_rate"] == "" {
+		utils.Logger.Info("未获取到tick_rate，设置为默认值15")
+		cluster.SysSetting.TickRate = 15
+	} else {
+		tickRate, err := strconv.Atoi(clusterIni["tick_rate"])
+		if err != nil {
+			utils.Logger.Warn("tick_rate获取异常，设置为默认值15")
+			cluster.SysSetting.TickRate = 15
+		} else {
+			cluster.SysSetting.TickRate = tickRate
+		}
+	}
+
+	clusterKey := "supersecretkey"
+	if clusterIni["cluster_key"] == "" {
+		utils.Logger.Info("未获取到cluster_key，设置为默认值'supersecretkey'")
+	} else {
+		clusterKey = clusterIni["cluster_key"]
+	}
+
+	masterIp := "127.0.0.1"
+	if clusterIni["master_ip"] == "" {
+		errMsgKey = "master_ip_NotSet"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	} else {
+		masterIp = clusterIni["master_ip"]
+	}
+
+	/* ======== cluster_token.txt ======== */
+	clusterTokenFilePath := utils.ImportFileUnzipPath + "cluster_token.txt"
+	result, err = utils.FileDirectoryExists(clusterTokenFilePath)
+	if !result || err != nil {
+		errMsgKey = "clusterTokenNotFound"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+	clusterToken, err := utils.GetFileAllContent(clusterTokenFilePath)
+	if err != nil {
+		errMsgKey = "clusterTokenReadFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+	cluster.ClusterSetting.Token = clusterToken
+
+	/* ======== whitelist.txt blocklist.txt adminlist.txt ======== */
+	lists := make(map[string][]string)
+	whiteListFilePath := utils.ImportFileUnzipPath + "whitelist.txt"
+	result, err = utils.FileDirectoryExists(whiteListFilePath)
+	if !result || err != nil {
+		utils.Logger.Warn("未发现白名单文件，跳过")
+	} else {
+		whiteList, err := utils.ReadLinesToSlice(whiteListFilePath)
+		if err != nil {
+			utils.Logger.Warn("读取白名单文件失败，跳过")
+		} else {
+			lists["whitelist.txt"] = whiteList
+		}
+	}
+
+	blockListFilePath := utils.ImportFileUnzipPath + "blocklist.txt"
+	result, err = utils.FileDirectoryExists(blockListFilePath)
+	if !result || err != nil {
+		utils.Logger.Warn("未发现黑名单文件，跳过")
+	} else {
+		blockList, err := utils.ReadLinesToSlice(blockListFilePath)
+		if err != nil {
+			utils.Logger.Warn("读取黑名单文件失败，跳过")
+		} else {
+			lists["blocklist.txt"] = blockList
+		}
+	}
+
+	adminListFilePath := utils.ImportFileUnzipPath + "adminlist.txt"
+	result, err = utils.FileDirectoryExists(adminListFilePath)
+	if !result || err != nil {
+		utils.Logger.Warn("未发现管理员名单文件，跳过")
+	} else {
+		adminList, err := utils.ReadLinesToSlice(adminListFilePath)
+		if err != nil {
+			utils.Logger.Warn("读取管理员名单文件失败，跳过")
+		} else {
+			lists["adminlist.txt"] = adminList
+		}
+	}
+
+	/* ======== Master/ Caves/ ======== */
+	fuckWorldsPath, err := utils.GetDirs(utils.ImportFileUnzipPath, true)
+	var worldsPath []string
+	for _, i := range fuckWorldsPath {
+		// 判断是否含有奇奇怪怪的目录，MacOS真是狗屎啊
+		lastDir := utils.GetLastDir(i)
+		if !strings.HasPrefix(lastDir, "__") {
+			worldsPath = append(worldsPath, i)
+		}
+	}
+
+	if err != nil || len(worldsPath) == 0 {
+		errMsgKey = "world_file_path_GetFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+
+	worldPortFactor, err := utils.GetWorldPortFactor(cluster.ClusterSetting.ClusterName)
+	if err != nil {
+		errMsgKey = "port_factor_GetFail"
+		utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+		return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+	}
+
+	dstFiles := make(map[string][]string)
+
+	for index, worldPath := range worldsPath {
+		var world utils.World
+		world.ID = index + 1
+		world.Name = fmt.Sprintf("World%d", world.ID)
+
+		/* ======== server.ini ======== */
+		result, err = utils.FileDirectoryExists(worldPath + "/server.ini")
+		if !result || err != nil {
+			errMsgKey = "serverIniNotFound"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+		}
+
+		serverIni, err := utils.ParseIniToMap(worldPath + "/server.ini")
+		if err != nil {
+			errMsgKey = "clusterIniReadFail"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+		}
+
+		world.ServerPort = 11000 + worldPortFactor + index + 1
+
+		if serverIni["is_master"] == "" {
+			errMsgKey = "is_master_NotSet"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+		}
+		isMaster, err := strconv.ParseBool(serverIni["is_master"])
+		if err != nil {
+			errMsgKey = "is_master_ValueError"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+		}
+		world.IsMaster = isMaster
+
+		world.ClusterKey = clusterKey
+
+		world.ShardMasterIp = masterIp
+
+		world.ShardMasterPort = 10887 + worldPortFactor + index + 1
+
+		world.SteamMasterPort = 27017 + worldPortFactor + index + 1
+
+		world.SteamAuthenticationPort = 8767 + worldPortFactor + index + 1
+
+		if serverIni["encode_user_path"] == "" {
+			world.EncodeUserPath = true
+		} else {
+			encodeUserPath, err := strconv.ParseBool(serverIni["encode_user_path"])
+			if err != nil {
+				utils.Logger.Warn("encode_user_path值异常，设置为默认值true")
+				world.EncodeUserPath = true
+			} else {
+				world.EncodeUserPath = encodeUserPath
+			}
+		}
+
+		/* ======== leveldataoverride.lua(worldgenoverride.lua) ======== */
+		// 兼容两种文件名leveldataoverride.lua和worldgenoverride.lua
+		levelDataPath := worldPath + "/leveldataoverride.lua"
+		result, err = utils.FileDirectoryExists(levelDataPath)
+		if !result || err != nil {
+			levelDataPath = worldPath + "/worldgenoverride.lua"
+			result, err := utils.FileDirectoryExists(levelDataPath)
+			if !result || err != nil {
+				errMsgKey = "levelDataNotFound"
+				utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+				return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+			}
+		}
+		levelData, err := utils.GetFileAllContent(levelDataPath)
+		if err != nil {
+			errMsgKey = "levelDataReadFail"
+			utils.Logger.Error(responseImportError(errMsgKey, langStr), "err", err)
+			return false, errMsgKey, utils.Cluster{}, map[string][]string{}, map[string][]string{}
+		}
+		world.LevelData = levelData
+
+		/* ======== modoverrides.lua ======== */
+		result, err = utils.FileDirectoryExists(worldPath + "/modoverrides.lua")
+		if !result || err != nil {
+			utils.Logger.Warn("未发现modoverrides.lua文件，跳过")
+		}
+		mod, err := utils.GetFileAllContent(worldPath + "/modoverrides.lua")
+		if err != nil {
+			utils.Logger.Warn("读取modoverrides.lua文件失败，跳过")
+		} else {
+			cluster.Mod = mod
+		}
+
+		cluster.Worlds = append(cluster.Worlds, world)
+
+		/* ======== save/ backup/ ======== */
+		result, err = utils.FileDirectoryExists(worldPath + "/save")
+		if !result || err != nil {
+			utils.Logger.Warn("未发现save目录，跳过(注意：没有该目录，游戏启动后会生成新世界)")
+		} else {
+			dstFiles[fmt.Sprintf("World%d", index+1)] = append(dstFiles[fmt.Sprintf("World%d", index+1)], worldPath+"/save")
+		}
+		result, err = utils.FileDirectoryExists(worldPath + "/backup")
+		if !result || err != nil {
+			utils.Logger.Warn("未发现backup目录，跳过")
+		} else {
+			dstFiles[fmt.Sprintf("World%d", index+1)] = append(dstFiles[fmt.Sprintf("World%d", index+1)], worldPath+"/backup")
+		}
+	}
+
+	return true, "", cluster, lists, dstFiles
 }
 
-func WriteDatabase() error {
-	//地面配置
-	ground, err := utils.GetFileAllContent(utils.MasterSettingPath)
-	if err != nil {
-		utils.Logger.Error("读取地面配置文件失败", "err", err)
-		return err
-	}
-	//模组配置
-	mod, err := utils.GetFileAllContent(utils.MasterModPath)
-	if err != nil {
-		utils.Logger.Error("读取mod配置文件失败", "err", err)
-		return err
-	}
-	//洞穴配置
-	caves, err := utils.GetFileAllContent(utils.CavesSettingPath)
-	if err != nil {
-		utils.Logger.Warn("读取洞穴配置文件失败", "err", err)
-		caves = ""
-	}
-
-	var baseSetting utils.RoomSettingBase
-	baseSetting, err = utils.GetRoomSettingBase()
-	if err != nil {
-		utils.Logger.Error("读取cluster配置文件失败", "err", err)
-		return err
-	}
-
-	masterPort, err := utils.GetServerPort(utils.MasterServerPath)
-	if err != nil {
-		utils.Logger.Error("获取地面端口失败", "err", err)
-		return err
-	}
-	baseSetting.MasterPort = masterPort
-	if caves != "" {
-		cavesPort, err := utils.GetServerPort(utils.CavesServerPath)
-		if err != nil {
-			utils.Logger.Error("获取洞穴端口失败", "err", err)
-			return err
-		}
-		baseSetting.CavesPort = cavesPort
-	}
-
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		return err
-	}
-
-	utils.SetInitInfo()
-
-	config.RoomSetting.Base = baseSetting
-	config.RoomSetting.Ground = ground
-	config.RoomSetting.Cave = caves
-	config.RoomSetting.Mod = mod
-
-	err = utils.WriteConfig(config)
-	if err != nil {
-		utils.Logger.Error("配置文件写入失败", "err", err)
-		return err
-	}
-
-	return nil
-}
-
-func clearUpZipFile() {
+func ClearFiles() {
 	err := utils.BashCMD("rm -rf " + utils.ImportFileUploadPath + "*")
 	if err != nil {
 		utils.Logger.Error("清理导入的压缩文件失败", "err", err)
 	}
 }
 
-func changeWhitelistSlots() error {
-	err := utils.EnsureFileExists(utils.WhiteListPath)
+func getList(filepath string) []string {
+	// 预留位 黑名单 管理员
+	al, err := utils.ReadLinesToSlice(filepath)
 	if err != nil {
-		utils.Logger.Error("打开白名单失败")
-		return err
+		utils.Logger.Warn("读取文件失败", "err", err, "file", filepath)
+		return []string{}
 	}
-
-	fileContent, err := readLines(utils.WhiteListPath)
-	if err != nil {
-		utils.Logger.Error("读取白名单失败")
-		return err
-	}
-
-	var whiteList []string
-	for _, i := range fileContent {
-		uid := strings.TrimSpace(i)
-		if uid != "" {
-			whiteList = append(whiteList, uid)
+	var uidList []string
+	for _, uid := range al {
+		if !(uid == "" || strings.HasPrefix(uid, " ")) {
+			uidList = append(uidList, uid)
 		}
 	}
 
-	clusterIniContent, err := readLines(utils.ServerSettingPath)
-	if err != nil {
-		utils.Logger.Error("读取cluster.ini失败")
-		return err
-	}
-
-	var newClusterIni []string
-
-	for _, i := range clusterIniContent {
-		line := strings.TrimSpace(i)
-		if strings.HasPrefix(line, "cluster_name") {
-			newClusterIni = append(newClusterIni, "whitelist_slots = "+strconv.Itoa(len(whiteList)))
-		}
-		if strings.HasPrefix(line, "whitelist_slots") {
-			continue
-		}
-		newClusterIni = append(newClusterIni, line)
-	}
-
-	err = writeLines(utils.ServerSettingPath, newClusterIni)
-	if err != nil {
-		utils.Logger.Error("写入cluster.ini失败")
-		return err
-	}
-
-	return nil
+	return uidList
 }
 
-type SystemSettingForm struct {
-	KeepaliveDisable   bool                       `json:"keepaliveDisable"`
-	KeepaliveFrequency int                        `json:"keepaliveFrequency"`
-	PlayerGetFrequency int                        `json:"playerGetFrequency"`
-	UIDMaintain        utils.SchedulerSettingItem `json:"UIDMaintain"`
-	SysMetricsGet      utils.SchedulerSettingItem `json:"sysMetricsGet"`
-	Bit64              bool                       `json:"bit64"`
-	TickRate           int                        `json:"tickRate"`
-	EncodeUserPath     utils.EncodeUserPath       `json:"encodeUserPath"`
-}
-
-func GetUserDataEncodeStatus(uid string, world string) (bool, error) {
-	userPathEncode, err := utils.ScreenCMDOutput(utils.UserDataEncode, uid+"UserDataEncode", world)
-	if err != nil {
-		return false, err
-	}
-	if userPathEncode == "true" {
-		return true, nil
-	} else {
-		return false, nil
-	}
-}
-
-func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, string, error) {
+func GetPlayerAgePrefab(uid string, cluster utils.Cluster) (int, string, error) {
 	var (
 		path      string
 		cmdAge    string
 		cmdPrefab string
+		world     utils.World
+		hasMaster bool
 	)
 
-	if userPathEncode {
+	for _, i := range cluster.Worlds {
+		if i.IsMaster {
+			world = i
+			hasMaster = true
+			break
+		}
+	}
+	if !hasMaster {
+		world = cluster.Worlds[0]
+	}
+
+	if world.EncodeUserPath {
 		sessionFileCmd := "TheNet:GetUserSessionFile(ShardGameIndex:GetSession(), '" + uid + "')"
-		userSessionFile, err := utils.ScreenCMDOutput(sessionFileCmd, uid+"UserSessionFile", world)
+		userSessionFile, err := utils.ScreenCMDOutput(sessionFileCmd, uid+"UserSessionFile", world.ScreenName, world.GetServerLogFile(cluster.ClusterSetting.ClusterName))
 		if err != nil {
 			return 0, "", err
 		}
 
-		if world == "Master" {
-			path = utils.MasterSavePath + "/" + userSessionFile
-		} else {
-			path = utils.CavesSavePath + "/" + userSessionFile
-		}
+		path = world.GetSavePath(cluster.ClusterSetting.ClusterName) + "/" + userSessionFile
 
 		ok, _ := utils.FileDirectoryExists(path)
 		if !ok {
@@ -580,7 +600,7 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 		}
 
 	} else {
-		cmd := "find " + utils.ServerPath + world + "/save/session/*/" + uid + "_/ -name \"*.meta\" -type f -printf \"%T@ %p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2"
+		cmd := fmt.Sprintf("find %s/session/*/%s_/ -name \"*.meta\" -type f -printf \"%%T@ %%p\\n\" | sort -n | tail -n 1 | cut -d' ' -f2", world.GetSavePath(cluster.ClusterSetting.ClusterName), uid)
 		stdout, _, err := utils.BashCMDOutput(cmd)
 		if err != nil || stdout == "" {
 			utils.Logger.Warn("Bash命令执行失败", "err", err, "cmd", cmd)
@@ -589,7 +609,7 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 		path = stdout[:len(stdout)-6]
 	}
 
-	if utils.PLATFORM == "darwin" {
+	if utils.Platform == "darwin" {
 		cmdAge = "ggrep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
 	} else {
 		cmdAge = "grep -aoP 'age=\\d+\\.\\d+' " + path + " | awk -F'=' '{print $2}'"
@@ -610,7 +630,7 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 	age = age / 480
 	ageInt := int(math.Round(age))
 
-	if utils.PLATFORM == "darwin" {
+	if utils.Platform == "darwin" {
 		cmdPrefab = "ggrep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
 	} else {
 		cmdPrefab = "grep -aoP '},age=\\d+,prefab=\"(.+)\"}' " + path + " | awk -F'[\"]' '{print $2}'"
@@ -624,4 +644,30 @@ func GetPlayerAgePrefab(uid string, world string, userPathEncode bool) (int, str
 	prefab := strings.TrimSpace(stdout)
 
 	return ageInt, prefab, nil
+}
+
+func KillInvalidScreen(oldWorlds, newWorlds []utils.World) {
+	var (
+		oldWorldScreenNames []string
+		newWorldScreenNames []string
+	)
+
+	for _, i := range oldWorlds {
+		oldWorldScreenNames = append(oldWorldScreenNames, i.ScreenName)
+	}
+	for _, i := range newWorlds {
+		newWorldScreenNames = append(newWorldScreenNames, i.ScreenName)
+	}
+
+	for _, oldWorld := range oldWorldScreenNames {
+		if !utils.Contains(newWorldScreenNames, oldWorld) {
+			killCMD := fmt.Sprintf("ps -ef | grep %s | grep -v grep | awk '{print $2}' | xargs kill -9", oldWorld)
+			err := utils.BashCMD(killCMD)
+			if err != nil {
+				utils.Logger.Info("执行Bash命令失败", "msg", err, "cmd", killCMD)
+			}
+		}
+	}
+
+	_ = utils.BashCMD("screen -wipe")
 }
