@@ -433,7 +433,7 @@ func DoImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 
 	for index, worldPath := range worldsPath {
 		var world utils.World
-		world.ID = index + 1
+		world.ID = 100 + worldPortFactor + index + 1
 		world.Name = fmt.Sprintf("World%d", world.ID)
 
 		/* ======== server.ini ======== */
