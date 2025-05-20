@@ -10,18 +10,16 @@ env:
 jobs:
   build-binaries:
     runs-on: ubuntu-latest
-    env:
-      BINARY_NAME: dmp
     strategy:
       matrix:
         include:
           - os: linux
             arch: amd64
-            output: ${{ env.BINARY_NAME }}.tgz
+            output: dmp.tgz
             build_flags: ""
           - os: darwin
             arch: arm64
-            output: ${{ env.BINARY_NAME }}_darwin.tgz
+            output: dmp_darwin.tgz
             build_flags: "CGO_ENABLED=0"
 
     steps:
