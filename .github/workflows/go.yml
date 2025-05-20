@@ -8,85 +8,29 @@ env:
   REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
 
 jobs:
-  build-binaries:
-    runs-on: ubuntu-latest
+  build-binary:
+    runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
-        include:
-          - os: linux
-            arch: amd64
-            output: dmp.tgz
-            build_flags: ""
-          - os: darwin
-            arch: arm64
-            output: dmp_darwin.tgz
-            build_flags: "CGO_ENABLED=0"
+        os: [ macos-latest, ubuntu-latest ]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out Git repository
+        uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '^1.23.1'
+      - name: build-mac
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        if: matrix.os == 'macos-latest'
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o ./dmp && tar zcf dmp_darwin.tgz
 
-      - name: Build binary
-        run: |
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} ${{ matrix.build_flags }} go build -o ${{ env.BINARY_NAME }} ./...
+      - name: build-linux
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        if: matrix.os == 'ubuntu-latest'
+        run: go build -o ./dmp && tar zcf dmp.tgz
 
-      - name: Package binary
-        run: |
-          tar czf ${{ matrix.output }} ${{ env.BINARY_NAME }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.output }}
-          path: ${{ matrix.output }}
-
-  build-image:
-    needs: build-binaries
-    runs-on: ubuntu-latest
-    env:
-      TAG: ${{ github.sha }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Login to GitHub Package Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.PACKAGE_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY_SERVER_ADDRESS }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          file: ./docker/Dockerfile
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  create-release:
-    needs: [build-binaries, build-image]
-    runs-on: ubuntu-latest
-
-    steps:
       - name: release
         uses: softprops/action-gh-release@v1
         env:
@@ -96,3 +40,34 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           files: |
             release/*.tgz
+
+  build-image:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GitHub Package Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.PACKAGE_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY_SERVER_ADDRESS }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          file: ./docker/Dockerfile
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }},${{ env.REGISTRY_SERVER_ADDRESS }}:${{ env.TAG }}
+          labels: ${{ steps.meta.outputs.labels }}
