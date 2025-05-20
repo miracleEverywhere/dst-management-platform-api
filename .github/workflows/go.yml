@@ -87,17 +87,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v3
-        with:
-          pattern: ${{ env.BINARY_NAME }}*.tgz
-          path: ./artifacts
-
-      - name: Create release
+      - name: release
         uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            artifacts/${{ env.BINARY_NAME }}.tgz
-            artifacts/${{ env.BINARY_NAME }}_darwin.tgz
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          draft: true
+          token: ${{ secrets.GH_TOKEN }}
+          files: |
+            release/*.tgz
