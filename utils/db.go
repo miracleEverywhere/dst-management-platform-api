@@ -7,13 +7,14 @@ import (
 )
 
 type User struct {
-	Username          string   `json:"username"`
-	Nickname          string   `json:"nickname"`
-	Role              string   `json:"role"`
-	Password          string   `json:"password"`
-	Disabled          bool     `json:"disabled"`
-	ClusterPermission []string `json:"clusterPermission"`
-	AnnounceID        int      `json:"announceID"`
+	Username                  string   `json:"username"`
+	Nickname                  string   `json:"nickname"`
+	Role                      string   `json:"role"`
+	Password                  string   `json:"password"`
+	Disabled                  bool     `json:"disabled"`
+	ClusterPermission         []string `json:"clusterPermission"`
+	AnnounceID                int      `json:"announceID"`
+	ClusterCreationProhibited bool     `json:"clusterCreationProhibited"`
 }
 
 type ClusterSetting struct {
