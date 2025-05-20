@@ -28,13 +28,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         if: matrix.os == 'macos-latest'
-        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o ./dmp && tar zcf dmp dmp_darwin.tgz
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o ./dmp && tar zcf dmp_darwin.tgz dmp
 
       - name: build-linux
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         if: matrix.os == 'ubuntu-latest'
-        run: go build -o ./dmp && tar zcf dmp dmp.tgz
+        run: go build -o ./dmp && tar zcf dmp.tgz dmp
 
       - name: release
         uses: softprops/action-gh-release@v1
@@ -44,7 +44,7 @@ jobs:
           draft: true
           token: ${{ secrets.GH_TOKEN }}
           files: |
-            release/*.tgz
+            ./*.tgz
 
   build-image:
     runs-on: ubuntu-latest
