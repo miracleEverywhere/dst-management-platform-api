@@ -124,7 +124,7 @@ function install_dmp() {
     check_jq
     check_curl
     # 原GitHub下载链接
-    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
+    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
     PRIMARY_PROXY="https://ghproxy.cc/"   # 主加速站点
     SECONDARY_PROXY="https://ghproxy.cn/" # 备用加速站点
@@ -140,25 +140,8 @@ function install_dmp() {
         if download "$SECONDARY_PROXY$GITHUB_URL" 5 10; then
             echo -e "\e[32m通过备用加速站点下载成功！\e[0m"
         else
-            echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?, 尝试从 Gitee 下载\e[0m"
-            # Gitee下载链接
-            GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
-            # 尝试从 Gitee 下载
-            echo -e "\e[36m尝试通过国内站点下载 Gitee\e[0m"
-            if download "$GITEE_URL" 5 10; then
-                echo -e "\e[32m从 Gitee 下载成功！\e[0m"
-            else
-                echo -e "\e[31m从 Gitee 下载失败: wget 返回码为 $?, 尝试从原 GitHub 链接下载\e[0m"
-
-                # 尝试从原 GitHub 链接下载
-                echo -e "\e[36m尝试通过原站点下载 GitHub\e[0m"
-                if download "$GITHUB_URL" 5 10; then
-                    echo -e "\e[32m从原 GitHub 链接下载成功！\e[0m"
-                else
-                    echo -e "\e[31m从原 GitHub 链接下载失败: wget 返回码为 $?, 下载失败！\e[0m"
-                    exit 1
-                fi
-            fi
+            echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?\e[0m"
+            exit 1
         fi
     fi
 
@@ -199,7 +182,7 @@ function stop_dmp() {
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
 function clear_dmp() {
     echo -e "\e[36m正在执行清理 (Cleaning Files) \e[0m"
-    rm -f dmp*
+    rm -f dmp dmp.log dmpProcess.log
 }
 
 # 检查当前版本号
@@ -225,17 +208,14 @@ update_script() {
     echo -e "\e[36m正在更新脚本... \e[0m"
     TEMP_FILE="/tmp/run.sh"
     SCRIPT_GITHUB="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
-    SCRIPT_GITEE="https://gitee.com/s763483966/dst-management-platform-api/raw/master/run.sh"
     # 读取旧脚本中的 PORT 值
     OLD_PORT=$(grep "^PORT=" "$0" | cut -d'=' -f2)
     # 尝试从 GitHub 下载
     if curl --connect-timeout 10 -sL "$SCRIPT_GITHUB" -o "$TEMP_FILE"; then
         echo -e "\e[32m从 GitHub 下载成功！ \e[0m"
-    # 如果失败，尝试从 Gitee 下载
-    elif curl --connect-timeout 10 -sL "$SCRIPT_GITEE" -o "$TEMP_FILE"; then
-        echo -e "\e[32m从 Gitee 下载成功！ \e[0m"
     else
-        echo -e "\e[31m更新脚本失败：无法从GitHub或Gitee下载脚本 \e[0m" >&2
+        echo -e "\e[31m更新脚本失败：无法从GitHub下载脚本 \e[0m" >&2
+        echo -e "\e[31m请前往github.akams.cn手动下载，原地址为：${SCRIPT_GITHUB} \e[0m"
         exit 1
     fi
 

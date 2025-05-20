@@ -63,13 +63,26 @@ func handleLogin(c *gin.Context) {
 
 func handleUserinfo(c *gin.Context) {
 	username, _ := c.Get("username")
-	nickname, _ := c.Get("nickname")
-	role, _ := c.Get("role")
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
-		"username": username,
-		"nickname": nickname,
-		"role":     role,
-	}})
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for _, user := range config.Users {
+		if user.Username == username {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
+				"username":                  username,
+				"nickname":                  user.Nickname,
+				"role":                      user.Role,
+				"clusterCreationProhibited": user.ClusterCreationProhibited,
+			}})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": "user not found", "data": nil})
 }
 
 func handleMenu(c *gin.Context) {
@@ -600,22 +613,24 @@ func handleUpdatePassword(c *gin.Context) {
 func handleUserListGet(c *gin.Context) {
 
 	type UserResponse struct {
-		Username          string   `json:"username"`
-		Nickname          string   `json:"nickname"`
-		Disabled          bool     `json:"disabled"`
-		Role              string   `json:"role"`
-		ClusterPermission []string `json:"clusterPermission"`
+		Username                  string   `json:"username"`
+		Nickname                  string   `json:"nickname"`
+		Disabled                  bool     `json:"disabled"`
+		Role                      string   `json:"role"`
+		ClusterPermission         []string `json:"clusterPermission"`
+		ClusterCreationProhibited bool     `json:"clusterCreationProhibited"`
 	}
 
 	var userResponse []UserResponse
 
 	for _, i := range utils.UserCache {
 		user := UserResponse{
-			Username:          i.Username,
-			Nickname:          i.Nickname,
-			Disabled:          i.Disabled,
-			Role:              i.Role,
-			ClusterPermission: i.ClusterPermission,
+			Username:                  i.Username,
+			Nickname:                  i.Nickname,
+			Disabled:                  i.Disabled,
+			Role:                      i.Role,
+			ClusterPermission:         i.ClusterPermission,
+			ClusterCreationProhibited: i.ClusterCreationProhibited,
 		}
 		userResponse = append(userResponse, user)
 	}
@@ -696,13 +711,14 @@ func handleUserUpdatePut(c *gin.Context) {
 	for index, i := range config.Users {
 		if i.Username == user.Username {
 			newUser := utils.User{
-				Username:          i.Username,
-				Nickname:          user.Nickname,
-				Password:          i.Password,
-				Disabled:          user.Disabled,
-				Role:              user.Role,
-				ClusterPermission: user.ClusterPermission,
-				AnnounceID:        i.AnnounceID,
+				Username:                  i.Username,
+				Nickname:                  user.Nickname,
+				Password:                  i.Password,
+				Disabled:                  user.Disabled,
+				Role:                      user.Role,
+				ClusterPermission:         user.ClusterPermission,
+				AnnounceID:                i.AnnounceID,
+				ClusterCreationProhibited: user.ClusterCreationProhibited,
 			}
 			config.Users[index] = newUser
 			utils.UserCache[user.Username] = config.Users[index]

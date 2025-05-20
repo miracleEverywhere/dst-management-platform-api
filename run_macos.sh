@@ -69,43 +69,26 @@ function install_dmp() {
     check_curl
     check_wget
     # 原GitHub下载链接
-    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r ".assets[1].browser_download_url")
+    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r '.assets[] | select(.name == "dmp_darwin.tgz") | .browser_download_url')
     # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
     PRIMARY_PROXY="https://ghproxy.cc/"   # 主加速站点
     SECONDARY_PROXY="https://ghproxy.cn/" # 备用加速站点
     # 尝试通过主加速站点下载 GitHub
     echo -e "\e[36m尝试通过主加速站点下载 GitHub\e[0m"
-    if download "$PRIMARY_PROXY$GITHUB_URL" 5 10; then
-        echo -e "\e[32m通过主加速站点下载成功！\e[0m"
-    else
-        echo -e "\e[31m主加速站点下载失败: wget 返回码为 $?, 尝试备用加速站点下载 GitHub\e[0m"
-
-        # 尝试通过备用加速站点下载 GitHub
-        echo -e "\e[36m尝试通过备用加速站点下载 GitHub\e[0m"
-        if download "$SECONDARY_PROXY$GITHUB_URL" 5 10; then
-            echo -e "\e[32m通过备用加速站点下载成功！\e[0m"
+        if download "$PRIMARY_PROXY$GITHUB_URL" 5 10; then
+            echo -e "\e[32m通过主加速站点下载成功！\e[0m"
         else
-            echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?, 尝试从 Gitee 下载\e[0m"
-            # Gitee下载链接
-            GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r ".assets[1].browser_download_url")
-            # 尝试从 Gitee 下载
-            echo -e "\e[36m尝试通过国内站点下载 Gitee\e[0m"
-            if download "$GITEE_URL" 5 10; then
-                echo -e "\e[32m从 Gitee 下载成功！\e[0m"
-            else
-                echo -e "\e[31m从 Gitee 下载失败: wget 返回码为 $?, 尝试从原 GitHub 链接下载\e[0m"
+            echo -e "\e[31m主加速站点下载失败: wget 返回码为 $?, 尝试备用加速站点下载 GitHub\e[0m"
 
-                # 尝试从原 GitHub 链接下载
-                echo -e "\e[36m尝试通过原站点下载 GitHub\e[0m"
-                if download "$GITHUB_URL" 5 10; then
-                    echo -e "\e[32m从原 GitHub 链接下载成功！\e[0m"
-                else
-                    echo -e "\e[31m从原 GitHub 链接下载失败: wget 返回码为 $?, 下载失败！\e[0m"
-                    exit 1
-                fi
+            # 尝试通过备用加速站点下载 GitHub
+            echo -e "\e[36m尝试通过备用加速站点下载 GitHub\e[0m"
+            if download "$SECONDARY_PROXY$GITHUB_URL" 5 10; then
+                echo -e "\e[32m通过备用加速站点下载成功！\e[0m"
+            else
+                echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?\e[0m"
+                exit 1
             fi
         fi
-    fi
 
     tar zxvf dmp_darwin.tgz
     rm -f dmp_darwin.tgz
@@ -143,7 +126,25 @@ function stop_dmp() {
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
 function clear_dmp() {
     echo -e "\e[36m正在执行清理 (Cleaning Files) \e[0m"
-    rm -f dmp*
+    rm -f dmp dmp.log dmpProcess.log
+}
+
+# 检查当前版本号
+function get_current_version() {
+    if [ -e "$ExeFile" ]; then
+        CURRENT_VERSION=$("$ExeFile" -v | head -n1) # 获取输出的第一行作为版本号
+    else
+        CURRENT_VERSION="0.0.0"
+    fi
+}
+
+# 获取GitHub最新版本号
+function get_latest_version() {
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name | grep -oP '(\d+\.)+\d+')
+    if [[ -z "$LATEST_VERSION" ]]; then
+        echo -e "\e[31m无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API) \e[0m"
+        exit 1
+    fi
 }
 
 
@@ -179,12 +180,19 @@ while true; do
         break
         ;;
     4)
-        stop_dmp
-        clear_dmp
-        install_dmp
-        start_dmp
-        check_dmp
-        echo -e "\e[32m更新完成 (Update completed) \e[0m"
+        get_current_version
+        get_latest_version
+        if [[ "$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | head -n1)" == "$CURRENT_VERSION" && "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
+            echo -e "\e[33m当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version) \e[0m"
+            stop_dmp
+            clear_dmp
+            install_dmp
+            start_dmp
+            check_dmp
+            echo -e "\e[32m更新完成 (Update completed) \e[0m"
+        else
+            echo -e "\e[32m当前版本 ($CURRENT_VERSION) 已是最新版本 ($LATEST_VERSION)，无需更新 (No update needed) \e[0m"
+        fi
         break
         ;;
     *)

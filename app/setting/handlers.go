@@ -2,6 +2,7 @@ package setting
 
 import (
 	"dst-management-platform-api/app/externalApi"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
@@ -200,6 +201,14 @@ func handleClusterPost(c *gin.Context) {
 	if role != "admin" {
 		for userIndex, user := range config.Users {
 			if user.Username == username {
+				if user.ClusterCreationProhibited {
+					c.JSON(http.StatusOK, gin.H{
+						"code":    201,
+						"message": response("clusterCreationProhibited", langStr),
+						"data":    nil,
+					})
+					return
+				}
 				config.Users[userIndex].ClusterPermission = append(config.Users[userIndex].ClusterPermission, reqFrom.ClusterName)
 			}
 		}
@@ -211,6 +220,103 @@ func handleClusterPost(c *gin.Context) {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
+
+	// 重新载入定时任务
+	defer func() {
+		scheduler.ReloadScheduler()
+	}()
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": response("createSuccess", langStr),
+		"data":    nil,
+	})
+}
+
+func handleClusterDelete(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	// 生成新数据库配置
+	var (
+		newClusters []utils.Cluster
+		newUsers    []utils.User
+		cmd         string
+	)
+	for _, dbCluster := range config.Clusters {
+		if dbCluster.ClusterSetting.ClusterName != reqForm.ClusterName {
+			newClusters = append(newClusters, dbCluster)
+		}
+	}
+	for _, user := range config.Users {
+		newPermission := utils.RemoveSliceOne(user.ClusterPermission, reqForm.ClusterName)
+		user.ClusterPermission = newPermission
+		newUsers = append(newUsers, user)
+	}
+	config.Clusters = newClusters
+	config.Users = newUsers
+
+	// 停止游戏进程
+	_ = utils.StopClusterAllWorlds(cluster)
+
+	// 删除游戏配置
+	cmd = fmt.Sprintf("rm -rf %s", cluster.GetMainPath())
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		utils.Logger.Warn("删除游戏配置文件失败", "err", err, "cmd", cmd)
+	}
+
+	// 删除mod缓存
+	cmd = fmt.Sprintf("rm -rf %s", cluster.GetModUgcPath())
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		utils.Logger.Warn("删除mod缓存失败", "err", err, "cmd", cmd)
+	}
+
+	// 更新数据库
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	// 更新用户信息缓存
+	for _, user := range config.Users {
+		utils.UserCache[user.Username] = user
+	}
+
+	// 重新载入定时任务
+	defer func() {
+		scheduler.ReloadScheduler()
+	}()
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
@@ -1914,6 +2020,11 @@ func handleSystemSettingPut(c *gin.Context) {
 			go utils.ExecBashScript("tmp.sh", utils.Install32Dependency)
 		}
 	}
+
+	// 重新载入定时任务
+	defer func() {
+		scheduler.ReloadScheduler()
+	}()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("configUpdateSuccess", langStr), "data": nil})
 }

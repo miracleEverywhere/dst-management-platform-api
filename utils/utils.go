@@ -75,6 +75,7 @@ func SetGlobalVariables() {
 
 	Registered = config.Registered
 
+	// 设置全局用户缓存
 	for _, user := range config.Users {
 		UserCache[user.Username] = user
 	}
