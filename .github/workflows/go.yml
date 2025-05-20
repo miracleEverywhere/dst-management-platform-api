@@ -19,6 +19,11 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v3
 
+      - name: Setup Go 1.23.1
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.1
+
       - name: build-mac
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
