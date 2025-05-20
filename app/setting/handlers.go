@@ -200,6 +200,14 @@ func handleClusterPost(c *gin.Context) {
 	if role != "admin" {
 		for userIndex, user := range config.Users {
 			if user.Username == username {
+				if user.ClusterCreationProhibited {
+					c.JSON(http.StatusOK, gin.H{
+						"code":    201,
+						"message": response("clusterCreationProhibited", langStr),
+						"data":    nil,
+					})
+					return
+				}
 				config.Users[userIndex].ClusterPermission = append(config.Users[userIndex].ClusterPermission, reqFrom.ClusterName)
 			}
 		}
