@@ -6,11 +6,12 @@ on:
 
 env:
   REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
-  BINARY_NAME: dmp
 
 jobs:
   build-binaries:
     runs-on: ubuntu-latest
+    env:
+      BINARY_NAME: dmp
     strategy:
       matrix:
         include:
@@ -29,7 +30,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '^1.21'
+          go-version: '^1.23.1'
 
       - name: Build binary
         run: |
@@ -69,18 +70,18 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY_SERVER_ADDRESS }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        uses: docker/build-push-action@v4
         with:
           file: ./docker/Dockerfile
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }},${{ env.REGISTRY_SERVER_ADDRESS }}:${{ env.TAG }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
   create-release:
@@ -90,12 +91,15 @@ jobs:
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v3
+        with:
+          pattern: ${{ env.BINARY_NAME }}*.tgz
+          path: ./artifacts
 
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ${{ env.BINARY_NAME }}.tgz
-            ${{ env.BINARY_NAME }}_darwin.tgz
+            artifacts/${{ env.BINARY_NAME }}.tgz
+            artifacts/${{ env.BINARY_NAME }}_darwin.tgz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
