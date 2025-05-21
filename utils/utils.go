@@ -19,11 +19,13 @@ import (
 	"github.com/yuin/gopher-lua"
 	"io"
 	"io/fs"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -79,6 +81,9 @@ func SetGlobalVariables() {
 	for _, user := range config.Users {
 		UserCache[user.Username] = user
 	}
+
+	// 查看是否在容器内
+	_, InContainer = os.LookupEnv("DMP_IN_CONTAINER")
 }
 
 func GenerateJWTSecret() string {
@@ -301,70 +306,187 @@ func DeleteDir(dirPath string) error {
 	return nil
 }
 
+func ReadContainCpuUsage() (uint64, error) {
+	file, err := os.Open("/sys/fs/cgroup/cpu.stat")
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "usage_usec") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				return strconv.ParseUint(parts[1], 10, 64)
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("未找到 usage_usec 数据")
+}
+
+func ReadContainUintFromFile(path string) (uint64, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+
+	valueStr := strings.TrimSpace(string(data))
+	if valueStr == "max" {
+		return math.MaxUint64, nil
+	}
+
+	return strconv.ParseUint(valueStr, 10, 64)
+}
+
 func CpuUsage() (float64, error) {
 	// 获取 CPU 使用率
-	percent, err := cpu.Percent(0, false)
-	if err != nil {
-		return 0, fmt.Errorf("error getting CPU percent: %w", err)
+	if InContainer {
+		const samplingInterval = 100 * time.Millisecond // 0.1秒
+		// 第一次采样
+		usage1, err := ReadContainCpuUsage()
+		if err != nil {
+			return 0, err
+		}
+		// 等待 0.1 秒
+		time.Sleep(samplingInterval)
+		// 第二次采样
+		usage2, err := ReadContainCpuUsage()
+		if err != nil {
+			return 0, err
+		}
+		// 计算 CPU 使用率百分比
+		delta := usage2 - usage1
+		intervalMicroseconds := float64(samplingInterval.Microseconds())
+		return float64(delta) / intervalMicroseconds * 100, nil
+	} else {
+		percent, err := cpu.Percent(0, false)
+		if err != nil {
+			return 0, fmt.Errorf("error getting CPU percent: %w", err)
+		}
+		return percent[0], nil
 	}
-	return percent[0], nil
 }
 
 func MemoryUsage() (float64, error) {
 	// 获取内存信息
-	vmStat, err := mem.VirtualMemory()
-	if err != nil {
-		return 0, fmt.Errorf("error getting virtual memory info: %w", err)
+	if InContainer {
+		// 读取内存限制
+		data, err := os.ReadFile("/sys/fs/cgroup/memory.max")
+		if err != nil {
+			return 0, err
+		}
+		valueStr := strings.TrimSpace(string(data))
+		if valueStr == "max" {
+			// 没有内存限制
+			vmStat, err := mem.VirtualMemory()
+			if err != nil {
+				return 0, fmt.Errorf("error getting virtual memory info: %w", err)
+			}
+			return vmStat.UsedPercent, nil
+		} else {
+			// 存在内存限制
+			// 读取当前内存使用量
+			memCurrent, err := ReadContainUintFromFile("/sys/fs/cgroup/memory.current")
+			if err != nil {
+				return 0, err
+			}
+			// 读取内存限制
+			memMax, err := ReadContainUintFromFile("/sys/fs/cgroup/memory.max")
+			if err != nil {
+				return 0, err
+			}
+			return float64(memCurrent) / float64(memMax) * 100, nil
+		}
+
+	} else {
+		vmStat, err := mem.VirtualMemory()
+		if err != nil {
+			return 0, fmt.Errorf("error getting virtual memory info: %w", err)
+		}
+		return vmStat.UsedPercent, nil
 	}
-	return vmStat.UsedPercent, nil
 }
 
 func NetStatus() (float64, float64, error) {
-	// 获取初始的网络统计信息
-	initialCounters, err := net.IOCounters(true)
-	if err != nil {
-		return 0, 0, fmt.Errorf("error getting initial network counters: %v", err)
-	}
-
-	// 记录初始时间
-	initialTime := time.Now()
-
-	// 等待0.5秒
-	time.Sleep(500 * time.Millisecond)
-
-	// 获取新的网络统计信息
-	newCounters, err := net.IOCounters(true)
-	if err != nil {
-		return 0, 0, fmt.Errorf("error getting new network counters: %v", err)
-	}
-
-	// 记录新时间
-	newTime := time.Now()
-
-	// 计算时间差（秒）
-	timeDiff := newTime.Sub(initialTime).Seconds()
-
-	// 计算所有接口的总数据
-	var (
-		totalSentBytes float64
-		totalRecvBytes float64
-	)
-	for i, counter := range newCounters {
-		if i < len(initialCounters) {
-			sentBytes := float64(counter.BytesSent - initialCounters[i].BytesSent)
-			recvBytes := float64(counter.BytesRecv - initialCounters[i].BytesRecv)
-			totalSentBytes += sentBytes
-			totalRecvBytes += recvBytes
+	if InContainer {
+		const samplingInterval = 500 * time.Millisecond // 0.5秒
+		const interfaceName = "eth0"
+		// 第一次采样
+		rx1, err := ReadContainUintFromFile(fmt.Sprintf("/sys/class/net/%s/statistics/rx_bytes", interfaceName))
+		if err != nil {
+			return 0, 0, err
 		}
+		tx1, err := ReadContainUintFromFile(fmt.Sprintf("/sys/class/net/%s/statistics/tx_bytes", interfaceName))
+		if err != nil {
+			return 0, 0, err
+		}
+		// 等待 0.1 秒
+		time.Sleep(samplingInterval)
+		// 第二次采样
+		rx2, err := ReadContainUintFromFile(fmt.Sprintf("/sys/class/net/%s/statistics/rx_bytes", interfaceName))
+		if err != nil {
+			return 0, 0, err
+		}
+		tx2, err := ReadContainUintFromFile(fmt.Sprintf("/sys/class/net/%s/statistics/tx_bytes", interfaceName))
+		if err != nil {
+			return 0, 0, err
+		}
+		// 计算流量速率 (KB/s)
+		intervalSeconds := samplingInterval.Seconds()
+		rxRate := float64(rx2-rx1) / 1024 / intervalSeconds
+		txRate := float64(tx2-tx1) / 1024 / intervalSeconds
+
+		return txRate, rxRate, nil
+	} else {
+		// 获取初始的网络统计信息
+		initialCounters, err := net.IOCounters(true)
+		if err != nil {
+			return 0, 0, fmt.Errorf("error getting initial network counters: %v", err)
+		}
+
+		// 记录初始时间
+		initialTime := time.Now()
+
+		// 等待0.5秒
+		time.Sleep(500 * time.Millisecond)
+
+		// 获取新的网络统计信息
+		newCounters, err := net.IOCounters(true)
+		if err != nil {
+			return 0, 0, fmt.Errorf("error getting new network counters: %v", err)
+		}
+
+		// 记录新时间
+		newTime := time.Now()
+
+		// 计算时间差（秒）
+		timeDiff := newTime.Sub(initialTime).Seconds()
+
+		// 计算所有接口的总数据
+		var (
+			totalSentBytes float64
+			totalRecvBytes float64
+		)
+		for i, counter := range newCounters {
+			if i < len(initialCounters) {
+				sentBytes := float64(counter.BytesSent - initialCounters[i].BytesSent)
+				recvBytes := float64(counter.BytesRecv - initialCounters[i].BytesRecv)
+				totalSentBytes += sentBytes
+				totalRecvBytes += recvBytes
+			}
+		}
+
+		// 计算总数据速率（KB/s）
+		totalSentKB := totalSentBytes / 1024.0
+		totalUplinkKBps := totalSentKB / timeDiff
+		totalRecvKB := totalRecvBytes / 1024.0
+		totalDownlinkKBps := totalRecvKB / timeDiff
+
+		return totalUplinkKBps, totalDownlinkKBps, nil
 	}
-
-	// 计算总数据速率（KB/s）
-	totalSentKB := totalSentBytes / 1024.0
-	totalUplinkKBps := totalSentKB / timeDiff
-	totalRecvKB := totalRecvBytes / 1024.0
-	totalDownlinkKBps := totalRecvKB / timeDiff
-
-	return totalUplinkKBps, totalDownlinkKBps, nil
 }
 
 func DiskUsage() (float64, error) {
