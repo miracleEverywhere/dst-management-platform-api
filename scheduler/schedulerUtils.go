@@ -271,6 +271,14 @@ func doUpdate(config utils.Config) error {
 	return nil
 }
 
+func doStart(cluster utils.Cluster) {
+	_ = utils.StartClusterAllWorlds(cluster)
+}
+
+func doStop(cluster utils.Cluster) {
+	_ = utils.StartClusterAllWorlds(cluster)
+}
+
 func doRestart(cluster utils.Cluster) {
 	_ = utils.StopClusterAllWorlds(cluster)
 	time.Sleep(3 * time.Second)
