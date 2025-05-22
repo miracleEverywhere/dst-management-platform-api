@@ -15,6 +15,7 @@ type User struct {
 	ClusterPermission         []string `json:"clusterPermission"`
 	AnnounceID                int      `json:"announceID"`
 	ClusterCreationProhibited bool     `json:"clusterCreationProhibited"`
+	MaxWorldsPerCluster       int      `json:"maxWorldsPerCluster"`
 }
 
 type ClusterSetting struct {

@@ -63,20 +63,15 @@ func handleLogin(c *gin.Context) {
 
 func handleUserinfo(c *gin.Context) {
 	username, _ := c.Get("username")
-	config, err := utils.ReadConfig()
-	if err != nil {
-		utils.Logger.Error("读取配置文件失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
-		return
-	}
 
-	for _, user := range config.Users {
+	for _, user := range utils.UserCache {
 		if user.Username == username {
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 				"username":                  username,
 				"nickname":                  user.Nickname,
 				"role":                      user.Role,
 				"clusterCreationProhibited": user.ClusterCreationProhibited,
+				"maxWorldsPerCluster":       user.MaxWorldsPerCluster,
 			}})
 			return
 		}
@@ -619,6 +614,7 @@ func handleUserListGet(c *gin.Context) {
 		Role                      string   `json:"role"`
 		ClusterPermission         []string `json:"clusterPermission"`
 		ClusterCreationProhibited bool     `json:"clusterCreationProhibited"`
+		MaxWorldsPerCluster       int      `json:"maxWorldsPerCluster"`
 	}
 
 	var userResponse []UserResponse
@@ -631,6 +627,7 @@ func handleUserListGet(c *gin.Context) {
 			Role:                      i.Role,
 			ClusterPermission:         i.ClusterPermission,
 			ClusterCreationProhibited: i.ClusterCreationProhibited,
+			MaxWorldsPerCluster:       i.MaxWorldsPerCluster,
 		}
 		userResponse = append(userResponse, user)
 	}
@@ -719,6 +716,7 @@ func handleUserUpdatePut(c *gin.Context) {
 				ClusterPermission:         user.ClusterPermission,
 				AnnounceID:                i.AnnounceID,
 				ClusterCreationProhibited: user.ClusterCreationProhibited,
+				MaxWorldsPerCluster:       user.MaxWorldsPerCluster,
 			}
 			config.Users[index] = newUser
 			utils.UserCache[user.Username] = config.Users[index]
