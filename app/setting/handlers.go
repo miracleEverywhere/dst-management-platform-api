@@ -1981,10 +1981,14 @@ func handleSystemSettingPut(c *gin.Context) {
 	}
 
 	var (
-		bit64Changed bool
+		bit64Changed    bool
+		tickRateChanged bool
 	)
 	if cluster.SysSetting.Bit64 != reqForm.Settings.SysSetting.Bit64 {
 		bit64Changed = true
+	}
+	if cluster.SysSetting.TickRate != reqForm.Settings.SysSetting.TickRate {
+		tickRateChanged = true
 	}
 
 	cluster.SysSetting = reqForm.Settings.SysSetting
@@ -1997,10 +2001,12 @@ func handleSystemSettingPut(c *gin.Context) {
 		}
 	}
 
-	if cluster.Worlds != nil {
-		err = SaveSetting(cluster)
-		if err != nil {
-			utils.Logger.Error("设置Tick Rate失败", "err", err)
+	if tickRateChanged {
+		if cluster.Worlds != nil {
+			err = SaveSetting(cluster)
+			if err != nil {
+				utils.Logger.Error("设置Tick Rate失败", "err", err)
+			}
 		}
 	}
 
