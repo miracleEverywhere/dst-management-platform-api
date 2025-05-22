@@ -76,6 +76,12 @@ type AutoRestart struct {
 	Time   string `json:"time"`
 }
 
+type ScheduledStartStop struct {
+	Enable    bool   `json:"enable"`
+	StartTime string `json:"startTime"`
+	StopTime  string `json:"stopTime"`
+}
+
 type Players struct {
 	UID      string `json:"uid"`
 	NickName string `json:"nickName"`
@@ -117,12 +123,13 @@ type SchedulerSetting struct {
 }
 
 type SysSetting struct {
-	AutoRestart  AutoRestart    `json:"autoRestart"`
-	AutoAnnounce []AutoAnnounce `json:"autoAnnounce"`
-	AutoBackup   AutoBackup     `json:"autoBackup"`
-	Keepalive    Keepalive      `json:"keepalive"`
-	Bit64        bool           `json:"bit64"`
-	TickRate     int            `json:"tickRate"`
+	AutoRestart        AutoRestart        `json:"autoRestart"`
+	AutoAnnounce       []AutoAnnounce     `json:"autoAnnounce"`
+	AutoBackup         AutoBackup         `json:"autoBackup"`
+	Keepalive          Keepalive          `json:"keepalive"`
+	ScheduledStartStop ScheduledStartStop `json:"scheduledStartStop"`
+	Bit64              bool               `json:"bit64"`
+	TickRate           int                `json:"tickRate"`
 }
 
 type Config struct {
