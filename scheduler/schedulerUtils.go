@@ -51,7 +51,7 @@ func getPlayers(config utils.Config) {
 		}
 
 		if err != nil {
-			utils.Logger.Warn("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
+			//utils.Logger.Warn("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
 			continue
 		}
 		if !playersGot {
@@ -348,12 +348,11 @@ func doKeepalive(cluster utils.Cluster) {
 				_ = world.StopGame()
 				time.Sleep(3 * time.Second)
 				_ = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
-				break
 			} else {
 				config, err := utils.ReadConfig()
 				if err != nil {
 					utils.Logger.Error("配置文件读取失败", "err", err)
-					return
+					continue
 				}
 
 				for clusterIndex, willWriteCluster := range config.Clusters {
