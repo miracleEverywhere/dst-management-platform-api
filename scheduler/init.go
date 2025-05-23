@@ -40,6 +40,7 @@ func InitTasks() {
 		utils.Logger.Info("自动更新定时任务已配置")
 	}
 
+	// 玩家更新模组
 	if !config.SchedulerSetting.PlayerUpdateMod.Disable {
 		for _, cluster := range config.Clusters {
 			_, _ = Scheduler.Every(config.SchedulerSetting.PlayerUpdateMod.Frequency).Minute().Do(modUpdate, cluster, false)
@@ -80,8 +81,8 @@ func InitTasks() {
 
 		// 定时开启关闭服务器
 		if cluster.SysSetting.ScheduledStartStop.Enable {
-			_, _ = Scheduler.Every(cluster.SysSetting.ScheduledStartStop.StartTime).Minute().Do(doStart, cluster)
-			_, _ = Scheduler.Every(cluster.SysSetting.ScheduledStartStop.StopTime).Minute().Do(doStop, cluster)
+			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StartTime).Do(doStart, cluster)
+			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StopTime).Do(doStop, cluster)
 			utils.Logger.Info(fmt.Sprintf("[%s]定时开启关闭服务器已配置", cluster.ClusterSetting.ClusterName))
 		}
 	}

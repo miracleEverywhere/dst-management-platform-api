@@ -276,7 +276,7 @@ func doStart(cluster utils.Cluster) {
 }
 
 func doStop(cluster utils.Cluster) {
-	_ = utils.StartClusterAllWorlds(cluster)
+	_ = utils.StopClusterAllWorlds(cluster)
 }
 
 func doRestart(cluster utils.Cluster) {
@@ -345,7 +345,7 @@ func doKeepalive(cluster utils.Cluster) {
 
 			if world.LastAliveTime == lastAliveTime {
 				utils.Logger.Info("发现服务器运行异常，执行重启任务", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
-				_ = world.StopGame(cluster.ClusterSetting.ClusterName)
+				_ = world.StopGame()
 				time.Sleep(3 * time.Second)
 				_ = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
 				break
