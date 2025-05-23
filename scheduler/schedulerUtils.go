@@ -12,18 +12,14 @@ import (
 )
 
 func getPlayers(config utils.Config) {
-	var (
-		players    []string
-		playerList []utils.Players
-		err        error
-		hasMaster  bool
-		playersGot bool
-	)
-
 	for _, cluster := range config.Clusters {
-		err = nil
-		hasMaster = false
-		playersGot = false
+		var (
+			players    []string
+			playerList []utils.Players
+			err        error
+			hasMaster  bool
+			playersGot bool
+		)
 		for _, world := range cluster.Worlds {
 			// 优先获取master的列表，没有的话获取第一个
 			if world.IsMaster {
