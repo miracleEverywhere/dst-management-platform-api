@@ -723,7 +723,7 @@ func BackupGame(cluster Cluster) error {
 	return nil
 }
 
-func (world World) StopGame(clusterName string) error {
+func (world World) StopGame() error {
 	var err error
 	if world.GetStatus() {
 		err = ScreenCMD("c_shutdown()", world.ScreenName)
@@ -747,7 +747,7 @@ func (world World) StopGame(clusterName string) error {
 func StopClusterAllWorlds(cluster Cluster) error {
 	var err error
 	for _, world := range cluster.Worlds {
-		err = world.StopGame(cluster.ClusterSetting.ClusterName)
+		err = world.StopGame()
 		if err != nil {
 			Logger.Error("关闭游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
 		}

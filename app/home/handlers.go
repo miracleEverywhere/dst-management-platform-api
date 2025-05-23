@@ -224,7 +224,7 @@ func handleExecPost(c *gin.Context) {
 			return
 		}
 		if world.GetStatus() {
-			_ = world.StopGame(reqForm.ClusterName)
+			_ = world.StopGame()
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
 			return
 		} else {
