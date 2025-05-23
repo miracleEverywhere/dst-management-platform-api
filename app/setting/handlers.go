@@ -330,6 +330,9 @@ func handleClusterDelete(c *gin.Context) {
 		utils.Logger.Warn("删除mod缓存失败", "err", err, "cmd", cmd)
 	}
 
+	// 删除统计信息缓存
+	delete(utils.STATISTICS, cluster.ClusterSetting.ClusterName)
+
 	// 更新数据库
 	err = utils.WriteConfig(config)
 	if err != nil {
