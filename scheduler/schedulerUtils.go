@@ -12,18 +12,14 @@ import (
 )
 
 func getPlayers(config utils.Config) {
-	var (
-		players    []string
-		playerList []utils.Players
-		err        error
-		hasMaster  bool
-		playersGot bool
-	)
-
 	for _, cluster := range config.Clusters {
-		err = nil
-		hasMaster = false
-		playersGot = false
+		var (
+			players    []string
+			playerList []utils.Players
+			err        error
+			hasMaster  bool
+			playersGot bool
+		)
 		for _, world := range cluster.Worlds {
 			// 优先获取master的列表，没有的话获取第一个
 			if world.IsMaster {
@@ -51,11 +47,11 @@ func getPlayers(config utils.Config) {
 		}
 
 		if err != nil {
-			utils.Logger.Warn("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
+			//utils.Logger.Warn("获取玩家列表失败", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
 			continue
 		}
 		if !playersGot {
-			utils.Logger.Warn("没有发现正常运行的世界", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
+			//utils.Logger.Warn("没有发现正常运行的世界", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
 			continue
 		}
 
@@ -203,6 +199,7 @@ func updateTimeFix(timeStr string) string {
 }
 
 func checkUpdate(config utils.Config) {
+	utils.Logger.Info("触发自动更新定时任务，正在运行中")
 	dstVersion, err := externalApi.GetDSTVersion()
 	if err != nil {
 		utils.Logger.Error("获取饥荒版本失败，跳过自动更新", "err", err)
@@ -271,13 +268,32 @@ func doUpdate(config utils.Config) error {
 	return nil
 }
 
+func doStart(cluster utils.Cluster) {
+	utils.Logger.Info("触发定时启动任务，正在运行中")
+	_ = utils.StartClusterAllWorlds(cluster)
+}
+
+func doStop(cluster utils.Cluster) {
+	utils.Logger.Info("触发定时关闭任务，正在运行中")
+	_ = utils.StopClusterAllWorlds(cluster)
+}
+
 func doRestart(cluster utils.Cluster) {
+	for _, world := range cluster.Worlds {
+		if world.GetStatus() {
+			restartAnnounce(world)
+			break
+		}
+	}
+
+	utils.Logger.Info("触发自动重启定时任务，正在运行中")
 	_ = utils.StopClusterAllWorlds(cluster)
 	time.Sleep(3 * time.Second)
 	_ = utils.StartClusterAllWorlds(cluster)
 }
 
 func doBackup(cluster utils.Cluster) {
+	utils.Logger.Info("触发自动备份定时任务，正在运行中")
 	err := utils.BackupGame(cluster)
 	if err != nil {
 		utils.Logger.Error("游戏备份失败", "err", err)
@@ -325,7 +341,18 @@ func getWorldLastTime(logfile string) (string, error) {
 	return "", fmt.Errorf("没有找到日志时间戳")
 }
 
-func doKeepalive(cluster utils.Cluster) {
+func doKeepalive(clusterName string) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
+	cluster, err := config.GetClusterWithName(clusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群信息失败", "err", err)
+		return
+	}
+
 	for _, world := range cluster.Worlds {
 		if world.LevelData != "" {
 			_ = utils.BashCMD(world.GeneratePlayersListCMD())
@@ -333,19 +360,19 @@ func doKeepalive(cluster utils.Cluster) {
 			lastAliveTime, err := getWorldLastTime(world.GetServerLogFile(cluster.ClusterSetting.ClusterName))
 			if err != nil {
 				utils.Logger.Error("获取日志信息失败", "err", err)
+				continue
 			}
 
 			if world.LastAliveTime == lastAliveTime {
 				utils.Logger.Info("发现服务器运行异常，执行重启任务", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
-				_ = world.StopGame(cluster.ClusterSetting.ClusterName)
+				_ = world.StopGame()
 				time.Sleep(3 * time.Second)
 				_ = world.StartGame(cluster.ClusterSetting.ClusterName, cluster.Mod, cluster.SysSetting.Bit64)
-				break
 			} else {
 				config, err := utils.ReadConfig()
 				if err != nil {
 					utils.Logger.Error("配置文件读取失败", "err", err)
-					return
+					continue
 				}
 
 				for clusterIndex, willWriteCluster := range config.Clusters {
@@ -492,8 +519,7 @@ func modUpdate(cluster utils.Cluster, check bool) {
 }
 
 func ReloadScheduler() {
-	Scheduler.Stop()
+	utils.Logger.Info("重新载入定时任务")
 	Scheduler.Clear()
 	InitTasks()
-	go Scheduler.StartAsync()
 }

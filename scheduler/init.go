@@ -40,6 +40,7 @@ func InitTasks() {
 		utils.Logger.Info("自动更新定时任务已配置")
 	}
 
+	// 玩家更新模组
 	if !config.SchedulerSetting.PlayerUpdateMod.Disable {
 		for _, cluster := range config.Clusters {
 			_, _ = Scheduler.Every(config.SchedulerSetting.PlayerUpdateMod.Frequency).Minute().Do(modUpdate, cluster, false)
@@ -49,39 +50,40 @@ func InitTasks() {
 	}
 
 	/* ** ========== SysSetting 影响集群 ========== ** */
-	// 定时通知
 	for _, cluster := range config.Clusters {
+		// 定时通知
 		for _, announce := range cluster.SysSetting.AutoAnnounce {
 			if announce.Enable {
 				_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(doAnnounce, announce.Content, cluster)
-				utils.Logger.Info(fmt.Sprintf("[%s]-[%s]定时通知定时任务已配置", cluster.ClusterSetting.ClusterName, announce.Name))
+				utils.Logger.Info(fmt.Sprintf("[%s(%s)]-[%s]定时通知定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName, announce.Name))
 			}
 		}
-	}
 
-	// 自动重启
-	for _, cluster := range config.Clusters {
+		// 自动重启
 		if cluster.SysSetting.AutoRestart.Enable {
 			if cluster.SysSetting.AutoRestart.Enable {
 				_, _ = Scheduler.Every(1).Day().At(updateTimeFix(cluster.SysSetting.AutoRestart.Time)).Do(doRestart, cluster)
-				utils.Logger.Info(fmt.Sprintf("[%s]自动重启定时任务已配置", cluster.ClusterSetting.ClusterName))
+				utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动重启定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 			}
 		}
-	}
 
-	// 自动备份
-	for _, cluster := range config.Clusters {
+		// 自动备份
 		if cluster.SysSetting.AutoBackup.Enable {
 			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.AutoBackup.Time).Do(doBackup, cluster)
-			utils.Logger.Info(fmt.Sprintf("[%s]自动备份定时任务已配置", cluster.ClusterSetting.ClusterName))
+			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动备份定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 		}
 
-	}
-
-	// 自动保活
-	for _, cluster := range config.Clusters {
+		// 自动保活
 		if cluster.SysSetting.Keepalive.Enable {
-			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster)
+			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster.ClusterSetting.ClusterName)
+			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动保活定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
+		}
+
+		// 定时开启关闭服务器
+		if cluster.SysSetting.ScheduledStartStop.Enable {
+			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StartTime).Do(doStart, cluster)
+			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StopTime).Do(doStop, cluster)
+			utils.Logger.Info(fmt.Sprintf("[%s(%s)]定时开启关闭服务器已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 		}
 	}
 }

@@ -35,6 +35,7 @@ RUN mkdir /root/.klei
 # 环境变量
 # - 平台暴露端口，默认为80
 ENV DMP_PORT=${DMP_PORT:-80}
+ENV DMP_IN_CONTAINER=1
 
 # web端口
 EXPOSE 80/tcp

@@ -8,4 +8,5 @@ var (
 	SYSMETRICS          []SysMetrics                    // 系统监控
 	UserCache           = make(map[string]User)
 	UpdateModProcessing bool // 确定更新后会sleep一段时间，该值为true
+	InContainer         bool
 )

@@ -72,6 +72,36 @@ func handleClustersGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
+func handleAllClustersGet(c *gin.Context) {
+	type ClusterItem struct {
+		ClusterName        string   `json:"clusterName"`
+		ClusterDisplayName string   `json:"clusterDisplayName"`
+		Worlds             []string `json:"worlds"`
+	}
+	var data []ClusterItem
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for _, cluster := range config.Clusters {
+		var worlds []string
+		for _, world := range cluster.Worlds {
+			worlds = append(worlds, world.Name)
+		}
+		data = append(data, ClusterItem{
+			ClusterName:        cluster.ClusterSetting.ClusterName,
+			ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
+			Worlds:             worlds,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
 func handleClustersWorldPortGet(c *gin.Context) {
 	type ResponseCluster struct {
 		ClusterName        string `json:"clusterName"`
@@ -299,6 +329,9 @@ func handleClusterDelete(c *gin.Context) {
 	if err != nil {
 		utils.Logger.Warn("删除mod缓存失败", "err", err, "cmd", cmd)
 	}
+
+	// 删除统计信息缓存
+	delete(utils.STATISTICS, cluster.ClusterSetting.ClusterName)
 
 	// 更新数据库
 	err = utils.WriteConfig(config)
@@ -1981,10 +2014,14 @@ func handleSystemSettingPut(c *gin.Context) {
 	}
 
 	var (
-		bit64Changed bool
+		bit64Changed    bool
+		tickRateChanged bool
 	)
 	if cluster.SysSetting.Bit64 != reqForm.Settings.SysSetting.Bit64 {
 		bit64Changed = true
+	}
+	if cluster.SysSetting.TickRate != reqForm.Settings.SysSetting.TickRate {
+		tickRateChanged = true
 	}
 
 	cluster.SysSetting = reqForm.Settings.SysSetting
@@ -1997,10 +2034,12 @@ func handleSystemSettingPut(c *gin.Context) {
 		}
 	}
 
-	if cluster.Worlds != nil {
-		err = SaveSetting(cluster)
-		if err != nil {
-			utils.Logger.Error("设置Tick Rate失败", "err", err)
+	if tickRateChanged {
+		if cluster.Worlds != nil {
+			err = SaveSetting(cluster)
+			if err != nil {
+				utils.Logger.Error("设置Tick Rate失败", "err", err)
+			}
 		}
 	}
 
