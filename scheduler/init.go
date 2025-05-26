@@ -55,7 +55,7 @@ func InitTasks() {
 		for _, announce := range cluster.SysSetting.AutoAnnounce {
 			if announce.Enable {
 				_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(doAnnounce, announce.Content, cluster)
-				utils.Logger.Info(fmt.Sprintf("[%s]-[%s]定时通知定时任务已配置", cluster.ClusterSetting.ClusterName, announce.Name))
+				utils.Logger.Info(fmt.Sprintf("[%s(%s)]-[%s]定时通知定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName, announce.Name))
 			}
 		}
 
@@ -63,27 +63,27 @@ func InitTasks() {
 		if cluster.SysSetting.AutoRestart.Enable {
 			if cluster.SysSetting.AutoRestart.Enable {
 				_, _ = Scheduler.Every(1).Day().At(updateTimeFix(cluster.SysSetting.AutoRestart.Time)).Do(doRestart, cluster)
-				utils.Logger.Info(fmt.Sprintf("[%s]自动重启定时任务已配置", cluster.ClusterSetting.ClusterName))
+				utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动重启定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 			}
 		}
 
 		// 自动备份
 		if cluster.SysSetting.AutoBackup.Enable {
 			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.AutoBackup.Time).Do(doBackup, cluster)
-			utils.Logger.Info(fmt.Sprintf("[%s]自动备份定时任务已配置", cluster.ClusterSetting.ClusterName))
+			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动备份定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 		}
 
 		// 自动保活
 		if cluster.SysSetting.Keepalive.Enable {
 			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster)
-			utils.Logger.Info(fmt.Sprintf("[%s]自动保活定时任务已配置", cluster.ClusterSetting.ClusterName))
+			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动保活定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 		}
 
 		// 定时开启关闭服务器
 		if cluster.SysSetting.ScheduledStartStop.Enable {
 			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StartTime).Do(doStart, cluster)
 			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StopTime).Do(doStop, cluster)
-			utils.Logger.Info(fmt.Sprintf("[%s]定时开启关闭服务器已配置", cluster.ClusterSetting.ClusterName))
+			utils.Logger.Info(fmt.Sprintf("[%s(%s)]定时开启关闭服务器已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 		}
 	}
 }

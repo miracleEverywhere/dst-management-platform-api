@@ -21,9 +21,6 @@ import (
 var EmbedFS embed.FS
 
 func main() {
-	// 一些启动前检查
-	initialize()
-
 	if !utils.ConsoleOutput {
 		gin.DefaultWriter = io.Discard
 	}
@@ -31,6 +28,7 @@ func main() {
 		fmt.Println(utils.VERSION + "\n" + runtime.Version())
 		return
 	}
+
 	r := gin.Default()
 	// 全局中间件，获取语言
 	r.Use(utils.MWlang())
@@ -57,7 +55,7 @@ func main() {
 	}
 }
 
-func initialize() {
+func init() {
 	// 绑定flag
 	utils.BindFlags()
 	// 数据库检查
@@ -74,5 +72,4 @@ func initialize() {
 	scheduler.InitTasks()
 	// 启动定时任务调度器
 	go scheduler.Scheduler.StartAsync()
-	utils.Logger.Info("定时任务已启动")
 }

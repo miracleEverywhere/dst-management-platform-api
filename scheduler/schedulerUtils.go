@@ -199,6 +199,7 @@ func updateTimeFix(timeStr string) string {
 }
 
 func checkUpdate(config utils.Config) {
+	utils.Logger.Info("触发自动更新定时任务，正在运行中")
 	dstVersion, err := externalApi.GetDSTVersion()
 	if err != nil {
 		utils.Logger.Error("获取饥荒版本失败，跳过自动更新", "err", err)
@@ -268,20 +269,24 @@ func doUpdate(config utils.Config) error {
 }
 
 func doStart(cluster utils.Cluster) {
+	utils.Logger.Info("触发定时启动任务，正在运行中")
 	_ = utils.StartClusterAllWorlds(cluster)
 }
 
 func doStop(cluster utils.Cluster) {
+	utils.Logger.Info("触发定时关闭任务，正在运行中")
 	_ = utils.StopClusterAllWorlds(cluster)
 }
 
 func doRestart(cluster utils.Cluster) {
+	utils.Logger.Info("触发自动重启定时任务，正在运行中")
 	_ = utils.StopClusterAllWorlds(cluster)
 	time.Sleep(3 * time.Second)
 	_ = utils.StartClusterAllWorlds(cluster)
 }
 
 func doBackup(cluster utils.Cluster) {
+	utils.Logger.Info("触发自动备份定时任务，正在运行中")
 	err := utils.BackupGame(cluster)
 	if err != nil {
 		utils.Logger.Error("游戏备份失败", "err", err)
