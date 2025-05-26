@@ -75,7 +75,7 @@ func InitTasks() {
 
 		// 自动保活
 		if cluster.SysSetting.Keepalive.Enable {
-			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster)
+			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster.ClusterSetting.ClusterName)
 			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动保活定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 		}
 

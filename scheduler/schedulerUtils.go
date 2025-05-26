@@ -51,7 +51,7 @@ func getPlayers(config utils.Config) {
 			continue
 		}
 		if !playersGot {
-			utils.Logger.Warn("没有发现正常运行的世界", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
+			//utils.Logger.Warn("没有发现正常运行的世界", "err", err, "cluster", cluster.ClusterSetting.ClusterName)
 			continue
 		}
 
@@ -279,6 +279,13 @@ func doStop(cluster utils.Cluster) {
 }
 
 func doRestart(cluster utils.Cluster) {
+	for _, world := range cluster.Worlds {
+		if world.GetStatus() {
+			restartAnnounce(world)
+			break
+		}
+	}
+
 	utils.Logger.Info("触发自动重启定时任务，正在运行中")
 	_ = utils.StopClusterAllWorlds(cluster)
 	time.Sleep(3 * time.Second)
@@ -334,7 +341,18 @@ func getWorldLastTime(logfile string) (string, error) {
 	return "", fmt.Errorf("没有找到日志时间戳")
 }
 
-func doKeepalive(cluster utils.Cluster) {
+func doKeepalive(clusterName string) {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
+	cluster, err := config.GetClusterWithName(clusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群信息失败", "err", err)
+		return
+	}
+
 	for _, world := range cluster.Worlds {
 		if world.LevelData != "" {
 			_ = utils.BashCMD(world.GeneratePlayersListCMD())
@@ -342,6 +360,7 @@ func doKeepalive(cluster utils.Cluster) {
 			lastAliveTime, err := getWorldLastTime(world.GetServerLogFile(cluster.ClusterSetting.ClusterName))
 			if err != nil {
 				utils.Logger.Error("获取日志信息失败", "err", err)
+				continue
 			}
 
 			if world.LastAliveTime == lastAliveTime {
@@ -500,8 +519,7 @@ func modUpdate(cluster utils.Cluster, check bool) {
 }
 
 func ReloadScheduler() {
-	Scheduler.Stop()
+	utils.Logger.Info("重新载入定时任务")
 	Scheduler.Clear()
 	InitTasks()
-	go Scheduler.StartAsync()
 }
