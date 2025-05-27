@@ -1,6 +1,6 @@
 package utils
 
-const VERSION string = "2.0.2"
+const VERSION string = "2.0.3"
 
 const DstPath = ".klei/DoNotStarveTogether"
 
