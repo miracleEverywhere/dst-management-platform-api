@@ -308,7 +308,7 @@ func handleClusterPut(c *gin.Context) {
 		}
 	}
 
-	utils.RespondWithError(c, 404, "zh")
+	utils.RespondWithError(c, 404, langStr)
 }
 
 func handleClusterDelete(c *gin.Context) {
