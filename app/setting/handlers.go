@@ -1283,7 +1283,7 @@ func handleModSettingFormatGet(c *gin.Context) {
 
 	var responseData []utils.ModFormattedData
 	complicatedMod := []int{
-		1438233888,
+		1438233888, 3365509895,
 	}
 	for _, i := range utils.ModOverridesToStruct(luaScript) {
 		if utils.Contains(complicatedMod, i.ID) {
