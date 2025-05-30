@@ -263,6 +263,54 @@ func handleClusterPost(c *gin.Context) {
 	})
 }
 
+func handleClusterPut(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type ReqForm struct {
+		ClusterName        string `json:"clusterName"`
+		ClusterDisplayName string `json:"clusterDisplayName"`
+	}
+	var reqFrom ReqForm
+	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for index, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == reqFrom.ClusterName {
+			cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
+			config.Clusters[index] = cluster
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("写入配置文件失败", "err", err)
+				utils.RespondWithError(c, 500, "zh")
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response("configUpdateSuccess", langStr),
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	utils.RespondWithError(c, 404, "zh")
+}
+
 func handleClusterDelete(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
