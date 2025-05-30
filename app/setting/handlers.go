@@ -1608,6 +1608,7 @@ func handleEnableModPost(c *gin.Context) {
 		if utils.Platform != "darwin" {
 			for _, world := range cluster.Worlds {
 				dstModPath := world.GetDstModPath(cluster.ClusterSetting.ClusterName)
+				_ = utils.EnsureDirExists(dstModPath)
 				err = utils.RemoveDir(dstModPath + "/" + strconv.Itoa(enableForm.ID))
 				if err != nil {
 					utils.Logger.Warn("删除旧MOD文件失败", "err", err)
@@ -1624,9 +1625,10 @@ func handleEnableModPost(c *gin.Context) {
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
 		// MacOS 不执行复制
 		if utils.Platform != "darwin" {
+			_ = utils.EnsureDirExists(cluster.GetModNoUgcPath())
 			err = utils.RemoveDir(cluster.GetModNoUgcPath() + "/workshop-" + strconv.Itoa(enableForm.ID))
 			if err != nil {
-				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+				utils.Logger.Warn("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
 			}
 			cmd := fmt.Sprintf("cp -rf %s %s/workshop-%d", modDirPath, cluster.GetModNoUgcPath(), enableForm.ID)
 			err = utils.BashCMD(cmd)
