@@ -353,7 +353,7 @@ func handleClusterDelete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": response("createSuccess", langStr),
+		"message": response("deleteSuccess", langStr),
 		"data":    nil,
 	})
 }
