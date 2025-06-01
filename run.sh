@@ -30,6 +30,7 @@ fi
 
 # 定义一个函数来提示用户输入
 function prompt_user() {
+    clear
     echo -e "\e[32m饥荒管理平台(DMP) \e[0m"
     echo -e "\e[32m--- https://github.com/miracleEverywhere/dst-management-platform-api --- \e[0m"
     echo -e "\e[33m———————————————————————————————————————————————————————————— \e[0m"
@@ -99,7 +100,7 @@ function check_glibc() {
     echo -e "\e[36m正在检查GLIBC版本(Checking GLIBC version) \e[0m"
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
-        if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34; then
+        if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34 >/dev/null 2>&1; then
             apt update
             apt install -y libc6
         fi
