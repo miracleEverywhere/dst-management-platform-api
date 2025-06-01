@@ -207,6 +207,7 @@ function get_latest_version() {
 
 # 更新启动脚本
 update_script() {
+    check_curl
     echo -e "\e[36m正在更新脚本... \e[0m"
     TEMP_FILE="/tmp/run.sh"
     SCRIPT_GITHUB="https://github.acmsz.top/https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
