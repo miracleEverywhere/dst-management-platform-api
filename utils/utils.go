@@ -27,6 +27,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,6 +36,7 @@ var (
 	ConsoleOutput bool
 	VersionShow   bool
 	ConfDir       string
+	ConfigMutex   sync.Mutex
 )
 
 type Claims struct {

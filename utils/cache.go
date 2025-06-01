@@ -9,5 +9,4 @@ var (
 	UserCache           = make(map[string]User)
 	UpdateModProcessing bool // 确定更新后会sleep一段时间，该值为true
 	InContainer         bool
-	ConfigFileLock      bool
 )
