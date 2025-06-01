@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 type User struct {
@@ -171,6 +172,20 @@ func (config Config) Init() {
 }
 
 func ReadConfig() (Config, error) {
+	defer func() {
+		// 解锁
+		ConfigFileLock = false
+	}()
+	for ConfigFileLock {
+		// 锁等待
+		if !ConfigFileLock {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	// 加锁
+	ConfigFileLock = true
+
 	content, err := os.ReadFile(ConfDir + "/DstMP.sdb")
 	if err != nil {
 		return Config{}, err
@@ -201,6 +216,20 @@ func ReadBackupConfig(configPath string) (Config, error) {
 }
 
 func WriteConfig(config Config) error {
+	defer func() {
+		// 解锁
+		ConfigFileLock = false
+	}()
+	for ConfigFileLock {
+		// 锁等待
+		if !ConfigFileLock {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	// 加锁
+	ConfigFileLock = true
+
 	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
 	if err != nil {
 		return fmt.Errorf("Error marshalling JSON:" + err.Error())
