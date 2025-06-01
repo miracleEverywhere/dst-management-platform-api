@@ -13,6 +13,14 @@ CONFIG_DIR="./"
 
 # 虚拟内存大小，例如 1G 4G等
 SWAPSIZE=2G
+
+# 加速站点，最后一个加速站点为空代表从Github直接下载
+# 可在 https://github.akams.cn/ 自行添加，但要保证Github(空的那个)在最后一行，不然会出现错误
+GITHUB_PROXYS=(
+    "https://github.acmsz.top/" # 主加速站点
+    "https://ghproxy.cn/"       # 备用加速站点
+    ""                          # Github
+)
 # --------------- ↑可修改↑ --------------- #
 
 ###########################################
@@ -111,11 +119,11 @@ function check_glibc() {
 
 # 下载函数:下载链接,尝试次数,超时时间(s)
 function download() {
-    local download_url="$1"
-    local tries="$2"
+    local url="$1"
+    local output="$2"
     local timeout="$3"
 
-    wget -q --show-progress --tries="$tries" --timeout="$timeout" "$download_url"
+    curl -L --connect-timeout "${timeout}" --progress-bar -o "${output}" "${url}"
 
     return $? # 返回 wget 的退出状态
 }
@@ -126,25 +134,21 @@ function install_dmp() {
     check_curl
     # 原GitHub下载链接
     GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
-    # 加速站点，失效从 https://github.akams.cn/ 重新搜索。
-    PRIMARY_PROXY="https://github.acmsz.top/"   # 主加速站点
-    SECONDARY_PROXY="https://ghproxy.cn/" # 备用加速站点
-    # 尝试通过主加速站点下载 GitHub
-    echo -e "\e[36m尝试通过主加速站点下载 GitHub\e[0m"
-    if download "$PRIMARY_PROXY$GITHUB_URL" 5 10; then
-        echo -e "\e[32m通过主加速站点下载成功！\e[0m"
-    else
-        echo -e "\e[31m主加速站点下载失败: wget 返回码为 $?, 尝试备用加速站点下载 GitHub\e[0m"
 
-        # 尝试通过备用加速站点下载 GitHub
-        echo -e "\e[36m尝试通过备用加速站点下载 GitHub\e[0m"
-        if download "$SECONDARY_PROXY$GITHUB_URL" 5 10; then
-            echo -e "\e[32m通过备用加速站点下载成功！\e[0m"
+    for proxy in "${GITHUB_PROXYS[@]}"; do
+        local full_url="${proxy}${GITHUB_URL}"
+        if download "${full_url}" "dmp.tgz" 10; then
+            echo -e "\e[32m通过${proxy}加速站点下载成功\e[0m"
+            break
         else
-            echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?\e[0m"
-            exit 1
+            if [[ "${proxy}" == "" ]]; then
+                echo -e "\e[31m通过Github下载失败！请手动下载\e[0m"
+                exit 1
+            else
+                echo -e "\e[31m通过${proxy}加速站点下载失败！正在更换加速站点重试\e[0m"
+            fi
         fi
-    fi
+    done
 
     tar zxvf dmp.tgz
     rm -f dmp.tgz
@@ -211,17 +215,24 @@ update_script() {
     check_curl
     echo -e "\e[36m正在更新脚本... \e[0m"
     TEMP_FILE="/tmp/run.sh"
-    SCRIPT_GITHUB="https://github.acmsz.top/https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
+    SCRIPT_GITHUB="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
     # 读取旧脚本中的 PORT 值
     OLD_PORT=$(grep "^PORT=" "$0" | cut -d'=' -f2)
-    # 尝试从 GitHub 下载
-    if curl --connect-timeout 10 -sL "$SCRIPT_GITHUB" -o "$TEMP_FILE"; then
-        echo -e "\e[32m从 GitHub 下载成功！ \e[0m"
-    else
-        echo -e "\e[31m更新脚本失败：无法从GitHub下载脚本 \e[0m" >&2
-        echo -e "\e[31m请前往github.akams.cn手动下载，原地址为：${SCRIPT_GITHUB} \e[0m"
-        exit 1
-    fi
+
+    for proxy in "${GITHUB_PROXYS[@]}"; do
+        local full_url="${proxy}${SCRIPT_GITHUB}"
+        if download "${full_url}" "${TEMP_FILE}" 10; then
+            echo -e "\e[32m通过${proxy}加速站点下载成功\e[0m"
+            break
+        else
+            if [[ "${proxy}" == "" ]]; then
+                echo -e "\e[31m通过Github下载失败！请手动下载\e[0m"
+                exit 1
+            else
+                echo -e "\e[31m通过${proxy}加速站点下载失败！正在更换加速站点重试\e[0m"
+            fi
+        fi
+    done
 
     # 将旧 PORT 值写入新脚本
     sed -i "s/^PORT=.*/PORT=${OLD_PORT}/" "$TEMP_FILE"
