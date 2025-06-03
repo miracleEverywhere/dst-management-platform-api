@@ -11,7 +11,11 @@
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
-# 执行以下命令，下载脚本
+# 执行以下命令，下载脚本（使用加速节点）
+cd ~ && wget https://github.acmsz.top/https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
+```
+```shell
+# 执行以下命令，下载脚本（不使用加速节点）
 cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
 ```
 ```shell
@@ -148,3 +152,5 @@ cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/ra
 
 ##  :sparkling_heart: 致谢
 本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感谢开源 [@KoiKite](https://github.com/KoiKite)  
+
+感谢加速站点[github.akams.cn](https://github.akams.cn/)和[github.acmsz.top](https://github.acmsz.top/)

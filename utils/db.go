@@ -171,15 +171,16 @@ func (config Config) Init() {
 }
 
 func ReadConfig() (Config, error) {
+	ConfigMutex.Lock()
+	defer ConfigMutex.Unlock()
+
 	content, err := os.ReadFile(ConfDir + "/DstMP.sdb")
 	if err != nil {
 		return Config{}, err
 	}
 
-	jsonData := string(content)
 	var config Config
-	err = json.Unmarshal([]byte(jsonData), &config)
-	if err != nil {
+	if err := json.Unmarshal(content, &config); err != nil {
 		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
 	}
 	return config, nil
@@ -201,25 +202,33 @@ func ReadBackupConfig(configPath string) (Config, error) {
 }
 
 func WriteConfig(config Config) error {
+	ConfigMutex.Lock()
+	defer ConfigMutex.Unlock()
+
 	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
 	if err != nil {
-		return fmt.Errorf("Error marshalling JSON:" + err.Error())
+		return fmt.Errorf("序列化配置失败: %w", err)
 	}
 	file, err := os.OpenFile(ConfDir+"/DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return fmt.Errorf("Error opening file:" + err.Error())
+		return fmt.Errorf("打开文件失败: %w", err)
 	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
 			Logger.Error("关闭文件失败", "err", err)
 		}
-	}(file) // 在函数结束时关闭文件
-	// 写入 JSON 数据到文件
+	}(file)
+
 	_, err = file.Write(data)
 	if err != nil {
-		return fmt.Errorf("Error writing to file:" + err.Error())
+		return fmt.Errorf("写入文件失败: %w", err)
 	}
+	// 确保数据刷入磁盘
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("同步文件到磁盘失败: %w", err)
+	}
+
 	return nil
 }
 

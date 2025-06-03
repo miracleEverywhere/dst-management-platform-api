@@ -263,6 +263,54 @@ func handleClusterPost(c *gin.Context) {
 	})
 }
 
+func handleClusterPut(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type ReqForm struct {
+		ClusterName        string `json:"clusterName"`
+		ClusterDisplayName string `json:"clusterDisplayName"`
+	}
+	var reqFrom ReqForm
+	if err := c.ShouldBindJSON(&reqFrom); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	for index, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == reqFrom.ClusterName {
+			cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
+			config.Clusters[index] = cluster
+			err = utils.WriteConfig(config)
+			if err != nil {
+				utils.Logger.Error("写入配置文件失败", "err", err)
+				utils.RespondWithError(c, 500, "zh")
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": response("configUpdateSuccess", langStr),
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	utils.RespondWithError(c, 404, langStr)
+}
+
 func handleClusterDelete(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
@@ -353,7 +401,7 @@ func handleClusterDelete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": response("createSuccess", langStr),
+		"message": response("deleteSuccess", langStr),
 		"data":    nil,
 	})
 }
@@ -1235,7 +1283,7 @@ func handleModSettingFormatGet(c *gin.Context) {
 
 	var responseData []utils.ModFormattedData
 	complicatedMod := []int{
-		1438233888,
+		1438233888, 3365509895,
 	}
 	for _, i := range utils.ModOverridesToStruct(luaScript) {
 		if utils.Contains(complicatedMod, i.ID) {
@@ -1560,6 +1608,7 @@ func handleEnableModPost(c *gin.Context) {
 		if utils.Platform != "darwin" {
 			for _, world := range cluster.Worlds {
 				dstModPath := world.GetDstModPath(cluster.ClusterSetting.ClusterName)
+				_ = utils.EnsureDirExists(dstModPath)
 				err = utils.RemoveDir(dstModPath + "/" + strconv.Itoa(enableForm.ID))
 				if err != nil {
 					utils.Logger.Warn("删除旧MOD文件失败", "err", err)
@@ -1576,9 +1625,10 @@ func handleEnableModPost(c *gin.Context) {
 		modInfoLuaFile = modDirPath + "/modinfo.lua"
 		// MacOS 不执行复制
 		if utils.Platform != "darwin" {
+			_ = utils.EnsureDirExists(cluster.GetModNoUgcPath())
 			err = utils.RemoveDir(cluster.GetModNoUgcPath() + "/workshop-" + strconv.Itoa(enableForm.ID))
 			if err != nil {
-				utils.Logger.Error("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
+				utils.Logger.Warn("删除旧MOD文件失败", "err", err, "cmd", enableForm.ID)
 			}
 			cmd := fmt.Sprintf("cp -rf %s %s/workshop-%d", modDirPath, cluster.GetModNoUgcPath(), enableForm.ID)
 			err = utils.BashCMD(cmd)

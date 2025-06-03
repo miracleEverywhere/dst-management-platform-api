@@ -528,13 +528,13 @@ func DoImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 		if !result || err != nil {
 			utils.Logger.Warn("未发现save目录，跳过(注意：没有该目录，游戏启动后会生成新世界)")
 		} else {
-			dstFiles[fmt.Sprintf("World%d", index+1)] = append(dstFiles[fmt.Sprintf("World%d", index+1)], worldPath+"/save")
+			dstFiles[fmt.Sprintf("%s", world.Name)] = append(dstFiles[fmt.Sprintf("%s", world.Name)], worldPath+"/save")
 		}
 		result, err = utils.FileDirectoryExists(worldPath + "/backup")
 		if !result || err != nil {
 			utils.Logger.Warn("未发现backup目录，跳过")
 		} else {
-			dstFiles[fmt.Sprintf("World%d", index+1)] = append(dstFiles[fmt.Sprintf("World%d", index+1)], worldPath+"/backup")
+			dstFiles[fmt.Sprintf("%s", world.Name)] = append(dstFiles[fmt.Sprintf("%s", world.Name)], worldPath+"/backup")
 		}
 	}
 

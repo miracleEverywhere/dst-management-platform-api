@@ -18,6 +18,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.GET("/clusters/world_port", utils.MWAdminOnly(), handleClustersWorldPortGet)
 			setting.GET("/cluster", handleClusterGet)
 			setting.POST("/cluster", handleClusterPost)
+			setting.PUT("/cluster", utils.MWAdminOnly(), handleClusterPut)
 			setting.DELETE("/cluster", utils.MWAdminOnly(), handleClusterDelete)
 			setting.POST("/cluster/save", handleClusterSavePost)
 			setting.POST("/cluster/save_restart", handleClusterSaveRestartPost)

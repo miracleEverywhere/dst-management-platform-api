@@ -85,9 +85,12 @@ func handleInstall(c *gin.Context) {
 
 func handleGetInstallStatus(c *gin.Context) {
 	content, err := os.ReadFile("/tmp/install_status")
-	utils.Logger.Error("读取文件失败", "err", err)
+	if err != nil {
+		utils.Logger.Error("读取文件失败", "err", err)
+	}
 	status := string(content)
 	statusSlice := strings.Split(status, "\t")
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"process": statusSlice[0], "zh": statusSlice[1], "en": statusSlice[2],
 	}})
@@ -430,7 +433,12 @@ func handleBackupRestore(c *gin.Context) {
 	if strLang, ok := lang.(string); ok {
 		langStr = strLang
 	}
-	var restoreForm RestoreForm
+	var (
+		restoreForm         RestoreForm
+		cluster             utils.Cluster
+		currentClusterIndex = -1
+		backupClusterIndex  = -1
+	)
 	if err := c.ShouldBindJSON(&restoreForm); err != nil {
 		// 如果绑定失败，返回 400 错误
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -444,11 +452,19 @@ func handleBackupRestore(c *gin.Context) {
 		return
 	}
 
-	cluster, err := config.GetClusterWithName(restoreForm.ClusterName)
-	if err != nil {
+	for index, cl := range config.Clusters {
+		if cl.ClusterSetting.ClusterName == restoreForm.ClusterName {
+			currentClusterIndex = index
+			break
+		}
+	}
+
+	if currentClusterIndex == -1 {
 		utils.RespondWithError(c, 404, langStr)
 		return
 	}
+
+	cluster = config.Clusters[currentClusterIndex]
 
 	// 关闭当前服务器
 	_ = utils.StopClusterAllWorlds(cluster)
@@ -487,7 +503,20 @@ func handleBackupRestore(c *gin.Context) {
 		return
 	}
 
-	config.Clusters = backupConfig.Clusters
+	for index, backupCluster := range backupConfig.Clusters {
+		if backupCluster.ClusterSetting.ClusterName == cluster.ClusterSetting.ClusterDisplayName {
+			backupClusterIndex = index
+			break
+		}
+	}
+
+	if backupClusterIndex == -1 {
+		utils.Logger.Error("旧配置文件中没有找到对应的集群")
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("restoreFailOldClusterNotFound", langStr), "data": nil})
+		return
+	}
+
+	config.Clusters[currentClusterIndex] = backupConfig.Clusters[backupClusterIndex]
 
 	cluster, err = config.GetClusterWithName(restoreForm.ClusterName)
 	if err != nil {
