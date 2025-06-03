@@ -85,9 +85,12 @@ func handleInstall(c *gin.Context) {
 
 func handleGetInstallStatus(c *gin.Context) {
 	content, err := os.ReadFile("/tmp/install_status")
-	utils.Logger.Error("读取文件失败", "err", err)
+	if err != nil {
+		utils.Logger.Error("读取文件失败", "err", err)
+	}
 	status := string(content)
 	statusSlice := strings.Split(status, "\t")
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"process": statusSlice[0], "zh": statusSlice[1], "en": statusSlice[2],
 	}})
