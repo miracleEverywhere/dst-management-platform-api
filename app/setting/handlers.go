@@ -406,6 +406,70 @@ func handleClusterDelete(c *gin.Context) {
 	})
 }
 
+func handleClusterShutdownPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	clusterIndex, cluster, err := config.GetClusterAndIndexWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	// 关闭世界
+	_ = utils.StopClusterAllWorlds(cluster)
+
+	// 禁用定时任务
+	cluster.SysSetting.AutoRestart.Enable = false
+	for _, announce := range cluster.SysSetting.AutoAnnounce {
+		announce.Enable = false
+	}
+	cluster.SysSetting.AutoBackup.Enable = false
+	cluster.SysSetting.Keepalive.Enable = false
+	cluster.SysSetting.ScheduledStartStop.Enable = false
+
+	// 更新数据库
+	config.Clusters[clusterIndex] = cluster
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("写入配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	// 重新载入定时任务
+	defer func() {
+		scheduler.ReloadScheduler()
+	}()
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": response("shutdownSuccess", langStr),
+		"data":    nil,
+	})
+}
+
 func handleClusterSavePost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
