@@ -210,6 +210,15 @@ func (config Config) GetClusterWithName(clusterName string) (Cluster, error) {
 	return Cluster{}, fmt.Errorf("没有发现名为%s的集群", clusterName)
 }
 
+func (config Config) GetClusterAndIndexWithName(clusterName string) (int, Cluster, error) {
+	for index, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == clusterName {
+			return index, cluster, nil
+		}
+	}
+	return -1, Cluster{}, fmt.Errorf("没有发现名为%s的集群", clusterName)
+}
+
 func (config Config) GetWorldWithName(clusterName, worldName string) (World, error) {
 	for _, cluster := range config.Clusters {
 		if cluster.ClusterSetting.ClusterName == clusterName {
