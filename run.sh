@@ -211,13 +211,11 @@ function get_latest_version() {
 }
 
 # 更新启动脚本
-update_script() {
+function update_script() {
     check_curl
     echo -e "\e[36m正在更新脚本... \e[0m"
     TEMP_FILE="/tmp/run.sh"
     SCRIPT_GITHUB="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
-    # 读取旧脚本中的 PORT 值
-    OLD_PORT=$(grep "^PORT=" "$0" | cut -d'=' -f2)
 
     for proxy in "${GITHUB_PROXYS[@]}"; do
         local full_url="${proxy}${SCRIPT_GITHUB}"
@@ -234,8 +232,25 @@ update_script() {
         fi
     done
 
-    # 将旧 PORT 值写入新脚本
-    sed -i "s/^PORT=.*/PORT=${OLD_PORT}/" "$TEMP_FILE"
+    # 保存用户修改过的变量
+    # 端口
+    USER_PORT_STRING="PORT=${PORT}\n"
+    # 数据库文件
+    USER_CONFIG_DIR_STRING="CONFIG_DIR=\"${CONFIG_DIR}\"\n"
+    # swap
+    USER_SWAPSIZE_STRING="SWAPSIZE=${SWAPSIZE}\n"
+    # 加速站点
+    USER_GITHUB_PROXYS=""
+    for proxy in "${GITHUB_PROXYS[@]}"; do
+        USER_GITHUB_PROXYS+="    \"${proxy}\"\n"
+    done
+    USER_GITHUB_PROXYS_STRING="GITHUB_PROXYS=(\n${USER_GITHUB_PROXYS})\n"
+    # 生成要替换的内容
+    USER_FULL_CONFIG_STRING=$"# dmp暴露端口，即网页打开时所用的端口\n${USER_PORT_STRING}\n# 数据库文件所在目录，例如：./config\n${USER_CONFIG_DIR_STRING}\n# 虚拟内存大小，例如 1G 4G等\n${USER_SWAPSIZE_STRING}\n# 加速站点，最后一个加速站点为空代表从Github直接下载\n# 可在 https://github.akams.cn/ 自行添加，但要保证Github(空的那个)在最后一行，不然会出现错误\n${USER_GITHUB_PROXYS_STRING}"
+
+    # 修改下载好的最新文件
+    sed -i "8,23c\\"$'\n'"$USER_FULL_CONFIG_STRING" $TEMP_FILE
+
     # 替换当前脚本
     mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
     echo -e "\e[32m脚本更新完成，3 秒后重新启动... \e[0m"
