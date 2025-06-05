@@ -267,4 +267,5 @@ func GetDSTRoomsApi(region string) string {
 	return fmt.Sprintf("https://lobby-v2-cdn.klei.com/%s-Steam.json.gz", region)
 }
 
-/* Linux交叉编译：CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
+/* Linux交叉编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
+/* MacOS编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 ~/go/go1.23.1/bin/go build -o /Users/xxx/dmp */
