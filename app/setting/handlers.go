@@ -1996,12 +1996,12 @@ func handleAddClientModsDisabledConfig(c *gin.Context) {
 		return
 	}
 
-	modFileLines := strings.Split(cluster.Mod, "\n")
-	var newModFileLines []string
-	newModFileLines = append(newModFileLines, modFileLines[0])
-	newModFileLines = append(newModFileLines, "  client_mods_disabled={configuration_options={}, enabled=true},")
-	newModFileLines = append(newModFileLines, modFileLines[1:]...)
-	cluster.Mod = strings.Join(newModFileLines, "\n")
+	//预防配置中 return { ... } 大括号不换行的情况
+	re := regexp.MustCompile(`return\s*{`)
+	text := re.ReplaceAllString(cluster.Mod, "return {\n")
+	modFileLines := strings.Split(text, "\n")
+	modFileLines[0] += "\n  client_mods_disabled={configuration_options={}, enabled=true},\n"
+	cluster.Mod = strings.Join(modFileLines, "\n")
 
 	err = SaveSetting(cluster)
 	if err != nil {
