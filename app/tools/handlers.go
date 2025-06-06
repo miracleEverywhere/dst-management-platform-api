@@ -4,13 +4,11 @@ import (
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
-	"encoding/base64"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -539,7 +537,7 @@ func handleBackupRestore(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("restoreSuccess", langStr), "data": nil})
 }
 
-func handleBackupDownload(c *gin.Context) {
+/* func handleBackupDownload(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -585,7 +583,7 @@ func handleBackupDownload(c *gin.Context) {
 
 	fileContentBase64 := base64.StdEncoding.EncodeToString(fileData)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": fileContentBase64})
-}
+} */
 
 func handleMultiDelete(c *gin.Context) {
 	type MultiDeleteForm struct {
