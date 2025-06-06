@@ -44,6 +44,8 @@ func main() {
 	r = logs.RouteLogs(r)
 	// 外部接口
 	r = externalApi.RouteExternalApi(r)
+	// 备份下载
+	r.Static("/v1/download", "./dmp_files/backup")
 	// 静态资源，放在最后
 	r.Use(static.ServeEmbed("dist", EmbedFS))
 
