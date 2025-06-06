@@ -785,7 +785,7 @@ func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 			Logger.Error("设置mod下载配置失败", "err", err)
 		}
 		if bit64 {
-			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s"+" ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		} else {
 			cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		}
