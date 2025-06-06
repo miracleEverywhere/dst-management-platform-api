@@ -37,7 +37,7 @@ function check_screen() {
 
 # 安装依赖
 OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-if [[ ${OS} == "ubuntu" ]]; then
+if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
     install_ubuntu
 else
     OS_LIKE=$(grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel)
