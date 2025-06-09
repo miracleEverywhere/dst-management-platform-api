@@ -550,9 +550,14 @@ func ClearFiles() {
 
 func getList(filepath string) []string {
 	// 预留位 黑名单 管理员
+	err := utils.EnsureFileExists(filepath)
+	if err != nil {
+		utils.Logger.Error("创建文件失败", "err", err, "file", filepath)
+		return []string{}
+	}
 	al, err := utils.ReadLinesToSlice(filepath)
 	if err != nil {
-		utils.Logger.Warn("读取文件失败", "err", err, "file", filepath)
+		utils.Logger.Error("读取文件失败", "err", err, "file", filepath)
 		return []string{}
 	}
 	var uidList []string

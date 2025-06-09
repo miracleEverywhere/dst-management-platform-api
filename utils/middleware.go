@@ -38,16 +38,17 @@ func MWlang() gin.HandlerFunc {
 func MWtoken() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Request.Header.Get("authorization")
+		lang := c.Request.Header.Get("X-I18n-Lang")
 		config, err := ReadConfig()
 		if err != nil {
 			Logger.Error("配置文件打开失败", "err", err)
+			RespondWithError(c, 500, lang)
 			c.Abort()
 			return
 		}
 		tokenSecret := config.JwtSecret
 		claims, err := ValidateJWT(token, []byte(tokenSecret))
 		if err != nil {
-			lang := c.Request.Header.Get("X-I18n-Lang")
 			RespondWithError(c, 420, lang)
 			c.Abort()
 			return
@@ -210,5 +211,56 @@ func MWUserCheck() gin.HandlerFunc {
 		RespondWithError(c, 500, lang)
 		c.Abort()
 		return
+	}
+}
+
+func MWDownloadToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// js window.open不允许携带header，采用params
+		// 需要验证token和cluster
+		queries := c.Request.URL.Query()
+		authorization := queries["authorization"]
+		lang := queries["lang"][0]
+
+		if len(authorization) != 1 {
+			RespondWithError(c, 425, lang)
+			c.Abort()
+			return
+		}
+		clusterNames := queries["clusterName"]
+		if len(clusterNames) != 1 {
+			RespondWithError(c, 425, lang)
+			c.Abort()
+			return
+		}
+
+		token := authorization[0]
+		clusterName := clusterNames[0]
+
+		config, err := ReadConfig()
+		if err != nil {
+			Logger.Error("配置文件打开失败", "err", err)
+			RespondWithError(c, 500, lang)
+			c.Abort()
+			return
+		}
+		tokenSecret := config.JwtSecret
+		claims, err := ValidateJWT(token, []byte(tokenSecret))
+		if err != nil {
+			RespondWithError(c, 420, lang)
+			c.Abort()
+			return
+		}
+
+		if claims.Role != "admin" {
+			user := config.GetUserWithUsername(claims.Username)
+			if !Contains(user.ClusterPermission, clusterName) {
+				RespondWithError(c, 425, lang)
+				c.Abort()
+				return
+			}
+		}
+
+		c.Next()
 	}
 }

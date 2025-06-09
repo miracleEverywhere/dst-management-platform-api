@@ -49,6 +49,7 @@ func response(message string, lang string) string {
 		"complicatedMod":             "含有复杂配置模组，请前往房间设置手动修改",
 		"clusterCreationProhibited":  "当前账号无创建集群权限",
 		"deleteSuccess":              "删除成功",
+		"shutdownSuccess":            "关闭成功",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":                "Save Success",
@@ -98,6 +99,7 @@ func response(message string, lang string) string {
 		"complicatedMod":             "complicated Mod found, please go to room setting page to modify",
 		"clusterCreationProhibited":  "The current user does not have creation permissions",
 		"deleteSuccess":              "Delete Success",
+		"shutdownSuccess":            "Shutdown Success",
 	}
 
 	if lang == "zh" {

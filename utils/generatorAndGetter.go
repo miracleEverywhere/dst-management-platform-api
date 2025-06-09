@@ -210,6 +210,15 @@ func (config Config) GetClusterWithName(clusterName string) (Cluster, error) {
 	return Cluster{}, fmt.Errorf("没有发现名为%s的集群", clusterName)
 }
 
+func (config Config) GetClusterAndIndexWithName(clusterName string) (int, Cluster, error) {
+	for index, cluster := range config.Clusters {
+		if cluster.ClusterSetting.ClusterName == clusterName {
+			return index, cluster, nil
+		}
+	}
+	return -1, Cluster{}, fmt.Errorf("没有发现名为%s的集群", clusterName)
+}
+
 func (config Config) GetWorldWithName(clusterName, worldName string) (World, error) {
 	for _, cluster := range config.Clusters {
 		if cluster.ClusterSetting.ClusterName == clusterName {
@@ -258,4 +267,5 @@ func GetDSTRoomsApi(region string) string {
 	return fmt.Sprintf("https://lobby-v2-cdn.klei.com/%s-Steam.json.gz", region)
 }
 
-/* Linux交叉编译：CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
+/* Linux交叉编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
+/* MacOS编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 ~/go/go1.23.1/bin/go build -o /Users/xxx/dmp */

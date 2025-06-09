@@ -27,7 +27,7 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.DELETE("/backup", handleBackupDelete)
 			tools.DELETE("/backup/multi", handleMultiDelete)
 			tools.POST("/backup/restore", handleBackupRestore)
-			tools.POST("/backup/download", handleBackupDownload)
+			//tools.POST("/backup/download", handleBackupDownload)
 			// 统计信息
 			tools.GET("/statistics", handleStatisticsGet)
 			// 令牌
