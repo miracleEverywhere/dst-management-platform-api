@@ -502,7 +502,7 @@ func handleBackupRestore(c *gin.Context) {
 	}
 
 	for index, backupCluster := range backupConfig.Clusters {
-		if backupCluster.ClusterSetting.ClusterName == cluster.ClusterSetting.ClusterDisplayName {
+		if backupCluster.ClusterSetting.ClusterName == cluster.ClusterSetting.ClusterName {
 			backupClusterIndex = index
 			break
 		}
