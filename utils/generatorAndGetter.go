@@ -195,6 +195,10 @@ func (cluster Cluster) GetModUgcPath() []string {
 	return paths
 }
 
+func (cluster Cluster) GetModUgcPathRoot() string {
+	return fmt.Sprintf("dst/ugc_mods/%s", cluster.ClusterSetting.ClusterName)
+}
+
 func (cluster Cluster) GetModNoUgcPath() string {
 	return "dst/mods"
 }
