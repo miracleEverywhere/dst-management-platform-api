@@ -372,7 +372,7 @@ func handleClusterDelete(c *gin.Context) {
 	}
 
 	// 删除mod缓存
-	cmd = fmt.Sprintf("rm -rf %s", cluster.GetModUgcPath())
+	cmd = fmt.Sprintf("rm -rf %s", cluster.GetModUgcPathRoot())
 	err = utils.BashCMD(cmd)
 	if err != nil {
 		utils.Logger.Warn("删除mod缓存失败", "err", err, "cmd", cmd)
