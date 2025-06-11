@@ -38,7 +38,7 @@ if [[ "${USER}" != "root" ]]; then
     exit 1
 fi
 
-# 设置全局stderr为红色
+# 设置全局stderr为红色并添加固定格式
 function set_tty() {
     exec 2> >(while read -r line; do echo -e "\e[31m[$(date +'%F %T')] [ERROR] ${line}\e[0m" >&2; done)
 }
