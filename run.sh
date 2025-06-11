@@ -30,11 +30,23 @@ GITHUB_PROXYS=(
 USER=$(whoami)
 ExeFile="$HOME/dmp"
 
+cd "$HOME" || exit
+
 # 检查用户，只能使用root执行
 if [[ "${USER}" != "root" ]]; then
     echo -e "\e[31m请使用root用户执行此脚本 (Please run this script as the root user) \e[0m"
     exit 1
 fi
+
+# 设置全局stderr为红色
+function set_tty() {
+    exec 2> >(while read -r line; do echo -e "\e[31m[$(date +'%F %T')] [ERROR] ${line}\e[0m" >&2; done)
+}
+
+# 恢复stderr颜色
+function unset_tty() {
+    exec 2> /dev/tty
+}
 
 # 定义一个函数来提示用户输入
 function prompt_user() {
@@ -300,29 +312,38 @@ while true; do
     # 使用 case 语句判断输入的命令
     case $command in
     0)
+        set_tty
         clear_dmp
         install_dmp
         start_dmp
         check_dmp
+        unset_tty
         break
         ;;
     1)
+        set_tty
         start_dmp
         check_dmp
+        unset_tty
         break
         ;;
     2)
+        set_tty
         stop_dmp
+        unset_tty
         break
         ;;
     3)
+        set_tty
         stop_dmp
         start_dmp
         check_dmp
         echo -e "\e[32m重启成功 (Restart Success) \e[0m"
+        unset_tty
         break
         ;;
     4)
+        set_tty
         get_current_version
         get_latest_version
         if [[ "$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | head -n1)" == "$CURRENT_VERSION" && "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
@@ -336,23 +357,30 @@ while true; do
         else
             echo -e "\e[32m当前版本 ($CURRENT_VERSION) 已是最新版本 ($LATEST_VERSION)，无需更新 (No update needed) \e[0m"
         fi
+        unset_tty
         break
         ;;
     5)
+        set_tty
         stop_dmp
         clear_dmp
         install_dmp
         start_dmp
         check_dmp
         echo -e "\e[32m强制更新完成 (Force update completed) \e[0m"
+        unset_tty
         break
         ;;
     6)
+        set_tty
         update_script
+        unset_tty
         break
         ;;
     7)
-        set_swap # 调用设置虚拟内存的函数
+        set_tty
+        set_swap
+        unset_tty
         break
         ;;
     8)
