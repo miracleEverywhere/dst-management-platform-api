@@ -1,5 +1,17 @@
 # [中文文档] | [[README]](docs/README_EN.md)
 
+# DMP 饥荒管理平台
+![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
+![GitHub last commit](https://img.shields.io/github/last-commit/miracleEverywhere/dst-management-platform-api)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-pr-closed/miracleEverywhere/dst-management-platform-api)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-closed/miracleEverywhere/dst-management-platform-api)
+![GitHub License](https://img.shields.io/github/license/miracleEverywhere/dst-management-platform-api)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/miracleEverywhere/dst-management-platform-api)
+
+---
+
 ## :warning: 2.x版本与1.x版本不兼容
 >**1.x版本将于2025年8月停止维护，届时模组搜索等功能将无法使用，请尽快更新至2.x版本**
 
