@@ -3,7 +3,6 @@
 # DMP 饥荒管理平台
 ![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
-![GitHub last commit](https://img.shields.io/github/last-commit/miracleEverywhere/dst-management-platform-api)
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-pr-closed/miracleEverywhere/dst-management-platform-api)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-closed/miracleEverywhere/dst-management-platform-api)
