@@ -30,6 +30,7 @@ func handleClustersGet(c *gin.Context) {
 		ClusterName        string   `json:"clusterName"`
 		ClusterDisplayName string   `json:"clusterDisplayName"`
 		Worlds             []string `json:"worlds"`
+		Status             bool     `json:"status"`
 	}
 	var data []ClusterItem
 
@@ -44,6 +45,7 @@ func handleClustersGet(c *gin.Context) {
 				ClusterName:        cluster.ClusterSetting.ClusterName,
 				ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
 				Worlds:             worlds,
+				Status:             cluster.ClusterSetting.Status,
 			})
 		}
 	} else {
@@ -62,6 +64,7 @@ func handleClustersGet(c *gin.Context) {
 							ClusterName:        cluster.ClusterSetting.ClusterName,
 							ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
 							Worlds:             worlds,
+							Status:             cluster.ClusterSetting.Status,
 						})
 					}
 				}
@@ -207,6 +210,7 @@ func handleClusterPost(c *gin.Context) {
 	var cluster utils.Cluster
 	cluster.ClusterSetting.ClusterName = reqFrom.ClusterName
 	cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
+	cluster.ClusterSetting.Status = true
 	cluster.SysSetting = utils.SysSetting{
 		AutoRestart: utils.AutoRestart{
 			Enable: true,
@@ -406,7 +410,7 @@ func handleClusterDelete(c *gin.Context) {
 	})
 }
 
-func handleClusterShutdownPost(c *gin.Context) {
+func handleClusterStatusPut(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -415,6 +419,7 @@ func handleClusterShutdownPost(c *gin.Context) {
 
 	type ReqForm struct {
 		ClusterName string `json:"clusterName"`
+		Status      bool   `json:"status"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
@@ -437,17 +442,38 @@ func handleClusterShutdownPost(c *gin.Context) {
 		return
 	}
 
-	// 关闭世界
-	_ = utils.StopClusterAllWorlds(cluster)
+	if reqForm.Status {
+		// 启用集群
 
-	// 禁用定时任务
-	cluster.SysSetting.AutoRestart.Enable = false
-	for _, announce := range cluster.SysSetting.AutoAnnounce {
-		announce.Enable = false
+		// 修改集群状态
+		cluster.ClusterSetting.Status = true
+		// 启用定时任务
+		cluster.SysSetting.AutoRestart.Enable = true
+		for _, announce := range cluster.SysSetting.AutoAnnounce {
+			announce.Enable = true
+		}
+		cluster.SysSetting.AutoBackup.Enable = true
+		cluster.SysSetting.Keepalive.Enable = true
+		cluster.SysSetting.ScheduledStartStop.Enable = true
+
+		// 启动世界
+		_ = utils.StartClusterAllWorlds(cluster)
+	} else {
+		// 关闭集群
+
+		// 修改集群状态
+		cluster.ClusterSetting.Status = false
+		// 关闭世界
+		_ = utils.StopClusterAllWorlds(cluster)
+		// 禁用定时任务
+		cluster.SysSetting.AutoRestart.Enable = false
+		for _, announce := range cluster.SysSetting.AutoAnnounce {
+			announce.Enable = false
+		}
+		cluster.SysSetting.AutoBackup.Enable = false
+		cluster.SysSetting.Keepalive.Enable = false
+		cluster.SysSetting.ScheduledStartStop.Enable = false
 	}
-	cluster.SysSetting.AutoBackup.Enable = false
-	cluster.SysSetting.Keepalive.Enable = false
-	cluster.SysSetting.ScheduledStartStop.Enable = false
 
 	// 更新数据库
 	config.Clusters[clusterIndex] = cluster
@@ -465,7 +491,7 @@ func handleClusterShutdownPost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": response("shutdownSuccess", langStr),
+		"message": response("executed", langStr),
 		"data":    nil,
 	})
 }

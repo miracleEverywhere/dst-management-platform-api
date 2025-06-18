@@ -20,7 +20,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("/cluster", handleClusterPost)
 			setting.PUT("/cluster", utils.MWAdminOnly(), handleClusterPut)
 			setting.DELETE("/cluster", utils.MWAdminOnly(), handleClusterDelete)
-			setting.POST("/cluster/shutdown", utils.MWAdminOnly(), handleClusterShutdownPost)
+			setting.PUT("/cluster/status", utils.MWAdminOnly(), handleClusterStatusPut)
 			setting.POST("/cluster/save", handleClusterSavePost)
 			setting.POST("/cluster/save_restart", handleClusterSaveRestartPost)
 			setting.POST("/cluster/save_regenerate", handleClusterSaveRegeneratePost)
