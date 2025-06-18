@@ -6,6 +6,7 @@ const ShInstall = `#!/bin/bash
 STEAM_DIR="$HOME/steamcmd"
 DST_DIR="$HOME/dst"
 DST_SETTING_DIR="$HOME/.klei"
+INSTALL_FAIL="NO"
 
 
 # 工具函数
@@ -17,12 +18,18 @@ function install_ubuntu() {
     apt install -y libcurl4-gnutls-dev:i386 2>&1 > /dev/null
     apt install -y screen 2>&1 > /dev/null
 	apt install -y unzip 2>&1 > /dev/null
+	if (($? != 0)); then
+		$INSTALL_FAIL="YES"
+	fi
 }
 
 function install_rhel() {
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686 2>&1 > /dev/null
     yum -y install screen 2>&1 > /dev/null
 	yum install -y unzip 2>&1 > /dev/null
+	if (($? != 0)); then
+		$INSTALL_FAIL="YES"
+	fi
     ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4 2>&1 > /dev/null
 }
 
@@ -41,7 +48,7 @@ function check_screen() {
 # 安装依赖
 echo -e "17\t正在安装依赖\tInstalling dependencies" > /tmp/install_status
 OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-if [[ ${OS} == "ubuntu" ]]; then
+if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
     install_ubuntu
 else
     OS_LIKE=$(grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel)
@@ -60,11 +67,17 @@ check_screen
 echo -e "29\t正在下载Steam安装包\tDownloading the Steam installation package" > /tmp/install_status
 cd ~
 wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz 2>&1 > /dev/null
+if (($? != 0)); then
+	$INSTALL_FAIL="YES"
+fi
 
 # 解压安装包
 echo -e "41\t正在解压Steam安装包\tExtracting the Steam installation package" > /tmp/install_status
 mkdir -p $STEAM_DIR
 tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR 2>&1 > /dev/null
+if (($? != 0)); then
+	$INSTALL_FAIL="YES"
+fi
 
 # 安装DST
 echo -e "49\t正在下载Steam\tDownloading Steam" > /tmp/install_status
@@ -99,8 +112,11 @@ rm -f steamcmd_linux.tar.gz
 rm -f $STEAM_DIR/install.log
 rm -f $0
 
-# 安装完成
-echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
+if [[ "${INSTALL_FAIL}"" == "YES" ]]; then
+	echo -e "100\t安装失败\tInstallation failed" > /tmp/install_status
+else
+	echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
+fi
 `
 
 const Install32Dependency = `
@@ -126,7 +142,7 @@ function install_rhel() {
 
 # 安装依赖
 OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-if [[ ${OS} == "ubuntu" ]]; then
+if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
     install_ubuntu
 else
     OS_LIKE=$(grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel)
@@ -159,7 +175,7 @@ function install_rhel() {
 
 # 安装依赖
 OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-if [[ ${OS} == "ubuntu" ]]; then
+if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
     install_ubuntu
 else
     OS_LIKE=$(grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel)
