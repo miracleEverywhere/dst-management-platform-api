@@ -21,6 +21,7 @@ type User struct {
 type ClusterSetting struct {
 	ClusterName        string `json:"clusterName"` // MyDediServer
 	ClusterDisplayName string `json:"clusterDisplayName"`
+	Status             bool   `json:"status"`
 	Name               string `json:"name"` // xxx长期档
 	Description        string `json:"description"`
 	GameMode           string `json:"gameMode"`
