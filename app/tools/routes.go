@@ -16,6 +16,7 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.GET("/os_info", handleOSInfoGet)
 			tools.POST("/install", utils.MWAdminOnly(), handleInstall)
 			tools.GET("/install/status", utils.MWAdminOnly(), handleGetInstallStatus)
+			tools.GET("/install/is_installing", handleGetIsInstallingGet)
 			//// 定时通知
 			tools.GET("/announce", handleAnnounceGet)
 			tools.POST("/announce", handleAnnouncePost)

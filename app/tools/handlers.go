@@ -70,11 +70,13 @@ func handleInstall(c *gin.Context) {
 
 	// 异步执行脚本
 	go func() {
+		utils.DstInstalling = true
 		cmd := exec.Command("/bin/bash", scriptPath) // 使用 /bin/bash 执行脚本
 		e := cmd.Run()
 		if e != nil {
 			utils.Logger.Error("执行安装脚本失败", "err", e)
 		}
+		utils.DstInstalling = false
 	}()
 
 	// 返回成功响应
@@ -92,6 +94,10 @@ func handleGetInstallStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"process": statusSlice[0], "zh": statusSlice[1], "en": statusSlice[2],
 	}})
+}
+
+func handleGetIsInstallingGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.DstInstalling})
 }
 
 func handleAnnounceGet(c *gin.Context) {
