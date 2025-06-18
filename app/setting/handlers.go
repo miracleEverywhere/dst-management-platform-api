@@ -1578,6 +1578,37 @@ func handleModDownloadPost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("downloading", langStr), "data": nil})
 }
 
+func handleModDownloadProcessGet(c *gin.Context) {
+	type ReqForm struct {
+		ID   int    `json:"id" form:"id"`
+		Size string `json:"size" form:"size"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	size, err := strconv.ParseInt(reqForm.Size, 10, 64)
+	if err != nil {
+		utils.Logger.Error("模组大小转换失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": -1})
+		return
+	}
+
+	dirPath := fmt.Sprintf("%s/%d", utils.ModUgcDownloadPath, reqForm.ID)
+
+	currentSize, err := utils.GetDirSize(dirPath)
+	if err != nil {
+		utils.Logger.Error("模组大小计算失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": -1})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": currentSize / size})
+}
+
 func handleSyncModPost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言

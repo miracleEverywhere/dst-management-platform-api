@@ -37,6 +37,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.GET("/mod/setting/format", handleModSettingFormatGet)
 			setting.GET("/mod/config_options", handleModConfigOptionsGet)
 			setting.POST("/mod/download", handleModDownloadPost)
+			setting.GET("/mod/download/process", handleModDownloadProcessGet)
 			setting.POST("/mod/sync", handleSyncModPost)
 			setting.POST("/mod/delete", handleDeleteDownloadedModPost)
 			setting.POST("/mod/enable", handleEnableModPost)
