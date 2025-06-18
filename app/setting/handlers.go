@@ -1339,25 +1339,21 @@ func handleModSettingFormatGet(c *gin.Context) {
 
 	luaScript := cluster.Mod
 
-	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
-	if err != nil {
+	modInfo, netErr, ModOverridesToStructErr := externalApi.GetModsInfo(luaScript, langStr)
+	if netErr != nil && ModOverridesToStructErr != nil {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
 
 	var responseData []utils.ModFormattedData
-	complicatedMod := []int{
-		1438233888, 3365509895,
+
+	modStruct, err := utils.ModOverridesToStruct(luaScript)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedMod", langStr), "data": nil})
+		return
 	}
-	for _, i := range utils.ModOverridesToStruct(luaScript) {
-		if utils.Contains(complicatedMod, i.ID) {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    200,
-				"message": response("complicatedMod", langStr),
-				"data":    5000,
-			})
-			return
-		}
+
+	for _, i := range modStruct {
 		item := utils.ModFormattedData{
 			ID: i.ID,
 			Name: func() string {
@@ -1501,7 +1497,12 @@ func handleModConfigChangePost(c *gin.Context) {
 		return
 	}
 
-	luaString := utils.ParseToLua(modFormattedDataForm.ModFormattedData)
+	luaString, err := utils.ParseToLua(modFormattedDataForm.ModFormattedData)
+	if err != nil {
+		utils.Logger.Warn(err.Error())
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedMod", langStr), "data": nil})
+		return
+	}
 
 	cluster.Mod = luaString
 
@@ -1705,7 +1706,13 @@ func handleEnableModPost(c *gin.Context) {
 	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
 
 	// 获取新modoverrides.lua
-	modOverrides := utils.AddModDefaultConfig(luaScript, enableForm.ID, langStr, cluster)
+	modOverrides, err := utils.AddModDefaultConfig(luaScript, enableForm.ID, langStr, cluster)
+	if err != nil {
+		utils.Logger.Error("添加模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
+
 	for _, mod := range modOverrides {
 		modFormattedData = append(modFormattedData, utils.ModFormattedData{
 			ID:                   mod.ID,
@@ -1718,7 +1725,12 @@ func handleEnableModPost(c *gin.Context) {
 	a, _ := json.Marshal(modFormattedData)
 	var b []utils.ModFormattedData
 	_ = json.Unmarshal(a, &b)
-	modOverridesLua := utils.ParseToLua(b)
+	modOverridesLua, err := utils.ParseToLua(b)
+	if err != nil {
+		utils.Logger.Error("添加模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
 
 	// 写入数据库
 	cluster.Mod = modOverridesLua
@@ -1766,7 +1778,12 @@ func handleDisableModPost(c *gin.Context) {
 	}
 
 	// 读取modinfo.lua
-	modOverrides := utils.ModOverridesToStruct(cluster.Mod)
+	modOverrides, err := utils.ModOverridesToStruct(cluster.Mod)
+	if err != nil {
+		utils.Logger.Error("禁用模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
 
 	var newModOverrides []utils.ModOverrides
 	for _, mod := range modOverrides {
@@ -1787,7 +1804,12 @@ func handleDisableModPost(c *gin.Context) {
 			ConfigurationOptions: mod.ConfigurationOptions,
 		})
 	}
-	newModOverridesLua := utils.ParseToLua(modFormattedData)
+	newModOverridesLua, err := utils.ParseToLua(modFormattedData)
+	if err != nil {
+		utils.Logger.Error("禁用模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
 
 	// 写入数据
 	cluster.Mod = newModOverridesLua
