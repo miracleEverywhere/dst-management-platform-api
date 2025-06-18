@@ -132,9 +132,9 @@ func handleModInfoGet(c *gin.Context) {
 		return
 	}
 
-	modInfoList, err := GetModsInfo(cluster.Mod, langStr)
-	if err != nil {
-		utils.Logger.Error("获取mod信息失败", "err", err)
+	modInfoList, netErr, _ := GetModsInfo(cluster.Mod, langStr)
+	if netErr != nil {
+		utils.Logger.Error("获取mod信息失败", "err", netErr)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("getModInfoFail", langStr), "data": nil})
 		return
 	}
