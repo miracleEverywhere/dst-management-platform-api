@@ -263,7 +263,11 @@ func doUpdate(config utils.Config) error {
 		if err != nil {
 			utils.Logger.Error("执行BashCMD失败", "err", err, "cmd", utils.GetDSTUpdateCmd())
 		}
-		_ = utils.StartAllClusters(config.Clusters)
+		for _, cluster := range config.Clusters {
+			if cluster.ClusterSetting.Status {
+				_ = utils.StartClusterAllWorlds(cluster)
+			}
+		}
 	}()
 	return nil
 }
