@@ -262,9 +262,16 @@ func handleExecPost(c *gin.Context) {
 		return
 	case "update":
 		go func() {
+			utils.DstUpdating = true
 			_ = utils.StopAllClusters(config.Clusters)
 			_ = utils.BashCMD(utils.GetDSTUpdateCmd())
-			_ = utils.StartAllClusters(config.Clusters)
+			for _, _cluster := range config.Clusters {
+				if !_cluster.ClusterSetting.Status {
+					continue
+				}
+				_ = utils.StartClusterAllWorlds(_cluster)
+			}
+			utils.DstUpdating = false
 		}()
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("updating", langStr), "data": nil})
 		return
@@ -441,4 +448,8 @@ func handleKillScreenManualPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("shutdownSuccess", langStr), "data": nil})
+}
+
+func handleGetIsUpdatingGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.DstUpdating})
 }
