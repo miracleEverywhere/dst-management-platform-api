@@ -20,6 +20,8 @@ func RouteHome(r *gin.Engine) *gin.Engine {
 			home.GET("/cluster/all_screens", handleGetClusterAllScreensGet)
 			home.POST("/cluster/screen_kill", handleKillScreenManualPost)
 			home.POST("/exec", handleExecPost)
+			// 是否增在更新游戏
+			home.GET("/update/is_updating", handleGetIsUpdatingGet)
 		}
 	}
 
