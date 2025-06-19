@@ -450,6 +450,24 @@ func handleMenu(c *gin.Context) {
 		},
 		{
 			MenuId:      10305,
+			MenuName:    "Steam日志",
+			EnName:      "Steam",
+			ParentId:    103,
+			MenuType:    "2",
+			Path:        "/logs/steam",
+			Name:        "logsSteam",
+			Component:   "logs/steam",
+			Icon:        "sc-icon-SteamFill",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "1",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		},
+		{
+			MenuId:      10306,
 			MenuName:    "清理日志",
 			EnName:      "Clean",
 			ParentId:    103,
@@ -522,6 +540,7 @@ func handleMenu(c *gin.Context) {
 		},
 	}
 
+	// 非管理员拥有权限的菜单
 	nonAdminID := []int{
 		100,
 		101, 10101, 10102, 10103, 10104, 10105,
