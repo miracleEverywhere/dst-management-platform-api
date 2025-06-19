@@ -45,7 +45,7 @@ func handleLogGet(c *gin.Context) {
 	case "runtime":
 		logPath = utils.DMPRuntimeLog
 	case "steam":
-		logPath = utils.SteamLogPath
+		logPath = utils.SteamLog
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
@@ -319,7 +319,7 @@ func handleLogDownloadPost(c *gin.Context) {
 	// 创建临时压缩目录
 	cmds = append(cmds, "mkdir -p /tmp/dmp_tmp_logs")
 	// 添加dmp日志
-	cmds = append(cmds, "cp dmp.log /tmp/dmp_tmp_logs && cp dmpProcess.log /tmp/dmp_tmp_logs")
+	cmds = append(cmds, fmt.Sprintf("cp %s %s %s /tmp/dmp_tmp_logs", utils.DMPAccessLog, utils.DMPRuntimeLog, utils.SteamLog))
 	// 添加dst日志
 	for _, world := range cluster.Worlds {
 		logPath = world.GetServerLogFile(cluster.ClusterSetting.ClusterName)
