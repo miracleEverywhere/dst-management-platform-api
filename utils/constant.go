@@ -42,4 +42,4 @@ const MacGameModSettingPath = "dst/dontstarve_dedicated_server_nullrenderer.app/
 
 const MacModExportPath = "$HOME/Desktop/dmp_exported_mod"
 
-const SteamLogPath = "Steam/logs/bootstrap_log.txt"
+const SteamLog = "Steam/logs/bootstrap_log.txt"
