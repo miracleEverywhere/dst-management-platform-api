@@ -44,6 +44,8 @@ func handleLogGet(c *gin.Context) {
 		logPath = utils.DMPAccessLog
 	case "runtime":
 		logPath = utils.DMPRuntimeLog
+	case "steam":
+		logPath = utils.SteamLogPath
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
