@@ -14,9 +14,6 @@
 
 [点击查看迁移文档](docs/README_migration_zh.md)
 
-## :lemon: 饥荒管理平台App来啦  
-[点击查看详情](https://github.com/miracleEverywhere/dst-management-platform-desktop)  
-
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
