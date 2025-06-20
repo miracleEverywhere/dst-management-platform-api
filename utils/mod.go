@@ -111,16 +111,16 @@ func GetModConfigOptions(luaScript string, lang string) []ConfigurationOption {
 	return options
 }
 
-func ModOverridesToStruct(luaScript string) []ModOverrides {
+func ModOverridesToStruct(luaScript string) ([]ModOverrides, error) {
 	if luaScript == "" {
-		return []ModOverrides{}
+		return []ModOverrides{}, nil
 	}
 	L := lua.NewState()
 	defer L.Close()
 
 	// 加载并执行 Lua 脚本
 	if err := L.DoString(luaScript); err != nil {
-		return []ModOverrides{}
+		return []ModOverrides{}, err
 	}
 	// 获取返回值
 	results := L.Get(-1)
@@ -129,10 +129,14 @@ func ModOverridesToStruct(luaScript string) []ModOverrides {
 
 	//fmt.Println(table.Len())
 	if !ok {
-		return []ModOverrides{}
+		Logger.Error("获取lua返回值失败")
+		return []ModOverrides{}, fmt.Errorf("获取lua返回值失败")
 	}
 
-	var modOverrides []ModOverrides
+	var (
+		modOverrides  []ModOverrides
+		luaTableError error
+	)
 
 	table.ForEach(func(k lua.LValue, v lua.LValue) {
 		// k是workshop-xxx, v是configuration_options和enabled
@@ -171,8 +175,11 @@ func ModOverridesToStruct(luaScript string) []ModOverrides {
 							if err != nil {
 								parsedValue, err = strconv.ParseFloat(optionsValue.String(), 64)
 							}
+						case lua.LTString:
+							parsedValue = optionsValue.String()
 						default:
 							parsedValue, err = optionsValue.String(), nil
+							luaTableError = fmt.Errorf("模组序列化失败，复杂模组")
 						}
 						if err != nil {
 							Logger.Error(err.Error())
@@ -186,10 +193,14 @@ func ModOverridesToStruct(luaScript string) []ModOverrides {
 			})
 		}
 		modOverrides = append(modOverrides, modOverridesItem)
-
 	})
 
-	return modOverrides
+	if luaTableError != nil {
+		Logger.Warn(luaTableError.Error())
+		return modOverrides, luaTableError
+	}
+
+	return modOverrides, nil
 }
 
 func StringToBool(s string) (bool, error) {
@@ -203,7 +214,7 @@ func StringToBool(s string) (bool, error) {
 	return false, fmt.Errorf("无法转换字符串%s", s)
 }
 
-func ParseToLua(data []ModFormattedData) string {
+func ParseToLua(data []ModFormattedData) (string, error) {
 	luaString := "return {\n"
 	modNum := len(data)
 	modCount := 1
@@ -241,6 +252,8 @@ func ParseToLua(data []ModFormattedData) string {
 					stringValue = strconv.FormatFloat(value.(float64), 'f', -1, 64)
 				case bool:
 					stringValue = fmt.Sprintf("%t", value)
+				default:
+					return "", fmt.Errorf("模组配置序列化失败，含有复杂配置模组")
 				}
 				// 判断是否需要['key']这种形式
 				if NeedDoubleQuotes(key) {
@@ -270,7 +283,7 @@ func ParseToLua(data []ModFormattedData) string {
 	}
 	luaString += "}\n"
 
-	return luaString
+	return luaString, nil
 }
 
 func NeedDoubleQuotes(s string) bool {
@@ -338,7 +351,7 @@ func DeleteDownloadedMod(isUgc bool, id int) error {
 	return err
 }
 
-func AddModDefaultConfig(newModLuaScript string, id int, langStr string, cluster Cluster) []ModOverrides {
+func AddModDefaultConfig(newModLuaScript string, id int, langStr string, cluster Cluster) ([]ModOverrides, error) {
 	var modDefaultConfig ModOverrides
 	modConfig := GetModConfigOptions(newModLuaScript, langStr)
 	modDefaultConfig.ID = id
@@ -349,10 +362,14 @@ func AddModDefaultConfig(newModLuaScript string, id int, langStr string, cluster
 		modDefaultConfig.ConfigurationOptions[option.Name] = option.Default
 	}
 	modOverridesLuaScript := cluster.Mod
-	modOverrides := ModOverridesToStruct(modOverridesLuaScript)
+	modOverrides, err := ModOverridesToStruct(modOverridesLuaScript)
+	if err != nil {
+		Logger.Error("模组配置反序列化失败")
+		return []ModOverrides{}, err
+	}
 	modOverrides = append(modOverrides, modDefaultConfig)
 
-	return modOverrides
+	return modOverrides, nil
 }
 
 func CheckModDownloadedReady(ugc bool, modID int, modSize string) (bool, error) {

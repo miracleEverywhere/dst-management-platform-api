@@ -30,6 +30,7 @@ func handleClustersGet(c *gin.Context) {
 		ClusterName        string   `json:"clusterName"`
 		ClusterDisplayName string   `json:"clusterDisplayName"`
 		Worlds             []string `json:"worlds"`
+		Status             bool     `json:"status"`
 	}
 	var data []ClusterItem
 
@@ -44,6 +45,7 @@ func handleClustersGet(c *gin.Context) {
 				ClusterName:        cluster.ClusterSetting.ClusterName,
 				ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
 				Worlds:             worlds,
+				Status:             cluster.ClusterSetting.Status,
 			})
 		}
 	} else {
@@ -62,6 +64,7 @@ func handleClustersGet(c *gin.Context) {
 							ClusterName:        cluster.ClusterSetting.ClusterName,
 							ClusterDisplayName: cluster.ClusterSetting.ClusterDisplayName,
 							Worlds:             worlds,
+							Status:             cluster.ClusterSetting.Status,
 						})
 					}
 				}
@@ -207,6 +210,7 @@ func handleClusterPost(c *gin.Context) {
 	var cluster utils.Cluster
 	cluster.ClusterSetting.ClusterName = reqFrom.ClusterName
 	cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
+	cluster.ClusterSetting.Status = true
 	cluster.SysSetting = utils.SysSetting{
 		AutoRestart: utils.AutoRestart{
 			Enable: true,
@@ -372,7 +376,7 @@ func handleClusterDelete(c *gin.Context) {
 	}
 
 	// 删除mod缓存
-	cmd = fmt.Sprintf("rm -rf %s", cluster.GetModUgcPath())
+	cmd = fmt.Sprintf("rm -rf %s", cluster.GetModUgcPathRoot())
 	err = utils.BashCMD(cmd)
 	if err != nil {
 		utils.Logger.Warn("删除mod缓存失败", "err", err, "cmd", cmd)
@@ -406,7 +410,7 @@ func handleClusterDelete(c *gin.Context) {
 	})
 }
 
-func handleClusterShutdownPost(c *gin.Context) {
+func handleClusterStatusPut(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -415,6 +419,7 @@ func handleClusterShutdownPost(c *gin.Context) {
 
 	type ReqForm struct {
 		ClusterName string `json:"clusterName"`
+		Status      bool   `json:"status"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
@@ -437,17 +442,38 @@ func handleClusterShutdownPost(c *gin.Context) {
 		return
 	}
 
-	// 关闭世界
-	_ = utils.StopClusterAllWorlds(cluster)
+	if reqForm.Status {
+		// 启用集群
 
-	// 禁用定时任务
-	cluster.SysSetting.AutoRestart.Enable = false
-	for _, announce := range cluster.SysSetting.AutoAnnounce {
-		announce.Enable = false
+		// 修改集群状态
+		cluster.ClusterSetting.Status = true
+		// 启用定时任务
+		cluster.SysSetting.AutoRestart.Enable = true
+		for _, announce := range cluster.SysSetting.AutoAnnounce {
+			announce.Enable = true
+		}
+		cluster.SysSetting.AutoBackup.Enable = true
+		cluster.SysSetting.Keepalive.Enable = true
+		cluster.SysSetting.ScheduledStartStop.Enable = true
+
+		// 启动世界
+		_ = utils.StartClusterAllWorlds(cluster)
+	} else {
+		// 关闭集群
+
+		// 修改集群状态
+		cluster.ClusterSetting.Status = false
+		// 关闭世界
+		_ = utils.StopClusterAllWorlds(cluster)
+		// 禁用定时任务
+		cluster.SysSetting.AutoRestart.Enable = false
+		for _, announce := range cluster.SysSetting.AutoAnnounce {
+			announce.Enable = false
+		}
+		cluster.SysSetting.AutoBackup.Enable = false
+		cluster.SysSetting.Keepalive.Enable = false
+		cluster.SysSetting.ScheduledStartStop.Enable = false
 	}
-	cluster.SysSetting.AutoBackup.Enable = false
-	cluster.SysSetting.Keepalive.Enable = false
-	cluster.SysSetting.ScheduledStartStop.Enable = false
 
 	// 更新数据库
 	config.Clusters[clusterIndex] = cluster
@@ -465,7 +491,7 @@ func handleClusterShutdownPost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": response("shutdownSuccess", langStr),
+		"message": response("executed", langStr),
 		"data":    nil,
 	})
 }
@@ -1339,25 +1365,21 @@ func handleModSettingFormatGet(c *gin.Context) {
 
 	luaScript := cluster.Mod
 
-	modInfo, err := externalApi.GetModsInfo(luaScript, langStr)
-	if err != nil {
+	modInfo, netErr, ModOverridesToStructErr := externalApi.GetModsInfo(luaScript, langStr)
+	if netErr != nil && ModOverridesToStructErr != nil {
 		utils.RespondWithError(c, 500, langStr)
 		return
 	}
 
 	var responseData []utils.ModFormattedData
-	complicatedMod := []int{
-		1438233888, 3365509895,
+
+	modStruct, err := utils.ModOverridesToStruct(luaScript)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedMod", langStr), "data": nil})
+		return
 	}
-	for _, i := range utils.ModOverridesToStruct(luaScript) {
-		if utils.Contains(complicatedMod, i.ID) {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    200,
-				"message": response("complicatedMod", langStr),
-				"data":    5000,
-			})
-			return
-		}
+
+	for _, i := range modStruct {
 		item := utils.ModFormattedData{
 			ID: i.ID,
 			Name: func() string {
@@ -1501,7 +1523,12 @@ func handleModConfigChangePost(c *gin.Context) {
 		return
 	}
 
-	luaString := utils.ParseToLua(modFormattedDataForm.ModFormattedData)
+	luaString, err := utils.ParseToLua(modFormattedDataForm.ModFormattedData)
+	if err != nil {
+		utils.Logger.Warn(err.Error())
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedMod", langStr), "data": nil})
+		return
+	}
 
 	cluster.Mod = luaString
 
@@ -1549,6 +1576,37 @@ func handleModDownloadPost(c *gin.Context) {
 	}()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("downloading", langStr), "data": nil})
+}
+
+func handleModDownloadProcessGet(c *gin.Context) {
+	type ReqForm struct {
+		ID   int    `json:"id" form:"id"`
+		Size string `json:"size" form:"size"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	size, err := strconv.ParseInt(reqForm.Size, 10, 64)
+	if err != nil {
+		utils.Logger.Error("模组大小转换失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": -1})
+		return
+	}
+
+	dirPath := fmt.Sprintf("%s/%d", utils.ModUgcDownloadPath, reqForm.ID)
+
+	currentSize, err := utils.GetDirSize(dirPath)
+	if err != nil {
+		utils.Logger.Error("模组大小计算失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": -1})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": currentSize / size})
 }
 
 func handleSyncModPost(c *gin.Context) {
@@ -1705,7 +1763,13 @@ func handleEnableModPost(c *gin.Context) {
 	luaScript, _ := utils.GetFileAllContent(modInfoLuaFile)
 
 	// 获取新modoverrides.lua
-	modOverrides := utils.AddModDefaultConfig(luaScript, enableForm.ID, langStr, cluster)
+	modOverrides, err := utils.AddModDefaultConfig(luaScript, enableForm.ID, langStr, cluster)
+	if err != nil {
+		utils.Logger.Error("添加模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
+
 	for _, mod := range modOverrides {
 		modFormattedData = append(modFormattedData, utils.ModFormattedData{
 			ID:                   mod.ID,
@@ -1718,7 +1782,12 @@ func handleEnableModPost(c *gin.Context) {
 	a, _ := json.Marshal(modFormattedData)
 	var b []utils.ModFormattedData
 	_ = json.Unmarshal(a, &b)
-	modOverridesLua := utils.ParseToLua(b)
+	modOverridesLua, err := utils.ParseToLua(b)
+	if err != nil {
+		utils.Logger.Error("添加模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
 
 	// 写入数据库
 	cluster.Mod = modOverridesLua
@@ -1766,7 +1835,12 @@ func handleDisableModPost(c *gin.Context) {
 	}
 
 	// 读取modinfo.lua
-	modOverrides := utils.ModOverridesToStruct(cluster.Mod)
+	modOverrides, err := utils.ModOverridesToStruct(cluster.Mod)
+	if err != nil {
+		utils.Logger.Error("禁用模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
 
 	var newModOverrides []utils.ModOverrides
 	for _, mod := range modOverrides {
@@ -1787,7 +1861,12 @@ func handleDisableModPost(c *gin.Context) {
 			ConfigurationOptions: mod.ConfigurationOptions,
 		})
 	}
-	newModOverridesLua := utils.ParseToLua(modFormattedData)
+	newModOverridesLua, err := utils.ParseToLua(modFormattedData)
+	if err != nil {
+		utils.Logger.Error("禁用模组失败，可能是添加了含有复杂配置的模组", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("complicatedModAdd", langStr), "data": nil})
+		return
+	}
 
 	// 写入数据
 	cluster.Mod = newModOverridesLua

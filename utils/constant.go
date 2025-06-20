@@ -1,6 +1,6 @@
 package utils
 
-const VERSION string = "2.0.4"
+const VERSION string = "2.0.5"
 
 const DstPath = ".klei/DoNotStarveTogether"
 
@@ -41,3 +41,5 @@ const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/Que
 const MacGameModSettingPath = "dst/dontstarve_dedicated_server_nullrenderer.app/Contents/mods/dedicated_server_mods_setup.lua"
 
 const MacModExportPath = "$HOME/Desktop/dmp_exported_mod"
+
+const SteamLog = "Steam/logs/bootstrap_log.txt"

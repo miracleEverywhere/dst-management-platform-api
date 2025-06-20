@@ -1,12 +1,18 @@
 # [中文文档] | [[README]](docs/README_EN.md)
 
+# DMP 饥荒管理平台
+![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
+![GitHub License](https://img.shields.io/github/license/miracleEverywhere/dst-management-platform-api)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/miracleEverywhere/dst-management-platform-api)
+
+---
+
 ## :warning: 2.x版本与1.x版本不兼容
 >**1.x版本将于2025年8月停止维护，届时模组搜索等功能将无法使用，请尽快更新至2.x版本**
 
 [点击查看迁移文档](docs/README_migration_zh.md)
-
-## :lemon: 饥荒管理平台App来啦  
-[点击查看详情](https://github.com/miracleEverywhere/dst-management-platform-desktop)  
 
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  

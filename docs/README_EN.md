@@ -1,5 +1,14 @@
 # [[中文文档]](../README.md) | [README]
 
+# Dst Management Platform
+![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
+![GitHub License](https://img.shields.io/github/license/miracleEverywhere/dst-management-platform-api)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/miracleEverywhere/dst-management-platform-api)
+
+---
+
 ## :warning: Version 2.x is NOT compatible with Version 1.x
 >**Version 1.x will be discontinued in August 2025, after which features like mod search will no longer be available. Please upgrade to Version 2.x as soon as possible**
 

@@ -270,14 +270,17 @@ func GetInternetIP2() (string, error) {
 	return jsonResp.Ip, nil
 }
 
-func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
-	var language int
+func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error, error) {
+	var (
+		language int
+	)
 	if lang == "zh" {
 		language = 6
 	} else {
 		language = 0
 	}
-	mods := utils.ModOverridesToStruct(luaScriptContent)
+	mods, ModOverridesToStructErr := utils.ModOverridesToStruct(luaScriptContent)
+
 	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
 	for index, mod := range mods {
 		url = url + fmt.Sprintf("&publishedfileids[%d]=%d", index, mod.ID)
@@ -288,7 +291,7 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
-		return []ModInfo{}, err
+		return []ModInfo{}, err, ModOverridesToStructErr
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -298,12 +301,12 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
 	if httpResponse.StatusCode != http.StatusOK {
-		return []ModInfo{}, err
+		return []ModInfo{}, err, ModOverridesToStructErr
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
 		utils.Logger.Error("解析JSON失败", "err", err)
-		return []ModInfo{}, err
+		return []ModInfo{}, err, ModOverridesToStructErr
 	}
 
 	var modInfoList []ModInfo
@@ -322,7 +325,7 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error) {
 		modInfoList = append(modInfoList, modInfo)
 	}
 
-	return modInfoList, nil
+	return modInfoList, nil, ModOverridesToStructErr
 }
 
 func SearchMod(page int, pageSize int, searchText string, lang string) (Data, error) {
