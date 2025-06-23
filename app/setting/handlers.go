@@ -1283,7 +1283,7 @@ func handleBlockUpload(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("uploadSuccess", langStr), "data": nil})
 }
 
-func handleKick(c *gin.Context) {
+func handlePlayerAction(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {
@@ -1291,6 +1291,7 @@ func handleKick(c *gin.Context) {
 	}
 	type ReqForm struct {
 		ClusterName string `json:"clusterName"`
+		Type        string `json:"type"`
 		Uid         string `json:"uid"`
 	}
 	var reqForm ReqForm
@@ -1313,22 +1314,46 @@ func handleKick(c *gin.Context) {
 		return
 	}
 
-	cmd := fmt.Sprintf("TheNet:Kick('%s')", reqForm.Uid)
+	var cmd string
+
+	switch reqForm.Type {
+	case "kick":
+		cmd = cluster.GetKickCmd(reqForm.Uid)
+	case "kill":
+		cmd = cluster.GetKillCmd(reqForm.Uid)
+	case "respawn":
+		cmd = cluster.GetRespawnCmd(reqForm.Uid)
+	case "despawn":
+		cmd = cluster.GetDespawnCmd(reqForm.Uid)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
 	for _, world := range cluster.Worlds {
 		if world.IsMaster {
 			err = utils.ScreenCMD(cmd, world.ScreenName)
 			if err != nil {
-				utils.Logger.Error("踢出玩家失败", "err", err)
+				utils.Logger.Error("执行玩家操作命令失败", "err", err, "cmd", cmd)
 				break
 			} else {
-				c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("kickSuccess", langStr), "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("executed", langStr), "data": nil})
 				return
 			}
 		}
 	}
 
 	for _, world := range cluster.Worlds {
-		_ = utils.ScreenCMD(cmd, world.ScreenName)
+		err = utils.ScreenCMD(cmd, world.ScreenName)
+		if err == nil {
+			break
+		}
+	}
+
+	if err != nil {
+		utils.Logger.Error("执行玩家操作命令失败", "err", err, "cmd", cmd)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("executedFail", langStr), "data": nil})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("executed", langStr), "data": nil})
