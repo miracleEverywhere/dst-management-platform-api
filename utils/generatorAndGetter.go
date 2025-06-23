@@ -203,6 +203,22 @@ func (cluster Cluster) GetModNoUgcPath() string {
 	return "dst/mods"
 }
 
+func (cluster Cluster) GetKickCmd(uid string) string {
+	return fmt.Sprintf("TheNet:Kick('%s')", uid)
+}
+
+func (cluster Cluster) GetKillCmd(uid string) string {
+	return fmt.Sprintf(`for k, v in pairs(AllPlayers) do if v.userid=='%s' then AllPlayers[k]:PushEvent('death') end end`, uid)
+}
+
+func (cluster Cluster) GetRespawnCmd(uid string) string {
+	return fmt.Sprintf(`for k, v in pairs(AllPlayers) do if v.userid=='%s' then AllPlayers[k]:PushEvent('respawnfromghost') end end`, uid)
+}
+
+func (cluster Cluster) GetDespawnCmd(uid string) string {
+	return fmt.Sprintf(`for k, v in pairs(AllPlayers) do if v.userid=='%s' then c_despawn(AllPlayers[k]) end end`, uid)
+}
+
 /* ============== config 配置相关 ============== */
 
 func (config Config) GetClusterWithName(clusterName string) (Cluster, error) {
