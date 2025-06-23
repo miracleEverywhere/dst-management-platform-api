@@ -29,6 +29,7 @@ type ClusterSetting struct {
 	PlayerNum          int    `json:"playerNum"`
 	BackDays           int    `json:"backDays"`
 	Vote               bool   `json:"vote"`
+	ConsoleEnabled     bool   `json:"consoleEnabled"`
 	Password           string `json:"password"`
 	Token              string `json:"token"`
 }
