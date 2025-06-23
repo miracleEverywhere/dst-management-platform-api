@@ -12,11 +12,17 @@ INSTALL_FAIL="NO"
 # 工具函数
 function install_ubuntu() {
     dpkg --add-architecture i386 2>&1 > /dev/null
+    if (($? != 0)); then
+		$INSTALL_FAIL="YES"
+	fi
 	apt update 2>&1 > /dev/null
     apt install -y lib32gcc1 2>&1 > /dev/null
 	apt install -y lib32gcc-s1 2>&1 > /dev/null
     apt install -y libcurl4-gnutls-dev:i386 2>&1 > /dev/null
     apt install -y screen 2>&1 > /dev/null
+    if (($? != 0)); then
+		$INSTALL_FAIL="YES"
+	fi
 	apt install -y unzip 2>&1 > /dev/null
 	if (($? != 0)); then
 		$INSTALL_FAIL="YES"
@@ -26,6 +32,9 @@ function install_ubuntu() {
 function install_rhel() {
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686 2>&1 > /dev/null
     yum -y install screen 2>&1 > /dev/null
+    if (($? != 0)); then
+		$INSTALL_FAIL="YES"
+	fi
 	yum install -y unzip 2>&1 > /dev/null
 	if (($? != 0)); then
 		$INSTALL_FAIL="YES"
@@ -112,7 +121,7 @@ rm -f steamcmd_linux.tar.gz
 rm -f $STEAM_DIR/install.log
 rm -f $0
 
-if [[ "${INSTALL_FAIL}"" == "YES" ]]; then
+if [[ "${INSTALL_FAIL}" == "YES" ]]; then
 	echo -e "100\t安装失败\tInstallation failed" > /tmp/install_status
 else
 	echo -e "100\t安装完成\tInstallation completed" > /tmp/install_status
