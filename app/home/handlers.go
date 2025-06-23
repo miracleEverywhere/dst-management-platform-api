@@ -388,6 +388,7 @@ func handleExecPost(c *gin.Context) {
 		return
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
 	}
 }
 
