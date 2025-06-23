@@ -211,6 +211,7 @@ func handleClusterPost(c *gin.Context) {
 	cluster.ClusterSetting.ClusterName = reqFrom.ClusterName
 	cluster.ClusterSetting.ClusterDisplayName = reqFrom.ClusterDisplayName
 	cluster.ClusterSetting.Status = true
+	cluster.ClusterSetting.ConsoleEnabled = true
 	cluster.SysSetting = utils.SysSetting{
 		AutoRestart: utils.AutoRestart{
 			Enable: true,
