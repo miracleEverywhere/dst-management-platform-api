@@ -32,22 +32,6 @@ ExeFile="$HOME/dmp"
 
 cd "$HOME" || exit
 
-# 检查用户，只能使用root执行
-if [[ "${USER}" != "root" ]]; then
-    echo_red "请使用root用户执行此脚本 (Please run this script as the root user)"
-    exit 1
-fi
-
-# 设置全局stderr为红色并添加固定格式
-function set_tty() {
-    exec 2> >(while read -r line; do echo_red "[$(date +'%F %T')] [ERROR] ${line}" >&2; done)
-}
-
-# 恢复stderr颜色
-function unset_tty() {
-    exec 2> /dev/tty
-}
-
 function echo_red() {
     echo -e "\033[0;31m$*\033[0m"
 }
@@ -62,6 +46,22 @@ function echo_yellow() {
 
 function echo_cyan() {
     echo -e "\033[0;36m$*\033[0m"
+}
+
+# 检查用户，只能使用root执行
+if [[ "${USER}" != "root" ]]; then
+    echo_red "请使用root用户执行此脚本 (Please run this script as the root user)"
+    exit 1
+fi
+
+# 设置全局stderr为红色并添加固定格式
+function set_tty() {
+    exec 2> >(while read -r line; do echo_red "[$(date +'%F %T')] [ERROR] ${line}" >&2; done)
+}
+
+# 恢复stderr颜色
+function unset_tty() {
+    exec 2> /dev/tty
 }
 
 # 定义一个函数来提示用户输入

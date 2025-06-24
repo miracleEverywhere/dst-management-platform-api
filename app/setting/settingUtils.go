@@ -55,7 +55,7 @@ cluster_language = zh
 tick_rate = ` + strconv.Itoa(cluster.SysSetting.TickRate) + `
 
 [MISC]
-console_enabled = true
+console_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.ConsoleEnabled) + `
 max_snapshots = ` + strconv.Itoa(cluster.ClusterSetting.BackDays) + `
 
 [SHARD]
@@ -275,6 +275,17 @@ func DoImport(filename string, cluster utils.Cluster, langStr string) (bool, str
 			cluster.ClusterSetting.PVP = false
 		} else {
 			cluster.ClusterSetting.PVP = pvp
+		}
+	}
+
+	if clusterIni["console_enabled"] == "" {
+		cluster.ClusterSetting.ConsoleEnabled = true
+	} else {
+		consoleEnabled, err := strconv.ParseBool(clusterIni["console_enabled"])
+		if err != nil {
+			cluster.ClusterSetting.ConsoleEnabled = true
+		} else {
+			cluster.ClusterSetting.ConsoleEnabled = consoleEnabled
 		}
 	}
 

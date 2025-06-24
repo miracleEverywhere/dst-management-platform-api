@@ -30,7 +30,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			setting.POST("player/history/clean", handleHistoryPlayerCleanPost)
 			setting.POST("/player/change", handlePlayerListChangePost)
 			setting.POST("/player/add/block/upload", handleBlockUpload)
-			setting.POST("/player/kick", handleKick)
+			setting.POST("/player/action", handlePlayerAction)
 			// 存档导入
 			setting.POST("/import/upload", handleImportPost)
 			// MOD
