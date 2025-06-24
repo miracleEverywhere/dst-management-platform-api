@@ -517,7 +517,16 @@ func modUpdate(cluster utils.Cluster, check bool) {
 				if len(updateModID) == 0 {
 					return
 				}
-				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新 (DMP found mods need to be updated, update ID is %s, input ID-LKGX to update)')", updateModID, updateModID)
+				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新')", updateModID)
+				_ = utils.ScreenCMD(cmd, screenName)
+				return
+			}
+			if strings.Contains(line, "is out of date and needs to be updated for new users to be able to join the server") {
+				updateModID := utils.GenerateUpdateModID()
+				if len(updateModID) == 0 {
+					return
+				}
+				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新')", updateModID)
 				_ = utils.ScreenCMD(cmd, screenName)
 				return
 			}
