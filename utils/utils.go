@@ -857,6 +857,12 @@ func GetTimestamp() int64 {
 	return milliseconds
 }
 
+func TimestampToTimestring(ts int64) string {
+	//YYYY-MM-DD HH:mm
+	t := time.Unix(ts/1000, (ts%1000)*int64(time.Millisecond))
+	return t.Format("2006-01-02 15:04")
+}
+
 // GetFileAllContent 读取文件内容
 func GetFileAllContent(filePath string) (string, error) {
 	// 如果路径中包含 ~，则将其替换为用户的 home 目录
