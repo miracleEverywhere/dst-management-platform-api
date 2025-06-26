@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -658,14 +659,98 @@ func handleStatisticsGet(c *gin.Context) {
 		Num       int   `json:"num"`
 		Timestamp int64 `json:"timestamp"`
 	}
-	var data []stats
-
-	for _, i := range statistics {
-		var j stats
-		j.Num = i.Num
-		j.Timestamp = i.Timestamp
-		data = append(data, j)
+	type GanttRowItem struct {
+		BeginDate string `json:"beginDate"`
+		EndDate   string `json:"endDate"`
+		ID        string `json:"id"`
+		Label     string `json:"label"`
 	}
+
+	type Data struct {
+		Stats []stats                   `json:"stats"`
+		Gantt map[string][]GanttRowItem `json:"gantt"`
+	}
+
+	var (
+		data          Data
+		gantt         = make(map[string][]GanttRowItem)
+		activePlayers = make(map[string]bool)
+	)
+	for i, stat := range statistics {
+		// 折线图
+		var j stats
+		j.Num = stat.Num
+		j.Timestamp = stat.Timestamp
+		data.Stats = append(data.Stats, j)
+
+		// 甘特图
+		currentName := make(map[string]bool)
+		// 构建当前时间点的nickname集合
+		for _, players := range stat.Players {
+			currentName[players.NickName] = true
+		}
+		// 处理新出现的nickname(beginTime)
+		for nickname := range currentName {
+			if !activePlayers[nickname] {
+				// 如果nickname之前不活跃，现在活跃，开始新的时间段
+				if _, exists := gantt[nickname]; !exists {
+					gantt[nickname] = []GanttRowItem{}
+				}
+				gantt[nickname] = append(gantt[nickname], GanttRowItem{
+					BeginDate: utils.TimestampToTimestring(stat.Timestamp),
+				})
+			}
+		}
+
+		// 处理不活跃(离线)nickname，即endDate
+		for nickname := range activePlayers {
+			if !currentName[nickname] {
+				if ranges, exists := gantt[nickname]; exists && len(ranges) > 0 {
+					lastIdx := len(ranges) - 1
+					if ranges[lastIdx].EndDate == "" {
+						// 确保未设置endDate
+						ranges[lastIdx].EndDate = utils.TimestampToTimestring(stat.Timestamp)
+						gantt[nickname] = ranges
+					}
+				}
+			}
+		}
+
+		// 如果当前时间点还有活跃nickname，就为所有活跃的nickname设置endDate
+		if i == len(statistics)-1 {
+			for nickname := range currentName {
+				if ranges, exists := gantt[nickname]; exists && len(ranges) > 0 {
+					lastIdx := len(ranges) - 1
+					if ranges[lastIdx].EndDate == "" {
+						ranges[lastIdx].EndDate = utils.TimestampToTimestring(stat.Timestamp)
+						gantt[nickname] = ranges
+					}
+				}
+			}
+		}
+
+		// 更新活跃nickname集合
+		activePlayers = currentName
+	}
+
+	for key, value := range gantt {
+		for index, row := range value {
+			gantt[key][index].ID = fmt.Sprintf("%s-%d", key, index)
+			beginT, err := time.Parse("2006-01-02 15:04", row.BeginDate)
+			if err != nil {
+				utils.Logger.Error("时间转换错误", "err", err)
+			}
+			endT, err := time.Parse("2006-01-02 15:04", row.EndDate)
+			if err != nil {
+				utils.Logger.Error("时间转换错误", "err", err)
+			}
+			duration := endT.Sub(beginT)
+
+			gantt[key][index].Label = fmt.Sprintf("%.0f", duration.Minutes())
+		}
+	}
+
+	data.Gantt = gantt
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
