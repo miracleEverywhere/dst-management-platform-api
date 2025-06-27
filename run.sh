@@ -151,7 +151,9 @@ function download() {
     local output="$2"
     local timeout="$3"
 
+    unset_tty
     curl -L --connect-timeout "${timeout}" --progress-bar -o "${output}" "${url}"
+    set_tty
 
     return $? # 返回 wget 的退出状态
 }
@@ -368,9 +370,7 @@ while true; do
             echo_yellow "当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version)"
             stop_dmp
             clear_dmp
-            unset_tty
             install_dmp
-            set_tty
             start_dmp
             check_dmp
             echo_green "更新完成 (Update completed)"
@@ -384,9 +384,7 @@ while true; do
         set_tty
         stop_dmp
         clear_dmp
-        unset_tty
         install_dmp
-        set_tty
         start_dmp
         check_dmp
         echo_green "强制更新完成 (Force update completed)"
