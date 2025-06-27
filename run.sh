@@ -235,7 +235,7 @@ function get_current_version() {
 function get_latest_version() {
     check_jq
     check_curl
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name | grep -oP '(\d+\.)+\d+')
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name)
     if [[ -z "$LATEST_VERSION" ]]; then
         echo_red "无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API)"
         exit 1
