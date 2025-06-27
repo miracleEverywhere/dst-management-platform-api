@@ -227,7 +227,7 @@ function get_current_version() {
     if [ -e "$ExeFile" ]; then
         CURRENT_VERSION=$("$ExeFile" -v | head -n1) # 获取输出的第一行作为版本号
     else
-        CURRENT_VERSION="0.0.0"
+        CURRENT_VERSION="v0.0.0"
     fi
 }
 
