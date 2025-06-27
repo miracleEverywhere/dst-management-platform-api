@@ -1588,12 +1588,23 @@ func handleModDownloadPost(c *gin.Context) {
 
 	go func() {
 		if modDownloadForm.FileURL == "" {
+			// 下载前删除
+			dirPath := fmt.Sprintf("%s/steamapps/workshop/content/322330/%d", utils.ModDownloadPath, modDownloadForm.ID)
+			err := utils.RemoveDir(dirPath)
+			if err != nil {
+				utils.Logger.Info("Mod目录删除失败", "err", err)
+			}
+			err = utils.RemoveFile(utils.ModUgcAcfFile)
+			if err != nil {
+				utils.Logger.Info("Acf文件删除失败", "err", err)
+			}
 			cmd := utils.GenerateModDownloadCMD(modDownloadForm.ID)
-			err := utils.BashCMD(cmd)
+			err = utils.BashCMD(cmd)
 			if err != nil {
 				utils.Logger.Error("MOD下载失败", "err", err)
 			}
 		} else {
+			// externalApi.DownloadMod 会先删除再下载
 			err := externalApi.DownloadMod(modDownloadForm.FileURL, modDownloadForm.ID)
 			if err != nil {
 				utils.Logger.Error("MOD下载失败", "err", err)
