@@ -22,6 +22,10 @@ func InitTasks() {
 	_, _ = Scheduler.Every(config.SchedulerSetting.PlayerGetFrequency).Seconds().Do(getPlayers, config)
 	utils.Logger.Info("玩家列表定时任务已配置")
 
+	// 维护玩家游戏时长统计
+	_, _ = Scheduler.Every(5).Minute().Do(maintainPlayerTimeCount)
+	utils.Logger.Info("玩家游戏时长维护任务已配置")
+
 	// 维护UID字典
 	if !config.SchedulerSetting.UIDMaintain.Disable {
 		_, _ = Scheduler.Every(config.SchedulerSetting.UIDMaintain.Frequency).Minute().Do(maintainUidMap, config)
