@@ -1128,6 +1128,19 @@ func RemoveSliceOne[T comparable](s []T, elem T) []T {
 	return s
 }
 
+func GetLastNElements[T any](slice []T, n int) []T {
+	if n <= 0 {
+		return nil
+	}
+
+	length := len(slice)
+	if length <= n {
+		return slice
+	}
+
+	return slice[length-n:]
+}
+
 func DstModsSetup(mod string) error {
 	L := lua.NewState()
 	defer L.Close()
