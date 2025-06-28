@@ -654,6 +654,10 @@ func handleStatisticsGet(c *gin.Context) {
 		utils.RespondWithError(c, 404, "zh")
 		return
 	}
+	if len(statistics) > 2879 {
+		// 只获取一天的数据
+		statistics = utils.GetLastNElements(statistics, 2879)
+	}
 
 	type stats struct {
 		Num       int   `json:"num"`
@@ -669,6 +673,7 @@ func handleStatisticsGet(c *gin.Context) {
 	type Data struct {
 		Stats []stats                   `json:"stats"`
 		Gantt map[string][]GanttRowItem `json:"gantt"`
+		Pie   map[string]int64          `json:"pie"`
 	}
 
 	var (
@@ -751,6 +756,7 @@ func handleStatisticsGet(c *gin.Context) {
 	}
 
 	data.Gantt = gantt
+	data.Pie = utils.PlayTimeCount[reqForm.ClusterName]
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
