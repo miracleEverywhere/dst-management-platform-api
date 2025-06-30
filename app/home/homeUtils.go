@@ -230,7 +230,7 @@ func countMods(luaScript string) (int, error) {
 }
 
 func GetClusterScreens(clusterName string) []AllScreens {
-	cmd := fmt.Sprintf("ps -ef | grep DST_%s | grep -v grep | awk '{print $12}'", clusterName)
+	cmd := fmt.Sprintf("ps -ef | grep DST_%s | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $12}'", clusterName)
 	out, _, _ := utils.BashCMDOutput(cmd)
 	screenNamesStr := strings.TrimSpace(out)
 

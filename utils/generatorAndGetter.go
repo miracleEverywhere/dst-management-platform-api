@@ -28,7 +28,7 @@ func (world World) GetProcessStatus(clusterName string) (bool, float64, float64,
 		return false, 0, 0, 0, diskUsed
 	}
 
-	cmd := fmt.Sprintf("ps -ef | grep $(ps -ef | grep %s | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}'", world.ScreenName)
+	cmd := fmt.Sprintf("ps -ef | grep $(ps -ef | grep %s | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}'", world.ScreenName)
 	out, _, _ := BashCMDOutput(cmd)
 
 	if len(out) < 2 {

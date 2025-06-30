@@ -735,7 +735,7 @@ func (world World) StopGame() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	killCMD := fmt.Sprintf("ps -ef | grep %s | grep -v grep | awk '{print $2}' | xargs kill -9", world.ScreenName)
+	killCMD := fmt.Sprintf("ps -ef | grep %s | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $2}' | xargs kill -9", world.ScreenName)
 	err = BashCMD(killCMD)
 	if err != nil {
 		Logger.Info("执行Bash命令失败", "msg", err, "cmd", killCMD)
