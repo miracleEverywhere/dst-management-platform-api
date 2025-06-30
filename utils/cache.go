@@ -12,4 +12,5 @@ var (
 	InContainer         bool
 	DstUpdating         bool
 	DstInstalling       bool
+	DBCache             Config
 )
