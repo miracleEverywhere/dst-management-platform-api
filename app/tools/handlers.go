@@ -654,10 +654,6 @@ func handleStatisticsGet(c *gin.Context) {
 		utils.RespondWithError(c, 404, "zh")
 		return
 	}
-	if len(statistics) > 2879 {
-		// 只获取一天的数据
-		statistics = utils.GetLastNElements(statistics, 2879)
-	}
 
 	type stats struct {
 		Num       int   `json:"num"`
