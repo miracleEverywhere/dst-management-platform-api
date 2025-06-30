@@ -2027,6 +2027,10 @@ func handleModUpdatePost(c *gin.Context) {
 
 	// 下载
 	if updateForm.ISUGC {
+		err = utils.RemoveFile(utils.ModUgcAcfFile)
+		if err != nil {
+			utils.Logger.Info("Acf文件删除失败", "err", err)
+		}
 		cmd := utils.GenerateModDownloadCMD(updateForm.ID)
 		err := utils.BashCMD(cmd)
 		if err != nil {
