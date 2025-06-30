@@ -187,7 +187,7 @@ func ReadConfig() (Config, error) {
 
 	var config Config
 	if err := json.Unmarshal(content, &config); err != nil {
-		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
+		return Config{}, fmt.Errorf("数据库格式异常: %w", err)
 	}
 
 	// 刷新缓存
