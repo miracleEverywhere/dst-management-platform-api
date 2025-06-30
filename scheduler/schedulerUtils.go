@@ -5,7 +5,6 @@ import (
 	"dst-management-platform-api/app/externalApi"
 	"dst-management-platform-api/utils"
 	"fmt"
-	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -74,11 +73,22 @@ func getPlayers(config utils.Config) {
 		statistics.Players = playerList
 
 		statisticsLength := len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])
-		if statisticsLength > 2879*7 {
+		if statisticsLength > 2879 {
 			// 只保留一周的数据量
 			utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName][:0], utils.STATISTICS[cluster.ClusterSetting.ClusterName][1:]...)
 		}
 		utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName], statistics)
+
+		if utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] == nil {
+			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] = make(map[string]int64)
+		}
+		if utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] == nil {
+			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] = make(map[string]int64)
+		}
+
+		for _, player := range statistics.Players {
+			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] = utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] + int64(config.SchedulerSetting.PlayerGetFrequency)
+		}
 	}
 }
 
@@ -530,94 +540,6 @@ func modUpdate(cluster utils.Cluster, check bool) {
 				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新')", updateModID)
 				_ = utils.ScreenCMD(cmd, screenName)
 				return
-			}
-		}
-	}
-}
-
-func maintainPlayerTimeCount() {
-	if utils.PlayTimeCount == nil {
-		utils.PlayTimeCount = make(map[string]map[string]int64)
-	}
-
-	for clusterName, statistics := range utils.STATISTICS {
-		if utils.PlayTimeCount[clusterName] == nil {
-			utils.PlayTimeCount[clusterName] = make(map[string]int64)
-		}
-
-		type timeStat struct {
-			beginTime int64
-			endTime   int64
-		}
-
-		var (
-			playerMap     = make(map[string][]timeStat)
-			activePlayers = make(map[string]bool)
-		)
-
-		for i, stat := range statistics {
-			// 甘特图
-			currentName := make(map[string]bool)
-			// 构建当前时间点的nickname集合
-			for _, players := range stat.Players {
-				currentName[players.NickName] = true
-			}
-			// 处理新出现的nickname(beginTime)
-			for nickname := range currentName {
-				if !activePlayers[nickname] {
-					// 如果nickname之前不活跃，现在活跃，开始新的时间段
-					if _, exists := playerMap[nickname]; !exists {
-						playerMap[nickname] = []timeStat{}
-					}
-					playerMap[nickname] = append(playerMap[nickname], timeStat{
-						beginTime: stat.Timestamp,
-					})
-				}
-			}
-
-			// 处理不活跃(离线)nickname，即endDate
-			for nickname := range activePlayers {
-				if !currentName[nickname] {
-					if ranges, exists := playerMap[nickname]; exists && len(ranges) > 0 {
-						lastIdx := len(ranges) - 1
-						if ranges[lastIdx].endTime == 0 {
-							// 确保未设置endDate
-							ranges[lastIdx].endTime = stat.Timestamp
-							playerMap[nickname] = ranges
-						}
-					}
-				}
-			}
-
-			// 如果当前时间点还有活跃nickname，就为所有活跃的nickname设置endDate
-			if i == len(statistics)-1 {
-				for nickname := range currentName {
-					if ranges, exists := playerMap[nickname]; exists && len(ranges) > 0 {
-						lastIdx := len(ranges) - 1
-						if ranges[lastIdx].endTime == 0 {
-							ranges[lastIdx].endTime = stat.Timestamp
-							playerMap[nickname] = ranges
-						}
-					}
-				}
-			}
-
-			// 更新活跃nickname集合
-			activePlayers = currentName
-		}
-
-		for key, value := range playerMap {
-			for _, row := range value {
-				// 将毫秒时间戳转换为time.Time
-				beginT := time.Unix(0, row.beginTime*int64(time.Millisecond))
-				endT := time.Unix(0, row.endTime*int64(time.Millisecond))
-
-				// 计算时间差
-				diff := endT.Sub(beginT)
-
-				// 转换为分钟并取整
-				minutes := int64(math.Round(diff.Minutes()))
-				utils.PlayTimeCount[clusterName][key] = minutes
 			}
 		}
 	}
