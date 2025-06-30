@@ -173,6 +173,10 @@ func (config Config) Init() {
 }
 
 func ReadConfig() (Config, error) {
+	if DBCache.JwtSecret != "" {
+		return DBCache, nil
+	}
+
 	ConfigMutex.Lock()
 	defer ConfigMutex.Unlock()
 
@@ -185,6 +189,10 @@ func ReadConfig() (Config, error) {
 	if err := json.Unmarshal(content, &config); err != nil {
 		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
 	}
+
+	// 刷新缓存
+	DBCache = config
+
 	return config, nil
 }
 
@@ -230,6 +238,9 @@ func WriteConfig(config Config) error {
 	if err := file.Sync(); err != nil {
 		return fmt.Errorf("同步文件到磁盘失败: %w", err)
 	}
+
+	// 刷新缓存
+	DBCache = config
 
 	return nil
 }
