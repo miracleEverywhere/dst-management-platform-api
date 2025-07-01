@@ -751,7 +751,7 @@ func StopClusterAllWorlds(cluster Cluster) error {
 	for _, world := range cluster.Worlds {
 		err = world.StopGame()
 		if err != nil {
-			Logger.Error("关闭游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
+			Logger.Warn("关闭游戏失败", "集群", cluster.ClusterSetting.ClusterName, "世界", world.Name)
 		}
 	}
 
