@@ -9,10 +9,8 @@
 
 ---
 
-## :warning: Version 2.x is NOT compatible with Version 1.x
->**Version 1.x will be discontinued in August 2025, after which features like mod search will no longer be available. Please upgrade to Version 2.x as soon as possible**
-
-[Click to view the migration guide](README_migration_en.md)
+## :warning: Version 2.× is NOT compatible with Version 1.×
+**Version 1.× was discontinued in August 2025, after which features like mod search will no longer be available. [Click to view the migration guide](README_migration_en.md)**
 
 ## :watermelon: Usage
 >**It is recommended to use the Ubuntu 24 system, as lower version systems may experience GLIBC version errors**
