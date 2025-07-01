@@ -300,13 +300,13 @@ func doRestart(cluster utils.Cluster) {
 	for _, world := range cluster.Worlds {
 		if world.GetStatus() {
 			restartAnnounce(world)
-			break
+			break // 如果有一个world宣告成功就结束
 		}
 	}
 
-	utils.Logger.Info("触发自动重启定时任务，正在运行中")
+	utils.Logger.Info("触发自动重启定时任务，正在运行中", "cluster", fmt.Sprintf("[%s(%s)]", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 	_ = utils.StopClusterAllWorlds(cluster)
-	time.Sleep(3 * time.Second)
+	time.Sleep(10 * time.Second)
 	_ = utils.StartClusterAllWorlds(cluster)
 }
 
