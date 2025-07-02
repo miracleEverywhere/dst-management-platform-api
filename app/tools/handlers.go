@@ -4,13 +4,20 @@ import (
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/ssh"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -839,4 +846,200 @@ func handleMetricsGet(c *gin.Context) {
 
 func handleVersionGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.VERSION})
+}
+
+func handleWebSSHGet(c *gin.Context) {
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	type WSMessage struct {
+		Type string `json:"type"`
+		Data string `json:"data"`
+		Cols int    `json:"cols"`
+		Rows int    `json:"rows"`
+	}
+
+	ip := c.Query("ip")
+	port := c.DefaultQuery("port", "22")
+	username := c.Query("username")
+	password := c.Query("password")
+
+	if ip == "" || username == "" || password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "err"})
+		return
+	}
+
+	address := net.JoinHostPort(ip, port)
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		utils.Logger.Error("WS upgrade 错误", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	defer func(conn *websocket.Conn) {
+		err := conn.Close()
+		if err != nil {
+			utils.Logger.Warn("WS 关闭失败", "err", err)
+		}
+	}(conn)
+
+	sshConfig := &ssh.ClientConfig{
+		User: username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         30 * time.Second,
+	}
+
+	sshConn, err := ssh.Dial("tcp", address, sshConfig)
+	if err != nil {
+		utils.Logger.Error("WS dial 错误", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	defer func(sshConn *ssh.Client) {
+		err := sshConn.Close()
+		if err != nil {
+			utils.Logger.Warn("ssh 关闭失败", "err", err)
+		}
+	}(sshConn)
+
+	session, err := sshConn.NewSession()
+	if err != nil {
+		utils.Logger.Error("ssh session 错误", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	defer func(session *ssh.Session) {
+		err := session.Close()
+		if err != nil {
+			utils.Logger.Warn("ssh session 关闭失败", "err", err)
+		}
+	}(session)
+
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+
+	cols := 80
+	rows := 40
+	err = session.RequestPty("xterm", rows, cols, modes)
+	if err != nil {
+		utils.Logger.Error("request pty 错误", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	stdin, err := session.StdinPipe()
+	if err != nil {
+		utils.Logger.Error("stdin pipe 错误", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		utils.Logger.Error("stdout pipe 错误", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		utils.Logger.Error("stderr pipe 错误", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	err = session.Shell()
+	if err != nil {
+		utils.Logger.Error("启动 shell 失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	go func() {
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				utils.Logger.Error("WS 读取错误", "err", err)
+				utils.RespondWithError(c, 500, "zh")
+				return
+			}
+
+			var wsMsg WSMessage
+			err = json.Unmarshal(msg, &wsMsg)
+			if err != nil {
+				utils.Logger.Warn("ws json unmarshal 错误", "err", err)
+				continue
+			}
+
+			switch wsMsg.Type {
+			case "input":
+				_, err = stdin.Write([]byte(wsMsg.Data))
+				if err != nil {
+					utils.Logger.Warn("ssh stdin 错误", "err", err)
+				}
+			case "resize":
+				cols = wsMsg.Cols
+				rows = wsMsg.Rows
+				err = session.WindowChange(rows, cols)
+				if err != nil {
+					utils.Logger.Warn("window resize 错误", "err", err)
+				}
+			}
+		}
+	}()
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := stdout.Read(buf)
+			if err != nil {
+				utils.Logger.Error("ssh stdout 读取错误", "err", err)
+				utils.RespondWithError(c, 500, "zh")
+				return
+			}
+			outputMsg := WSMessage{
+				Type: "output",
+				Data: string(buf[:n]),
+			}
+			err = conn.WriteJSON(outputMsg)
+			if err != nil {
+				utils.Logger.Warn("ssh stdout 写入错误", "err", err)
+			}
+		}
+	}()
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := stderr.Read(buf)
+			if err != nil {
+				utils.Logger.Error("ssh stderr 读取错误", "err", err)
+				utils.RespondWithError(c, 500, "zh")
+				return
+			}
+			outputMsg := WSMessage{
+				Type: "output",
+				Data: string(buf[:n]),
+			}
+			err = conn.WriteJSON(outputMsg)
+			if err != nil {
+				utils.Logger.Warn("ssh stderr 写入错误", "err", err)
+			}
+		}
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
 }
