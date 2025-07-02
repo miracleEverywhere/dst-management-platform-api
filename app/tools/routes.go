@@ -12,12 +12,12 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 	{
 		tools := v1.Group("tools")
 		{
-			//// 安装
+			// 安装
 			tools.GET("/os_info", handleOSInfoGet)
 			tools.POST("/install", utils.MWAdminOnly(), handleInstall)
 			tools.GET("/install/status", utils.MWAdminOnly(), handleGetInstallStatus)
 			tools.GET("/install/is_installing", handleGetIsInstallingGet)
-			//// 定时通知
+			// 定时通知
 			tools.GET("/announce", handleAnnounceGet)
 			tools.POST("/announce", handleAnnouncePost)
 			tools.DELETE("/announce", handleAnnounceDelete)
@@ -33,10 +33,12 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			tools.GET("/statistics", handleStatisticsGet)
 			// 令牌
 			tools.POST("/token", handleCreateTokenPost)
-			//// 监控
+			// 监控
 			tools.GET("/metrics", handleMetricsGet)
-			//// 版本
+			// 版本
 			tools.GET("/version", handleVersionGet)
+			// 终端
+			tools.GET("/webssh", utils.MWAdminOnly(), handleWebSSHGet)
 		}
 	}
 
