@@ -123,7 +123,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 个人中心
 		{
 			MenuId:      101,
 			MenuName:    "设置",
@@ -141,7 +141,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "/settings/room",
 			ActiveMenu:  nil,
-		},
+		}, // 设置
 		{
 			MenuId:      10101,
 			MenuName:    "房间",
@@ -159,7 +159,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 房间
 		{
 			MenuId:      10102,
 			MenuName:    "玩家",
@@ -177,7 +177,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 玩家
 		{
 			MenuId:      10103,
 			MenuName:    "导入",
@@ -195,7 +195,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 导入
 		{
 			MenuId:      10104,
 			MenuName:    "模组",
@@ -213,7 +213,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 模组
 		{
 			MenuId:      10105,
 			MenuName:    "系统",
@@ -231,7 +231,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 系统
 		{
 			MenuId:      102,
 			MenuName:    "工具",
@@ -249,7 +249,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "/tools/update",
 			ActiveMenu:  nil,
-		},
+		}, // 工具
 		{
 			MenuId:      10202,
 			MenuName:    "备份管理",
@@ -267,7 +267,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 备份管理
 		{
 			MenuId:      10203,
 			MenuName:    "定时通知",
@@ -285,7 +285,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 定时通知
 		{
 			MenuId:      10205,
 			MenuName:    "安装游戏",
@@ -303,7 +303,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 安装游戏
 		{
 			MenuId:      10206,
 			MenuName:    "玩家统计",
@@ -321,7 +321,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 玩家统计
 		{
 			MenuId:      10207,
 			MenuName:    "系统监控",
@@ -339,10 +339,10 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 系统监控
 		{
 			MenuId:      10208,
-			MenuName:    "令牌",
+			MenuName:    "创建令牌",
 			EnName:      "Token",
 			ParentId:    102,
 			MenuType:    "2",
@@ -357,7 +357,25 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 创建令牌
+		{
+			MenuId:      10209,
+			MenuName:    "远程终端",
+			EnName:      "WebSSH",
+			ParentId:    102,
+			MenuType:    "2",
+			Path:        "/tools/webssh",
+			Name:        "toolsWebSSH",
+			Component:   "tools/webssh",
+			Icon:        "sc-icon-TerminalBoxFill",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		}, // 远程终端
 		{
 			MenuId:      103,
 			MenuName:    "日志",
@@ -375,7 +393,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "/logs/ground",
 			ActiveMenu:  nil,
-		},
+		}, // 日志
 		{
 			MenuId:      10301,
 			MenuName:    "世界日志",
@@ -393,7 +411,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 世界日志
 		{
 			MenuId:      10303,
 			MenuName:    "聊天日志",
@@ -411,7 +429,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 聊天日志
 		{
 			MenuId:      10304,
 			MenuName:    "请求日志",
@@ -429,7 +447,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 请求日志
 		{
 			MenuId:      10304,
 			MenuName:    "平台日志",
@@ -447,7 +465,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 平台日志
 		{
 			MenuId:      10305,
 			MenuName:    "Steam日志",
@@ -465,7 +483,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // Steam日志
 		{
 			MenuId:      10306,
 			MenuName:    "清理日志",
@@ -483,7 +501,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		},
+		}, // 清理日志
 		{
 			MenuId:      104,
 			MenuName:    "用户管理",
@@ -501,7 +519,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "/users",
 			ActiveMenu:  nil,
-		},
+		}, // 用户管理
 		{
 			MenuId:      105,
 			MenuName:    "集群管理",
@@ -519,7 +537,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "/clusters",
 			ActiveMenu:  nil,
-		},
+		}, // 集群管理
 		{
 			MenuId:      106,
 			MenuName:    "帮助",
@@ -537,7 +555,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "/help",
 			ActiveMenu:  nil,
-		},
+		}, // 帮助
 	}
 
 	// 非管理员拥有权限的菜单
