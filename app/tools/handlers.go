@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -868,25 +869,25 @@ func handleWebSSHGet(c *gin.Context) {
 	port := c.DefaultQuery("port", "22")
 	username := c.Query("username")
 	password := c.Query("password")
-	//token := c.Query("token")
-	//
-	//config, err := utils.ReadConfig()
-	//if err != nil {
-	//	utils.Logger.Error("配置文件打开失败", "err", err)
-	//	utils.RespondWithError(c, 500, "zh")
-	//	return
-	//}
-	//tokenSecret := config.JwtSecret
-	//claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
-	//if err != nil {
-	//	utils.RespondWithError(c, 420, "zh")
-	//	return
-	//}
-	//
-	//if claims.Role != "admin" {
-	//	utils.RespondWithError(c, 425, "zh")
-	//	return
-	//}
+	token := c.Query("token")
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件打开失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	tokenSecret := config.JwtSecret
+	claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
+	if err != nil {
+		utils.RespondWithError(c, 420, "zh")
+		return
+	}
+
+	if claims.Role != "admin" {
+		utils.RespondWithError(c, 425, "zh")
+		return
+	}
 
 	if ip == "" || username == "" || password == "" {
 		utils.Logger.Warn("webssh：必要信息为空")
@@ -894,8 +895,10 @@ func handleWebSSHGet(c *gin.Context) {
 		return
 	}
 
+	passwordBase64, _ := base64.StdEncoding.DecodeString(password)
+
 	// aes加解密有问题，需要处理
-	passwordBytes, err := utils.AesDecrypt(utils.GetAesKey(), password)
+	passwordBytes, err := utils.AesDecrypt(passwordBase64, utils.GetAesKey())
 	if err != nil {
 		utils.Logger.Warn("aes解密失败", "err", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "err"})
@@ -926,13 +929,7 @@ func handleWebSSHGet(c *gin.Context) {
 			ssh.Password(password),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         60 * time.Second, // 增加超时时间
-		Config: ssh.Config{
-			Ciphers: []string{
-				"aes128-ctr", "aes192-ctr", "aes256-ctr",
-				"arcfour256", "arcfour128",
-			},
-		},
+		Timeout:         30 * time.Second,
 	}
 
 	sshConn, err := ssh.Dial("tcp", address, sshConfig)
@@ -999,7 +996,7 @@ func handleWebSSHGet(c *gin.Context) {
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
-				utils.Logger.Error("WS 读取错误", "err", err)
+				utils.Logger.Warn("WS 读取错误", "err", err)
 				return
 			}
 
