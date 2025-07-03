@@ -11,6 +11,7 @@ require (
 	github.com/soulteary/gin-static v0.2.3
 	github.com/tealeg/xlsx v1.0.5
 	github.com/yuin/gopher-lua v1.1.1
+	golang.org/x/crypto v0.24.0
 )
 
 require (
@@ -44,7 +45,6 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
