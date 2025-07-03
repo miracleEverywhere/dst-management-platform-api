@@ -287,5 +287,25 @@ func GetDSTRoomsApi(region string) string {
 	return fmt.Sprintf("https://lobby-v2-cdn.klei.com/%s-Steam.json.gz", region)
 }
 
+func GetAesKey() []byte {
+	var (
+		decoded []byte
+		key     = byte(0x55)
+	)
+
+	encoded := []byte{
+		100 ^ key, 77 ^ key, 80 ^ key, 95 ^ key,
+		97 ^ key, 69 ^ key, 83 ^ key, 95 ^ key,
+		50 ^ key, 112 ^ key, 118 ^ key, 118 ^ key,
+		68 ^ key, 95 ^ key, 103 ^ key, 79 ^ key,
+	}
+
+	for _, b := range encoded {
+		decoded = append(decoded, b^key)
+	}
+
+	return decoded
+}
+
 /* Linux交叉编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
 /* MacOS编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 ~/go/go1.23.1/bin/go build -o /Users/xxx/dmp */

@@ -868,20 +868,50 @@ func handleWebSSHGet(c *gin.Context) {
 	port := c.DefaultQuery("port", "22")
 	username := c.Query("username")
 	password := c.Query("password")
+	//token := c.Query("token")
+	//
+	//config, err := utils.ReadConfig()
+	//if err != nil {
+	//	utils.Logger.Error("配置文件打开失败", "err", err)
+	//	utils.RespondWithError(c, 500, "zh")
+	//	return
+	//}
+	//tokenSecret := config.JwtSecret
+	//claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
+	//if err != nil {
+	//	utils.RespondWithError(c, 420, "zh")
+	//	return
+	//}
+	//
+	//if claims.Role != "admin" {
+	//	utils.RespondWithError(c, 425, "zh")
+	//	return
+	//}
 
 	if ip == "" || username == "" || password == "" {
+		utils.Logger.Warn("webssh：必要信息为空")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "err"})
 		return
 	}
+
+	// aes加解密有问题，需要处理
+	passwordBytes, err := utils.AesDecrypt(utils.GetAesKey(), password)
+	if err != nil {
+		utils.Logger.Warn("aes解密失败", "err", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "err"})
+		return
+	}
+
+	password = string(passwordBytes)
 
 	address := net.JoinHostPort(ip, port)
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		utils.Logger.Error("WS upgrade 错误", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
+	utils.Logger.Info("WebSocket连接已建立")
 
 	defer func(conn *websocket.Conn) {
 		err := conn.Close()
@@ -896,13 +926,18 @@ func handleWebSSHGet(c *gin.Context) {
 			ssh.Password(password),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         30 * time.Second,
+		Timeout:         60 * time.Second, // 增加超时时间
+		Config: ssh.Config{
+			Ciphers: []string{
+				"aes128-ctr", "aes192-ctr", "aes256-ctr",
+				"arcfour256", "arcfour128",
+			},
+		},
 	}
 
 	sshConn, err := ssh.Dial("tcp", address, sshConfig)
 	if err != nil {
 		utils.Logger.Error("WS dial 错误", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
 	defer func(sshConn *ssh.Client) {
@@ -915,7 +950,6 @@ func handleWebSSHGet(c *gin.Context) {
 	session, err := sshConn.NewSession()
 	if err != nil {
 		utils.Logger.Error("ssh session 错误", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
 	defer func(session *ssh.Session) {
@@ -936,33 +970,28 @@ func handleWebSSHGet(c *gin.Context) {
 	err = session.RequestPty("xterm", rows, cols, modes)
 	if err != nil {
 		utils.Logger.Error("request pty 错误", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
 
 	stdin, err := session.StdinPipe()
 	if err != nil {
 		utils.Logger.Error("stdin pipe 错误", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
 	stdout, err := session.StdoutPipe()
 	if err != nil {
 		utils.Logger.Error("stdout pipe 错误", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
 	stderr, err := session.StderrPipe()
 	if err != nil {
 		utils.Logger.Error("stderr pipe 错误", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
 
 	err = session.Shell()
 	if err != nil {
 		utils.Logger.Error("启动 shell 失败", "err", err)
-		utils.RespondWithError(c, 500, "zh")
 		return
 	}
 
@@ -971,7 +1000,6 @@ func handleWebSSHGet(c *gin.Context) {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				utils.Logger.Error("WS 读取错误", "err", err)
-				utils.RespondWithError(c, 500, "zh")
 				return
 			}
 
@@ -1005,7 +1033,6 @@ func handleWebSSHGet(c *gin.Context) {
 			n, err := stdout.Read(buf)
 			if err != nil {
 				utils.Logger.Error("ssh stdout 读取错误", "err", err)
-				utils.RespondWithError(c, 500, "zh")
 				return
 			}
 			outputMsg := WSMessage{
@@ -1025,7 +1052,6 @@ func handleWebSSHGet(c *gin.Context) {
 			n, err := stderr.Read(buf)
 			if err != nil {
 				utils.Logger.Error("ssh stderr 读取错误", "err", err)
-				utils.RespondWithError(c, 500, "zh")
 				return
 			}
 			outputMsg := WSMessage{

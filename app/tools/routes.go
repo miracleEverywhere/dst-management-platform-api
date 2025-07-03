@@ -7,38 +7,36 @@ import (
 
 func RouteTools(r *gin.Engine) *gin.Engine {
 	v1 := r.Group("v1")
-	v1.Use(utils.MWtoken())
-	v1.Use(utils.MWUserCheck())
 	{
 		tools := v1.Group("tools")
 		{
 			// 安装
-			tools.GET("/os_info", handleOSInfoGet)
-			tools.POST("/install", utils.MWAdminOnly(), handleInstall)
-			tools.GET("/install/status", utils.MWAdminOnly(), handleGetInstallStatus)
-			tools.GET("/install/is_installing", handleGetIsInstallingGet)
+			tools.GET("/os_info", utils.MWtoken(), utils.MWUserCheck(), handleOSInfoGet)
+			tools.POST("/install", utils.MWtoken(), utils.MWUserCheck(), utils.MWAdminOnly(), handleInstall)
+			tools.GET("/install/status", utils.MWtoken(), utils.MWUserCheck(), utils.MWAdminOnly(), handleGetInstallStatus)
+			tools.GET("/install/is_installing", utils.MWtoken(), utils.MWUserCheck(), handleGetIsInstallingGet)
 			// 定时通知
-			tools.GET("/announce", handleAnnounceGet)
-			tools.POST("/announce", handleAnnouncePost)
-			tools.DELETE("/announce", handleAnnounceDelete)
-			tools.PUT("/announce", handleAnnouncePut)
+			tools.GET("/announce", utils.MWtoken(), utils.MWUserCheck(), handleAnnounceGet)
+			tools.POST("/announce", utils.MWtoken(), utils.MWUserCheck(), handleAnnouncePost)
+			tools.DELETE("/announce", utils.MWtoken(), utils.MWUserCheck(), handleAnnounceDelete)
+			tools.PUT("/announce", utils.MWtoken(), utils.MWUserCheck(), handleAnnouncePut)
 			// 备份管理
-			tools.GET("/backup", handleBackupGet)
-			tools.POST("/backup", handleBackupPost) // 手动创建备份
-			tools.DELETE("/backup", handleBackupDelete)
-			tools.DELETE("/backup/multi", handleMultiDelete)
-			tools.POST("/backup/restore", handleBackupRestore)
+			tools.GET("/backup", utils.MWtoken(), utils.MWUserCheck(), handleBackupGet)
+			tools.POST("/backup", utils.MWtoken(), utils.MWUserCheck(), handleBackupPost) // 手动创建备份
+			tools.DELETE("/backup", utils.MWtoken(), utils.MWUserCheck(), handleBackupDelete)
+			tools.DELETE("/backup/multi", utils.MWtoken(), utils.MWUserCheck(), handleMultiDelete)
+			tools.POST("/backup/restore", utils.MWtoken(), utils.MWUserCheck(), handleBackupRestore)
 			//tools.POST("/backup/download", handleBackupDownload)
 			// 统计信息
-			tools.GET("/statistics", handleStatisticsGet)
+			tools.GET("/statistics", utils.MWtoken(), utils.MWUserCheck(), handleStatisticsGet)
 			// 令牌
-			tools.POST("/token", handleCreateTokenPost)
+			tools.POST("/token", utils.MWtoken(), utils.MWUserCheck(), handleCreateTokenPost)
 			// 监控
-			tools.GET("/metrics", handleMetricsGet)
+			tools.GET("/metrics", utils.MWtoken(), utils.MWUserCheck(), handleMetricsGet)
 			// 版本
-			tools.GET("/version", handleVersionGet)
+			tools.GET("/version", utils.MWtoken(), utils.MWUserCheck(), handleVersionGet)
 			// 终端
-			tools.GET("/webssh", utils.MWAdminOnly(), handleWebSSHGet)
+			tools.GET("/webssh", handleWebSSHGet)
 		}
 	}
 

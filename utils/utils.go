@@ -3,11 +3,15 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	cRand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -1364,4 +1368,86 @@ func VerifyUpdateModID(signature string) bool {
 
 	// 5. 安全比对
 	return hmac.Equal(expectedSig, decoded[nonceSize:])
+}
+
+// PKCS7Padding 填充数据
+func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
+	padding := blockSize - len(ciphertext)%blockSize
+	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padText...)
+}
+
+// PKCS7UnPadding 去除填充
+func PKCS7UnPadding(origData []byte) ([]byte, error) {
+	length := len(origData)
+	if length == 0 {
+		return nil, errors.New("非法 ciphertext")
+	}
+	unPadding := int(origData[length-1])
+	if unPadding > length {
+		return nil, errors.New("非法 padding")
+	}
+	return origData[:(length - unPadding)], nil
+}
+
+// AesEncrypt AES加密函数
+// key: 密钥，长度必须为16(AES-128)、24(AES-192)或32(AES-256)字节
+// plaintext: 要加密的明文
+// 返回: base64编码的加密结果和可能的错误
+func AesEncrypt(key []byte, plaintext []byte) (string, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	// 填充原始数据
+	blockSize := block.BlockSize()
+	plaintext = PKCS7Padding(plaintext, blockSize)
+
+	// 初始化向量IV需要是唯一的，但不需要保密
+	ciphertext := make([]byte, blockSize+len(plaintext))
+	iv := ciphertext[:blockSize]
+	if _, err := io.ReadFull(cRand.Reader, iv); err != nil {
+		return "", err
+	}
+
+	// 加密
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(ciphertext[blockSize:], plaintext)
+
+	// 返回base64编码的字符串
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// AesDecrypt AES解密函数
+// key: 密钥，必须与加密时使用的相同
+// ciphertextBase64: base64编码的加密字符串
+// 返回: 解密后的明文和可能的错误
+func AesDecrypt(key []byte, ciphertextBase64 string) ([]byte, error) {
+	// 解码base64
+	ciphertext, err := base64.StdEncoding.DecodeString(ciphertextBase64)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	blockSize := block.BlockSize()
+	if len(ciphertext) < blockSize {
+		return nil, errors.New("ciphertext 太短")
+	}
+
+	// 提取IV
+	iv := ciphertext[:blockSize]
+	ciphertext = ciphertext[blockSize:]
+
+	// 解密
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+
+	// 去除填充
+	return PKCS7UnPadding(ciphertext)
 }
