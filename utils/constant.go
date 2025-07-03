@@ -1,6 +1,6 @@
 package utils
 
-const VERSION string = "2.0.6"
+const VERSION string = "v2.0.7"
 
 const DstPath = ".klei/DoNotStarveTogether"
 
@@ -23,6 +23,8 @@ const ModDownloadPath = DmpFilesPath + "/mod"
 const ModUgcDownloadPath = ModDownloadPath + "/steamapps/workshop/content/322330"
 
 const ModNoUgcDownloadPath = ModDownloadPath + "/not_ugc"
+
+const ModUgcAcfFile = ModDownloadPath + "/steamapps/workshop/appworkshop_322330.acf"
 
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 

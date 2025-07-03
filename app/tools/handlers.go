@@ -1,15 +1,25 @@
 package tools
 
 import (
+	"context"
 	"dst-management-platform-api/app/setting"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/ssh"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func handleOSInfoGet(c *gin.Context) {
@@ -658,14 +668,100 @@ func handleStatisticsGet(c *gin.Context) {
 		Num       int   `json:"num"`
 		Timestamp int64 `json:"timestamp"`
 	}
-	var data []stats
-
-	for _, i := range statistics {
-		var j stats
-		j.Num = i.Num
-		j.Timestamp = i.Timestamp
-		data = append(data, j)
+	type GanttRowItem struct {
+		BeginDate string `json:"beginDate"`
+		EndDate   string `json:"endDate"`
+		ID        string `json:"id"`
+		Label     string `json:"label"`
 	}
+
+	type Data struct {
+		Stats []stats                   `json:"stats"`
+		Gantt map[string][]GanttRowItem `json:"gantt"`
+		Pie   map[string]int64          `json:"pie"`
+	}
+
+	var (
+		data          Data
+		gantt         = make(map[string][]GanttRowItem)
+		activePlayers = make(map[string]bool)
+	)
+	for i, stat := range statistics {
+		// 折线图
+		var j stats
+		j.Num = stat.Num
+		j.Timestamp = stat.Timestamp
+		data.Stats = append(data.Stats, j)
+
+		// 甘特图
+		currentName := make(map[string]bool)
+		// 构建当前时间点的nickname集合
+		for _, players := range stat.Players {
+			currentName[players.NickName] = true
+		}
+		// 处理新出现的nickname(beginTime)
+		for nickname := range currentName {
+			if !activePlayers[nickname] {
+				// 如果nickname之前不活跃，现在活跃，开始新的时间段
+				if _, exists := gantt[nickname]; !exists {
+					gantt[nickname] = []GanttRowItem{}
+				}
+				gantt[nickname] = append(gantt[nickname], GanttRowItem{
+					BeginDate: utils.TimestampToTimestring(stat.Timestamp),
+				})
+			}
+		}
+
+		// 处理不活跃(离线)nickname，即endDate
+		for nickname := range activePlayers {
+			if !currentName[nickname] {
+				if ranges, exists := gantt[nickname]; exists && len(ranges) > 0 {
+					lastIdx := len(ranges) - 1
+					if ranges[lastIdx].EndDate == "" {
+						// 确保未设置endDate
+						ranges[lastIdx].EndDate = utils.TimestampToTimestring(stat.Timestamp)
+						gantt[nickname] = ranges
+					}
+				}
+			}
+		}
+
+		// 如果当前时间点还有活跃nickname，就为所有活跃的nickname设置endDate
+		if i == len(statistics)-1 {
+			for nickname := range currentName {
+				if ranges, exists := gantt[nickname]; exists && len(ranges) > 0 {
+					lastIdx := len(ranges) - 1
+					if ranges[lastIdx].EndDate == "" {
+						ranges[lastIdx].EndDate = utils.TimestampToTimestring(stat.Timestamp)
+						gantt[nickname] = ranges
+					}
+				}
+			}
+		}
+
+		// 更新活跃nickname集合
+		activePlayers = currentName
+	}
+
+	for key, value := range gantt {
+		for index, row := range value {
+			gantt[key][index].ID = fmt.Sprintf("%s-%d", key, index)
+			beginT, err := time.Parse("2006-01-02 15:04", row.BeginDate)
+			if err != nil {
+				utils.Logger.Error("时间转换错误", "err", err)
+			}
+			endT, err := time.Parse("2006-01-02 15:04", row.EndDate)
+			if err != nil {
+				utils.Logger.Error("时间转换错误", "err", err)
+			}
+			duration := endT.Sub(beginT)
+
+			gantt[key][index].Label = fmt.Sprintf("%.0f", duration.Minutes())
+		}
+	}
+
+	data.Gantt = gantt
+	data.Pie = utils.PlayTimeCount[reqForm.ClusterName]
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
@@ -752,4 +848,288 @@ func handleMetricsGet(c *gin.Context) {
 
 func handleVersionGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": utils.VERSION})
+}
+
+func handleWebSSHGet(c *gin.Context) {
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	type WSMessage struct {
+		Type string `json:"type"`
+		Data string `json:"data"`
+		Cols int    `json:"cols"`
+		Rows int    `json:"rows"`
+	}
+
+	ip := c.Query("ip")
+	port := c.DefaultQuery("port", "22")
+	username := c.Query("username")
+	password := c.Query("password")
+	token := c.Query("token")
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件打开失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+	tokenSecret := config.JwtSecret
+	claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
+	if err != nil {
+		utils.RespondWithError(c, 420, "zh")
+		return
+	}
+
+	if claims.Role != "admin" {
+		utils.RespondWithError(c, 425, "zh")
+		return
+	}
+
+	if ip == "" || username == "" || password == "" {
+		utils.Logger.Warn("webssh：必要信息为空")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "err"})
+		return
+	}
+
+	passwordBase64, _ := base64.StdEncoding.DecodeString(password)
+
+	passwordBytes, err := utils.AesDecrypt(passwordBase64, utils.GetAesKey())
+	if err != nil {
+		utils.Logger.Warn("aes解密失败", "err", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "err"})
+		return
+	}
+
+	password = string(passwordBytes)
+
+	address := net.JoinHostPort(ip, port)
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		utils.Logger.Error("WS upgrade 错误", "err", err)
+		return
+	}
+	utils.Logger.Info("WebSocket连接已建立")
+
+	defer func(conn *websocket.Conn) {
+		err := conn.Close()
+		if err != nil {
+			utils.Logger.Warn("WS 关闭失败", "err", err)
+		}
+	}(conn)
+
+	sshConfig := &ssh.ClientConfig{
+		User: username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         30 * time.Second,
+	}
+
+	sshConn, err := ssh.Dial("tcp", address, sshConfig)
+	if err != nil {
+		utils.Logger.Warn("WS dial 错误", "err", err)
+		return
+	}
+	defer func(sshConn *ssh.Client) {
+		err := sshConn.Close()
+		if err != nil {
+			utils.Logger.Warn("ssh 关闭失败", "err", err)
+		}
+	}(sshConn)
+
+	session, err := sshConn.NewSession()
+	if err != nil {
+		utils.Logger.Warn("ssh session 错误", "err", err)
+		return
+	}
+	defer func(session *ssh.Session) {
+		err := session.Close()
+		if err != nil {
+			utils.Logger.Warn("ssh session 关闭失败", "err", err)
+		}
+	}(session)
+
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+
+	cols := 80
+	rows := 40
+	err = session.RequestPty("xterm", rows, cols, modes)
+	if err != nil {
+		utils.Logger.Warn("request pty 错误", "err", err)
+		return
+	}
+
+	stdin, err := session.StdinPipe()
+	if err != nil {
+		utils.Logger.Warn("stdin pipe 错误", "err", err)
+		return
+	}
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		utils.Logger.Warn("stdout pipe 错误", "err", err)
+		return
+	}
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		utils.Logger.Warn("stderr pipe 错误", "err", err)
+		return
+	}
+
+	err = session.Shell()
+	if err != nil {
+		utils.Logger.Warn("启动 shell 失败", "err", err)
+		return
+	}
+
+	// 添加活动时间追踪和超时控制
+	lastActivityTime := time.Now()
+	activityTimeout := 10 * time.Minute
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// 超时检测goroutine
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if time.Since(lastActivityTime) > activityTimeout {
+					utils.Logger.Info("终端连接因不活跃超时，即将关闭")
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// 输入处理goroutine
+	go func() {
+		defer cancel()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				_, msg, err := conn.ReadMessage()
+				if err != nil {
+					utils.Logger.Warn("WS 读取错误", "err", err)
+					return
+				}
+
+				// 更新最后活动时间
+				lastActivityTime = time.Now()
+
+				var wsMsg WSMessage
+				err = json.Unmarshal(msg, &wsMsg)
+				if err != nil {
+					utils.Logger.Warn("ws json unmarshal 错误", "err", err)
+					continue
+				}
+
+				switch wsMsg.Type {
+				case "input":
+					_, err = stdin.Write([]byte(wsMsg.Data))
+					if err != nil {
+						utils.Logger.Warn("ssh stdin 错误", "err", err)
+					}
+				case "resize":
+					cols = wsMsg.Cols
+					rows = wsMsg.Rows
+					err = session.WindowChange(rows, cols)
+					if err != nil {
+						utils.Logger.Warn("window resize 错误", "err", err)
+					}
+				}
+			}
+		}
+	}()
+
+	// 标准输出处理goroutine
+	go func() {
+		defer cancel()
+		buf := make([]byte, 1024)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				n, err := stdout.Read(buf)
+				if err != nil {
+					utils.Logger.Warn("ssh stdout 读取错误", "err", err)
+					return
+				}
+
+				// 更新最后活动时间
+				lastActivityTime = time.Now()
+
+				outputMsg := WSMessage{
+					Type: "output",
+					Data: string(buf[:n]),
+				}
+				err = conn.WriteJSON(outputMsg)
+				if err != nil {
+					utils.Logger.Warn("ssh stdout 写入错误", "err", err)
+				}
+			}
+		}
+	}()
+
+	// 标准错误处理goroutine
+	go func() {
+		defer cancel()
+		buf := make([]byte, 1024)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				n, err := stderr.Read(buf)
+				if err != nil {
+					utils.Logger.Warn("ssh stderr 读取错误", "err", err)
+					return
+				}
+
+				// 更新最后活动时间
+				lastActivityTime = time.Now()
+
+				outputMsg := WSMessage{
+					Type: "output",
+					Data: string(buf[:n]),
+				}
+				err = conn.WriteJSON(outputMsg)
+				if err != nil {
+					utils.Logger.Warn("ssh stderr 写入错误", "err", err)
+				}
+			}
+		}
+	}()
+
+	// 等待终止信号
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-ctx.Done():
+		utils.Logger.Info("终端连接因超时关闭")
+	case sig := <-sigChan:
+		utils.Logger.Info("终端收到系统信号关闭连接", "signal", sig)
+	}
 }

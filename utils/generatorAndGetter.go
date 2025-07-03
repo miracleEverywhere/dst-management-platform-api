@@ -28,7 +28,7 @@ func (world World) GetProcessStatus(clusterName string) (bool, float64, float64,
 		return false, 0, 0, 0, diskUsed
 	}
 
-	cmd := fmt.Sprintf("ps -ef | grep $(ps -ef | grep %s | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}'", world.ScreenName)
+	cmd := fmt.Sprintf("ps -ef | grep $(ps -ef | grep %s | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $2}') | grep -v grep | grep -vi screen |awk '{print $2}'", world.ScreenName)
 	out, _, _ := BashCMDOutput(cmd)
 
 	if len(out) < 2 {
@@ -285,6 +285,26 @@ func GetMacVersionCmd() string {
 
 func GetDSTRoomsApi(region string) string {
 	return fmt.Sprintf("https://lobby-v2-cdn.klei.com/%s-Steam.json.gz", region)
+}
+
+func GetAesKey() []byte {
+	var (
+		decoded []byte
+		key     = byte(0x55)
+	)
+
+	encoded := []byte{
+		100 ^ key, 77 ^ key, 80 ^ key, 95 ^ key,
+		97 ^ key, 69 ^ key, 83 ^ key, 95 ^ key,
+		50 ^ key, 112 ^ key, 118 ^ key, 118 ^ key,
+		68 ^ key, 95 ^ key, 103 ^ key, 79 ^ key,
+	}
+
+	for _, b := range encoded {
+		decoded = append(decoded, b^key)
+	}
+
+	return decoded
 }
 
 /* Linux交叉编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */

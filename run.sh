@@ -151,7 +151,9 @@ function download() {
     local output="$2"
     local timeout="$3"
 
+    unset_tty
     curl -L --connect-timeout "${timeout}" --progress-bar -o "${output}" "${url}"
+    set_tty
 
     return $? # 返回 wget 的退出状态
 }
@@ -225,7 +227,7 @@ function get_current_version() {
     if [ -e "$ExeFile" ]; then
         CURRENT_VERSION=$("$ExeFile" -v | head -n1) # 获取输出的第一行作为版本号
     else
-        CURRENT_VERSION="0.0.0"
+        CURRENT_VERSION="v0.0.0"
     fi
 }
 
@@ -233,7 +235,7 @@ function get_current_version() {
 function get_latest_version() {
     check_jq
     check_curl
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name | grep -oP '(\d+\.)+\d+')
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name)
     if [[ -z "$LATEST_VERSION" ]]; then
         echo_red "无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API)"
         exit 1
@@ -368,9 +370,7 @@ while true; do
             echo_yellow "当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version)"
             stop_dmp
             clear_dmp
-            unset_tty
             install_dmp
-            set_tty
             start_dmp
             check_dmp
             echo_green "更新完成 (Update completed)"
@@ -384,9 +384,7 @@ while true; do
         set_tty
         stop_dmp
         clear_dmp
-        unset_tty
         install_dmp
-        set_tty
         start_dmp
         check_dmp
         echo_green "强制更新完成 (Force update completed)"

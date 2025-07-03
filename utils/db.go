@@ -173,6 +173,10 @@ func (config Config) Init() {
 }
 
 func ReadConfig() (Config, error) {
+	if DBCache.JwtSecret != "" {
+		return DBCache, nil
+	}
+
 	ConfigMutex.Lock()
 	defer ConfigMutex.Unlock()
 
@@ -183,8 +187,12 @@ func ReadConfig() (Config, error) {
 
 	var config Config
 	if err := json.Unmarshal(content, &config); err != nil {
-		return Config{}, fmt.Errorf("解析 JSON 失败: %w", err)
+		return Config{}, fmt.Errorf("数据库格式异常: %w", err)
 	}
+
+	// 刷新缓存
+	DBCache = config
+
 	return config, nil
 }
 
@@ -231,6 +239,9 @@ func WriteConfig(config Config) error {
 		return fmt.Errorf("同步文件到磁盘失败: %w", err)
 	}
 
+	// 刷新缓存
+	DBCache = config
+
 	return nil
 }
 
@@ -239,12 +250,13 @@ func CheckConfig() {
 	_, err := os.Stat(ConfDir + "/DstMP.sdb")
 	if !os.IsNotExist(err) {
 		Logger.Info("执行数据库检查中，发现数据库文件")
-		_, err := ReadConfig()
+		config, err := ReadConfig()
 		if err != nil {
 			Logger.Error("执行数据库检查中，打开数据库文件失败", "err", err)
 			panic("数据库检查未通过")
 			return
 		}
+		DBCache = config
 		Logger.Info("数据库检查完成")
 		return
 	}

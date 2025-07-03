@@ -303,10 +303,8 @@ func GenerateModDownloadCMD(id int) string {
 		return ""
 	}
 	filePath := homeDir + "/" + ModDownloadPath
-	cmd := "steamcmd/steamcmd.sh +force_install_dir "
-	cmd += filePath + " +login anonymous"
-	cmd += " +workshop_download_item 322330 " + strconv.Itoa(id)
-	cmd += " +quit"
+
+	cmd := fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s +login anonymous +workshop_download_item 322330 %d +quit", filePath, id)
 
 	return cmd
 }

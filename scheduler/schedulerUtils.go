@@ -74,10 +74,21 @@ func getPlayers(config utils.Config) {
 
 		statisticsLength := len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])
 		if statisticsLength > 2879 {
-			// 只保留一天的数据量
+			// 只保留一周的数据量
 			utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName][:0], utils.STATISTICS[cluster.ClusterSetting.ClusterName][1:]...)
 		}
 		utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName], statistics)
+
+		if utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] == nil {
+			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] = make(map[string]int64)
+		}
+		if utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] == nil {
+			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] = make(map[string]int64)
+		}
+
+		for _, player := range statistics.Players {
+			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] = utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] + int64(config.SchedulerSetting.PlayerGetFrequency)
+		}
 	}
 }
 
@@ -289,13 +300,13 @@ func doRestart(cluster utils.Cluster) {
 	for _, world := range cluster.Worlds {
 		if world.GetStatus() {
 			restartAnnounce(world)
-			break
+			break // 如果有一个world宣告成功就结束
 		}
 	}
 
-	utils.Logger.Info("触发自动重启定时任务，正在运行中")
+	utils.Logger.Info("触发自动重启定时任务，正在运行中", "cluster", fmt.Sprintf("[%s(%s)]", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 	_ = utils.StopClusterAllWorlds(cluster)
-	time.Sleep(3 * time.Second)
+	time.Sleep(10 * time.Second)
 	_ = utils.StartClusterAllWorlds(cluster)
 }
 
@@ -517,7 +528,16 @@ func modUpdate(cluster utils.Cluster, check bool) {
 				if len(updateModID) == 0 {
 					return
 				}
-				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新 (DMP found mods need to be updated, update ID is %s, input ID-LKGX to update)')", updateModID, updateModID)
+				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新')", updateModID)
+				_ = utils.ScreenCMD(cmd, screenName)
+				return
+			}
+			if strings.Contains(line, "is out of date and needs to be updated for new users to be able to join the server") {
+				updateModID := utils.GenerateUpdateModID()
+				if len(updateModID) == 0 {
+					return
+				}
+				cmd = fmt.Sprintf("c_announce('饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入ID-LKGX进行模组更新')", updateModID)
 				_ = utils.ScreenCMD(cmd, screenName)
 				return
 			}
