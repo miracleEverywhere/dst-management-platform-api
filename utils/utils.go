@@ -9,7 +9,6 @@ import (
 	cRand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base32"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -1370,84 +1369,64 @@ func VerifyUpdateModID(signature string) bool {
 	return hmac.Equal(expectedSig, decoded[nonceSize:])
 }
 
-// PKCS7Padding 填充数据
-func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
-	padding := blockSize - len(ciphertext)%blockSize
+func pkcs7Padding(data []byte, blockSize int) []byte {
+	//判断缺少几位长度。最少1，最多 blockSize
+	padding := blockSize - len(data)%blockSize
+	//补足位数。把切片[]byte{byte(padding)}复制padding个
 	padText := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(ciphertext, padText...)
+	return append(data, padText...)
 }
 
-// PKCS7UnPadding 去除填充
-func PKCS7UnPadding(origData []byte) ([]byte, error) {
-	length := len(origData)
+// pkcs7UnPadding 填充的反向操作
+func pkcs7UnPadding(data []byte) ([]byte, error) {
+	length := len(data)
 	if length == 0 {
-		return nil, errors.New("非法 ciphertext")
+		return nil, errors.New("加密字符串错误！")
 	}
-	unPadding := int(origData[length-1])
-	if unPadding > length {
-		return nil, errors.New("非法 padding")
-	}
-	return origData[:(length - unPadding)], nil
+	//获取填充的个数
+	unPadding := int(data[length-1])
+	return data[:(length - unPadding)], nil
 }
 
-// AesEncrypt AES加密函数
-// key: 密钥，长度必须为16(AES-128)、24(AES-192)或32(AES-256)字节
-// plaintext: 要加密的明文
-// 返回: base64编码的加密结果和可能的错误
-func AesEncrypt(key []byte, plaintext []byte) (string, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	// 填充原始数据
-	blockSize := block.BlockSize()
-	plaintext = PKCS7Padding(plaintext, blockSize)
-
-	// 初始化向量IV需要是唯一的，但不需要保密
-	ciphertext := make([]byte, blockSize+len(plaintext))
-	iv := ciphertext[:blockSize]
-	if _, err := io.ReadFull(cRand.Reader, iv); err != nil {
-		return "", err
-	}
-
-	// 加密
-	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(ciphertext[blockSize:], plaintext)
-
-	// 返回base64编码的字符串
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-// AesDecrypt AES解密函数
-// key: 密钥，必须与加密时使用的相同
-// ciphertextBase64: base64编码的加密字符串
-// 返回: 解密后的明文和可能的错误
-func AesDecrypt(key []byte, ciphertextBase64 string) ([]byte, error) {
-	// 解码base64
-	ciphertext, err := base64.StdEncoding.DecodeString(ciphertextBase64)
-	if err != nil {
-		return nil, err
-	}
-
+// AesEncrypt 加密
+func AesEncrypt(data []byte, key []byte) ([]byte, error) {
+	//创建加密实例
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-
+	//判断加密块的大小
 	blockSize := block.BlockSize()
-	if len(ciphertext) < blockSize {
-		return nil, errors.New("ciphertext 太短")
+	//填充
+	encryptBytes := pkcs7Padding(data, blockSize)
+	//初始化加密数据接收切片
+	crypted := make([]byte, len(encryptBytes))
+	//使用cbc加密模式
+	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
+	//执行加密
+	blockMode.CryptBlocks(crypted, encryptBytes)
+	return crypted, nil
+}
+
+// AesDecrypt 解密
+func AesDecrypt(data, key []byte) ([]byte, error) {
+	//创建实例
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
 	}
-
-	// 提取IV
-	iv := ciphertext[:blockSize]
-	ciphertext = ciphertext[blockSize:]
-
-	// 解密
-	mode := cipher.NewCBCDecrypter(block, iv)
-	mode.CryptBlocks(ciphertext, ciphertext)
-
-	// 去除填充
-	return PKCS7UnPadding(ciphertext)
+	//获取块的大小
+	blockSize := block.BlockSize()
+	//使用cbc
+	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
+	//初始化解密数据接收切片
+	crypted := make([]byte, len(data))
+	//执行解密
+	blockMode.CryptBlocks(crypted, data)
+	//去除填充
+	crypted, err = pkcs7UnPadding(crypted)
+	if err != nil {
+		return nil, err
+	}
+	return crypted, nil
 }
