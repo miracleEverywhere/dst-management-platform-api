@@ -745,6 +745,7 @@ func (world World) StopGame() error {
 	}
 
 	_ = BashCMD("screen -wipe")
+	_ = BashCMD(fmt.Sprintf("rm -f %s/.screen/*.%s", HomeDir, world.ScreenName))
 
 	return err
 }
@@ -776,7 +777,7 @@ func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 		err error
 	)
 	if Platform == "darwin" {
-		cmd = fmt.Sprintf("cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/steamcmd && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+		cmd = fmt.Sprintf("cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/steamcmd && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		err = BashCMD(cmd)
 		if err != nil {
 			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
@@ -788,9 +789,9 @@ func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 			Logger.Error("设置mod下载配置失败", "err", err)
 		}
 		if bit64 {
-			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		} else {
-			cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+			cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		}
 		err = BashCMD(cmd)
 		if err != nil {
