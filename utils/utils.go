@@ -34,6 +34,12 @@ import (
 	"time"
 )
 
+const (
+	nonceSize   = 1 // 1字节Nonce（8位）
+	sigSize     = 4 // 4字节签名（32位）
+	maxSigChars = 7 // Base32编码后最多7字符
+)
+
 var (
 	BindPort      int
 	ConsoleOutput bool
@@ -58,6 +64,26 @@ type OSInfo struct {
 	Platform        string
 	PlatformVersion string
 	Uptime          uint64
+}
+
+type SeasonLength struct {
+	Summer int `json:"summer"`
+	Autumn int `json:"autumn"`
+	Spring int `json:"spring"`
+	Winter int `json:"winter"`
+}
+
+type SeasonI18N struct {
+	En string `json:"en"`
+	Zh string `json:"zh"`
+}
+
+type MetaInfo struct {
+	Cycles       int          `json:"cycles"`
+	Phase        SeasonI18N   `json:"phase"`
+	Season       SeasonI18N   `json:"season"`
+	ElapsedDays  int          `json:"elapsedDays"`
+	SeasonLength SeasonLength `json:"seasonLength"`
 }
 
 func SetGlobalVariables() {
@@ -719,12 +745,45 @@ func BackupGame(cluster Cluster) error {
 	if err != nil {
 		return err
 	}
+
+	var (
+		filePath   string
+		sessionErr error
+		seasonInfo MetaInfo
+		cycles     int
+	)
+
+	for _, world := range cluster.Worlds {
+		sessionPath := world.GetSessionPath(cluster.ClusterSetting.ClusterName)
+		filePath, sessionErr = FindLatestMetaFile(sessionPath)
+		if sessionErr == nil {
+			break
+		}
+	}
+
+	if sessionErr != nil {
+		seasonInfo, _ = GetMetaInfo("")
+		Logger.Error("查询session-meta文件失败", "err", sessionErr)
+		cycles = 0
+	} else {
+		seasonInfo, err = GetMetaInfo(filePath)
+		if err != nil {
+			Logger.Error("获取meta文件内容失败", "err", err)
+			cycles = 0
+		} else {
+			cycles = seasonInfo.Cycles
+		}
+
+	}
+
 	currentTime := time.Now().Format("2006-01-02-15-04-05")
-	cmd := fmt.Sprintf("tar zcvf %s/%s.tgz %s %s/DstMP.sdb", cluster.GetBackupPath(), currentTime, cluster.GetMainPath(), ConfDir)
+	filename := fmt.Sprintf("%s_%d.tgz", currentTime, cycles)
+	cmd := fmt.Sprintf("tar zcvf %s/%s %s %s/DstMP.sdb", cluster.GetBackupPath(), filename, cluster.GetMainPath(), ConfDir)
 	err = BashCMD(cmd)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -745,6 +804,7 @@ func (world World) StopGame() error {
 	}
 
 	_ = BashCMD("screen -wipe")
+	_ = BashCMD(fmt.Sprintf("rm -f %s/.screen/*.%s", HomeDir, world.ScreenName))
 
 	return err
 }
@@ -776,7 +836,7 @@ func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 		err error
 	)
 	if Platform == "darwin" {
-		cmd = fmt.Sprintf("cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/steamcmd && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+		cmd = fmt.Sprintf("cd dst/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/steamcmd && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		err = BashCMD(cmd)
 		if err != nil {
 			Logger.Error("执行BashCMD失败", "err", err, "cmd", cmd)
@@ -788,9 +848,9 @@ func (world World) StartGame(clusterName, mod string, bit64 bool) error {
 			Logger.Error("设置mod下载配置失败", "err", err)
 		}
 		if bit64 {
-			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+			cmd = fmt.Sprintf("cd ~/dst/bin64/ && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		} else {
-			cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
+			cmd = fmt.Sprintf("cd ~/dst/bin/ && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s  -shard %s  ;", world.ScreenName, clusterName, world.Name)
 		}
 		err = BashCMD(cmd)
 		if err != nil {
@@ -1309,12 +1369,6 @@ func GetFileLastNLines(filename string, n int) ([]string, error) {
 	return lines, nil
 }
 
-const (
-	nonceSize   = 1 // 1字节Nonce（8位）
-	sigSize     = 4 // 4字节签名（32位）
-	maxSigChars = 7 // Base32编码后最多7字符
-)
-
 func GenerateUpdateModID() string {
 	key := []byte("x")
 	data := []byte("y")
@@ -1429,4 +1483,169 @@ func AesDecrypt(data, key []byte) ([]byte, error) {
 		return nil, err
 	}
 	return crypted, nil
+}
+
+func GetMetaInfo(path string) (MetaInfo, error) {
+	var seasonInfo MetaInfo
+	seasonInfo.Season.En = "Failed to retrieve"
+	seasonInfo.Season.Zh = "获取失败"
+
+	seasonInfo.Cycles = -1
+	seasonInfo.Phase.En = "Failed to retrieve"
+	seasonInfo.Phase.Zh = "获取失败"
+
+	// 读取二进制文件
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return seasonInfo, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 创建 Lua 虚拟机
+	L := lua.NewState()
+	defer L.Close()
+
+	// 将文件内容作为 Lua 代码执行
+	content := string(data)
+	content = content[:len(content)-1]
+
+	err = L.DoString(content)
+	if err != nil {
+		return seasonInfo, fmt.Errorf("执行 Lua 代码失败: %w", err)
+	}
+	// 获取 Lua 脚本的返回值
+	lv := L.Get(-1)
+	if tbl, ok := lv.(*lua.LTable); ok {
+		// 获取 clock 表
+		clockTable := tbl.RawGet(lua.LString("clock"))
+		if clock, ok := clockTable.(*lua.LTable); ok {
+			// 获取 cycles 字段
+			cycles := clock.RawGet(lua.LString("cycles"))
+			if cyclesValue, ok := cycles.(lua.LNumber); ok {
+				seasonInfo.Cycles = int(cyclesValue)
+			}
+			// 获取 phase 字段
+			phase := clock.RawGet(lua.LString("phase"))
+			if phaseValue, ok := phase.(lua.LString); ok {
+				seasonInfo.Phase.En = string(phaseValue)
+			}
+		}
+		// 获取 seasons 表
+		seasonsTable := tbl.RawGet(lua.LString("seasons"))
+		if seasons, ok := seasonsTable.(*lua.LTable); ok {
+			// 获取 season 字段
+			season := seasons.RawGet(lua.LString("season"))
+			if seasonValue, ok := season.(lua.LString); ok {
+				seasonInfo.Season.En = string(seasonValue)
+			}
+			// 获取 elapseddaysinseason 字段
+			elapsedDays := seasons.RawGet(lua.LString("elapseddaysinseason"))
+			if elapsedDaysValue, ok := elapsedDays.(lua.LNumber); ok {
+				seasonInfo.ElapsedDays = int(elapsedDaysValue)
+			}
+			//获取季节长度
+			lengthsTable := seasons.RawGet(lua.LString("lengths"))
+			if lengths, ok := lengthsTable.(*lua.LTable); ok {
+				summer := lengths.RawGet(lua.LString("summer"))
+				if summerValue, ok := summer.(lua.LNumber); ok {
+					seasonInfo.SeasonLength.Summer = int(summerValue)
+				}
+				autumn := lengths.RawGet(lua.LString("autumn"))
+				if autumnValue, ok := autumn.(lua.LNumber); ok {
+					seasonInfo.SeasonLength.Autumn = int(autumnValue)
+				}
+				spring := lengths.RawGet(lua.LString("spring"))
+				if springValue, ok := spring.(lua.LNumber); ok {
+					seasonInfo.SeasonLength.Spring = int(springValue)
+				}
+				winter := lengths.RawGet(lua.LString("winter"))
+				if winterValue, ok := winter.(lua.LNumber); ok {
+					seasonInfo.SeasonLength.Winter = int(winterValue)
+				}
+
+			}
+		}
+	}
+
+	if seasonInfo.Phase.En == "night" {
+		seasonInfo.Phase.Zh = "夜晚"
+	}
+	if seasonInfo.Phase.En == "day" {
+		seasonInfo.Phase.Zh = "白天"
+	}
+	if seasonInfo.Phase.En == "dusk" {
+		seasonInfo.Phase.Zh = "黄昏"
+	}
+
+	if seasonInfo.Season.En == "summer" {
+		seasonInfo.Season.Zh = "夏天"
+	}
+	if seasonInfo.Season.En == "autumn" {
+		seasonInfo.Season.Zh = "秋天"
+	}
+	if seasonInfo.Season.En == "spring" {
+		seasonInfo.Season.Zh = "春天"
+	}
+	if seasonInfo.Season.En == "winter" {
+		seasonInfo.Season.Zh = "冬天"
+	}
+
+	return seasonInfo, nil
+}
+
+func FindLatestMetaFile(directory string) (string, error) {
+	// 检查指定目录是否存在
+	_, err := os.Stat(directory)
+	if os.IsNotExist(err) {
+		return "", fmt.Errorf("目录不存在：%s", directory)
+	}
+
+	// 获取指定目录下的所有子目录
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return "", fmt.Errorf("读取目录失败：%s", err)
+	}
+
+	// 用于存储最新的.meta文件路径和其修改时间
+	var latestMetaFile string
+	var latestMetaFileTime time.Time
+
+	for _, entry := range entries {
+		// 检查是否是目录
+		if entry.IsDir() {
+			subDirPath := filepath.Join(directory, entry.Name())
+
+			// 获取子目录下的所有文件
+			files, err := os.ReadDir(subDirPath)
+			if err != nil {
+				return "", fmt.Errorf("读取子目录失败：%s", err)
+			}
+
+			for _, file := range files {
+				// 检查文件是否是.meta文件
+				if !file.IsDir() && filepath.Ext(file.Name()) == ".meta" {
+					// 获取文件的完整路径
+					fullPath := filepath.Join(subDirPath, file.Name())
+
+					// 获取文件的修改时间
+					info, err := file.Info()
+					if err != nil {
+						return "", fmt.Errorf("获取文件信息失败：%s", err)
+					}
+					modifiedTime := info.ModTime()
+
+					// 如果找到的文件的修改时间比当前最新的.meta文件的修改时间更晚，则更新最新的.meta文件路径和修改时间
+					if modifiedTime.After(latestMetaFileTime) {
+						latestMetaFile = fullPath
+						latestMetaFileTime = modifiedTime
+					}
+				}
+			}
+		}
+	}
+
+	if latestMetaFile == "" {
+		return "", fmt.Errorf("未找到.meta文件")
+	}
+
+	return latestMetaFile, nil
 }

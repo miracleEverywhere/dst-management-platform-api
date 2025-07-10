@@ -35,7 +35,7 @@ func handleRoomInfoGet(c *gin.Context) {
 
 	type Data struct {
 		ClusterSetting utils.ClusterSetting `json:"clusterSetting"`
-		SeasonInfo     metaInfo             `json:"seasonInfo"`
+		SeasonInfo     utils.MetaInfo       `json:"seasonInfo"`
 		ModsCount      int                  `json:"modsCount"`
 		Players        []string             `json:"players"`
 	}
@@ -53,22 +53,22 @@ func handleRoomInfoGet(c *gin.Context) {
 	var (
 		filePath   string
 		sessionErr error
-		seasonInfo metaInfo
+		seasonInfo utils.MetaInfo
 		players    []string
 	)
 	for _, world := range cluster.Worlds {
 		sessionPath := world.GetSessionPath(cluster.ClusterSetting.ClusterName)
-		filePath, sessionErr = FindLatestMetaFile(sessionPath)
+		filePath, sessionErr = utils.FindLatestMetaFile(sessionPath)
 		if sessionErr == nil {
 			break
 		}
 	}
 
 	if sessionErr != nil {
-		seasonInfo, _ = getMetaInfo("")
+		seasonInfo, _ = utils.GetMetaInfo("")
 		utils.Logger.Error("查询session-meta文件失败", "err", sessionErr)
 	} else {
-		seasonInfo, err = getMetaInfo(filePath)
+		seasonInfo, err = utils.GetMetaInfo(filePath)
 		if err != nil {
 			utils.Logger.Error("获取meta文件内容失败", "err", err)
 		}
@@ -237,10 +237,6 @@ func handleExecPost(c *gin.Context) {
 			return
 		}
 	case "startup":
-		defer func() {
-			time.Sleep(10 * time.Second)
-			_ = utils.BashCMD("screen -wipe")
-		}()
 		err = utils.StartClusterAllWorlds(cluster)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("startupFail", langStr), "data": nil})
@@ -249,10 +245,6 @@ func handleExecPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("startupSuccess", langStr), "data": nil})
 		return
 	case "shutdown":
-		defer func() {
-			time.Sleep(10 * time.Second)
-			_ = utils.BashCMD("screen -wipe")
-		}()
 		err = utils.StopClusterAllWorlds(cluster)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("shutdownFail", langStr), "data": nil})
