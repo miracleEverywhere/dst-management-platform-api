@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -330,6 +331,7 @@ func handleBackupGet(c *gin.Context) {
 		Name       string `json:"name"`
 		CreateTime string `json:"createTime"`
 		Size       int64  `json:"size"`
+		Cycles     int    `json:"cycles"`
 	}
 	var tmp []BackFiles
 
@@ -342,12 +344,31 @@ func handleBackupGet(c *gin.Context) {
 		a.Name = i.Name
 		a.CreateTime = i.ModTime.Format("2006-01-02 15:04:05")
 		a.Size = i.Size
+
+		filenameSlice := strings.Split(i.Name, "_")
+		if len(filenameSlice) != 2 {
+			a.Cycles = 0
+		} else {
+			cyclesSlice := strings.Split(filenameSlice[1], ".")
+			if len(cyclesSlice) != 2 {
+				a.Cycles = 0
+			} else {
+				cycles, err := strconv.Atoi(cyclesSlice[0])
+				if err != nil {
+					a.Cycles = 0
+				} else {
+					a.Cycles = cycles
+				}
+			}
+		}
+
 		tmp = append(tmp, a)
 	}
 	diskUsage, err := utils.DiskUsage()
 	if err != nil {
 		utils.Logger.Error("磁盘使用率获取失败", "err", err)
 	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
 		"backupFiles": tmp,
 		"diskUsage":   diskUsage,
