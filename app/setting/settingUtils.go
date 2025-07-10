@@ -55,7 +55,7 @@ cluster_language = zh
 tick_rate = ` + strconv.Itoa(cluster.SysSetting.TickRate) + `
 
 [MISC]
-console_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.ConsoleEnabled) + `
+console_enabled = true
 max_snapshots = ` + strconv.Itoa(cluster.ClusterSetting.BackDays) + `
 
 [SHARD]
