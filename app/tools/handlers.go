@@ -531,7 +531,7 @@ func handleBackupRestore(c *gin.Context) {
 		return
 	}
 	// 读取备份的配置文件
-	backupConfig, err := utils.ReadBackupConfig(utils.ImportFileUploadPath + "/DstMP.sdb")
+	backupConfig, err := utils.ReadBackupConfig(utils.ImportFileUploadPath + "/DstMP.sdb.bak")
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)

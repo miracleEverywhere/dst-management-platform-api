@@ -776,12 +776,33 @@ func BackupGame(cluster Cluster) error {
 
 	}
 
+	config, err := ReadConfig()
+	if err != nil {
+		Logger.Error("配置文件读取失败", "err", err)
+		return err
+	}
+
+	// 删除敏感数据
+	config.JwtSecret = ""
+	config.Users = nil
+	err = WriteBackupConfig(config)
+	if err != nil {
+		Logger.Error("写入备份配置文件失败", "err", err)
+		return err
+	}
+
 	currentTime := time.Now().Format("2006-01-02-15-04-05")
 	filename := fmt.Sprintf("%s_%d.tgz", currentTime, cycles)
-	cmd := fmt.Sprintf("tar zcvf %s/%s %s %s/DstMP.sdb", cluster.GetBackupPath(), filename, cluster.GetMainPath(), ConfDir)
+	cmd := fmt.Sprintf("tar zcvf %s/%s %s %s/DstMP.sdb.bak", cluster.GetBackupPath(), filename, cluster.GetMainPath(), ConfDir)
 	err = BashCMD(cmd)
 	if err != nil {
 		return err
+	}
+
+	cmd = fmt.Sprintf("rm -f %s/DstMP.sdb.bak", ConfDir)
+	err = BashCMD(cmd)
+	if err != nil {
+		Logger.Error("删除备份配置文件失败", "err", err)
 	}
 
 	return nil
