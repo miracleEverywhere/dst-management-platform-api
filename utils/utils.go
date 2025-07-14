@@ -793,13 +793,13 @@ func BackupGame(cluster Cluster) error {
 
 	currentTime := time.Now().Format("2006-01-02-15-04-05")
 	filename := fmt.Sprintf("%s_%d.tgz", currentTime, cycles)
-	cmd := fmt.Sprintf("tar zcvf %s/%s %s %s/DstMP.sdb.bak", cluster.GetBackupPath(), filename, cluster.GetMainPath(), ConfDir)
+	cmd := fmt.Sprintf("tar zcvf %s/%s %s %s/DstMP.sdb", cluster.GetBackupPath(), filename, cluster.GetMainPath(), BackupPath)
 	err = BashCMD(cmd)
 	if err != nil {
 		return err
 	}
 
-	cmd = fmt.Sprintf("rm -f %s/DstMP.sdb.bak", ConfDir)
+	cmd = fmt.Sprintf("rm -f %s/DstMP.sdb", BackupPath)
 	err = BashCMD(cmd)
 	if err != nil {
 		Logger.Error("删除备份配置文件失败", "err", err)

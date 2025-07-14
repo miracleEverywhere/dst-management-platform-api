@@ -531,7 +531,7 @@ func handleBackupRestore(c *gin.Context) {
 		return
 	}
 	// 读取备份的配置文件
-	backupConfig, err := utils.ReadBackupConfig(utils.ImportFileUploadPath + "/DstMP.sdb.bak")
+	backupConfig, err := utils.ReadBackupConfig(utils.ImportFileUploadPath + utils.BackupPath + "/DstMP.sdb")
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
 		utils.RespondWithError(c, 500, langStr)
@@ -551,7 +551,13 @@ func handleBackupRestore(c *gin.Context) {
 		return
 	}
 
+	status := config.Clusters[currentClusterIndex].ClusterSetting.Status
+	sysSetting := config.Clusters[currentClusterIndex].SysSetting
+
 	config.Clusters[currentClusterIndex] = backupConfig.Clusters[backupClusterIndex]
+
+	config.Clusters[currentClusterIndex].ClusterSetting.Status = status
+	config.Clusters[currentClusterIndex].SysSetting = sysSetting
 
 	cluster, err = config.GetClusterWithName(restoreForm.ClusterName)
 	if err != nil {

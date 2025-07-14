@@ -256,7 +256,7 @@ func WriteBackupConfig(config Config) error {
 	if err != nil {
 		return fmt.Errorf("序列化配置失败: %w", err)
 	}
-	file, err := os.OpenFile(ConfDir+"/DstMP.sdb.bak", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(BackupPath+"/DstMP.sdb", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("打开文件失败: %w", err)
 	}
