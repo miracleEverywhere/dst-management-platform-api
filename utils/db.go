@@ -197,6 +197,9 @@ func ReadConfig() (Config, error) {
 }
 
 func ReadBackupConfig(configPath string) (Config, error) {
+	ConfigMutex.Lock()
+	defer ConfigMutex.Unlock()
+
 	content, err := os.ReadFile(configPath)
 	if err != nil {
 		return Config{}, err
@@ -241,6 +244,37 @@ func WriteConfig(config Config) error {
 
 	// 刷新缓存
 	DBCache = config
+
+	return nil
+}
+
+func WriteBackupConfig(config Config) error {
+	ConfigMutex.Lock()
+	defer ConfigMutex.Unlock()
+
+	data, err := json.MarshalIndent(config, "", "    ") // 格式化输出
+	if err != nil {
+		return fmt.Errorf("序列化配置失败: %w", err)
+	}
+	file, err := os.OpenFile(ConfDir+"/DstMP.sdb.bak", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return fmt.Errorf("打开文件失败: %w", err)
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			Logger.Error("关闭文件失败", "err", err)
+		}
+	}(file)
+
+	_, err = file.Write(data)
+	if err != nil {
+		return fmt.Errorf("写入文件失败: %w", err)
+	}
+	// 确保数据刷入磁盘
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("同步文件到磁盘失败: %w", err)
+	}
 
 	return nil
 }
