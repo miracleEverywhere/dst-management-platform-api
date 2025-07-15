@@ -14,7 +14,7 @@ func InitTasks() {
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
+		panic("致命错误：定时任务初始化失败")
 	}
 
 	/* ** ========== SchedulerSetting 影响全局 ========== ** */
