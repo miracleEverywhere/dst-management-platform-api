@@ -9,6 +9,9 @@
 
 ---
 
+## :strawberry: 详细文档
+快速开始、详细文档等请前往 [https://miraclesses.top](https://miraclesses.top)
+
 ## :warning: 2.×版本与1.×版本不兼容
 **1.×版本于2025年8月停止维护，届时模组搜索等功能将无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
 
