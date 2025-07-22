@@ -9,22 +9,25 @@
 
 ---
 
+## :strawberry: 详细文档
+快速开始、详细文档等请前往 [https://miraclesses.top](https://miraclesses.top)
+
 ## :warning: 2.×版本与1.×版本不兼容
-**1.×版本于2025年8月停止维护，届时模组搜索等功能将无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
+**1.×版本于2025年8月停止维护，模组搜索等功能无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
 
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
-# 执行以下命令，下载脚本（使用加速节点）
-cd ~ && wget https://github.acmsz.top/https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
+# 执行以下命令，下载脚本（使用加速节点）需要使用jq命令
+cd ~ && curl -o run.sh $(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
 ```
 ```shell
 # 执行以下命令，下载脚本（不使用加速节点）
 cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
 ```
 ```shell
-# 自定义启动端口（8082改为你要用的端口），请手动修改run.sh文件或者
-sed -i 's/^PORT=.*/PORT=8082/' run.sh
+# 自定义启动端口（8080改为你要用的端口），请手动修改run.sh文件或者
+sed -i 's/^PORT=.*/PORT=8080/' run.sh
 ```
 ```shell
 # 根据系统提示输入并回车
@@ -55,7 +58,7 @@ cd ~ && ./run.sh
 ————————————————————————————————————————————————————————————
 请输入选择(Please enter your selection) [0-8]:
 ```
-如果下载了发行版，则执行以下命令：
+如果下载了发行版(不建议，请使用run.sh脚本启动)，则执行以下命令：
 ```shell
 # -c 为开启日志，建议开启
 nohup ./dmp -c > dmp.log 2>&1 &

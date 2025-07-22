@@ -19,8 +19,8 @@
 cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
 ```
 ```shell
-# Customize the startup port.(Change 8082 to the port you want to use)，please change PORT manually, or
-sed -i 's/^PORT=.*/PORT=8082/' run.sh
+# Customize the startup port.(Change 8080 to the port you want to use)，please change PORT manually, or
+sed -i 's/^PORT=.*/PORT=8080/' run.sh
 ```
 ```shell
 # According to the system prompts, enter the input and press Enter.

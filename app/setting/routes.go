@@ -15,7 +15,7 @@ func RouteSetting(r *gin.Engine) *gin.Engine {
 			// 设置
 			setting.GET("/clusters", handleClustersGet)
 			setting.GET("/clusters/all", handleAllClustersGet)
-			setting.GET("/clusters/world_port", utils.MWAdminOnly(), handleClustersWorldPortGet)
+			setting.GET("/clusters/world_port", handleClustersWorldPortGet)
 			setting.GET("/cluster", handleClusterGet)
 			setting.POST("/cluster", handleClusterPost)
 			setting.PUT("/cluster", utils.MWAdminOnly(), handleClusterPut)

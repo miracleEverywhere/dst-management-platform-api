@@ -14,7 +14,7 @@ func InitTasks() {
 	config, err := utils.ReadConfig()
 	if err != nil {
 		utils.Logger.Error("配置文件读取失败", "err", err)
-		return
+		panic("致命错误：定时任务初始化失败")
 	}
 
 	/* ** ========== SchedulerSetting 影响全局 ========== ** */
@@ -43,14 +43,23 @@ func InitTasks() {
 	// 玩家更新模组
 	if !config.SchedulerSetting.PlayerUpdateMod.Disable {
 		for _, cluster := range config.Clusters {
+			// 关闭的集群直接跳过添加定时任务
+			if !cluster.ClusterSetting.Status {
+				continue
+			}
 			_, _ = Scheduler.Every(config.SchedulerSetting.PlayerUpdateMod.Frequency).Minute().Do(modUpdate, cluster, false)
 			_, _ = Scheduler.Every(60).Seconds().Do(modUpdate, cluster, true)
-			utils.Logger.Info("玩家更新模组定时任务已配置")
 		}
+		utils.Logger.Info("玩家更新模组定时任务已配置")
 	}
 
 	/* ** ========== SysSetting 影响集群 ========== ** */
 	for _, cluster := range config.Clusters {
+		// 关闭的集群直接跳过添加定时任务
+		if !cluster.ClusterSetting.Status {
+			continue
+		}
+
 		// 定时通知
 		for _, announce := range cluster.SysSetting.AutoAnnounce {
 			if announce.Enable {
