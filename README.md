@@ -13,7 +13,7 @@
 快速开始、详细文档等请前往 [https://miraclesses.top](https://miraclesses.top)
 
 ## :warning: 2.×版本与1.×版本不兼容
-**1.×版本于2025年8月停止维护，届时模组搜索等功能将无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
+**1.×版本于2025年8月停止维护，模组搜索等功能无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
 
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
