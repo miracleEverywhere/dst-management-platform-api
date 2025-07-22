@@ -13,14 +13,6 @@ CONFIG_DIR="./"
 
 # 虚拟内存大小，例如 1G 4G等
 SWAPSIZE=2G
-
-# 加速站点，最后一个加速站点为空代表从Github直接下载
-# 可在 https://github.akams.cn/ 自行添加，但要保证Github(空的那个)在最后一行，不然会出现错误
-GITHUB_PROXYS=(
-    "https://github.acmsz.top/" # 主加速站点
-    "https://ghproxy.cn/"       # 备用加速站点
-    ""                          # Github
-)
 # --------------- ↑可修改↑ --------------- #
 
 ###########################################
@@ -164,21 +156,19 @@ function install_dmp() {
     check_curl
     # 原GitHub下载链接
     GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
-
-    for proxy in "${GITHUB_PROXYS[@]}"; do
-        local full_url="${proxy}${GITHUB_URL}"
-        if download "${full_url}" "dmp.tgz" 10; then
-            echo_green "通过${proxy}加速站点下载成功"
-            break
+    # 生成加速链接
+    url="$(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/${GITHUB_URL}"
+    if download "${url}" "dmp.tgz" 10; then
+        if [ -e "dmp.tgz" ]; then
+            echo_green "DMP下载成功"
         else
-            if [[ "${proxy}" == "" ]]; then
-                echo_red "通过Github下载失败！请手动下载"
-                exit 1
-            else
-                echo_red "通过${proxy}加速站点下载失败！正在更换加速站点重试"
-            fi
+            echo_red "DMP下载失败"
+            exit 1
         fi
-    done
+    else
+        echo_red "DMP下载失败"
+        exit 1
+    fi
 
     set -e
     tar zxvf dmp.tgz
@@ -248,40 +238,24 @@ function update_script() {
     echo_cyan "正在更新脚本..."
     TEMP_FILE="/tmp/run.sh"
     SCRIPT_GITHUB="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
-
-    for proxy in "${GITHUB_PROXYS[@]}"; do
-        local full_url="${proxy}${SCRIPT_GITHUB}"
-        if download "${full_url}" "${TEMP_FILE}" 10; then
-            echo_green "通过${proxy}加速站点下载成功"
-            break
+    # 生成加速链接
+    url="$(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/${SCRIPT_GITHUB}"
+    if download "${url}" "${TEMP_FILE}" 10; then
+        if [ -e "${TEMP_FILE}" ]; then
+            echo_green "run.sh下载成功"
         else
-            if [[ "${proxy}" == "" ]]; then
-                echo_red "通过Github下载失败！请手动下载"
-                exit 1
-            else
-                echo_red "通过${proxy}加速站点下载失败！正在更换加速站点重试"
-            fi
+            echo_red "run.sh下载失败"
+            exit 1
         fi
-    done
-
-    # 保存用户修改过的变量
-    # 端口
-    USER_PORT_STRING="PORT=${PORT}\n"
-    # 数据库文件
-    USER_CONFIG_DIR_STRING="CONFIG_DIR=\"${CONFIG_DIR}\"\n"
-    # swap
-    USER_SWAPSIZE_STRING="SWAPSIZE=${SWAPSIZE}\n"
-    # 加速站点
-    USER_GITHUB_PROXYS=""
-    for proxy in "${GITHUB_PROXYS[@]}"; do
-        USER_GITHUB_PROXYS+="    \"${proxy}\"\n"
-    done
-    USER_GITHUB_PROXYS_STRING="GITHUB_PROXYS=(\n${USER_GITHUB_PROXYS})\n"
-    # 生成要替换的内容
-    USER_FULL_CONFIG_STRING=$"# dmp暴露端口，即网页打开时所用的端口\n${USER_PORT_STRING}\n# 数据库文件所在目录，例如：./config\n${USER_CONFIG_DIR_STRING}\n# 虚拟内存大小，例如 1G 4G等\n${USER_SWAPSIZE_STRING}\n# 加速站点，最后一个加速站点为空代表从Github直接下载\n# 可在 https://github.akams.cn/ 自行添加，但要保证Github(空的那个)在最后一行，不然会出现错误\n${USER_GITHUB_PROXYS_STRING}"
+    else
+        echo_red "run.sh下载失败"
+        exit 1
+    fi
 
     # 修改下载好的最新文件
-    sed -i "8,23c\\"$'\n'"$USER_FULL_CONFIG_STRING" $TEMP_FILE
+    sed -i "s/^PORT=.*/PORT=${PORT}/" $TEMP_FILE
+    sed -i "s/^SWAPSIZE=.*/SWAPSIZE=${SWAPSIZE}/" $TEMP_FILE
+    sed -i "s#^CONFIG_DIR=.*#CONFIG_DIR=${CONFIG_DIR}#" $TEMP_FILE
 
     # 替换当前脚本
     mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
