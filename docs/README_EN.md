@@ -1,6 +1,8 @@
 # [[中文文档]](../README.md) | [README]
 
 # Dst Management Platform
+![DMP](images/logo.svg) 
+
 ![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)

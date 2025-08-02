@@ -1,6 +1,8 @@
 # [中文文档] | [[README]](docs/README_EN.md)
 
 # DMP 饥荒管理平台
+![DMP](docs/images/logo.svg) 
+
 ![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
