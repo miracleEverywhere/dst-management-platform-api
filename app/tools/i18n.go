@@ -22,6 +22,8 @@ func response(message string, lang string) string {
 		"saveFail":                      "保存失败",
 		"createTokenSuccess":            "令牌创建成功",
 		"createTokenFail":               "令牌创建失败",
+		"backupImportSuccess":           "备份导入成功",
+		"backupImportFail":              "备份导入失败",
 	}
 	responseEN := map[string]string{
 		"installing":                    "Installing...",
