@@ -14,7 +14,9 @@
 ---
 
 ## :strawberry: 详细文档
-快速开始、详细文档等请前往 [https://miraclesses.top](https://miraclesses.top)
+本页面的帮助文档仅为简单介绍  
+详细教程请前往 [https://miraclesses.top](https://miraclesses.top)  
+文档包含快速开始、详细文档等，萌新大佬均可无痛阅读  
 
 ## :warning: 2.×版本与1.×版本不兼容
 **1.×版本已于2025年7月31日停止维护，模组搜索等功能无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
