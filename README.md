@@ -1,6 +1,10 @@
 # [中文文档] | [[README]](docs/README_EN.md)
 
 # DMP 饥荒管理平台
+<div>
+    <img src="docs/images/logo.svg" height="300" alt="DMP"/>
+</div>
+
 ![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
@@ -10,19 +14,21 @@
 ---
 
 ## :strawberry: 详细文档
-快速开始、详细文档等请前往 [https://miraclesses.top](https://miraclesses.top)
+本页面的帮助文档仅为简单介绍  
+详细教程请前往 [https://miraclesses.top](https://miraclesses.top)  
+文档包含快速开始、详细文档等，萌新大佬均可无痛阅读  
 
 ## :warning: 2.×版本与1.×版本不兼容
-**1.×版本于2025年8月停止维护，模组搜索等功能无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
+**1.×版本已于2025年7月31日停止维护，模组搜索等功能无法使用，[点击查看迁移文档](docs/README_migration_zh.md)**
 
 ## :watermelon: 使用方法
 >**建议使用 Ubuntu 24系统，低版本系统可能会出现GLIBC版本报错**  
 ```shell
 # 执行以下命令，下载脚本（使用加速节点）需要使用jq命令
-cd ~ && curl -o run.sh $(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
+cd && rm -f run.sh && curl -o run.sh -L $(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh && ./run.sh
 ```
 ```shell
-# 执行以下命令，下载脚本（不使用加速节点）
+# 执行以下命令，下载脚本（不使用加速节点，自带梯子）
 cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
 ```
 ```shell
@@ -160,4 +166,4 @@ cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/ra
 ##  :sparkling_heart: 致谢
 本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感谢开源 [@KoiKite](https://github.com/KoiKite)  
 
-感谢加速站点[github.akams.cn](https://github.akams.cn/)和[github.acmsz.top](https://github.acmsz.top/)
+感谢加速站点[github.akams.cn](https://github.akams.cn/) 
