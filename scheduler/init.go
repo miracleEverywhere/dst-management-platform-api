@@ -82,6 +82,12 @@ func InitTasks() {
 			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动备份定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
 		}
 
+		// 备份清理
+		if cluster.SysSetting.BackupClean.Enable {
+			_, _ = Scheduler.Every(1).Day().At("16:43:41").Do(doBackupClean, cluster)
+			utils.Logger.Info(fmt.Sprintf("[%s(%s)]备清理定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
+		}
+
 		// 自动保活
 		if cluster.SysSetting.Keepalive.Enable {
 			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster.ClusterSetting.ClusterName)

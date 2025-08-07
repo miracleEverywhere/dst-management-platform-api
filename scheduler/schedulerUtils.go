@@ -318,6 +318,16 @@ func doBackup(cluster utils.Cluster) {
 	}
 }
 
+func doBackupClean(cluster utils.Cluster) {
+	backupPath := cluster.GetBackupPath()
+	fileCount, err := utils.DeleteFilesOlderThan(backupPath, cluster.SysSetting.BackupClean.Days)
+	if err != nil {
+		utils.Logger.Error(fmt.Sprintf("[%s(%s)]备清理定时任务执行异常", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName), "files", fileCount, "err", err)
+	} else {
+		utils.Logger.Info(fmt.Sprintf("[%s(%s)]备清理定时任务执行成功", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName), "files", fileCount)
+	}
+}
+
 func getWorldLastTime(logfile string) (string, error) {
 	// 获取日志文件中的list
 	file, err := os.Open(logfile)
