@@ -52,6 +52,7 @@ func response(message string, lang string) string {
 		"clusterCreationProhibited":  "当前账号无创建集群权限",
 		"deleteSuccess":              "删除成功",
 		"shutdownSuccess":            "关闭成功",
+		"backupCleanDays":            "备份保留时间必须大于0天",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":                "Save Success",
@@ -104,6 +105,7 @@ func response(message string, lang string) string {
 		"clusterCreationProhibited":  "The current user does not have creation permissions",
 		"deleteSuccess":              "Delete Success",
 		"shutdownSuccess":            "Shutdown Success",
+		"backupCleanDays":            "Backup cleaning period must be greater than 0 days",
 	}
 
 	if lang == "zh" {
