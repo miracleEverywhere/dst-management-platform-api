@@ -237,7 +237,7 @@ function update_script() {
     check_curl
     echo_cyan "正在更新脚本..."
     TEMP_FILE="/tmp/run.sh"
-    SCRIPT_GITHUB="https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh"
+    SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh"
     # 生成加速链接
     url="$(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/${SCRIPT_GITHUB}"
     if download "${url}" "${TEMP_FILE}" 10; then
