@@ -1,21 +1,23 @@
 # [中文文档] | [[README]](docs/README_EN.md)
 
 # DMP 饥荒管理平台
-<div>
-    <img src="docs/images/logo.svg" height="300" alt="DMP"/>
-</div>
-
 ![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
 ![GitHub License](https://img.shields.io/github/license/miracleEverywhere/dst-management-platform-api)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/miracleEverywhere/dst-management-platform-api)
+<div>
+    <img src="docs/images/logo.svg" height="100" alt="DMP"/>
+    <h3>:sparkling_heart: 支持多房间、多用户管理 :sparkling_heart:</h3>
+    <h5>:star2: 一键开启你的饥荒之旅 :star2:</h5>
+</div>
+
 
 ---
 
 ## :strawberry: 详细文档
 本页面的帮助文档仅为简单介绍  
-详细教程请前往 [https://miraclesses.top](https://miraclesses.top)  
+**详细教程请前往** [https://miraclesses.top](https://miraclesses.top)  
 文档包含快速开始、详细文档等，萌新大佬均可无痛阅读  
 
 ## :warning: 2.×版本与1.×版本不兼容
