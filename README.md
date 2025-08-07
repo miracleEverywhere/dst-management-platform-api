@@ -29,7 +29,7 @@ cd && rm -f run.sh && curl -o run.sh -L $(curl -s https://api.akams.cn/github | 
 ```
 ```shell
 # 执行以下命令，下载脚本（不使用加速节点，自带梯子）
-cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/raw/refs/heads/master/run.sh && chmod +x run.sh
+cd ~ && wget https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh && chmod +x run.sh
 ```
 ```shell
 # 自定义启动端口（8080改为你要用的端口），请手动修改run.sh文件或者
