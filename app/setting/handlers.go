@@ -222,6 +222,10 @@ func handleClusterPost(c *gin.Context) {
 			Enable: true,
 			Time:   "06:13:57",
 		},
+		BackupClean: utils.BackupClean{
+			Enable: false,
+			Days:   30,
+		},
 		Keepalive: utils.Keepalive{
 			Enable:    true,
 			Frequency: 30,
@@ -2256,6 +2260,12 @@ func handleSystemSettingPut(c *gin.Context) {
 	}
 	if cluster.SysSetting.TickRate != reqForm.Settings.SysSetting.TickRate {
 		tickRateChanged = true
+	}
+	if reqForm.Settings.SysSetting.BackupClean.Enable {
+		if reqForm.Settings.SysSetting.BackupClean.Days < 1 {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("backupCleanDays", langStr), "data": nil})
+			return
+		}
 	}
 
 	cluster.SysSetting = reqForm.Settings.SysSetting
