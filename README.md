@@ -9,7 +9,7 @@
 <div>
     <img src="docs/images/logo.svg" height="100" alt="DMP"/>
     <h3>:sparkling_heart: 支持多房间、多用户、多权限管理 :sparkling_heart:</h3>
-    <h4>:star2: 一键开启你的饥荒之旅 :star2:</h4>
+    <h3>:star2: 一键开启你的饥荒之旅 :star2:</h3>
 </div>
 
 
