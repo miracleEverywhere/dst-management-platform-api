@@ -155,9 +155,9 @@ function install_dmp() {
     check_jq
     check_curl
     # 原GitHub下载链接
-    GITHUB_URL=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
+    GITHUB_URL=$(curl -s -L https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
     # 生成加速链接
-    url="$(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/${GITHUB_URL}"
+    url="$(curl -s -L https://api.akams.cn/github | jq -r '.data[0].url')/${GITHUB_URL}"
     if download "${url}" "dmp.tgz" 10; then
         if [ -e "dmp.tgz" ]; then
             echo_green "DMP下载成功"
@@ -225,7 +225,7 @@ function get_current_version() {
 function get_latest_version() {
     check_jq
     check_curl
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name)
+    LATEST_VERSION=$(curl -s -L https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name)
     if [[ -z "$LATEST_VERSION" ]]; then
         echo_red "无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API)"
         exit 1
@@ -239,7 +239,7 @@ function update_script() {
     TEMP_FILE="/tmp/run.sh"
     SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh"
     # 生成加速链接
-    url="$(curl -s https://api.akams.cn/github | jq -r '.data[0].url')/${SCRIPT_GITHUB}"
+    url="$(curl -s -L https://api.akams.cn/github | jq -r '.data[0].url')/${SCRIPT_GITHUB}"
     if download "${url}" "${TEMP_FILE}" 10; then
         if [ -e "${TEMP_FILE}" ]; then
             echo_green "run.sh下载成功"
