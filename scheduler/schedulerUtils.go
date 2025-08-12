@@ -72,13 +72,16 @@ func getPlayers(config utils.Config) {
 		statistics.Num = numPlayer
 		statistics.Players = playerList
 
+		utils.STATISTICSMutex.Lock()
 		statisticsLength := len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])
 		if statisticsLength > 2879 {
 			// 只保留一周的数据量
 			utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName][:0], utils.STATISTICS[cluster.ClusterSetting.ClusterName][1:]...)
 		}
 		utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName], statistics)
+		utils.STATISTICSMutex.Unlock()
 
+		utils.PlayTimeCountMutex.Lock()
 		if utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] == nil {
 			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] = make(map[string]int64)
 		}
@@ -89,6 +92,7 @@ func getPlayers(config utils.Config) {
 		for _, player := range statistics.Players {
 			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] = utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] + int64(config.SchedulerSetting.PlayerGetFrequency)
 		}
+		utils.PlayTimeCountMutex.Unlock()
 	}
 }
 
@@ -428,10 +432,13 @@ func maintainUidMap(config utils.Config) {
 			utils.Logger.Error("读取历史玩家字典失败", "err", err)
 			continue
 		}
+		utils.STATISTICSMutex.Lock()
 		if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) < 2 {
+			utils.STATISTICSMutex.Unlock()
 			continue
 		}
 		currentPlaylist := utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
+		utils.STATISTICSMutex.Unlock()
 		for _, i := range currentPlaylist {
 			uid := i.UID
 			nickname := i.NickName

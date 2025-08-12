@@ -730,11 +730,13 @@ func handleStatisticsGet(c *gin.Context) {
 	}
 
 	var statistics []utils.Statistics
+	utils.STATISTICSMutex.Lock()
 	for key, _ := range utils.STATISTICS {
 		if key == reqForm.ClusterName {
 			statistics = utils.STATISTICS[key]
 		}
 	}
+	utils.STATISTICSMutex.Unlock()
 
 	if len(statistics) == 0 {
 		utils.RespondWithError(c, 404, "zh")
@@ -838,7 +840,9 @@ func handleStatisticsGet(c *gin.Context) {
 	}
 
 	data.Gantt = gantt
+	utils.PlayTimeCountMutex.Lock()
 	data.Pie = utils.PlayTimeCount[reqForm.ClusterName]
+	utils.PlayTimeCountMutex.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }

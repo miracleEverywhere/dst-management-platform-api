@@ -41,11 +41,14 @@ const (
 )
 
 var (
-	BindPort      int
-	ConsoleOutput bool
-	VersionShow   bool
-	ConfDir       string
-	ConfigMutex   sync.Mutex
+	BindPort           int
+	ConsoleOutput      bool
+	VersionShow        bool
+	ConfDir            string
+	ConfigMutex        sync.Mutex
+	STATISTICSMutex    sync.Mutex
+	PlayTimeCountMutex sync.Mutex
+	UserCacheMutex     sync.Mutex
 )
 
 type Claims struct {
@@ -110,7 +113,9 @@ func SetGlobalVariables() {
 
 	// 设置全局用户缓存
 	for _, user := range config.Users {
+		UserCacheMutex.Lock()
 		UserCache[user.Username] = user
+		UserCacheMutex.Unlock()
 	}
 
 	// 查看是否在容器内

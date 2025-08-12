@@ -74,12 +74,14 @@ func handleRoomInfoGet(c *gin.Context) {
 		}
 	}
 
+	utils.STATISTICSMutex.Lock()
 	if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) > 0 {
 		Players := utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
 		for _, player := range Players {
 			players = append(players, player.NickName)
 		}
 	}
+	utils.STATISTICSMutex.Unlock()
 
 	data := Data{
 		ClusterSetting: cluster.ClusterSetting,

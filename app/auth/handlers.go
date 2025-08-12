@@ -64,6 +64,7 @@ func handleLogin(c *gin.Context) {
 func handleUserinfo(c *gin.Context) {
 	username, _ := c.Get("username")
 
+	utils.UserCacheMutex.Lock()
 	for _, user := range utils.UserCache {
 		if user.Username == username {
 			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": gin.H{
@@ -73,9 +74,11 @@ func handleUserinfo(c *gin.Context) {
 				"clusterCreationProhibited": user.ClusterCreationProhibited,
 				"maxWorldsPerCluster":       user.MaxWorldsPerCluster,
 			}})
+			utils.UserCacheMutex.Unlock()
 			return
 		}
 	}
+	utils.UserCacheMutex.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{"code": 201, "message": "user not found", "data": nil})
 }
@@ -625,7 +628,9 @@ func handleUpdatePassword(c *gin.Context) {
 					utils.RespondWithError(c, 500, langStr)
 					return
 				}
+				utils.UserCacheMutex.Lock()
 				utils.UserCache[user.Username] = config.Users[userIndex]
+				utils.UserCacheMutex.Unlock()
 				c.JSON(http.StatusOK, gin.H{
 					"code":    200,
 					"message": Response("updatePassword", langStr),
@@ -656,6 +661,7 @@ func handleUserListGet(c *gin.Context) {
 
 	var userResponse []UserResponse
 
+	utils.UserCacheMutex.Lock()
 	for _, i := range utils.UserCache {
 		user := UserResponse{
 			Username:                  i.Username,
@@ -668,6 +674,7 @@ func handleUserListGet(c *gin.Context) {
 		}
 		userResponse = append(userResponse, user)
 	}
+	utils.UserCacheMutex.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": userResponse})
 }
@@ -705,7 +712,9 @@ func handleUserCreatePost(c *gin.Context) {
 	}
 
 	config.Users = append(config.Users, user)
+	utils.UserCacheMutex.Lock()
 	utils.UserCache[user.Username] = user
+	utils.UserCacheMutex.Unlock()
 
 	err = utils.WriteConfig(config)
 	if err != nil {
@@ -756,7 +765,9 @@ func handleUserUpdatePut(c *gin.Context) {
 				MaxWorldsPerCluster:       user.MaxWorldsPerCluster,
 			}
 			config.Users[index] = newUser
+			utils.UserCacheMutex.Lock()
 			utils.UserCache[user.Username] = config.Users[index]
+			utils.UserCacheMutex.Unlock()
 			err = utils.WriteConfig(config)
 			if err != nil {
 				utils.Logger.Error("写入配置文件失败", "err", err)
@@ -810,7 +821,9 @@ func handleUserDeleteDelete(c *gin.Context) {
 	}
 
 	config.Users = users
+	utils.UserCacheMutex.Lock()
 	delete(utils.UserCache, user.Username)
+	utils.UserCacheMutex.Unlock()
 
 	err = utils.WriteConfig(config)
 	if err != nil {
@@ -863,7 +876,9 @@ func handleRegisterPost(c *gin.Context) {
 	config.Registered = true
 	utils.Registered = true
 
+	utils.UserCacheMutex.Lock()
 	utils.UserCache[user.Username] = user
+	utils.UserCacheMutex.Unlock()
 
 	err = utils.WriteConfig(config)
 	if err != nil {
@@ -899,7 +914,9 @@ func handleUserAnnounceIDGet(c *gin.Context) {
 		return
 	}
 
+	utils.UserCacheMutex.Lock()
 	announceID := utils.UserCache[usernameStr].AnnounceID
+	utils.UserCacheMutex.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": announceID})
 }
@@ -935,7 +952,9 @@ func handleUserAnnounceIDPost(c *gin.Context) {
 	for index, user := range config.Users {
 		if usernameStr == user.Username {
 			config.Users[index].AnnounceID = announcedForm.ID
+			utils.UserCacheMutex.Lock()
 			utils.UserCache[user.Username] = config.Users[index]
+			utils.UserCacheMutex.Unlock()
 			break
 		}
 	}

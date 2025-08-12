@@ -189,7 +189,9 @@ func MWUserCheck() gin.HandlerFunc {
 		if exist {
 			usernameStr, ok := username.(string)
 			if ok {
+				UserCacheMutex.Lock()
 				user := UserCache[usernameStr]
+				UserCacheMutex.Unlock()
 				if len(user.Username) != 0 {
 					if !user.Disabled {
 						c.Next()

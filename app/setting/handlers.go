@@ -388,7 +388,9 @@ func handleClusterDelete(c *gin.Context) {
 	}
 
 	// 删除统计信息缓存
+	utils.STATISTICSMutex.Lock()
 	delete(utils.STATISTICS, cluster.ClusterSetting.ClusterName)
+	utils.STATISTICSMutex.Unlock()
 
 	// 更新数据库
 	err = utils.WriteConfig(config)
@@ -400,7 +402,9 @@ func handleClusterDelete(c *gin.Context) {
 
 	// 更新用户信息缓存
 	for _, user := range config.Users {
+		utils.UserCacheMutex.Lock()
 		utils.UserCache[user.Username] = user
+		utils.UserCacheMutex.Unlock()
 	}
 
 	// 重新载入定时任务
@@ -849,9 +853,11 @@ func handlePlayerListGet(c *gin.Context) {
 		players  []utils.Players
 	)
 
+	utils.STATISTICSMutex.Lock()
 	if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) > 0 {
 		players = utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
 	}
+	utils.STATISTICSMutex.Unlock()
 
 	for _, player := range players {
 		uid := player.UID
