@@ -1009,8 +1009,8 @@ func handlePlayerListChangePost(c *gin.Context) {
 			})
 			return
 		} else {
-			messageSuccess = "addWhite"
-			messageFail = "addWhiteFail"
+			messageSuccess = "deleteBlock"
+			messageFail = "deleteBlockFail"
 			uidList, err = utils.ReadLinesToSlice(cluster.GetBlockListFile())
 			if err != nil {
 				utils.Logger.Info("未获取到黑名单", "err", err)
