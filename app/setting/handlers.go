@@ -985,8 +985,8 @@ func handlePlayerListChangePost(c *gin.Context) {
 		}
 	case "block":
 		if reqForm.Type == "add" {
-			messageSuccess = "addWhite"
-			messageFail = "addWhiteFail"
+			messageSuccess = "addBlock"
+			messageFail = "addBlockFail"
 			uidList, err = utils.ReadLinesToSlice(cluster.GetBlockListFile())
 			if err != nil {
 				utils.Logger.Info("未获取到黑名单，跳过", "err", err)
