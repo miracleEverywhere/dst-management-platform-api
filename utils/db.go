@@ -74,6 +74,11 @@ type AutoBackup struct {
 	Time   string `json:"time"`
 }
 
+type BackupClean struct {
+	Enable bool `json:"enable"`
+	Days   int  `json:"days"`
+}
+
 type AutoRestart struct {
 	Enable bool   `json:"enable"`
 	Time   string `json:"time"`
@@ -129,6 +134,7 @@ type SysSetting struct {
 	AutoRestart        AutoRestart        `json:"autoRestart"`
 	AutoAnnounce       []AutoAnnounce     `json:"autoAnnounce"`
 	AutoBackup         AutoBackup         `json:"autoBackup"`
+	BackupClean        BackupClean        `json:"backupClean"`
 	Keepalive          Keepalive          `json:"keepalive"`
 	ScheduledStartStop ScheduledStartStop `json:"scheduledStartStop"`
 	Bit64              bool               `json:"bit64"`

@@ -41,11 +41,14 @@ const (
 )
 
 var (
-	BindPort      int
-	ConsoleOutput bool
-	VersionShow   bool
-	ConfDir       string
-	ConfigMutex   sync.Mutex
+	BindPort           int
+	ConsoleOutput      bool
+	VersionShow        bool
+	ConfDir            string
+	ConfigMutex        sync.Mutex
+	STATISTICSMutex    sync.Mutex
+	PlayTimeCountMutex sync.Mutex
+	UserCacheMutex     sync.Mutex
 )
 
 type Claims struct {
@@ -110,7 +113,9 @@ func SetGlobalVariables() {
 
 	// 设置全局用户缓存
 	for _, user := range config.Users {
+		UserCacheMutex.Lock()
 		UserCache[user.Username] = user
+		UserCacheMutex.Unlock()
 	}
 
 	// 查看是否在容器内
@@ -335,6 +340,48 @@ func DeleteDir(dirPath string) error {
 	}
 
 	return nil
+}
+
+// DeleteFilesOlderThan 删除指定目录下，修改时间大于days的文件
+func DeleteFilesOlderThan(dirPath string, days int) (int, error) {
+	// 计算截止时间（当前时间减去N天）
+	cutoffTime := time.Now().AddDate(0, 0, -days)
+	deletedFileCount := 0
+
+	// 遍历目录
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 跳过目录本身
+		if path == dirPath {
+			return nil
+		}
+
+		// 只处理普通文件
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+
+		// 获取文件修改时间
+		fileTime := info.ModTime()
+
+		// 检查文件是否早于截止时间
+		if fileTime.Before(cutoffTime) {
+
+			err := os.Remove(path)
+			if err != nil {
+				return fmt.Errorf("删除 %s: %v文件失败", path, err)
+			} else {
+				deletedFileCount++
+			}
+		}
+
+		return nil
+	})
+
+	return deletedFileCount, err
 }
 
 func ReadContainCpuUsage() (uint64, error) {

@@ -291,6 +291,13 @@ func NeedDoubleQuotes(s string) bool {
 		return true
 	}
 
+	// 只有数字 (sb?
+	onlyNumRe := regexp.MustCompile(`^\d+$`)
+	if onlyNumRe.MatchString(s) {
+		return true
+	}
+
+	// 正常变量
 	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 	return re.MatchString(s)

@@ -1,15 +1,17 @@
 # [[中文文档]](../README.md) | [README]
 
 # Dst Management Platform
-<div>
-    <img src="images/logo.svg" height="300" alt="DMP"/>
-</div> 
-
 ![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/miracleEverywhere/dst-management-platform-api/total)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
 ![GitHub License](https://img.shields.io/github/license/miracleEverywhere/dst-management-platform-api)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/miracleEverywhere/dst-management-platform-api)
+<div>
+    <img src="images/logo.svg" height="100" alt="DMP"/>
+    <h3>:sparkling_heart: Supports multi-room, multi-user, and multi-permission management :sparkling_heart:</h3>
+    <h3>:star2: One-click to start your DST journey :star2:</h3>
+</div>
+
 
 ---
 

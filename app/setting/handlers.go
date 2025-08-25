@@ -222,6 +222,10 @@ func handleClusterPost(c *gin.Context) {
 			Enable: true,
 			Time:   "06:13:57",
 		},
+		BackupClean: utils.BackupClean{
+			Enable: false,
+			Days:   30,
+		},
 		Keepalive: utils.Keepalive{
 			Enable:    true,
 			Frequency: 30,
@@ -384,7 +388,9 @@ func handleClusterDelete(c *gin.Context) {
 	}
 
 	// 删除统计信息缓存
+	utils.STATISTICSMutex.Lock()
 	delete(utils.STATISTICS, cluster.ClusterSetting.ClusterName)
+	utils.STATISTICSMutex.Unlock()
 
 	// 更新数据库
 	err = utils.WriteConfig(config)
@@ -396,7 +402,9 @@ func handleClusterDelete(c *gin.Context) {
 
 	// 更新用户信息缓存
 	for _, user := range config.Users {
+		utils.UserCacheMutex.Lock()
 		utils.UserCache[user.Username] = user
+		utils.UserCacheMutex.Unlock()
 	}
 
 	// 重新载入定时任务
@@ -845,9 +853,11 @@ func handlePlayerListGet(c *gin.Context) {
 		players  []utils.Players
 	)
 
+	utils.STATISTICSMutex.Lock()
 	if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) > 0 {
 		players = utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
 	}
+	utils.STATISTICSMutex.Unlock()
 
 	for _, player := range players {
 		uid := player.UID
@@ -975,8 +985,8 @@ func handlePlayerListChangePost(c *gin.Context) {
 		}
 	case "block":
 		if reqForm.Type == "add" {
-			messageSuccess = "addWhite"
-			messageFail = "addWhiteFail"
+			messageSuccess = "addBlock"
+			messageFail = "addBlockFail"
 			uidList, err = utils.ReadLinesToSlice(cluster.GetBlockListFile())
 			if err != nil {
 				utils.Logger.Info("未获取到黑名单，跳过", "err", err)
@@ -999,8 +1009,8 @@ func handlePlayerListChangePost(c *gin.Context) {
 			})
 			return
 		} else {
-			messageSuccess = "addWhite"
-			messageFail = "addWhiteFail"
+			messageSuccess = "deleteBlock"
+			messageFail = "deleteBlockFail"
 			uidList, err = utils.ReadLinesToSlice(cluster.GetBlockListFile())
 			if err != nil {
 				utils.Logger.Info("未获取到黑名单", "err", err)
@@ -2256,6 +2266,12 @@ func handleSystemSettingPut(c *gin.Context) {
 	}
 	if cluster.SysSetting.TickRate != reqForm.Settings.SysSetting.TickRate {
 		tickRateChanged = true
+	}
+	if reqForm.Settings.SysSetting.BackupClean.Enable {
+		if reqForm.Settings.SysSetting.BackupClean.Days < 1 {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("backupCleanDays", langStr), "data": nil})
+			return
+		}
 	}
 
 	cluster.SysSetting = reqForm.Settings.SysSetting

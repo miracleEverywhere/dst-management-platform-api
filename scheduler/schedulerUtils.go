@@ -72,13 +72,16 @@ func getPlayers(config utils.Config) {
 		statistics.Num = numPlayer
 		statistics.Players = playerList
 
+		utils.STATISTICSMutex.Lock()
 		statisticsLength := len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])
 		if statisticsLength > 2879 {
 			// 只保留一周的数据量
 			utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName][:0], utils.STATISTICS[cluster.ClusterSetting.ClusterName][1:]...)
 		}
 		utils.STATISTICS[cluster.ClusterSetting.ClusterName] = append(utils.STATISTICS[cluster.ClusterSetting.ClusterName], statistics)
+		utils.STATISTICSMutex.Unlock()
 
+		utils.PlayTimeCountMutex.Lock()
 		if utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] == nil {
 			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName] = make(map[string]int64)
 		}
@@ -89,6 +92,7 @@ func getPlayers(config utils.Config) {
 		for _, player := range statistics.Players {
 			utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] = utils.PlayTimeCount[cluster.ClusterSetting.ClusterName][player.NickName] + int64(config.SchedulerSetting.PlayerGetFrequency)
 		}
+		utils.PlayTimeCountMutex.Unlock()
 	}
 }
 
@@ -318,6 +322,16 @@ func doBackup(cluster utils.Cluster) {
 	}
 }
 
+func doBackupClean(cluster utils.Cluster) {
+	backupPath := cluster.GetBackupPath()
+	fileCount, err := utils.DeleteFilesOlderThan(backupPath, cluster.SysSetting.BackupClean.Days)
+	if err != nil {
+		utils.Logger.Error(fmt.Sprintf("[%s(%s)]备清理定时任务执行异常", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName), "files", fileCount, "err", err)
+	} else {
+		utils.Logger.Info(fmt.Sprintf("[%s(%s)]备清理定时任务执行成功", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName), "files", fileCount)
+	}
+}
+
 func getWorldLastTime(logfile string) (string, error) {
 	// 获取日志文件中的list
 	file, err := os.Open(logfile)
@@ -418,10 +432,13 @@ func maintainUidMap(config utils.Config) {
 			utils.Logger.Error("读取历史玩家字典失败", "err", err)
 			continue
 		}
+		utils.STATISTICSMutex.Lock()
 		if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) < 2 {
+			utils.STATISTICSMutex.Unlock()
 			continue
 		}
 		currentPlaylist := utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
+		utils.STATISTICSMutex.Unlock()
 		for _, i := range currentPlaylist {
 			uid := i.UID
 			nickname := i.NickName
