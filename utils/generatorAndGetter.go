@@ -307,5 +307,9 @@ func GetAesKey() []byte {
 	return decoded
 }
 
+func GetPlayerLocationCmd(uid string) string {
+	return fmt.Sprintf("print(UserToPlayer('%s').Transform:GetWorldPosition())", uid)
+}
+
 /* Linux交叉编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */
 /* MacOS编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 ~/go/go1.23.1/bin/go build -o /Users/xxx/dmp */
