@@ -24,6 +24,8 @@ func response(message string, lang string) string {
 		"createTokenFail":               "令牌创建失败",
 		"backupImportSuccess":           "备份导入成功",
 		"backupImportFail":              "备份导入失败",
+		"backgroundImageFail":           "背景图片生成失败",
+		"savingFileGetFail":             "存档文件获取失败",
 	}
 	responseEN := map[string]string{
 		"installing":                    "Installing...",
@@ -46,6 +48,8 @@ func response(message string, lang string) string {
 		"saveFail":                      "Save Fail",
 		"createTokenSuccess":            "Create Token Success",
 		"createTokenFail":               "Create Token Fail",
+		"backgroundImageFail":           "Background Image Generate Fail",
+		"savingFileGetFail":             "Saving File Get Fail",
 	}
 
 	if lang == "zh" {
