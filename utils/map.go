@@ -11,10 +11,36 @@ import (
 	"strconv"
 )
 
+type Data struct {
+	Height int    `json:"height"`
+	Width  int    `json:"width"`
+	Image  string `json:"image"`
+}
+
 func tileID2Color(tileID int) string {
 	MAP := map[int]string{
-		0: "#000000", // 异常值
+		0:   "#000000", // 默认异常
+		1:   "#F44336", // 边缘等
+		2:   "#A1887F", // 卵石路
+		3:   "#FFEFD5", // 矿区
+		4:   "#F5DEB3", // 空
+		5:   "#FFFACD", // 热带草原
+		6:   "#66CDAA", // 长草
+		7:   "#2E8B57", // 森林
+		8:   "#4A148C", // 沼泽
+		30:  "#FFA07A", // 落叶林
+		31:  "#FFF9C4", // 沙漠
+		42:  "#96CDCD", // 月岛1
+		43:  "#96CDCD", // 月岛2
+		44:  "#FFB6C1", // 奶奶岛
+		201: "#1E88E5", // 浅海1
+		202: "#1976D2", // 浅海2
+		203: "#1565C0", // 中海
+		204: "#0D47A1", // 深海
+		205: "#F5FFFA", // 盐
+		208: "#4DB6AC", // 水中木
 	}
+
 	if MAP[tileID] == "" {
 		return "#000000"
 	}
@@ -46,11 +72,11 @@ func parseHexColor(s string) color.RGBA {
 }
 
 // GenerateBackgroundMap filepath: 最新的存档文件 返回背景地图base64
-func GenerateBackgroundMap(filepath string) string {
+func GenerateBackgroundMap(filepath string) Data {
 	fileContent, err := os.ReadFile(filepath)
 	if err != nil {
 		Logger.Error("打开存档文件失败", "err", err)
-		return ""
+		return Data{}
 	}
 
 	var height, width int
@@ -63,11 +89,11 @@ func GenerateBackgroundMap(filepath string) string {
 		height, err = strconv.Atoi(string(matchHeight[1]))
 		if err != nil {
 			Logger.Error("获取存档文件中height失败")
-			return ""
+			return Data{}
 		}
 	} else {
 		Logger.Error("获取存档文件中height失败")
-		return ""
+		return Data{}
 	}
 
 	matchWidth := reWidth.FindSubmatch(fileContent)
@@ -75,28 +101,29 @@ func GenerateBackgroundMap(filepath string) string {
 		width, err = strconv.Atoi(string(matchWidth[1]))
 		if err != nil {
 			Logger.Error("获取存档文件中width失败")
-			return ""
+			return Data{}
 		}
 	} else {
 		Logger.Error("获取存档文件中width失败")
-		return ""
+		return Data{}
 	}
 
 	var tiles []byte
 
-	reTiles := regexp.MustCompile(`tiles="(.+)"`)
+	// 匹配base64内容
+	reTiles := regexp.MustCompile(`tiles="([A-Za-z0-9+/=]+)"`)
 	matchTiles := reTiles.FindSubmatch(fileContent)
 	if len(matchTiles) >= 2 {
 		tiles = matchTiles[1]
 	} else {
 		Logger.Error("存档文件中没有找到tiles字段")
-		return ""
+		return Data{}
 	}
 
 	tilesDecoded, err := base64.StdEncoding.DecodeString(string(tiles))
 	if err != nil {
 		Logger.Error("tiles字段解码失败", "err", err)
-		return ""
+		return Data{}
 	}
 
 	if len(tilesDecoded)%2 != 0 {
@@ -109,7 +136,7 @@ func GenerateBackgroundMap(filepath string) string {
 		if i+1 >= len(tilesDecoded) {
 			break
 		}
-		tileId := (int(tilesDecoded[i+1]) << 8) | int(tilesDecoded[i])
+		tileId := int(tilesDecoded[i+1])
 		tileIDs = append(tileIDs, tileId)
 	}
 	// 创建新图像
@@ -122,7 +149,12 @@ func GenerateBackgroundMap(filepath string) string {
 			index := y*width + x
 			// 解析16进制颜色
 			c := parseHexColor(tileID2Color(tileIDs[index]))
-			img.Set(x, y, c)
+
+			X := width - x - 1
+			if X*y == 49*152 {
+				Logger.Error(strconv.Itoa(tileIDs[index]))
+			}
+			img.Set(X, y, c)
 		}
 	}
 
@@ -130,11 +162,15 @@ func GenerateBackgroundMap(filepath string) string {
 	var buf bytes.Buffer
 	if err = png.Encode(&buf, img); err != nil {
 		Logger.Error("图片编码失败", "err", err)
-		return ""
+		return Data{}
 	}
 
 	// 将PNG字节转换为Base64字符串
 	base64Str := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-	return base64Str
+	return Data{
+		Height: height,
+		Width:  width,
+		Image:  base64Str,
+	}
 }
