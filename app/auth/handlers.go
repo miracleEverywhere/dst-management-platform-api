@@ -270,7 +270,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		}, // 备份管理
+		}, // 备份管理 10202
 		{
 			MenuId:      10203,
 			MenuName:    "定时通知",
@@ -288,7 +288,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		}, // 定时通知
+		}, // 定时通知 10203
 		{
 			MenuId:      10205,
 			MenuName:    "安装游戏",
@@ -306,7 +306,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		}, // 安装游戏
+		}, // 安装游戏 10205
 		{
 			MenuId:      10206,
 			MenuName:    "玩家统计",
@@ -324,9 +324,27 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		}, // 玩家统计
+		}, // 玩家统计 10206
 		{
 			MenuId:      10207,
+			MenuName:    "世界统计",
+			EnName:      "Summary",
+			ParentId:    102,
+			MenuType:    "2",
+			Path:        "/tools/summary",
+			Name:        "toolsSummary",
+			Component:   "tools/summary",
+			Icon:        "sc-icon-LineChartFill",
+			IsHide:      "1",
+			IsLink:      "",
+			IsKeepAlive: "0",
+			IsFull:      "1",
+			IsAffix:     "1",
+			Redirect:    "",
+			ActiveMenu:  nil,
+		}, // 世界统计 10207
+		{
+			MenuId:      10208,
 			MenuName:    "系统监控",
 			EnName:      "Metrics",
 			ParentId:    102,
@@ -342,9 +360,9 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		}, // 系统监控
+		}, // 系统监控 10208
 		{
-			MenuId:      10208,
+			MenuId:      10209,
 			MenuName:    "创建令牌",
 			EnName:      "Token",
 			ParentId:    102,
@@ -360,9 +378,9 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		}, // 创建令牌
+		}, // 创建令牌 10209
 		{
-			MenuId:      10209,
+			MenuId:      10210,
 			MenuName:    "远程终端",
 			EnName:      "WebSSH",
 			ParentId:    102,
@@ -378,7 +396,7 @@ func handleMenu(c *gin.Context) {
 			IsAffix:     "1",
 			Redirect:    "",
 			ActiveMenu:  nil,
-		}, // 远程终端
+		}, // 远程终端 10210
 		{
 			MenuId:      103,
 			MenuName:    "日志",
@@ -565,7 +583,7 @@ func handleMenu(c *gin.Context) {
 	nonAdminID := []int{
 		100,
 		101, 10101, 10102, 10103, 10104, 10105,
-		102, 10202, 10203, 10206, 10207, 10208,
+		102, 10202, 10203, 10206, 10207, 10208, 10209,
 		103, 10301, 10302, 10303, 10304, 10305,
 		106,
 	}
