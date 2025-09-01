@@ -81,8 +81,8 @@ func GenerateBackgroundMap(filepath string) Data {
 
 	var height, width int
 
-	reHeight := regexp.MustCompile(`height=(\d+)`)
-	reWidth := regexp.MustCompile(`width=(\d+)`)
+	reHeight := regexp.MustCompile(`,height=(\d+),`)
+	reWidth := regexp.MustCompile(`,width=(\d+),`)
 
 	matchHeight := reHeight.FindSubmatch(fileContent)
 	if len(matchHeight) >= 2 {
@@ -151,9 +151,7 @@ func GenerateBackgroundMap(filepath string) Data {
 			c := parseHexColor(tileID2Color(tileIDs[index]))
 
 			X := width - x - 1
-			if X*y == 49*152 {
-				Logger.Error(strconv.Itoa(tileIDs[index]))
-			}
+
 			img.Set(X, y, c)
 		}
 	}
@@ -173,4 +171,11 @@ func GenerateBackgroundMap(filepath string) Data {
 		Width:  width,
 		Image:  base64Str,
 	}
+}
+
+func CoordinateToPx(size, a, b int) (int, int) {
+	x := ((size*2 - a) * 323) / 1310
+	y := ((size*2 + b) * 235) / 938
+
+	return x, y
 }
