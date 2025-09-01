@@ -1254,10 +1254,7 @@ func handleSummaryGet(c *gin.Context) {
 		return
 	}
 
-	utils.Logger.Info(filepath)
-
 	filepath = strings.Split(filepath, ".meta")[0]
-	utils.Logger.Info(filepath)
 	data := utils.GenerateBackgroundMap(filepath)
 
 	if data.Image == "" {
@@ -1265,5 +1262,35 @@ func handleSummaryGet(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	type Prefab struct {
+		Name string `json:"name"`
+		X    int    `json:"x"`
+		Y    int    `json:"y"`
+	}
+	var Prefabs []Prefab
+
+	var prefabs = []string{"pigking", "multiplayer_portal"}
+	for _, prefab := range prefabs {
+		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
+		x, y, err := getCoordinate(cmd, world.ScreenName, world.GetServerLogFile(reqForm.ClusterName))
+		if err != nil {
+			utils.Logger.Error("坐标获取失败", "err", err)
+		}
+		X, Y := utils.CoordinateToPx(data.Height, x, y)
+		Prefabs = append(Prefabs, Prefab{
+			Name: prefab,
+			X:    X,
+			Y:    Y,
+		})
+	}
+
+	type Data struct {
+		Image   utils.Data `json:"image"`
+		Prefabs []Prefab   `json:"prefabs"`
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
+		Image:   data,
+		Prefabs: Prefabs,
+	}})
 }
