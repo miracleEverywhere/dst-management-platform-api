@@ -1269,12 +1269,14 @@ func handleSummaryGet(c *gin.Context) {
 	}
 	var Prefabs []Prefab
 
-	var prefabs = []string{"pigking", "multiplayer_portal"}
+	var prefabs = []string{"pigking", "multiplayer_portal", "moonbase", "lava_pond", "oasislake", "antlion"}
+
 	for _, prefab := range prefabs {
 		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
 		x, y, err := getCoordinate(cmd, world.ScreenName, world.GetServerLogFile(reqForm.ClusterName))
 		if err != nil {
 			utils.Logger.Error("坐标获取失败", "err", err)
+			continue
 		}
 		X, Y := utils.CoordinateToPx(data.Height, x, y)
 		Prefabs = append(Prefabs, Prefab{
@@ -1284,13 +1286,17 @@ func handleSummaryGet(c *gin.Context) {
 		})
 	}
 
+	count := countPrefabs(world.ScreenName, world.GetServerLogFile(reqForm.ClusterName))
+
 	type Data struct {
 		Image   utils.Data `json:"image"`
 		Prefabs []Prefab   `json:"prefabs"`
+		Count   []item     `json:"count"`
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
 		Image:   data,
 		Prefabs: Prefabs,
+		Count:   count,
 	}})
 }

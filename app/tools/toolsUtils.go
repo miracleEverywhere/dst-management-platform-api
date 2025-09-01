@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -113,19 +114,156 @@ func getCoordinate(cmd, screenName, logPath string) (int, int, error) {
 
 	// 解析第三行坐标
 	nums := strings.Fields(coordLines[2])
-	utils.Logger.Info(strconv.Itoa(len(nums)))
-	utils.Logger.Info(nums[1])
-	utils.Logger.Info(nums[3])
 	if len(nums) >= 4 {
-		x, parseErr = strconv.Atoi(nums[1])
-		if parseErr != nil {
-			return 0, 0, fmt.Errorf("解析x坐标失败")
+		if strings.Contains(nums[1], ".") {
+			a, err := strconv.ParseFloat(nums[1], 64)
+			if err != nil {
+				return 0, 0, fmt.Errorf("字符串转浮点数失败")
+			}
+			x = int(a)
+		} else {
+			x, parseErr = strconv.Atoi(nums[1])
+			if parseErr != nil {
+				return 0, 0, fmt.Errorf("解析x坐标失败")
+			}
 		}
-		y, parseErr = strconv.Atoi(nums[3])
-		if parseErr != nil {
-			return 0, 0, fmt.Errorf("解析y坐标失败")
+
+		if strings.Contains(nums[3], ".") {
+			a, err := strconv.ParseFloat(nums[3], 64)
+			if err != nil {
+				return 0, 0, fmt.Errorf("字符串转浮点数失败")
+			}
+			y = int(a)
+		} else {
+			y, parseErr = strconv.Atoi(nums[3])
+			if parseErr != nil {
+				return 0, 0, fmt.Errorf("解析y坐标失败")
+			}
 		}
 	}
 
 	return x, y, nil
+}
+
+type item struct {
+	CnName string `json:"cnName"`
+	EnName string `json:"enName"`
+	Code   string `json:"code"`
+	Count  int    `json:"count"`
+}
+
+func countPrefabs(screenName, logPath string) []item {
+	prefabs := []item{
+		{
+			CnName: "海象营地",
+			EnName: "walrus camp",
+			Code:   "walrus_camp",
+		},
+		{
+			CnName: "杀人蜂巢",
+			EnName: "wasp hive",
+			Code:   "wasphive",
+		},
+		{
+			CnName: "远古雕像",
+			EnName: "ruins statue mage",
+			Code:   "ruins_statue_mage",
+		},
+		{
+			CnName: "远古月亮雕像",
+			EnName: "archive moon statue",
+			Code:   "archive_moon_statue",
+		},
+	}
+
+	cmd1 := "print('=== world prefabs counting start ===')"
+	err := utils.ScreenCMD(cmd1, screenName)
+	if err != nil {
+		utils.Logger.Error("统计世界失败", "err", err)
+		return prefabs
+	}
+
+	for _, prefab := range prefabs {
+		cmd := fmt.Sprintf("c_countprefabs('%s')", prefab.Code)
+		_ = utils.ScreenCMD(cmd, screenName)
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	cmd2 := "print('=== world prefabs counting finish ===')"
+	err = utils.ScreenCMD(cmd2, screenName)
+	if err != nil {
+		utils.Logger.Error("统计世界失败", "err", err)
+		return prefabs
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	file, err := os.Open(logPath)
+	if err != nil {
+		utils.Logger.Error("统计世界失败", "err", err)
+		return prefabs
+	}
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			utils.Logger.Error("文件关闭失败", "err", err)
+		}
+	}(file)
+
+	// 逐行读取文件
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	var usefulLines []string
+
+	var foundFinish bool
+	var foundStart bool
+
+	// 反向遍历行
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		if strings.Contains(line, cmd2) {
+			foundFinish = true
+			continue
+		}
+
+		if foundFinish {
+			usefulLines = append(usefulLines, line)
+		}
+
+		// 检查是否包含关键字
+		if strings.Contains(line, cmd1) {
+			foundStart = true
+			break
+		}
+	}
+
+	if !foundStart {
+		utils.Logger.Error("没有发现开始标记")
+		return prefabs
+	}
+
+	// 正则表达式匹配模式
+	pattern := `There are\s+(\d+)\s+(\w+)\s+in the world`
+	re := regexp.MustCompile(pattern)
+
+	// 查找匹配的行并提取所需字段
+	for _, line := range usefulLines {
+		if matches := re.FindStringSubmatch(line); matches != nil {
+			for index, prefab := range prefabs {
+				if prefab.Code+"s" == matches[2] {
+					count, err := strconv.Atoi(matches[1])
+					if err != nil {
+						count = 0
+					}
+					prefabs[index].Count = count
+				}
+			}
+		}
+	}
+
+	return prefabs
 }
