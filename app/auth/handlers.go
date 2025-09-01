@@ -334,7 +334,7 @@ func handleMenu(c *gin.Context) {
 			Path:        "/tools/summary",
 			Name:        "toolsSummary",
 			Component:   "tools/summary",
-			Icon:        "sc-icon-LineChartFill",
+			Icon:        "sc-icon-PinDistanceFill",
 			IsHide:      "1",
 			IsLink:      "",
 			IsKeepAlive: "0",
