@@ -1215,7 +1215,7 @@ func handleWebSSHGet(c *gin.Context) {
 	}
 }
 
-func handleSummaryGet(c *gin.Context) {
+func handleLocationGet(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言
 	if strLang, ok := lang.(string); ok {

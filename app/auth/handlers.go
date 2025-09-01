@@ -327,13 +327,13 @@ func handleMenu(c *gin.Context) {
 		}, // 玩家统计 10206
 		{
 			MenuId:      10207,
-			MenuName:    "世界统计",
-			EnName:      "Summary",
+			MenuName:    "世界坐标",
+			EnName:      "Location",
 			ParentId:    102,
 			MenuType:    "2",
-			Path:        "/tools/summary",
-			Name:        "toolsSummary",
-			Component:   "tools/summary",
+			Path:        "/tools/location",
+			Name:        "toolsLocation",
+			Component:   "tools/location",
 			Icon:        "sc-icon-PinDistanceFill",
 			IsHide:      "1",
 			IsLink:      "",

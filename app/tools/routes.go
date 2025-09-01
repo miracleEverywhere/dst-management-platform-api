@@ -40,7 +40,7 @@ func RouteTools(r *gin.Engine) *gin.Engine {
 			// 终端
 			tools.GET("/webssh", handleWebSSHGet)
 			// 世界总览
-			tools.GET("/summary", utils.MWtoken(), utils.MWUserCheck(), handleSummaryGet)
+			tools.GET("/location", utils.MWtoken(), utils.MWUserCheck(), handleLocationGet)
 		}
 	}
 
