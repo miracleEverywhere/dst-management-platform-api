@@ -1239,6 +1239,13 @@ func handleLocationGet(c *gin.Context) {
 		return
 	}
 
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
 	world, err := config.GetWorldWithName(reqForm.ClusterName, reqForm.WorldName)
 	if err != nil {
 		utils.Logger.Error("获取世界失败", "err", err)
@@ -1288,15 +1295,22 @@ func handleLocationGet(c *gin.Context) {
 
 	count := countPrefabs(world.ScreenName, world.GetServerLogFile(reqForm.ClusterName))
 
+	players := getPlayerPosition(world.ScreenName, world.GetServerLogFile(reqForm.ClusterName), cluster)
+	for index, _ := range players {
+		players[index].Coordinate.X, players[index].Coordinate.Y = utils.CoordinateToPx(data.Height, players[index].Coordinate.X, players[index].Coordinate.Y)
+	}
+
 	type Data struct {
 		Image   utils.Data `json:"image"`
 		Prefabs []Prefab   `json:"prefabs"`
 		Count   []item     `json:"count"`
+		Players []Player   `json:"players"`
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
 		Image:   data,
 		Prefabs: Prefabs,
 		Count:   count,
+		Players: players,
 	}})
 }

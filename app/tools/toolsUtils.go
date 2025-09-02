@@ -267,3 +267,111 @@ func countPrefabs(screenName, logPath string) []item {
 
 	return prefabs
 }
+
+type Player struct {
+	Uid        string `json:"uid"`
+	NickName   string `json:"nickName"`
+	Prefab     string `json:"prefab"`
+	Coordinate struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+	} `json:"coordinate"`
+}
+
+func getPlayerPosition(screenName, logPath string, cluster utils.Cluster) []Player {
+
+	var Players []Player
+
+	utils.STATISTICSMutex.Lock()
+	if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) > 0 {
+		players := utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
+		for _, player := range players {
+			Players = append(Players, Player{
+				Uid:      player.UID,
+				NickName: player.NickName,
+				Prefab:   player.Prefab,
+			})
+		}
+	}
+	utils.STATISTICSMutex.Unlock()
+
+	if len(Players) == 0 {
+		return []Player{}
+	}
+
+	for index, player := range Players {
+		ts := time.Now().UnixNano()
+
+		cmd := fmt.Sprintf("print('==== DMP Start %s [%d] Start DMP ====')", player.Uid, ts)
+		err := utils.ScreenCMD(cmd, screenName)
+		if err != nil {
+			utils.Logger.Error("执行获取玩家坐标失败", "err", err)
+			continue
+		}
+
+		time.Sleep(50 * time.Millisecond)
+
+		cmd = fmt.Sprintf("print(UserToPlayer('%s').Transform:GetWorldPosition())", player.Uid)
+		err = utils.ScreenCMD(cmd, screenName)
+		if err != nil {
+			utils.Logger.Error("执行获取玩家坐标失败", "err", err)
+			continue
+		}
+
+		time.Sleep(50 * time.Millisecond)
+
+		cmd = fmt.Sprintf("print('==== DMP End %s [%d] End DMP ====')", player.Uid, ts)
+		err = utils.ScreenCMD(cmd, screenName)
+		if err != nil {
+			utils.Logger.Error("执行获取玩家坐标失败", "err", err)
+			continue
+		}
+
+		time.Sleep(50 * time.Millisecond)
+
+		data, err := utils.GetFileLastNLines(logPath, 100)
+		var lines []string
+		for i := len(data) - 1; i >= 0; i-- {
+			lines = append(lines, data[i])
+		}
+
+		pattern := `(-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s+([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s+(-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)`
+		re := regexp.MustCompile(pattern)
+
+		var endFound bool
+
+		for _, line := range lines {
+			if strings.Contains(line, fmt.Sprintf("==== DMP End %s [%d] End DMP ====", player.Uid, ts)) {
+				endFound = true
+				continue
+			}
+			if endFound {
+				endFound = false
+				if matches := re.FindStringSubmatch(line); matches != nil {
+					x, err := strconv.ParseFloat(matches[1], 64)
+					if err != nil {
+						break
+					}
+					y, err := strconv.ParseFloat(matches[3], 64)
+					if err != nil {
+						break
+					}
+					Players[index].Coordinate.X = int(x)
+					Players[index].Coordinate.Y = int(y)
+				}
+			}
+
+		}
+
+	}
+
+	var returnData []Player
+
+	for _, player := range Players {
+		if player.Coordinate.Y != 0 {
+			returnData = append(returnData, player)
+		}
+	}
+
+	return returnData
+}
