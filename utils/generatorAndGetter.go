@@ -212,7 +212,7 @@ func (cluster Cluster) GetKillCmd(uid string) string {
 }
 
 func (cluster Cluster) GetRespawnCmd(uid string) string {
-	return fmt.Sprintf(`for k, v in pairs(AllPlayers) do if v.userid=='%s' then AllPlayers[k]:PushEvent('respawnfromghost') end end`, uid)
+	return fmt.Sprintf(`UserToPlayer('%s'):PushEvent('respawnfromghost')`, uid)
 }
 
 func (cluster Cluster) GetDespawnCmd(uid string) string {
