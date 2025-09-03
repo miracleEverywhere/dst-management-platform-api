@@ -134,14 +134,6 @@ Enter 0 to download and start, after startup is complete, run the manual_install
 >Note: Due to system limitations on macOS, mod configuration is temporarily unavailable. You need to click the “Export” button on the Settings > Mods > Add Mods page. After clicking, a directory named dmp_exported_mod will be generated on the desktop. Users must use **Finder** to copy the mods from this directory to the ~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods directory. To update a mod, you need to delete the corresponding mod on the Settings > Mods > Add Mods page, then re-download the mod, perform the export and copy operations, and restart the game server
 ---
 
-## :grapes: Default username and password
->After logging in, please change your password on username-profile page as soon as possible
->
->>Default username and password: 
->>admin/123456
-
----
-
 ## :cherries: DMP screenshot
 ![en-home](images/en-home.png)
 
@@ -155,10 +147,20 @@ Enter 0 to download and start, after startup is complete, run the manual_install
 ![en-backup](images/en-backup.png)
 
 
+![en-location](images/en-location.png)
+
+
 ![en-logs](images/en-logs.png)
 
 
 ![en-clusters](images/en-clusters.png)
+
+---
+
+## :love_letter: Contribute
+Welcome all developers to contribute code to improve and extend this project!
+
+![https://github.com/miracleEverywhere/dst-management-platform-api/graphs/contributors](https://contrib.rocks/image?repo=miracleEverywhere/dst-management-platform-api)
 
 ---
 
