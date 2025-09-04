@@ -158,10 +158,20 @@ cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/ra
 ![zh-backup](docs/images/zh-backup.png)
 
 
+![zh-location](docs/images/zh-location.png)
+
+
 ![zh-logs](docs/images/zh-logs.png)
 
 
 ![zh-clusters](docs/images/zh-clusters.png) 
+
+---
+
+## :love_letter: 代码贡献
+欢迎所有开发者贡献代码，以改善和扩展这个项目！
+
+![https://github.com/miracleEverywhere/dst-management-platform-api/graphs/contributors](https://contrib.rocks/image?repo=miracleEverywhere/dst-management-platform-api)
 
 ---
 

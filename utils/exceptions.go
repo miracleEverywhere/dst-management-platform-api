@@ -42,5 +42,5 @@ func exceptions(code int, lang string) string {
 
 func RespondWithError(c *gin.Context, code int, lang string) {
 	message := exceptions(code, lang)
-	c.JSON(http.StatusOK, gin.H{"code": code, "message": message})
+	c.JSON(http.StatusOK, gin.H{"code": code, "message": message, "data": nil})
 }

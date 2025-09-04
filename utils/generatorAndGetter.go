@@ -212,7 +212,7 @@ func (cluster Cluster) GetKillCmd(uid string) string {
 }
 
 func (cluster Cluster) GetRespawnCmd(uid string) string {
-	return fmt.Sprintf(`for k, v in pairs(AllPlayers) do if v.userid=='%s' then AllPlayers[k]:PushEvent('respawnfromghost') end end`, uid)
+	return fmt.Sprintf(`UserToPlayer('%s'):PushEvent('respawnfromghost')`, uid)
 }
 
 func (cluster Cluster) GetDespawnCmd(uid string) string {
@@ -305,6 +305,10 @@ func GetAesKey() []byte {
 	}
 
 	return decoded
+}
+
+func GetPlayerLocationCmd(uid string) string {
+	return fmt.Sprintf("print(UserToPlayer('%s').Transform:GetWorldPosition())", uid)
 }
 
 /* Linux交叉编译：CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o /root/dmp_darwin */

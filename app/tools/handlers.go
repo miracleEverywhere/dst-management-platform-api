@@ -1214,3 +1214,103 @@ func handleWebSSHGet(c *gin.Context) {
 		utils.Logger.Info("终端收到系统信号关闭连接", "signal", sig)
 	}
 }
+
+func handleLocationGet(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		ClusterName string `json:"clusterName" form:"clusterName"`
+		WorldName   string `json:"worldName" form:"worldName"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("读取配置文件失败", "err", err)
+		utils.RespondWithError(c, 500, "zh")
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.Logger.Error("获取集群失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	world, err := config.GetWorldWithName(reqForm.ClusterName, reqForm.WorldName)
+	if err != nil {
+		utils.Logger.Error("获取世界失败", "err", err)
+		utils.RespondWithError(c, 404, "zh")
+		return
+	}
+
+	sessionPath := world.GetSessionPath(reqForm.ClusterName)
+	filepath, err := utils.FindLatestMetaFile(sessionPath)
+	if err != nil {
+		utils.Logger.Error("获取存档文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("savingFileGetFail", langStr), "data": nil})
+		return
+	}
+
+	filepath = strings.Split(filepath, ".meta")[0]
+	data := utils.GenerateBackgroundMap(filepath)
+
+	if data.Image == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("backgroundImageFail", langStr), "data": nil})
+		return
+	}
+
+	type Prefab struct {
+		Name string `json:"name"`
+		X    int    `json:"x"`
+		Y    int    `json:"y"`
+	}
+	var Prefabs []Prefab
+
+	var prefabs = []string{"pigking", "multiplayer_portal", "moonbase", "lava_pond", "oasislake", "antlion"}
+
+	for _, prefab := range prefabs {
+		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
+		x, y, err := getCoordinate(cmd, world.ScreenName, world.GetServerLogFile(reqForm.ClusterName))
+		if err != nil {
+			utils.Logger.Warn("坐标获取失败，跳过", "err", err)
+			continue
+		}
+		X, Y := utils.CoordinateToPx(data.Height, x, y)
+		Prefabs = append(Prefabs, Prefab{
+			Name: prefab,
+			X:    X,
+			Y:    Y,
+		})
+	}
+
+	count := countPrefabs(world.ScreenName, world.GetServerLogFile(reqForm.ClusterName))
+
+	players := getPlayerPosition(world.ScreenName, world.GetServerLogFile(reqForm.ClusterName), cluster)
+	for index, _ := range players {
+		players[index].Coordinate.X, players[index].Coordinate.Y = utils.CoordinateToPx(data.Height, players[index].Coordinate.X, players[index].Coordinate.Y)
+	}
+
+	type Data struct {
+		Image   utils.Data `json:"image"`
+		Prefabs []Prefab   `json:"prefabs"`
+		Count   []item     `json:"count"`
+		Players []Player   `json:"players"`
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
+		Image:   data,
+		Prefabs: Prefabs,
+		Count:   count,
+		Players: players,
+	}})
+}
