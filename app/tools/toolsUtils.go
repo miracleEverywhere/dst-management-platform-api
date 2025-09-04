@@ -305,7 +305,7 @@ func getPlayerPosition(screenName, logPath string, cluster utils.Cluster) []Play
 		cmd := fmt.Sprintf("print('==== DMP Start %s [%d] Start DMP ====')", player.Uid, ts)
 		err := utils.ScreenCMD(cmd, screenName)
 		if err != nil {
-			utils.Logger.Error("执行获取玩家坐标失败", "err", err)
+			utils.Logger.Warn("执行获取玩家坐标失败，跳过", "err", err)
 			continue
 		}
 
@@ -314,7 +314,7 @@ func getPlayerPosition(screenName, logPath string, cluster utils.Cluster) []Play
 		cmd = fmt.Sprintf("print(UserToPlayer('%s').Transform:GetWorldPosition())", player.Uid)
 		err = utils.ScreenCMD(cmd, screenName)
 		if err != nil {
-			utils.Logger.Error("执行获取玩家坐标失败", "err", err)
+			utils.Logger.Warn("执行获取玩家坐标失败，跳过", "err", err)
 			continue
 		}
 
@@ -323,7 +323,7 @@ func getPlayerPosition(screenName, logPath string, cluster utils.Cluster) []Play
 		cmd = fmt.Sprintf("print('==== DMP End %s [%d] End DMP ====')", player.Uid, ts)
 		err = utils.ScreenCMD(cmd, screenName)
 		if err != nil {
-			utils.Logger.Error("执行获取玩家坐标失败", "err", err)
+			utils.Logger.Warn("执行获取玩家坐标失败，跳过", "err", err)
 			continue
 		}
 

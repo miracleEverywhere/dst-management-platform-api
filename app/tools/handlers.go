@@ -1282,7 +1282,7 @@ func handleLocationGet(c *gin.Context) {
 		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
 		x, y, err := getCoordinate(cmd, world.ScreenName, world.GetServerLogFile(reqForm.ClusterName))
 		if err != nil {
-			utils.Logger.Error("坐标获取失败", "err", err)
+			utils.Logger.Warn("坐标获取失败，跳过", "err", err)
 			continue
 		}
 		X, Y := utils.CoordinateToPx(data.Height, x, y)
