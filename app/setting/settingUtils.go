@@ -42,7 +42,7 @@ func clusterTemplate(cluster utils.Cluster) string {
 game_mode = ` + cluster.ClusterSetting.GameMode + `
 max_players = ` + strconv.Itoa(cluster.ClusterSetting.PlayerNum) + `
 pvp = ` + strconv.FormatBool(cluster.ClusterSetting.PVP) + `
-pause_when_empty = true
+pause_when_empty = ` + strconv.FormatBool(!cluster.ClusterSetting.PauseEmptyDisabled) + `
 vote_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
 vote_kick_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
 
