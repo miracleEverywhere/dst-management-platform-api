@@ -54,9 +54,11 @@ check_screen
 
 # 下载安装包
 cd ~
+rm -f steamcmd_linux.tar.gz
 wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
 
 # 解压安装包
+rm -rf $STEAM_DIR
 mkdir -p $STEAM_DIR
 tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR
 

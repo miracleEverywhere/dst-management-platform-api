@@ -73,6 +73,7 @@ fi
 check_screen
 
 # 下载安装包
+rm -f steamcmd_linux.tar.gz
 echo -e "29\t正在下载Steam安装包\tDownloading the Steam installation package" > /tmp/install_status
 cd ~
 wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz 2>&1 > /dev/null
@@ -81,6 +82,7 @@ if (($? != 0)); then
 fi
 
 # 解压安装包
+rm -rf $STEAM_DIR
 echo -e "41\t正在解压Steam安装包\tExtracting the Steam installation package" > /tmp/install_status
 mkdir -p $STEAM_DIR
 tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR 2>&1 > /dev/null
