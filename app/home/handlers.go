@@ -37,7 +37,7 @@ func handleRoomInfoGet(c *gin.Context) {
 		ClusterSetting utils.ClusterSetting `json:"clusterSetting"`
 		SeasonInfo     utils.MetaInfo       `json:"seasonInfo"`
 		ModsCount      int                  `json:"modsCount"`
-		Players        []string             `json:"players"`
+		Players        []utils.Players      `json:"players"`
 	}
 	type Response struct {
 		Code    int    `json:"code"`
@@ -54,7 +54,6 @@ func handleRoomInfoGet(c *gin.Context) {
 		filePath   string
 		sessionErr error
 		seasonInfo utils.MetaInfo
-		players    []string
 	)
 	for _, world := range cluster.Worlds {
 		sessionPath := world.GetSessionPath(cluster.ClusterSetting.ClusterName)
@@ -74,12 +73,11 @@ func handleRoomInfoGet(c *gin.Context) {
 		}
 	}
 
+	var players []utils.Players
+
 	utils.STATISTICSMutex.Lock()
 	if len(utils.STATISTICS[cluster.ClusterSetting.ClusterName]) > 0 {
-		Players := utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
-		for _, player := range Players {
-			players = append(players, player.NickName)
-		}
+		players = utils.STATISTICS[cluster.ClusterSetting.ClusterName][len(utils.STATISTICS[cluster.ClusterSetting.ClusterName])-1].Players
 	}
 	utils.STATISTICSMutex.Unlock()
 
