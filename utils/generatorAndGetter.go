@@ -74,7 +74,7 @@ func (world World) GetWorldType() string {
 	matches := re.FindStringSubmatch(world.LevelData)
 
 	if len(matches) >= 2 {
-		return matches[1] // 输出: Location: forest
+		return matches[1] // 输出: Location: forest cave
 	} else {
 		return "None"
 	}
