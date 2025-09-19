@@ -42,7 +42,7 @@ func clusterTemplate(cluster utils.Cluster) string {
 game_mode = ` + cluster.ClusterSetting.GameMode + `
 max_players = ` + strconv.Itoa(cluster.ClusterSetting.PlayerNum) + `
 pvp = ` + strconv.FormatBool(cluster.ClusterSetting.PVP) + `
-pause_when_empty = true
+pause_when_empty = ` + strconv.FormatBool(!cluster.ClusterSetting.PauseEmptyDisabled) + `
 vote_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
 vote_kick_enabled = ` + strconv.FormatBool(cluster.ClusterSetting.Vote) + `
 
@@ -68,7 +68,15 @@ cluster_key = ` + clusterKey + `
 	return contents
 }
 
-func worldTemplate(world utils.World) string {
+func worldTemplate(world utils.World, index int) string {
+	worldType := world.GetWorldType()
+	worldName := world.Name
+	if worldType != "forest" {
+		worldName = "Caves"
+	}
+	if index > 1 {
+		worldName = fmt.Sprintf("Caves%d", index)
+	}
 	content := `
 [NETWORK]
 server_port = ` + strconv.Itoa(world.ServerPort) + `
@@ -76,7 +84,7 @@ server_port = ` + strconv.Itoa(world.ServerPort) + `
 [SHARD]
 id = ` + strconv.Itoa(world.ID) + `
 is_master = ` + strconv.FormatBool(world.IsMaster) + `
-name = ` + world.Name + `
+name = ` + worldName + `
 
 [STEAM]
 master_server_port = ` + strconv.Itoa(world.SteamMasterPort) + `
@@ -160,7 +168,7 @@ func SaveSetting(reqCluster utils.Cluster) error {
 		return err
 	}
 
-	for _, world := range reqCluster.Worlds {
+	for index, world := range reqCluster.Worlds {
 		err = utils.EnsureDirExists(world.GetMainPath(reqCluster.ClusterSetting.ClusterName))
 		if err != nil {
 			utils.Logger.Error("创建世界目录失败", "err", err)
@@ -197,7 +205,7 @@ func SaveSetting(reqCluster utils.Cluster) error {
 			utils.Logger.Error("创建server.ini失败", "err", err)
 			return err
 		}
-		worldIniContent := worldTemplate(world)
+		worldIniContent := worldTemplate(world, index)
 		err = utils.TruncAndWriteFile(world.GetIniFile(reqCluster.ClusterSetting.ClusterName), worldIniContent)
 		if err != nil {
 			utils.Logger.Error("写入server.ini失败", "err", err)

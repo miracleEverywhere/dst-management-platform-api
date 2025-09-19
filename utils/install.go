@@ -54,9 +54,11 @@ check_screen
 
 # 下载安装包
 cd ~
+rm -f steamcmd_linux.tar.gz
 wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
 
 # 解压安装包
+rm -rf $STEAM_DIR
 mkdir -p $STEAM_DIR
 tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR
 
@@ -91,6 +93,8 @@ DST_SETTING_DIR="$HOME/.klei"
 # 安装依赖
 brew install unzip wget screen curl grep
 
+rm -f steamcmd_osx.tar.gz
+rm -rf $STEAM_DIR
 mkdir $STEAM_DIR
 curl -O "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_osx.tar.gz"
 tar zxvf steamcmd_osx.tar.gz -C steamcmd

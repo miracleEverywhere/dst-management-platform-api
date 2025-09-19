@@ -665,22 +665,25 @@ func handleClusterSaveRegeneratePost(c *gin.Context) {
 		return
 	}
 
-	err = utils.StartClusterAllWorlds(reqCluster)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": response("saveSuccessRestartFail", langStr),
-			"data":    nil,
-		})
-		return
-	}
-
 	err = reqCluster.ClearDstFiles()
 	if err != nil {
 		utils.Logger.Error("删除旧集群脏数据失败")
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
+	cmd := "c_regenerateworld()"
+	for _, world := range cluster.Worlds {
+		if world.GetStatus() {
+			err = utils.ScreenCMD(cmd, world.ScreenName)
+			if err != nil {
+				utils.Logger.Warn("重置世界命令执行失败，尝试下一个世界", "err", err, "world", world.Name)
+				continue
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("generateSuccess", langStr), "data": nil})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("generateFail", langStr), "data": nil})
 }
 
 func handleImportPost(c *gin.Context) {
