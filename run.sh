@@ -22,6 +22,10 @@ SWAPSIZE=2G
 USER=$(whoami)
 ExeFile="$HOME/dmp"
 
+DMP_GITHUB_HOME_URL="https://github.com/miracleEverywhere/dst-management-platform-api"
+DMP_GITHUB_API_URL="https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest"
+SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh"
+
 cd "$HOME" || exit
 
 function echo_red() {
@@ -40,9 +44,13 @@ function echo_cyan() {
     echo -e "\033[0;36m$*\033[0m"
 }
 
+function echo_red_blink() {
+    echo -e "\033[5;31m$*\033[0m"
+}
+
 # 检查用户，只能使用root执行
 if [[ "${USER}" != "root" ]]; then
-    echo_red "请使用root用户执行此脚本 (Please run this script as the root user)"
+    echo_red "请使用root用户执行此脚本"
     exit 1
 fi
 
@@ -60,27 +68,32 @@ function unset_tty() {
 function prompt_user() {
     clear
     echo_green "饥荒管理平台(DMP)"
-    echo_green "--- https://github.com/miracleEverywhere/dst-management-platform-api ---"
+    echo_green "--- ${DMP_GITHUB_HOME_URL} ---"
+    if [[ $(echo "${DMP_GITHUB_HOME_URL}" | tr '/' '\n' | grep -vc "^$") != "4" ]] ||
+       [[ $(echo "${DMP_GITHUB_API_URL}" | tr '/' '\n' | grep -vc "^$") != "7" ]] ||
+       [[ $(echo "${SCRIPT_GITHUB}" | tr '/' '\n' | grep -vc "^$") != "6" ]]; then
+        echo_red_blink "饥荒管理平台 run.sh 脚本可能被篡改，请重新下载"
+    fi
     echo_yellow "————————————————————————————————————————————————————————————"
-    echo_green "[0]: 下载并启动服务(Download and start the service)"
+    echo_green "[0]: 下载并启动饥荒管理平台"
     echo_yellow "————————————————————————————————————————————————————————————"
-    echo_green "[1]: 启动服务(Start the service)"
-    echo_green "[2]: 关闭服务(Stop the service)"
-    echo_green "[3]: 重启服务(Restart the service)"
+    echo_green "[1]: 启动饥荒管理平台"
+    echo_green "[2]: 关闭饥荒管理平台"
+    echo_green "[3]: 重启饥荒管理平台"
     echo_yellow "————————————————————————————————————————————————————————————"
-    echo_green "[4]: 更新管理平台(Update management platform)"
-    echo_green "[5]: 强制更新平台(Force update platform)"
-    echo_green "[6]: 更新启动脚本(Update startup script)"
+    echo_green "[4]: 更新饥荒管理平台"
+    echo_green "[5]: 强制更新饥荒管理平台"
+    echo_green "[6]: 更新run.sh启动脚本"
     echo_yellow "————————————————————————————————————————————————————————————"
-    echo_green "[7]: 设置虚拟内存(Setup swap)"
-    echo_green "[8]: 退出脚本(Exit script)"
+    echo_green "[7]: 设置虚拟内存"
+    echo_green "[8]: 退出脚本"
     echo_yellow "————————————————————————————————————————————————————————————"
-    echo_yellow "请输入选择(Please enter your selection) [0-8]: "
+    echo_yellow "请输入要执行的操作 [0-8]: "
 }
 
 # 检查jq
 function check_jq() {
-    echo_cyan "正在检查jq命令(Checking jq command)"
+    echo_cyan "正在检查jq命令"
     if ! jq --version >/dev/null 2>&1; then
         OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
         if [[ ${OS} == "ubuntu" ]]; then
@@ -94,7 +107,7 @@ function check_jq() {
 }
 
 function check_curl() {
-    echo_cyan "正在检查curl命令(Checking curl command)"
+    echo_cyan "正在检查curl命令"
     if ! curl --version >/dev/null 2>&1; then
         OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
         if [[ ${OS} == "ubuntu" ]]; then
@@ -108,7 +121,7 @@ function check_curl() {
 }
 
 function check_strings() {
-    echo_cyan "正在检查strings命令(Checking strings command)"
+    echo_cyan "正在检查strings命令"
     if ! strings --version >/dev/null 2>&1; then
         OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
         if [[ ${OS} == "ubuntu" ]]; then
@@ -125,7 +138,7 @@ function check_strings() {
 # Ubuntu检查GLIBC, rhel需要下载文件手动安装
 function check_glibc() {
     check_strings
-    echo_cyan "正在检查GLIBC版本(Checking GLIBC version)"
+    echo_cyan "正在检查GLIBC版本"
     OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
     if [[ ${OS} == "ubuntu" ]]; then
         if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34 >/dev/null 2>&1; then
@@ -133,7 +146,7 @@ function check_glibc() {
             apt install -y libc6
         fi
     else
-        echo_red "非Ubuntu系统，如GLIBC小于2.34，请手动升级(For systems other than Ubuntu, if the GLIBC version is less than 2.34, please upgrade manually)"
+        echo_red "非Ubuntu系统，如GLIBC小于2.34，请手动升级"
     fi
 }
 
@@ -155,9 +168,9 @@ function install_dmp() {
     check_jq
     check_curl
     # 原GitHub下载链接
-    GITHUB_URL=$(curl -s -L https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
+    github_url_acc=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
     # 生成加速链接
-    url="$(curl -s -L https://api.akams.cn/github | jq -r '.data[0].url')/${GITHUB_URL}"
+    url="$(curl -s -L https://api.akams.cn/github | jq -r '.data[0].url')/${github_url_acc}"
     if download "${url}" "dmp.tgz" 10; then
         if [ -e "dmp.tgz" ]; then
             echo_green "DMP下载成功"
@@ -181,9 +194,9 @@ function install_dmp() {
 function check_dmp() {
     sleep 1
     if pgrep dmp >/dev/null; then
-        echo_green "启动成功 (Startup Success)"
+        echo_green "启动成功"
     else
-        echo_red "启动失败 (Startup Fail)"
+        echo_red "启动失败"
         exit 1
     fi
 }
@@ -202,13 +215,13 @@ function start_dmp() {
 # 关闭主程序
 function stop_dmp() {
     pkill -9 dmp
-    echo_green "关闭成功 (Shutdown Success)"
+    echo_green "关闭成功"
     sleep 1
 }
 
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
 function clear_dmp() {
-    echo_cyan "正在执行清理 (Cleaning Files)"
+    echo_cyan "正在执行清理"
     rm -f dmp dmp.log dmpProcess.log
 }
 
@@ -225,9 +238,9 @@ function get_current_version() {
 function get_latest_version() {
     check_jq
     check_curl
-    LATEST_VERSION=$(curl -s -L https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest | jq -r .tag_name)
+    LATEST_VERSION=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r .tag_name)
     if [[ -z "$LATEST_VERSION" ]]; then
-        echo_red "无法获取最新版本号，请检查网络连接或GitHub API (Failed to fetch the latest version, please check network or GitHub API)"
+        echo_red "无法获取最新版本号，请检查网络连接或GitHub API"
         exit 1
     fi
 }
@@ -237,7 +250,6 @@ function update_script() {
     check_curl
     echo_cyan "正在更新脚本..."
     TEMP_FILE="/tmp/run.sh"
-    SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh"
     # 生成加速链接
     url="$(curl -s -L https://api.akams.cn/github | jq -r '.data[0].url')/${SCRIPT_GITHUB}"
     if download "${url}" "${TEMP_FILE}" 10; then
@@ -294,7 +306,7 @@ function set_swap() {
     sysctl -w vm.min_free_kbytes=100000
     echo -e 'vm.swappiness = 20\nvm.min_free_kbytes = 100000\n' > /etc/sysctl.d/dmp_swap.conf
 
-    echo_green "系统swap设置成功 (System swap setting completed)"
+    echo_green "系统swap设置成功"
 }
 
 # 使用无限循环让用户输入命令
@@ -332,7 +344,7 @@ while true; do
         stop_dmp
         start_dmp
         check_dmp
-        echo_green "重启成功 (Restart Success)"
+        echo_green "重启成功"
         unset_tty
         break
         ;;
@@ -341,15 +353,15 @@ while true; do
         get_current_version
         get_latest_version
         if [[ "$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | head -n1)" == "$CURRENT_VERSION" && "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
-            echo_yellow "当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新 (Updating to the latest version)"
+            echo_yellow "当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新"
             stop_dmp
             clear_dmp
             install_dmp
             start_dmp
             check_dmp
-            echo_green "更新完成 (Update completed)"
+            echo_green "更新完成"
         else
-            echo_green "当前版本 ($CURRENT_VERSION) 已是最新版本，无需更新 (No update needed)"
+            echo_green "当前版本 ($CURRENT_VERSION) 已是最新版本，无需更新"
         fi
         unset_tty
         break
@@ -361,7 +373,7 @@ while true; do
         install_dmp
         start_dmp
         check_dmp
-        echo_green "强制更新完成 (Force update completed)"
+        echo_green "强制更新完成"
         unset_tty
         break
         ;;
@@ -382,7 +394,7 @@ while true; do
         break
         ;;
     *)
-        echo_red "请输入正确的数字 [0-8](Please enter the correct number [0-8])"
+        echo_red "请输入正确的数字 [0-8]"
         continue
         ;;
     esac
