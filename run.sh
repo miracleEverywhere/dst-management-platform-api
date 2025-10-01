@@ -79,7 +79,7 @@ function prompt_user() {
     if [[ $(echo "${DMP_GITHUB_HOME_URL}" | tr '/' '\n' | grep -vc "^$") != "4" ]] ||
        [[ $(echo "${DMP_GITHUB_API_URL}" | tr '/' '\n' | grep -vc "^$") != "7" ]] ||
        [[ $(echo "${SCRIPT_GITHUB}" | tr '/' '\n' | grep -vc "^$") != "6" ]]; then
-        echo_red_blink "饥荒管理平台 run.sh 脚本可能被篡改，请重新下载"
+        echo_red_blink "饥荒管理平台 run.sh 脚本可能被加速站点篡改，请切换加速站点重新下载"
     fi
     echo_yellow "————————————————————————————————————————————————————————————"
     echo_green "[0]: 下载并启动饥荒管理平台"
