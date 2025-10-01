@@ -54,6 +54,13 @@ if [[ "${USER}" != "root" ]]; then
     exit 1
 fi
 
+if [ -z "$1" ]; then
+    acceleration_index=0
+
+else
+    acceleration_index=$1
+fi
+
 # 设置全局stderr为红色并添加固定格式
 function set_tty() {
     exec 2> >(while read -r line; do echo_red "[$(date +'%F %T')] [ERROR] ${line}" >&2; done)
@@ -170,7 +177,10 @@ function install_dmp() {
     # 原GitHub下载链接
     github_url_acc=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
     # 生成加速链接
-    url="$(curl -s -L https://api.akams.cn/github | jq -r '.data[0].url')/${github_url_acc}"
+    url="$(curl -s -L https://api.akams.cn/github | jq -r --arg idx "$acceleration_index" '.data[$idx | tonumber].url')/${github_url_acc}"
+    echo_yellow "正在使用加速站点[${acceleration_index}]进行下载，如果下载失败，请切换加速站点，切换方式："
+    echo_yellow "./run.sh 大于等于0的数字。例如：./run.sh 2"
+    echo_yellow "如果不输入数字，则默认为0"
     if download "${url}" "dmp.tgz" 10; then
         if [ -e "dmp.tgz" ]; then
             echo_green "DMP下载成功"
@@ -251,7 +261,10 @@ function update_script() {
     echo_cyan "正在更新脚本..."
     TEMP_FILE="/tmp/run.sh"
     # 生成加速链接
-    url="$(curl -s -L https://api.akams.cn/github | jq -r '.data[0].url')/${SCRIPT_GITHUB}"
+    url="$(curl -s -L https://api.akams.cn/github | jq -r --arg idx "$acceleration_index" '.data[$idx | tonumber].url')/${SCRIPT_GITHUB}"
+    echo_yellow "正在使用加速站点[${acceleration_index}]进行下载，如果下载失败，请切换加速站点，切换方式："
+    echo_yellow "./run.sh 大于等于0的数字。例如：./run.sh 2"
+    echo_yellow "如果不输入数字，则默认为0"
     if download "${url}" "${TEMP_FILE}" 10; then
         if [ -e "${TEMP_FILE}" ]; then
             echo_green "run.sh下载成功"
