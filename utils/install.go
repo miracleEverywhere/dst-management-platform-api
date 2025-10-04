@@ -62,6 +62,9 @@ rm -rf $STEAM_DIR
 mkdir -p $STEAM_DIR
 tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR
 
+#清理可能损坏的acf文件
+rm -rf $STEAM_DIR/steamapps/appmanifest_343050.acf
+
 # 安装DST
 cd $STEAM_DIR
 ./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit
