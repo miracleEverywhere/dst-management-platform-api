@@ -90,6 +90,9 @@ if (($? != 0)); then
 	$INSTALL_FAIL="YES"
 fi
 
+# PR77 清理可能损坏的acf文件
+rm -rf $DST_DIR/steamapps/appmanifest_343050.acf
+
 # 安装DST
 echo -e "49\t正在下载Steam\tDownloading Steam" > /tmp/install_status
 cd $STEAM_DIR

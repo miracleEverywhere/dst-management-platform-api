@@ -1927,7 +1927,7 @@ func handleDisableModPost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("deleteModSuccess", langStr), "data": newModOverridesLua})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": response("disableModSuccess", langStr), "data": newModOverridesLua})
 }
 
 func handleMacOSModExportPost(c *gin.Context) {

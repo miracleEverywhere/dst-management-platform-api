@@ -316,13 +316,15 @@ func handleExecPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("resetFail", langStr), "data": nil})
 		return
 	case "delete":
-		_ = utils.StopClusterAllWorlds(cluster)
-		for _, world := range cluster.Worlds {
-			err = utils.RemoveDir(world.GetSavePath(cluster.ClusterSetting.ClusterName))
-			if err != nil {
-				utils.Logger.Error("删除世界失败，尝试下一个世界", "err", err, "world", world.Name)
-				continue
-			}
+		world, err := config.GetWorldWithName(cluster.ClusterSetting.ClusterName, reqForm.WorldName)
+		if err != nil {
+			utils.RespondWithError(c, 404, langStr)
+			return
+		}
+		_ = world.StopGame()
+		err = utils.RemoveDir(world.GetSavePath(cluster.ClusterSetting.ClusterName))
+		if err != nil {
+			utils.Logger.Error("删除世界失败", "err", err, "world", world.Name)
 		}
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("deleteFail", langStr), "data": nil})
