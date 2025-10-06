@@ -62,7 +62,7 @@ rm -rf $STEAM_DIR
 mkdir -p $STEAM_DIR
 tar -zxvf steamcmd_linux.tar.gz -C $STEAM_DIR
 
-#清理可能损坏的acf文件
+# PR77 清理可能损坏的acf文件
 rm -rf $DST_DIR/steamapps/appmanifest_343050.acf
 
 # 安装DST
