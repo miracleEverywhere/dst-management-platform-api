@@ -10,8 +10,8 @@
     <img src="docs/images/logo.svg" height="100" alt="DMP"/>
     <h3>:sparkling_heart: 支持多房间、多用户、多权限管理 :sparkling_heart:</h3>
     <h3>:star2: 一键开启你的饥荒之旅 :star2:</h3>
+    <h3>:tada: 欢迎加群：<a href="https://qun.qq.com/universal-share/share?ac=1&authKey=ePe2g%2Bq16q8tSAdeJwOXC08NnAKn%2BfmwKeTdf8oS3pD5DzrPKQkoS6eAAD6UivHk&busi_data=eyJncm91cENvZGUiOiI3MzM5NDg2NDQiLCJ0b2tlbiI6Ii9CTmFVWTZOUTNvNUFuaG4rNTdaSnAvQ3U1aERkSUgxcFdCelB1OEhDNWtYNjlvRGhQZnU4allOcWcvcHM4b3IiLCJ1aW4iOiI3NjM0ODM5NjYifQ%3D%3D&data=qjh1K6Pelvxvj6Yl-qeFNEF3jJbc7EJMEC6Edt3ULjtM9WSkvbe0PKTd2q2Qp0v8wA6hXmL-sN-ziKjuf2zEXA&svctype=4&tempid=h5_group_info">733948644</a> :tada:</h3>
 </div>
-
 
 ---
 
@@ -144,6 +144,23 @@ cd ~ && wget https://github.com/miracleEverywhere/dst-management-platform-api/ra
 >注意：MacOS由于系统原因，模组配置暂不可用，需要点击设置-模组-添加模组页面的导出按钮，点击后会在桌面生成名为dmp_exported_mod的目录，用户需使用 **访达** 将改目录中的模组复制到~/dst/dontstarve_dedicated_server_nullrenderer/Contents/mods目录下。更新模组需要在设置-模组-添加模组页面删除对应要更新的模组，然后重新下载该模组，执行导出和复制操作后，重启游戏服务器。
 
 ---
+
+## :balloon: 服务器选择
+
+1. 如果你想玩半纯净档，只有showme、5格装备栏等模组，其实2C2G5M(2个核心，2G内存，5Mbps带宽)的机器完全够用，当然要开启SWAP(即虚拟内存，后续会讲到如何开启)。
+
+2. 如果你想多加几个大型模组，例如棱镜、勋章等，这些模组对服务器的性能就有所要求，一般推荐2C4G5M及以上的云服务器，并同时开启SWAP。
+
+3. 作者推荐[汉堡云服务器](https://hbyidc.com/recommend/OKkxTzgMP6k7)，专为饥荒打造！官方合作商「汉堡云」带来高性能游戏服务器，首月低至6折！
+
+    - 云产品：NAT云（游戏云电脑）/ 云服务器ECS等多款上云产品
+    - 地域选择： 湖北襄阳 / 内蒙古呼和浩特 / 江苏宿迁 / 中国香港 / 美国洛杉矶
+    - CPU选择：从E5入门CPU到英特尔铂金CPU再到i9-12900K消费级CPU，均有涉猎
+    - 新用户尊享DMP渠道价，云服务器ECS/轻量云LS/游戏云GYC产品首月6折
+
+**优惠码**：`DMPqd6666` [点我立即购买](https://hbyidc.com/recommend/OKkxTzgMP6k7)
+
+[![作者推荐](https://hbyidc.com/upload/common/default/6d9086b769c66efba611d361259371501745528167%5E%E6%B1%89%E5%A0%A1%E4%BA%911020-02.png)](https://hbyidc.com/recommend/OKkxTzgMP6k7)
 
 ## :cherries: 平台截图
 ![zh-home](docs/images/zh-home.png)
