@@ -11,7 +11,7 @@ DST_SETTING_DIR="$HOME/.klei"
 # 工具函数
 function install_ubuntu() {
 	dpkg --add-architecture i386
-	apt update
+	apt update -y
     apt install -y lib32gcc1     
 	apt install -y lib32gcc-s1
     apt install -y libcurl4-gnutls-dev:i386
@@ -20,7 +20,7 @@ function install_ubuntu() {
 }
 
 function install_rhel() {
-	yum update
+	yum update -y
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686
     yum -y install screen
 	yum install -y unzip
