@@ -15,7 +15,7 @@ function install_ubuntu() {
     if (($? != 0)); then
 		$INSTALL_FAIL="YES"
 	fi
-	apt update 2>&1 > /dev/null
+	apt update -y 2>&1 > /dev/null
     apt install -y lib32gcc1 2>&1 > /dev/null
 	apt install -y lib32gcc-s1 2>&1 > /dev/null
     apt install -y libcurl4-gnutls-dev:i386 2>&1 > /dev/null
@@ -30,6 +30,7 @@ function install_ubuntu() {
 }
 
 function install_rhel() {
+	yum update -y
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686 2>&1 > /dev/null
     yum -y install screen 2>&1 > /dev/null
     if (($? != 0)); then
