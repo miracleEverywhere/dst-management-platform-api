@@ -25,6 +25,7 @@ type ClusterSetting struct {
 	Name               string `json:"name"` // xxx长期档
 	Description        string `json:"description"`
 	GameMode           string `json:"gameMode"`
+	CustomGameMode     string `json:"customGameMode"`
 	PVP                bool   `json:"pvp"`
 	PlayerNum          int    `json:"playerNum"`
 	BackDays           int    `json:"backDays"`
