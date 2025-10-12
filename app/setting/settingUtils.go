@@ -20,7 +20,21 @@ func clusterTemplate(cluster utils.Cluster) string {
 		masterPort int
 		clusterKey string
 		hasMaster  bool
+		gameMode   string
 	)
+
+	switch cluster.ClusterSetting.GameMode {
+	case "relaxed":
+		gameMode = "survival"
+	case "wilderness":
+		gameMode = "survival"
+	case "lightsOut":
+		gameMode = "survival"
+	case "custom":
+		gameMode = cluster.ClusterSetting.CustomGameMode
+	default:
+		gameMode = cluster.ClusterSetting.GameMode
+	}
 
 	for _, world := range cluster.Worlds {
 		if world.IsMaster {
@@ -39,7 +53,7 @@ func clusterTemplate(cluster utils.Cluster) string {
 
 	contents := `
 [GAMEPLAY]
-game_mode = ` + cluster.ClusterSetting.GameMode + `
+game_mode = ` + gameMode + `
 max_players = ` + strconv.Itoa(cluster.ClusterSetting.PlayerNum) + `
 pvp = ` + strconv.FormatBool(cluster.ClusterSetting.PVP) + `
 pause_when_empty = ` + strconv.FormatBool(!cluster.ClusterSetting.PauseEmptyDisabled) + `
