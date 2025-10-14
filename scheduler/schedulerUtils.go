@@ -458,7 +458,7 @@ func maintainUidMap(config utils.Config) {
 	}
 }
 
-func getSysMetrics() {
+func getSysMetrics(maxHour int) {
 	cpu, err := utils.CpuUsage()
 	if err != nil {
 		return
@@ -482,7 +482,7 @@ func getSysMetrics() {
 
 	metricsLength := len(utils.SYSMETRICS)
 
-	if metricsLength > 720 {
+	if metricsLength > maxHour*60*2 {
 		utils.SYSMETRICS = append(utils.SYSMETRICS[:0], utils.SYSMETRICS[1:]...)
 	}
 	utils.SYSMETRICS = append(utils.SYSMETRICS, metrics)
