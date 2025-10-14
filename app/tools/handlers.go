@@ -920,6 +920,24 @@ func handleMetricsGet(c *gin.Context) {
 		} else {
 			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-360:]
 		}
+	case 360:
+		if metricsLength <= 720 {
+			metrics = utils.SYSMETRICS
+		} else {
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-720:]
+		}
+	case 720:
+		if metricsLength <= 1440 {
+			metrics = utils.SYSMETRICS
+		} else {
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-1440:]
+		}
+	case 1440:
+		if metricsLength <= 2880 {
+			metrics = utils.SYSMETRICS
+		} else {
+			metrics = utils.SYSMETRICS[len(utils.SYSMETRICS)-2880:]
+		}
 	default:
 		metrics = utils.SYSMETRICS
 	}
