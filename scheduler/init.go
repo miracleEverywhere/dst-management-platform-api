@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	"github.com/go-co-op/gocron"
+	"strings"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func InitTasks() {
 
 	// 系统监控
 	if !config.SchedulerSetting.SysMetricsGet.Disable {
-		_, _ = Scheduler.Every(30).Seconds().Do(getSysMetrics)
+		_, _ = Scheduler.Every(30).Seconds().Do(getSysMetrics, config.SchedulerSetting.SysMetricsGet.MaxSaveHour)
 		utils.Logger.Info("系统监控定时任务已配置")
 	}
 
@@ -78,8 +79,14 @@ func InitTasks() {
 
 		// 自动备份
 		if cluster.SysSetting.AutoBackup.Enable {
-			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.AutoBackup.Time).Do(doBackup, cluster)
-			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动备份定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
+			times := strings.Split(cluster.SysSetting.AutoBackup.Time, ",")
+			for _, t := range times {
+				if t != "" {
+					_, _ = Scheduler.Every(1).Day().At(t).Do(doBackup, cluster)
+					utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动备份定时任务已配置，备份时间：%s", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName, t))
+				}
+			}
+
 		}
 
 		// 备份清理
