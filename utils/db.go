@@ -124,10 +124,16 @@ type SchedulerSettingItem struct {
 	Frequency int  `json:"frequency"`
 }
 
+type SysMetricsSetting struct {
+	Disable     bool `json:"disable"`
+	Frequency   int  `json:"frequency"`
+	MaxSaveHour int  `json:"maxSaveHour"`
+}
+
 type SchedulerSetting struct {
 	PlayerGetFrequency int                  `json:"playerGetFrequency"`
 	UIDMaintain        SchedulerSettingItem `json:"UIDMaintain"`
-	SysMetricsGet      SchedulerSettingItem `json:"sysMetricsGet"`
+	SysMetricsGet      SysMetricsSetting    `json:"sysMetricsGet"`
 	AutoUpdate         AutoUpdate           `json:"autoUpdate"`
 	PlayerUpdateMod    SchedulerSettingItem `json:"playerUpdateMod"`
 }
@@ -159,9 +165,10 @@ func (config Config) Init() {
 			Disable:   false,
 			Frequency: 5,
 		},
-		SysMetricsGet: SchedulerSettingItem{
-			Disable:   false,
-			Frequency: 0,
+		SysMetricsGet: SysMetricsSetting{
+			Disable:     false,
+			Frequency:   0,
+			MaxSaveHour: 6,
 		},
 		AutoUpdate: AutoUpdate{
 			Time:   "06:19:23",
@@ -298,7 +305,21 @@ func CheckConfig() {
 			panic("数据库检查未通过")
 			return
 		}
+
+		// 历史数据配置 - 设置默认系统监控最大保存时间
+		if config.SchedulerSetting.SysMetricsGet.MaxSaveHour == 0 {
+			config.SchedulerSetting.SysMetricsGet.MaxSaveHour = 6
+			err = WriteConfig(config)
+			if err != nil {
+				Logger.Error("执行数据库检查中，写入数据库文件失败", "err", err)
+				panic("数据库检查未通过")
+				return
+			}
+		}
+
+		// 生成数据库缓存
 		DBCache = config
+
 		Logger.Info("数据库检查完成")
 		return
 	}
