@@ -456,14 +456,14 @@ func handleClusterStatusPut(c *gin.Context) {
 
 		// 修改集群状态
 		cluster.ClusterSetting.Status = true
-		// 启用定时任务
-		cluster.SysSetting.AutoRestart.Enable = true
-		for _, announce := range cluster.SysSetting.AutoAnnounce {
-			announce.Enable = true
-		}
-		cluster.SysSetting.AutoBackup.Enable = true
-		cluster.SysSetting.Keepalive.Enable = true
-		cluster.SysSetting.ScheduledStartStop.Enable = true
+		// 启用定时任务 不再打开下方定时任务，由scheduler统一处理
+		//cluster.SysSetting.AutoRestart.Enable = true
+		//for _, announce := range cluster.SysSetting.AutoAnnounce {
+		//	announce.Enable = true
+		//}
+		//cluster.SysSetting.AutoBackup.Enable = true
+		//cluster.SysSetting.Keepalive.Enable = true
+		//cluster.SysSetting.ScheduledStartStop.Enable = true
 
 		// 启动世界
 		_ = utils.StartClusterAllWorlds(cluster)
@@ -474,14 +474,14 @@ func handleClusterStatusPut(c *gin.Context) {
 		cluster.ClusterSetting.Status = false
 		// 关闭世界
 		_ = utils.StopClusterAllWorlds(cluster)
-		// 禁用定时任务
-		cluster.SysSetting.AutoRestart.Enable = false
-		for _, announce := range cluster.SysSetting.AutoAnnounce {
-			announce.Enable = false
-		}
-		cluster.SysSetting.AutoBackup.Enable = false
-		cluster.SysSetting.Keepalive.Enable = false
-		cluster.SysSetting.ScheduledStartStop.Enable = false
+		// 禁用定时任务 不再关闭下方定时任务，由scheduler统一处理
+		//cluster.SysSetting.AutoRestart.Enable = false
+		//for _, announce := range cluster.SysSetting.AutoAnnounce {
+		//	announce.Enable = false
+		//}
+		//cluster.SysSetting.AutoBackup.Enable = false
+		//cluster.SysSetting.Keepalive.Enable = false
+		//cluster.SysSetting.ScheduledStartStop.Enable = false
 	}
 
 	// 更新数据库
