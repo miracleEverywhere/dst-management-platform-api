@@ -327,7 +327,7 @@ func handleMenu(c *gin.Context) {
 		}, // 玩家统计 10206
 		{
 			MenuId:      10207,
-			MenuName:    "世界坐标",
+			MenuName:    "世界预览",
 			EnName:      "Location",
 			ParentId:    102,
 			MenuType:    "2",
