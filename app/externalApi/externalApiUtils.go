@@ -76,6 +76,10 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 	dstVersion.Server = -1
 	dstVersion.Local = -1
 
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 设置超时时间为 10 秒
+	}
+
 	if utils.Platform == "darwin" {
 		out, _, err := utils.BashCMDOutput(utils.GetMacVersionCmd())
 		if err != nil {
@@ -90,7 +94,7 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 		}
 		// 获取服务端版本
 		// 发送 HTTP GET 请求
-		response, err := http.Get(utils.DSTServerVersionApi)
+		response, err := client.Get(utils.DSTServerVersionApi)
 		if err != nil {
 			return dstVersion, err
 		}
@@ -150,7 +154,7 @@ func GetDSTVersion() (DSTVersion, error) { // 打开文件
 			dstVersion.Local = number
 			// 获取服务端版本
 			// 发送 HTTP GET 请求
-			response, err := http.Get(utils.DSTServerVersionApi)
+			response, err := client.Get(utils.DSTServerVersionApi)
 			if err != nil {
 				return dstVersion, err
 			}
@@ -215,7 +219,7 @@ func GetInternetIP1() (string, error) {
 		Query       string  `json:"query"`
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second, // 设置超时时间为5秒
+		Timeout: 5 * time.Second, // 设置超时时间为 5 秒
 	}
 	httpResponse, err := client.Get(utils.InternetIPApi1)
 	if err != nil {
@@ -245,7 +249,7 @@ func GetInternetIP2() (string, error) {
 		Ip string `json:"ip"`
 	}
 	client := &http.Client{
-		Timeout: 3 * time.Second, // 设置超时时间为5秒
+		Timeout: 10 * time.Second, // 设置超时时间为 10 秒
 	}
 	httpResponse, err := client.Get(utils.InternetIPApi2)
 	if err != nil {
@@ -287,7 +291,7 @@ func GetModsInfo(luaScriptContent string, lang string) ([]ModInfo, error, error)
 	}
 
 	client := &http.Client{
-		Timeout: 5 * time.Second, // 设置超时时间为5秒
+		Timeout: 30 * time.Second, // 设置超时时间为 30 秒
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
@@ -358,7 +362,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	}
 
 	client := &http.Client{
-		Timeout: 5 * time.Second, // 设置超时时间为5秒
+		Timeout: 30 * time.Second, // 设置超时时间为 30 秒
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
@@ -420,7 +424,7 @@ func SearchModById(id int, lang string) (Data, error) {
 	url = url + fmt.Sprintf("&publishedfileids[0]=%d", id)
 
 	client := &http.Client{
-		Timeout: 5 * time.Second, // 设置超时时间为5秒
+		Timeout: 30 * time.Second, // 设置超时时间为 30 秒
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
@@ -502,8 +506,11 @@ func DownloadMod(url string, id int) error {
 		}
 	}(out)
 
-	// 发送HTTP GET请求
-	resp, err := http.Get(url)
+	client := &http.Client{
+		Timeout: 30 * time.Second, // 设置超时时间为 30 秒
+	}
+
+	resp, err := client.Get(url)
 	if err != nil {
 		utils.Logger.Error("下载mod失败", "err", err)
 		return err
@@ -560,7 +567,7 @@ func GetDownloadedModInfo(mods []string, lang string) ([]ModInfo, error) {
 	}
 
 	client := &http.Client{
-		Timeout: 5 * time.Second, // 设置超时时间为5秒
+		Timeout: 30 * time.Second, // 设置超时时间为 30 秒
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
