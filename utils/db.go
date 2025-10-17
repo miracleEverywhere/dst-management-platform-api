@@ -52,11 +52,17 @@ type World struct {
 	LastAliveTime           string `json:"lastAliveTime"`
 }
 
+type CustomConnectCode struct {
+	Ip   string `json:"ip"`
+	Port int    `json:"port"`
+}
+
 type Cluster struct {
-	ClusterSetting ClusterSetting `json:"clusterSetting"`
-	Worlds         []World        `json:"worlds"`
-	Mod            string         `json:"mod"`
-	SysSetting     SysSetting     `json:"sysSetting"`
+	ClusterSetting    ClusterSetting    `json:"clusterSetting"`
+	Worlds            []World           `json:"worlds"`
+	Mod               string            `json:"mod"`
+	SysSetting        SysSetting        `json:"sysSetting"`
+	CustomConnectCode CustomConnectCode `json:"customConnectCode"`
 }
 
 type AutoUpdate struct {
@@ -155,6 +161,7 @@ type Config struct {
 	Clusters         []Cluster        `json:"clusters"`
 	SchedulerSetting SchedulerSetting `json:"schedulerSetting"`
 	Registered       bool             `json:"registered"`
+	InternetIp       string           `json:"internetIp"`
 }
 
 func (config Config) Init() {
