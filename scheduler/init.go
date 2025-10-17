@@ -18,6 +18,10 @@ func InitTasks() {
 		panic("致命错误：定时任务初始化失败")
 	}
 
+	/* ** =============== 公网ip  影响全局 =============== ** */
+	_, _ = Scheduler.Every(6).Hours().Do(getInternetIp)
+	utils.Logger.Info("获取公网IP定时任务已配置")
+
 	/* ** ========== SchedulerSetting 影响全局 ========== ** */
 	// 获取当前玩家
 	_, _ = Scheduler.Every(config.SchedulerSetting.PlayerGetFrequency).Seconds().Do(getPlayers, config)
