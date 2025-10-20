@@ -20,6 +20,8 @@ const BackupPath = DmpFilesPath + "/backup"
 
 const ModDownloadPath = DmpFilesPath + "/mod"
 
+const ModPreDownloadPath = DmpFilesPath + "/pre_download_mod"
+
 const ModUgcDownloadPath = ModDownloadPath + "/steamapps/workshop/content/322330"
 
 const ModNoUgcDownloadPath = ModDownloadPath + "/not_ugc"
@@ -27,6 +29,10 @@ const ModNoUgcDownloadPath = ModDownloadPath + "/not_ugc"
 const ModUgcAcfFile = ModDownloadPath + "/steamapps/workshop/appworkshop_322330.acf"
 
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
+
+const GameModNotUgcPath = "dst/mods"
+
+const GameModUgcPath = "dst/ugc_mods"
 
 const DSTLocalVersionPath = "dst/version.txt"
 
