@@ -1696,7 +1696,7 @@ func handleModPreDownloadProcessPost(c *gin.Context) {
 		err = utils.EnsureDirExists(utils.ModPreDownloadPath)
 		if err != nil {
 			utils.Logger.Error("创建mod预下载目录失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 			return
 		}
 		if reqForm.FileURL == "" {
@@ -1704,7 +1704,7 @@ func handleModPreDownloadProcessPost(c *gin.Context) {
 			err = utils.BashCMD(downloadCmd)
 			if err != nil {
 				utils.Logger.Error("UGC MOD下载失败", "err", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 				return
 			}
 
@@ -1715,7 +1715,7 @@ func handleModPreDownloadProcessPost(c *gin.Context) {
 			err = externalApi.DownloadMod(reqForm.FileURL, reqForm.ID)
 			if err != nil {
 				utils.Logger.Error("NO UGC MOD下载失败", "err", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 				return
 			}
 
@@ -1724,7 +1724,7 @@ func handleModPreDownloadProcessPost(c *gin.Context) {
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
 				utils.Logger.Error("无法获取 home 目录", "err", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 				return
 			}
 			modPath := homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + modDir
@@ -1733,7 +1733,7 @@ func handleModPreDownloadProcessPost(c *gin.Context) {
 			err = utils.BashCMD(mvCmd)
 			if err != nil {
 				utils.Logger.Error("NO UGC MOD移动失败", "err", err, "cmd", mvCmd)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 				return
 			}
 
@@ -1749,14 +1749,14 @@ func handleModPreDownloadProcessPost(c *gin.Context) {
 			err = utils.RemoveDir(gameUgcModPath)
 			if err != nil {
 				utils.Logger.Error("删除游戏ugc-mod目录失败", "err", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 				return
 			}
 
 			err = utils.EnsureDirExists(gameUgcModPath)
 			if err != nil {
 				utils.Logger.Error("创建游戏ugc-mod目录失败", "err", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 				return
 			}
 
@@ -1764,7 +1764,7 @@ func handleModPreDownloadProcessPost(c *gin.Context) {
 			err = utils.BashCMD(mvCmd)
 			if err != nil {
 				utils.Logger.Error("UGC MOD移动失败", "err", err, "cmd", mvCmd)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
 				return
 			}
 		}
