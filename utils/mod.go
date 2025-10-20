@@ -316,6 +316,19 @@ func GenerateModDownloadCMD(id int) string {
 	return cmd
 }
 
+func GenerateModPreDownloadCMD(id int) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		Logger.Error("无法获取 home 目录", "err", err)
+		return ""
+	}
+	filePath := homeDir + "/" + ModPreDownloadPath
+
+	cmd := fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s +login anonymous +workshop_download_item 322330 %d +quit", filePath, id)
+
+	return cmd
+}
+
 func GetModDefaultConfigs(id int) {
 
 }
