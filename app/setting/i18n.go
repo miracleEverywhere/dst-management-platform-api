@@ -54,6 +54,7 @@ func response(message string, lang string) string {
 		"deleteSuccess":              "删除成功",
 		"shutdownSuccess":            "关闭成功",
 		"backupCleanDays":            "备份保留时间必须大于0天",
+		"preDownloadFail":            "预下载失败",
 	}
 	responseEN := map[string]string{
 		"saveSuccess":                "Save Success",
@@ -108,6 +109,7 @@ func response(message string, lang string) string {
 		"deleteSuccess":              "Delete Success",
 		"shutdownSuccess":            "Shutdown Success",
 		"backupCleanDays":            "Backup cleaning period must be greater than 0 days",
+		"preDownloadFail":            "Pre-Download Fail",
 	}
 
 	if lang == "zh" {
