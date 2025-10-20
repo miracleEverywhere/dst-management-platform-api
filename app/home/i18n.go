@@ -19,6 +19,7 @@ func response(message string, lang string) string {
 		"resetFail":       "重置失败",
 		"deleteSuccess":   "删除成功",
 		"deleteFail":      "删除失败",
+		"addSuccess":      "添加成功",
 	}
 	successEN := map[string]string{
 		"rollbackSuccess": "Rollback Success",
@@ -38,6 +39,7 @@ func response(message string, lang string) string {
 		"resetFail":       "Reset Fail",
 		"deleteSuccess":   "Delete Success",
 		"deleteFail":      "Delete Failed",
+		"addSuccess":      "Add Success",
 	}
 
 	if lang == "zh" {
