@@ -207,6 +207,10 @@ func SaveSetting(reqCluster utils.Cluster) error {
 			utils.Logger.Error("创建modoverrides.lua失败", "err", err)
 			return err
 		}
+		if strings.TrimSpace(reqCluster.Mod) == "" {
+			// 判断mod配置是否由空字符组成
+			reqCluster.Mod = ""
+		}
 		err = utils.TruncAndWriteFile(world.GetModFile(reqCluster.ClusterSetting.ClusterName), reqCluster.Mod)
 		if err != nil {
 			utils.Logger.Error("写入modoverrides.lua失败", "err", err)

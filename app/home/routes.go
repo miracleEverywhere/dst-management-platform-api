@@ -22,6 +22,9 @@ func RouteHome(r *gin.Engine) *gin.Engine {
 			home.POST("/exec", handleExecPost)
 			// 是否增在更新游戏
 			home.GET("/update/is_updating", handleGetIsUpdatingGet)
+			// 自定义直连代码
+			home.GET("/connect_code", handleConnectCodeGet)
+			home.PUT("/connect_code", handleConnectCodePut)
 		}
 	}
 

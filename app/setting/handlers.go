@@ -1659,6 +1659,129 @@ func handleModDownloadProcessGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": currentSize / size})
 }
 
+func handleModPreDownloadProcessPost(c *gin.Context) {
+	lang, _ := c.Get("lang")
+	langStr := "zh" // 默认语言
+	if strLang, ok := lang.(string); ok {
+		langStr = strLang
+	}
+	type ReqForm struct {
+		ClusterName string `json:"clusterName"`
+		ID          int    `json:"id"`
+		FileURL     string `json:"file_url"`
+		Type        string `json:"type"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		// 如果绑定失败，返回 400 错误
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		utils.RespondWithError(c, 500, langStr)
+		return
+	}
+
+	cluster, err := config.GetClusterWithName(reqForm.ClusterName)
+	if err != nil {
+		utils.RespondWithError(c, 404, langStr)
+		return
+	}
+
+	if reqForm.Type == "download" {
+		// 下载mod
+		err = utils.EnsureDirExists(utils.ModPreDownloadPath)
+		if err != nil {
+			utils.Logger.Error("创建mod预下载目录失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+			return
+		}
+		if reqForm.FileURL == "" {
+			downloadCmd := utils.GenerateModPreDownloadCMD(reqForm.ID)
+			err = utils.BashCMD(downloadCmd)
+			if err != nil {
+				utils.Logger.Error("UGC MOD下载失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+			return
+		} else {
+			// externalApi.DownloadMod 会先删除再下载
+			err = externalApi.DownloadMod(reqForm.FileURL, reqForm.ID)
+			if err != nil {
+				utils.Logger.Error("NO UGC MOD下载失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+				return
+			}
+
+			// 下载完成后，将解压好的mod目录(ID)移动到 dst/mods/workshop-id
+			modDir := strconv.Itoa(reqForm.ID)
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				utils.Logger.Error("无法获取 home 目录", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+				return
+			}
+			modPath := homeDir + "/" + utils.ModDownloadPath + "/not_ugc/" + modDir
+
+			mvCmd := fmt.Sprintf("rm -rf %s/workshop-%d && mv -f %s %s/workshop-%d", utils.GameModNotUgcPath, reqForm.ID, modPath, utils.GameModNotUgcPath, reqForm.ID)
+			err = utils.BashCMD(mvCmd)
+			if err != nil {
+				utils.Logger.Error("NO UGC MOD移动失败", "err", err, "cmd", mvCmd)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+			return
+		}
+
+	} else {
+		// 移动ugc mod
+		for _, world := range cluster.Worlds {
+			// 1. 删除游戏目录下的ugc mod
+			gameUgcModPath := fmt.Sprintf("%s/%s/%s", utils.GameModUgcPath, cluster.ClusterSetting.ClusterName, world.Name)
+			err = utils.RemoveDir(gameUgcModPath)
+			if err != nil {
+				utils.Logger.Error("删除游戏ugc-mod目录失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+				return
+			}
+
+			err = utils.EnsureDirExists(gameUgcModPath)
+			if err != nil {
+				utils.Logger.Error("创建游戏ugc-mod目录失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+				return
+			}
+
+			mvCmd := fmt.Sprintf("cp -rf %s/steamapps/workshop/* %s/", utils.ModPreDownloadPath, gameUgcModPath)
+			err = utils.BashCMD(mvCmd)
+			if err != nil {
+				utils.Logger.Error("UGC MOD移动失败", "err", err, "cmd", mvCmd)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": response("preDownloadFail", langStr), "data": nil})
+				return
+			}
+		}
+
+		// 执行清理
+		defer func() {
+			err = utils.RemoveDir(utils.ModPreDownloadPath)
+			if err != nil {
+				utils.Logger.Error("删除模组预下载目录失败", "err", err)
+			}
+		}()
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+		return
+	}
+}
+
 func handleSyncModPost(c *gin.Context) {
 	lang, _ := c.Get("lang")
 	langStr := "zh" // 默认语言

@@ -562,6 +562,34 @@ func modUpdate(cluster utils.Cluster, check bool) {
 	}
 }
 
+func getInternetIp() {
+	config, err := utils.ReadConfig()
+	if err != nil {
+		utils.Logger.Error("配置文件读取失败", "err", err)
+		return
+	}
+
+	internetIp, err := externalApi.GetInternetIP1()
+	if err != nil {
+		utils.Logger.Warn("调用公网ip接口1失败", "err", err)
+		internetIp, err = externalApi.GetInternetIP2()
+		if err != nil {
+			utils.Logger.Warn("调用公网ip接口2失败", "err", err)
+		}
+	}
+
+	if internetIp != "" {
+		config.InternetIp = internetIp
+		err = utils.WriteConfig(config)
+		if err != nil {
+			utils.Logger.Error("配置文件写入失败", "err", err)
+			return
+		}
+	} else {
+		utils.Logger.Warn("定时任务获取公网ip失败，跳过")
+	}
+}
+
 func ReloadScheduler() {
 	utils.Logger.Info("重新载入定时任务")
 	Scheduler.Clear()

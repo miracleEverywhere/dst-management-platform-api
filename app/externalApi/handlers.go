@@ -81,6 +81,35 @@ func handleConnectionCodeGet(c *gin.Context) {
 		port = cluster.Worlds[0].ServerPort
 	}
 
+	var connectionCode string
+
+	// 先查询数据库是否有自定义配置
+	if cluster.CustomConnectCode.Ip != "" {
+		if cluster.ClusterSetting.Password == "" {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d)", cluster.CustomConnectCode.Ip, cluster.CustomConnectCode.Port)
+		} else {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d, '%s')", cluster.CustomConnectCode.Ip, cluster.CustomConnectCode.Port, cluster.ClusterSetting.Password)
+		}
+		// 直接返回自定义直连代码
+		utils.Logger.Info("发现自定义直连代码，直接返回")
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})
+		return
+	}
+
+	// 无自定义配置，查询数据库中有无缓存好的公网IP
+	if config.InternetIp != "" {
+		if cluster.ClusterSetting.Password == "" {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d)", config.InternetIp, port)
+		} else {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d, '%s')", config.InternetIp, port, cluster.ClusterSetting.Password)
+		}
+		// 直接返回直连代码
+		utils.Logger.Info("发现缓存的直连代码，直接返回")
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})
+		return
+	}
+
+	// 无缓存好的公网IP，实时获取公网IP，并写入数据库
 	internetIp, err := GetInternetIP1()
 	if err != nil {
 		utils.Logger.Warn("调用公网ip接口1失败", "err", err)
@@ -92,12 +121,19 @@ func handleConnectionCodeGet(c *gin.Context) {
 		}
 	}
 
-	var connectionCode string
 	if cluster.ClusterSetting.Password == "" {
 		connectionCode = fmt.Sprintf("c_connect('%s', %d)", internetIp, port)
 	} else {
 		connectionCode = fmt.Sprintf("c_connect('%s', %d, '%s')", internetIp, port, cluster.ClusterSetting.Password)
 	}
+
+	config.InternetIp = internetIp
+	err = utils.WriteConfig(config)
+	if err != nil {
+		utils.Logger.Error("配置文件写入失败，无影响，记录异常", "err", err)
+	}
+
+	utils.Logger.Info("调用公网接口获取直连代码")
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})
 }
