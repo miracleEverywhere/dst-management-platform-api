@@ -1,50 +1,39 @@
 package user
 
-import "dst-management-platform-api/utils"
+import "github.com/gin-gonic/gin"
 
-type ExtendedI18n struct {
-	utils.BaseI18n
+func message(c *gin.Context, message string) string {
+	zh := map[string]string{
+		"bad request":      "请求参数错误",
+		"register success": "注册成功",
+		"register fail":    "注册失败",
+		"user exist":       "请勿重复注册",
+		"create fail":      "创建失败",
+		"create success":   "创建成功",
+		"login fail":       "登录失败",
+		"login success":    "登录成功",
+		"wrong password":   "密码错误",
+		"user not exist":   "用户不存在",
+	}
+	en := map[string]string{
+		"bad request":      "Bad Request",
+		"register success": "Register Success",
+		"register fail":    "Register Fail",
+		"user exist":       "User Existed",
+		"create fail":      "Create Fail",
+		"create success":   "Create Success",
+		"login fail":       "Login Fail",
+		"login success":    "Login Success",
+		"wrong password":   "Wrong Password",
+		"user not exist":   "User Not Exist",
+	}
+
+	switch c.Request.Header.Get("X-I18n-Lang") {
+	case "zh":
+		return zh[message]
+	case "en":
+		return en[message]
+	default:
+		return zh[message]
+	}
 }
-
-func NewExtendedI18n() *ExtendedI18n {
-	i := &ExtendedI18n{
-		BaseI18n: utils.BaseI18n{
-			ZH: make(map[string]string),
-			EN: make(map[string]string),
-		},
-	}
-
-	utils.I18nMutex.Lock()
-	defer utils.I18nMutex.Unlock()
-
-	// 复制基础翻译
-	for k, v := range utils.I18n.ZH {
-		i.ZH[k] = v
-	}
-	for k, v := range utils.I18n.EN {
-		i.EN[k] = v
-	}
-
-	// 添加扩展翻译
-	i.ZH["register success"] = "注册成功"
-	i.ZH["register fail"] = "注册失败"
-	i.ZH["user exist"] = "请勿重复注册"
-	i.ZH["login fail"] = "登录失败"
-	i.ZH["login success"] = "登录成功"
-	i.ZH["wrong password"] = "密码错误"
-	i.ZH["user not exist"] = "用户不存在"
-	i.ZH["disabled"] = "用户已被禁用"
-
-	i.EN["register success"] = "Register Success"
-	i.EN["register fail"] = "Register Fail"
-	i.EN["user exist"] = "User Existed"
-	i.EN["login fail"] = "Login Fail"
-	i.EN["login success"] = "Login Success"
-	i.EN["wrong password"] = "Wrong Password"
-	i.EN["user not exist"] = "User Not Exist"
-	i.EN["disabled"] = "User is Disabled"
-
-	return i
-}
-
-var message = NewExtendedI18n()
