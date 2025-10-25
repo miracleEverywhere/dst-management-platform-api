@@ -6,6 +6,8 @@ import (
     "log/slog"
     "os"
     "strings"
+
+    "github.com/gin-gonic/gin"
 )
 
 var Logger *slog.Logger
@@ -18,12 +20,26 @@ func InitLogger() {
             panic("无法创建日志目录: " + err.Error())
         }
     }
-    logPath := fmt.Sprintf("%s/runtime.log", logDir)
-    logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+    // 创建 runtime 日志文件
+    slogLogPath := fmt.Sprintf("%s/runtime.log", logDir)
+    slogLogFile, err := os.OpenFile(slogLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     if err != nil {
-        panic("无法创建日志文件: " + err.Error())
+        panic("无法创建 runtime 日志文件: " + err.Error())
     }
 
+    // 创建 access 日志文件
+    accessLogPath := fmt.Sprintf("%s/access.log", logDir)
+    accessLogFile, err := os.OpenFile(accessLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        panic("无法创建 access 日志文件: " + err.Error())
+    }
+
+    // 设置 access 的日志输出
+    gin.DefaultWriter = accessLogFile      // 普通日志
+    gin.DefaultErrorWriter = accessLogFile // 错误日志
+
+    // 设置 runtime 日志
     customTimeFormat := "2006-01-02 15:04:05"
     replaceTime := func(groups []string, a slog.Attr) slog.Attr {
         if a.Key == slog.TimeKey {
@@ -51,8 +67,8 @@ func InitLogger() {
         level = slog.LevelInfo
     }
 
-    Logger = slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{
-        AddSource:   addSource, // 记录错误位置，仅debug开启
+    Logger = slog.New(slog.NewJSONHandler(slogLogFile, &slog.HandlerOptions{
+        AddSource:   addSource,
         Level:       level,
         ReplaceAttr: replaceTime,
     }))
