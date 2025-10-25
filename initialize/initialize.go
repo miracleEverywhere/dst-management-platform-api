@@ -1,7 +1,7 @@
 package initialize
 
 import (
-	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/db"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 )
