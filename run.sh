@@ -338,7 +338,7 @@ function start_dmp() {
     check_glibc
 
     if [ -e "$ExeFile" ]; then
-        nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
+        nohup "$ExeFile" >dmp.log 2>&1 &
     else
         install_dmp
         nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
