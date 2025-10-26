@@ -1,9 +1,9 @@
 package models
 
 type System struct {
-	Dmp        string `gorm:"primaryKey;not null"`
-	JwtSecret  string `gorm:"not null"`
-	InternetIp string
+	ID    uint   `gorm:"primaryKey;autoIncrement"`
+	Key   string `gorm:"not null"`
+	Value string `gorm:"not null"`
 }
 
 func (System) TableName() string {
