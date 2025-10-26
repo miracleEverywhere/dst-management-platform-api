@@ -3,8 +3,8 @@ package main
 import (
 	"dst-management-platform-api/app/user"
 	"dst-management-platform-api/constants"
-	"dst-management-platform-api/dao"
-	"dst-management-platform-api/db"
+	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/initialize"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
