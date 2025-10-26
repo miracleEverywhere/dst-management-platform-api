@@ -34,14 +34,7 @@ func InitDB() {
 }
 
 func CheckTables() {
-	err := DB.AutoMigrate(
-		&models.User{},
-		&models.System{},
-		&models.Room{},
-		&models.World{},
-		&models.RoomSetting{},
-		&models.GlobalSetting{},
-	)
+	err := DB.AutoMigrate(&models.User{}, &models.System{}, &models.Room{}, &models.World{})
 	if err != nil {
 		slog.Logger.Error("数据库检查失败", "err", err)
 		panic(fmt.Sprintf("数据库检查失败: %s", err.Error()))

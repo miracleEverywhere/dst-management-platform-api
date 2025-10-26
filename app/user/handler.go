@@ -1,10 +1,10 @@
 package user
 
 import (
-	"dst-management-platform-api/dao"
-	"dst-management-platform-api/db"
+	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/models"
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
