@@ -20,3 +20,7 @@ type Room struct {
 	ClusterKey       string `json:"clusterKey"`
 	WorldFingerPrint string `json:"worldFingerPrint"`
 }
+
+func (Room) TableName() string {
+	return "rooms"
+}
