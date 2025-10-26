@@ -1,8 +1,8 @@
 package dao
 
 import (
-	"dst-management-platform-api/db"
-	"dst-management-platform-api/models"
+	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/utils"
 	"gorm.io/gorm"
 )
