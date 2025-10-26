@@ -13,3 +13,7 @@ type World struct {
 	ModData            string `json:"modData"`
 	LastAliveTime      string `json:"lastAliveTime"`
 }
+
+func (World) TableName() string {
+	return "worlds"
+}
