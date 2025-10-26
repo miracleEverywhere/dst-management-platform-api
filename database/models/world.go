@@ -1,9 +1,9 @@
 package models
 
 type World struct {
-	ID                 int    `gorm:"primaryKey;autoIncrement" json:"id"` // 自增ID
-	RoomID             int    `gorm:"not null" json:"roomID" `
-	GameID             int    `json:"gameID"` // 饥荒世界ID
+	FingerPrint        string `gorm:"primaryKey;not null" json:"fingerPrint"`
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
 	ServerPort         int    `json:"serverPort"`
 	MasterServerPort   int    `json:"masterServerPort"`
 	AuthenticationPort int    `json:"authenticationPort"`

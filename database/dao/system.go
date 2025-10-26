@@ -20,30 +20,26 @@ func NewSystemDAO(db *gorm.DB) *SystemDAO {
 	return dao
 }
 
-func (d *SystemDAO) Get(key string) (*models.System, error) {
+func (d *SystemDAO) GetSystem() (*models.System, error) {
 	var system models.System
 	err := d.db.First(&system).Error
 	return &system, err
 }
 
-func (d *SystemDAO) Set(systems []models.System) error {
-	err := d.db.Save(&systems).Error
-	return err
-}
-
 func (d *SystemDAO) initSystem() {
-	jwtSecret, err := d.Get("jwt_secret")
+	dbSystem, err := d.GetSystem()
 	if err != nil {
-		secret := utils.GenerateJWTSecret()
-		system := []models.System{
-			{Key: "jwt_secret", Value: secret},
-		}
-		err = d.Set(system)
+		var system models.System
+		system.Dmp = "dmp"
+		system.JwtSecret = utils.GenerateJWTSecret()
+		db.JwtSecret = system.JwtSecret
+
+		err = d.Create(&system)
 		if err != nil {
 			panic("数据库初始化失败: " + err.Error())
 		}
 		return
 	}
 
-	db.JwtSecret = jwtSecret.Value
+	db.JwtSecret = dbSystem.JwtSecret
 }

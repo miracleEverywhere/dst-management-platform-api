@@ -8,13 +8,6 @@ type BaseDAO[T any] struct {
 	db *gorm.DB
 }
 
-type PaginatedResult[T any] struct {
-	Data       []T   `json:"rows"`
-	Page       int   `json:"page"`
-	PageSize   int   `json:"pageSize"`
-	TotalCount int64 `json:"total"`
-}
-
 func NewBaseDAO[T any](db *gorm.DB) *BaseDAO[T] {
 	return &BaseDAO[T]{db: db}
 }
@@ -31,37 +24,16 @@ func (d *BaseDAO[T]) Delete(model *T) error {
 	return d.db.Delete(model).Error
 }
 
-func (d *BaseDAO[T]) Query(page, pageSize int, condition interface{}, args ...interface{}) (*PaginatedResult[T], error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-
+func (d *BaseDAO[T]) FindAll() ([]T, error) {
 	var models []T
-	var total int64
+	err := d.db.Find(&models).Error
+	return models, err
+}
 
-	query := d.db.Model(new(T))
-	if condition != nil {
-		query = query.Where(condition, args...)
-	}
-	if err := query.Count(&total).Error; err != nil {
-		return nil, err
-	}
-
-	offset := (page - 1) * pageSize
-	err := query.Offset(offset).Limit(pageSize).Find(&models).Error
-
-	return &PaginatedResult[T]{
-		Data:       models,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalCount: total,
-	}, err
+func (d *BaseDAO[T]) Query(condition interface{}, args ...interface{}) ([]T, error) {
+	var models []T
+	err := d.db.Where(condition, args...).Find(&models).Error
+	return models, err
 }
 
 func (d *BaseDAO[T]) Count(condition interface{}, args ...interface{}) (int64, error) {
