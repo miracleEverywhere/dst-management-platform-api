@@ -1,8 +1,8 @@
 package db
 
 import (
+	"dst-management-platform-api/database/models"
 	slog "dst-management-platform-api/logger"
-	"dst-management-platform-api/models"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"gorm.io/driver/sqlite"
