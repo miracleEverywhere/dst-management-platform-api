@@ -1,7 +1,7 @@
 package models
 
 type World struct {
-	FingerPrint        string `gorm:"primaryKey;not null" json:"fingerPrint"`
+	RoomName           string `gorm:"primaryKey;not null" json:"roomName"`
 	ID                 int    `json:"id"`
 	Name               string `json:"name"`
 	ServerPort         int    `json:"serverPort"`
