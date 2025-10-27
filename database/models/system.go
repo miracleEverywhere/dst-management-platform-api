@@ -1,8 +1,7 @@
 package models
 
 type System struct {
-	ID    uint   `gorm:"primaryKey;autoIncrement"`
-	Key   string `gorm:"not null"`
+	Key   string `gorm:"primaryKey;not null"`
 	Value string `gorm:"not null"`
 }
 
