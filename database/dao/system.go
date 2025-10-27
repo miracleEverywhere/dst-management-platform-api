@@ -36,7 +36,7 @@ func (d *SystemDAO) initSystem() {
 	if err != nil {
 		secret := utils.GenerateJWTSecret()
 		system := []models.System{
-			{ID: 0, Key: "jwt_secret", Value: secret},
+			{Key: "jwt_secret", Value: secret},
 		}
 		err = d.Set(system)
 		if err != nil {
