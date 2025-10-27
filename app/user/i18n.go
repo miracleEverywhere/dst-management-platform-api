@@ -14,6 +14,7 @@ func message(c *gin.Context, message string) string {
 		"login success":    "登录成功",
 		"wrong password":   "密码错误",
 		"user not exist":   "用户不存在",
+		"disabled":         "用户已被禁用",
 	}
 	en := map[string]string{
 		"bad request":      "Bad Request",
@@ -26,6 +27,7 @@ func message(c *gin.Context, message string) string {
 		"login success":    "Login Success",
 		"wrong password":   "Wrong Password",
 		"user not exist":   "User Not Exist",
+		"disabled":         "User is Disabled",
 	}
 
 	switch c.Request.Header.Get("X-I18n-Lang") {
