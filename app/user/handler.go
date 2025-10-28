@@ -118,6 +118,16 @@ func (h *Handler) menuGet(c *gin.Context) {
 		Message string     `json:"message"`
 		Data    []menuItem `json:"data"`
 	}
+	rooms := menuItem{
+		ID:        1,
+		Type:      "link",
+		Section:   "",
+		Title:     "rooms",
+		To:        "/rooms",
+		Component: "rooms/index",
+		Icon:      "ri-table-alt-line",
+		Links:     nil,
+	}
 	dashboard := menuItem{
 		ID:        1,
 		Type:      "link",
@@ -137,10 +147,12 @@ func (h *Handler) menuGet(c *gin.Context) {
 
 	if role.(string) == "admin" {
 		response.Data = []menuItem{
+			rooms,
 			dashboard,
 		}
 	} else {
 		response.Data = []menuItem{
+			rooms,
 			dashboard,
 		}
 	}
