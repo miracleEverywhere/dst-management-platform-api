@@ -7,7 +7,7 @@ type ExtendedI18n struct {
 }
 
 func NewExtendedI18n() *ExtendedI18n {
-	i := &ExtendedI18n{
+	e := &ExtendedI18n{
 		BaseI18n: utils.BaseI18n{
 			ZH: make(map[string]string),
 			EN: make(map[string]string),
@@ -17,17 +17,19 @@ func NewExtendedI18n() *ExtendedI18n {
 	utils.I18nMutex.Lock()
 	defer utils.I18nMutex.Unlock()
 
+	// 复制基础翻译
 	for k, v := range utils.I18n.ZH {
-		i.ZH[k] = v
+		e.ZH[k] = v
 	}
 	for k, v := range utils.I18n.EN {
-		i.EN[k] = v
+		e.EN[k] = v
 	}
 
-	i.ZH["room name exist"] = "房间名重复"
-	i.EN["room name exist"] = "Room Name Already Existed"
+	// 添加扩展翻译
+	e.ZH["welcome"] = "欢迎"
+	e.EN["welcome"] = "Welcome"
 
-	return i
+	return e
 }
 
 var message = NewExtendedI18n()
