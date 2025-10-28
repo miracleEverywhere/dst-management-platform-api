@@ -33,7 +33,7 @@ func (h *Handler) registerPost(c *gin.Context) {
 	num, err := h.userDao.Count(nil)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "register fail"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
@@ -48,7 +48,7 @@ func (h *Handler) registerPost(c *gin.Context) {
 
 	if errCreate := h.userDao.Create(&user); errCreate != nil {
 		logger.Logger.Error("创建用户失败", "err", errCreate)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "register fail"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *Handler) loginPost(c *gin.Context) {
 	dbUser, err := h.userDao.GetUserByUsername(user.Username)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "login fail"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
@@ -153,7 +153,7 @@ func (h *Handler) userInfo(c *gin.Context) {
 	dbUser, err := h.userDao.GetUserByUsername(username.(string))
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "login fail"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 	dbUser.Password = ""
