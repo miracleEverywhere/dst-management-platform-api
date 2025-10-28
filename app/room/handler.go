@@ -8,18 +8,6 @@ import (
 	"net/http"
 )
 
-type Handler struct {
-	roomDao *dao.RoomDAO
-	userDao *dao.UserDAO
-}
-
-func NewRoomHandler(roomDao *dao.RoomDAO, userDao *dao.UserDAO) *Handler {
-	return &Handler{
-		roomDao: roomDao,
-		userDao: userDao,
-	}
-}
-
 // createPost 创建房间
 func (h *Handler) createPost(c *gin.Context) {
 	role, _ := c.Get("role")
@@ -32,7 +20,7 @@ func (h *Handler) createPost(c *gin.Context) {
 		dbUser, err := h.userDao.GetUserByUsername(username.(string))
 		if err != nil {
 			logger.Logger.Error("查询数据库失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "create fail"), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 			return
 		}
 		if dbUser.RoomCreation {
@@ -47,5 +35,71 @@ func (h *Handler) createPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
+		if room.Name == "" {
+			logger.Logger.Info("请求参数错误", "api", c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+
+		if room.DisplayName == "" {
+			room.DisplayName = room.Name
+		}
+
+		if errCreate := h.roomDao.Create(&room); errCreate != nil {
+			logger.Logger.Error("创建房间失败", "err", errCreate)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": nil})
+		return
 	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+	return
+}
+
+// listGet 按分页获取集群信息，并附带对应世界信息
+func (h *Handler) listGet(c *gin.Context) {
+	type ReqForm struct {
+		Partition
+		Name string `json:"name" form:"name"`
+	}
+	var reqForm ReqForm
+	var data dao.PaginatedResult[XRoomWorld]
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": data})
+		return
+	}
+
+	// 获取房间信息
+	rooms, err := h.roomDao.ListRooms(reqForm.Name, reqForm.Page, reqForm.PageSize)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
+		return
+	}
+
+	data.Page = rooms.Page
+	data.PageSize = rooms.PageSize
+	data.TotalCount = rooms.TotalCount
+
+	// 为房间加上世界信息
+	for _, room := range rooms.Data {
+		xRoomWorld := XRoomWorld{
+			Room:   room,
+			Worlds: []models.World{},
+		}
+		worlds, errWorld := h.worldDao.GetWorldsByRoomName(room.Name)
+		if errWorld != nil {
+			logger.Logger.Error("查询数据库失败", "err", errWorld)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
+			return
+		}
+		xRoomWorld.Worlds = worlds.Data
+		data.Data = append(data.Data, xRoomWorld)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
