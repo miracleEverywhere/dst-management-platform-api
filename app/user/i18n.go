@@ -7,7 +7,7 @@ type ExtendedI18n struct {
 }
 
 func NewExtendedI18n() *ExtendedI18n {
-	e := &ExtendedI18n{
+	i := &ExtendedI18n{
 		BaseI18n: utils.BaseI18n{
 			ZH: make(map[string]string),
 			EN: make(map[string]string),
@@ -19,36 +19,32 @@ func NewExtendedI18n() *ExtendedI18n {
 
 	// 复制基础翻译
 	for k, v := range utils.I18n.ZH {
-		e.ZH[k] = v
+		i.ZH[k] = v
 	}
 	for k, v := range utils.I18n.EN {
-		e.EN[k] = v
+		i.EN[k] = v
 	}
 
 	// 添加扩展翻译
-	e.ZH["register success"] = "注册成功"
-	e.ZH["register fail"] = "注册失败"
-	e.ZH["user exist"] = "请勿重复注册"
-	e.ZH["create fail"] = "创建失败"
-	e.ZH["create success"] = "创建成功"
-	e.ZH["login fail"] = "登录失败"
-	e.ZH["login success"] = "登录成功"
-	e.ZH["wrong password"] = "密码错误"
-	e.ZH["user not exist"] = "用户不存在"
-	e.ZH["disabled"] = "用户已被禁用"
+	i.ZH["register success"] = "注册成功"
+	i.ZH["register fail"] = "注册失败"
+	i.ZH["user exist"] = "请勿重复注册"
+	i.ZH["login fail"] = "登录失败"
+	i.ZH["login success"] = "登录成功"
+	i.ZH["wrong password"] = "密码错误"
+	i.ZH["user not exist"] = "用户不存在"
+	i.ZH["disabled"] = "用户已被禁用"
 
-	e.EN["register success"] = "Register Success"
-	e.EN["register fail"] = "Register Fail"
-	e.EN["user exist"] = "User Existed"
-	e.EN["create fail"] = "Create Fail"
-	e.EN["create success"] = "Create Success"
-	e.EN["login fail"] = "Login Fail"
-	e.EN["login success"] = "Login Success"
-	e.EN["wrong password"] = "Wrong Password"
-	e.EN["user not exist"] = "User Not Exist"
-	e.EN["disabled"] = "User is Disabled"
+	i.EN["register success"] = "Register Success"
+	i.EN["register fail"] = "Register Fail"
+	i.EN["user exist"] = "User Existed"
+	i.EN["login fail"] = "Login Fail"
+	i.EN["login success"] = "Login Success"
+	i.EN["wrong password"] = "Wrong Password"
+	i.EN["user not exist"] = "User Not Exist"
+	i.EN["disabled"] = "User is Disabled"
 
-	return e
+	return i
 }
 
 var message = NewExtendedI18n()
