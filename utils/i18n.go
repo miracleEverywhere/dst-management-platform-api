@@ -27,9 +27,25 @@ func (b *BaseI18n) Get(c *gin.Context, message string) string {
 // I18n 全局的message，由各个app中的子i18n调用
 var I18n = BaseI18n{
 	ZH: map[string]string{
-		"bad request": "请求参数错误",
+		"bad request":       "请求参数错误",
+		"database error":    "数据库连接失败",
+		"create success":    "创建成功",
+		"create fail":       "创建失败",
+		"update success":    "更新成功",
+		"update fail":       "更新失败",
+		"delete success":    "删除成功",
+		"delete fail":       "删除失败",
+		"permission needed": "权限不足",
 	},
 	EN: map[string]string{
-		"bad request": "Bad Request",
+		"bad request":       "Bad Request",
+		"database error":    "Database Connection Error",
+		"create success":    "Create Success",
+		"create fail":       "Create Fail",
+		"update success":    "Update Success",
+		"update fail":       "Update Fail",
+		"delete success":    "Delete Success",
+		"delete fail":       "Delete Fail",
+		"permission needed": "Insufficient Permissions",
 	},
 }
