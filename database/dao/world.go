@@ -16,8 +16,8 @@ func NewWorldDAO(db *gorm.DB) *WorldDAO {
 	}
 }
 
-func (d *WorldDAO) GetWorldsByFingerPrints(fingerPrints []string) ([]models.World, error) {
-	worlds, err := d.Query("world_finger_print IN ?", fingerPrints)
+func (d *WorldDAO) GetWorldsByRoomName(roomName string, page, pageSize int) (*PaginatedResult[models.World], error) {
+	worlds, err := d.Query(page, pageSize, "room_name = ?", roomName)
 	if err != nil {
 		return nil, err
 	}
