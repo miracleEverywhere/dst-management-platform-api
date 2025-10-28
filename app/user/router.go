@@ -9,12 +9,12 @@ import (
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(constants.ApiVersion)
 	{
-		auth := v.Group("user")
+		user := v.Group("user")
 		{
-			auth.POST("/register", h.registerPost)
-			auth.POST("/login", h.loginPost)
-			auth.GET("/menu", middleware.MWtoken(), h.menuGet)
-			auth.GET("/userinfo", middleware.MWtoken(), h.userInfo)
+			user.POST("/register", h.registerPost)
+			user.POST("/login", h.loginPost)
+			user.GET("/menu", middleware.MWtoken(), h.menuGet)
+			user.GET("/userinfo", middleware.MWtoken(), h.userInfo)
 		}
 	}
 }
