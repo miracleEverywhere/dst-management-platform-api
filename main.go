@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dst-management-platform-api/app/room"
 	"dst-management-platform-api/app/user"
 	"dst-management-platform-api/constants"
 	"dst-management-platform-api/database/dao"
@@ -24,11 +25,14 @@ func main() {
 
 	userDao := dao.NewUserDAO(db.DB)
 	systemDao := dao.NewSystemDAO(db.DB)
+	roomDao := dao.NewRoomDAO(db.DB)
 
 	r := gin.Default()
 
 	userHandler := user.NewUserHandler(userDao, systemDao)
 	userHandler.RegisterRoutes(r)
+	roomHandler := room.NewRoomHandler(roomDao, userDao)
+	roomHandler.RegisterRoutes(r)
 
 	// 启动服务器
 	err := r.Run(fmt.Sprintf(":%d", utils.BindPort))
