@@ -12,6 +12,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		room := v.Group("room")
 		{
 			room.POST("/create", middleware.MWtoken(), h.createPost)
+			room.GET("/list", middleware.MWtoken(), h.listGet)
 		}
 	}
 }
