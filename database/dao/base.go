@@ -9,10 +9,10 @@ type BaseDAO[T any] struct {
 }
 
 type PaginatedResult[T any] struct {
-	Data       []T
-	Page       int
-	PageSize   int
-	TotalCount int64
+	Data       []T   `json:"rows"`
+	Page       int   `json:"page"`
+	PageSize   int   `json:"pageSize"`
+	TotalCount int64 `json:"total"`
 }
 
 func NewBaseDAO[T any](db *gorm.DB) *BaseDAO[T] {
@@ -60,19 +60,14 @@ func (d *BaseDAO[T]) Query(page, pageSize int, condition interface{}, args ...in
 	}
 
 	offset := (page - 1) * pageSize
-	err := query.Offset(offset).
-		Limit(pageSize).
-		Find(&models).Error
-	if err != nil {
-		return nil, err
-	}
+	err := query.Offset(offset).Limit(pageSize).Find(&models).Error
 
 	return &PaginatedResult[T]{
 		Data:       models,
 		Page:       page,
 		PageSize:   pageSize,
 		TotalCount: total,
-	}, nil
+	}, err
 }
 
 func (d *BaseDAO[T]) Count(condition interface{}, args ...interface{}) (int64, error) {
