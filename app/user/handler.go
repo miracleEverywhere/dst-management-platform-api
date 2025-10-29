@@ -57,7 +57,7 @@ func (h *Handler) registerPost(c *gin.Context) {
 	return
 }
 
-func (h *Handler) createPost(c *gin.Context) {
+func (h *Handler) basePost(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
@@ -192,7 +192,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func (h *Handler) userInfo(c *gin.Context) {
+func (h *Handler) baseGet(c *gin.Context) {
 	username, _ := c.Get("username")
 	dbUser, err := h.userDao.GetUserByUsername(username.(string))
 	if err != nil {
