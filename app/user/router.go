@@ -12,10 +12,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		user := v.Group("user")
 		{
 			user.POST("/register", h.registerPost)
-			user.POST("/create", h.createPost)
 			user.POST("/login", h.loginPost)
+			user.GET("/base", middleware.MWtoken(), h.baseGet)
+			user.POST("/base", middleware.MWtoken(), h.basePost)
 			user.GET("/menu", middleware.MWtoken(), h.menuGet)
-			user.GET("/userinfo", middleware.MWtoken(), h.userInfo)
 		}
 	}
 }
