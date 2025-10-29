@@ -43,6 +43,7 @@ func (h *Handler) registerPost(c *gin.Context) {
 		return
 	}
 
+	// 注册的用户默认拥有最高权限
 	user.Disabled = false
 	user.Role = "admin"
 
@@ -64,14 +65,14 @@ func (h *Handler) createPost(c *gin.Context) {
 		return
 	}
 
-	num, err := h.userDao.Count(&user)
+	dbUser, err := h.userDao.GetUserByUsername(user.Username)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
-	if num != 0 {
+	if dbUser.Username != "" {
 		logger.Logger.Info("创建用户失败，用户已存在", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user exist"), "data": nil})
 		return
@@ -156,7 +157,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 		Title:     "rooms",
 		To:        "/rooms",
 		Component: "rooms/index",
-		Icon:      "ri-table-alt-line",
+		Icon:      "ri-instance-line",
 		Links:     nil,
 	}
 	dashboard := menuItem{
@@ -166,7 +167,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 		Title:     "dashboard",
 		To:        "/dashboard",
 		Component: "dashboard/index",
-		Icon:      "ri-table-alt-line",
+		Icon:      "ri-rocket-2-line",
 		Links:     nil,
 	}
 
