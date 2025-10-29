@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/logger"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
 )
 
 // createPost 创建房间
@@ -73,12 +74,42 @@ func (h *Handler) listGet(c *gin.Context) {
 		return
 	}
 
-	// 获取房间信息
-	rooms, err := h.roomDao.ListRooms(reqForm.Name, reqForm.Page, reqForm.PageSize)
-	if err != nil {
-		logger.Logger.Error("查询数据库失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
-		return
+	role, _ := c.Get("role")
+	var (
+		rooms *dao.PaginatedResult[models.Room]
+		err   error
+	)
+	if role.(string) == "admin" {
+		// 管理员返回所有房间
+		rooms, err = h.roomDao.ListRooms([]string{}, reqForm.Name, reqForm.Page, reqForm.PageSize)
+		if err != nil {
+			logger.Logger.Error("查询数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
+			return
+		}
+	} else {
+		username, _ := c.Get("username")
+		user, err := h.userDao.GetUserByUsername(username.(string))
+		if err != nil {
+			logger.Logger.Error("查询数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
+			return
+		}
+		if user.Rooms == "" {
+			data.Page = reqForm.Page
+			data.PageSize = reqForm.PageSize
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+			return
+		}
+		// 非管理员返回有权限的房间 user.Rooms like "dst1,dst2,dst89"
+		roomNames := strings.Split(user.Rooms, ",")
+		rooms, err = h.roomDao.ListRooms(roomNames, reqForm.Name, reqForm.Page, reqForm.PageSize)
+		if err != nil {
+			logger.Logger.Error("查询数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
+			return
+		}
+
 	}
 
 	data.Page = rooms.Page
