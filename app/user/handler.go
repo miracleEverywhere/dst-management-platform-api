@@ -135,40 +135,10 @@ func (h *Handler) loginPost(c *gin.Context) {
 
 func (h *Handler) menuGet(c *gin.Context) {
 	role, _ := c.Get("role")
-	type menuItem struct {
-		ID        int        `json:"id"`
-		Type      string     `json:"type"`
-		Section   string     `json:"section"`
-		Title     string     `json:"title"`
-		To        string     `json:"to"`
-		Component string     `json:"component"`
-		Icon      string     `json:"icon"`
-		Links     []menuItem `json:"links"`
-	}
 	type Response struct {
 		Code    int        `json:"code"`
 		Message string     `json:"message"`
 		Data    []menuItem `json:"data"`
-	}
-	rooms := menuItem{
-		ID:        1,
-		Type:      "link",
-		Section:   "",
-		Title:     "rooms",
-		To:        "/rooms",
-		Component: "rooms/index",
-		Icon:      "ri-instance-line",
-		Links:     nil,
-	}
-	dashboard := menuItem{
-		ID:        1,
-		Type:      "link",
-		Section:   "",
-		Title:     "dashboard",
-		To:        "/dashboard",
-		Component: "dashboard/index",
-		Icon:      "ri-rocket-2-line",
-		Links:     nil,
 	}
 
 	response := Response{
@@ -181,11 +151,15 @@ func (h *Handler) menuGet(c *gin.Context) {
 		response.Data = []menuItem{
 			rooms,
 			dashboard,
+			gameSetting,
+			upload,
 		}
 	} else {
 		response.Data = []menuItem{
 			rooms,
 			dashboard,
+			gameSetting,
+			upload,
 		}
 	}
 
