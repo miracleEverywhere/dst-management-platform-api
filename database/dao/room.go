@@ -25,11 +25,34 @@ func (d *RoomDAO) GetRoomByName(name string) (*models.Room, error) {
 	return &room, err
 }
 
-func (d *RoomDAO) ListRooms(roomName string, page, pageSize int) (*PaginatedResult[models.Room], error) {
-	searchPattern := "%" + roomName + "%"
-	rooms, err := d.Query(page, pageSize, "name LIKE ? OR display_name LIKE ?", searchPattern, searchPattern)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return rooms, nil
+func (d *RoomDAO) ListRooms(roomNames []string, roomName string, page, pageSize int) (*PaginatedResult[models.Room], error) {
+	var (
+		condition string
+		args      []interface{}
+	)
+	switch {
+	case len(roomNames) == 0 && roomName == "":
+		// 无条件查询（返回所有记录）
+		condition = "1 = 1" // 或者直接使用 ""，但部分数据库可能不支持空 WHERE
+
+	case len(roomNames) == 0 && roomName != "":
+		// 仅模糊查询 name 或 display_name
+		searchPattern := "%" + roomName + "%"
+		condition = "name LIKE ? OR display_name LIKE ?"
+		args = []interface{}{searchPattern, searchPattern}
+
+	case len(roomNames) != 0 && roomName == "":
+		// 仅查询 name 在 roomNames 列表中的记录
+		condition = "name IN (?)"
+		args = []interface{}{roomNames}
+
+	case len(roomNames) != 0 && roomName != "":
+		// 查询 name 在 roomNames 列表中，并且 name 或 display_name 匹配模糊搜索
+		searchPattern := "%" + roomName + "%"
+		condition = "name IN (?) AND (name LIKE ? OR display_name LIKE ?)"
+		args = []interface{}{roomNames, searchPattern, searchPattern}
 	}
+
+	rooms, err := d.Query(page, pageSize, condition, args...)
 	return rooms, err
 }
