@@ -17,7 +17,6 @@ func NewExtendedI18n() *ExtendedI18n {
 	utils.I18nMutex.Lock()
 	defer utils.I18nMutex.Unlock()
 
-	// 复制基础翻译
 	for k, v := range utils.I18n.ZH {
 		i.ZH[k] = v
 	}
@@ -25,9 +24,8 @@ func NewExtendedI18n() *ExtendedI18n {
 		i.EN[k] = v
 	}
 
-	// 添加扩展翻译
-	i.ZH["welcome"] = "欢迎"
-	i.EN["welcome"] = "Welcome"
+	i.ZH["room name exist"] = "房间名重复"
+	i.EN["room name exist"] = "Room Name Already Existed"
 
 	return i
 }

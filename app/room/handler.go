@@ -46,6 +46,22 @@ func (h *Handler) createPost(c *gin.Context) {
 			room.DisplayName = room.Name
 		}
 
+		dbRoom, err := h.roomDao.GetRoomByName(room.Name)
+		if err != nil {
+			logger.Logger.Error("查询数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		if dbRoom.Name != "" {
+			logger.Logger.Info("创建房间失败，房间名已存在", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "room name exist"), "data": nil})
+			return
+		}
+
+		// 新建的房间默认为激活状态
+		room.Status = true
+
 		if errCreate := h.roomDao.Create(&room); errCreate != nil {
 			logger.Logger.Error("创建房间失败", "err", errCreate)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
