@@ -153,6 +153,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 			dashboard,
 			gameSetting,
 			upload,
+			platform,
 		}
 	} else {
 		response.Data = []menuItem{
