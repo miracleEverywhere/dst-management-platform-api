@@ -76,12 +76,23 @@ var gameSetting = menuItem{
 }
 
 var upload = menuItem{
-	ID:        2,
+	ID:        4,
 	Type:      "link",
 	Section:   "",
 	Title:     "upload",
 	To:        "/upload",
 	Component: "upload/index",
+	Icon:      "ri-contacts-book-upload-line",
+	Links:     nil,
+}
+
+var platform = menuItem{
+	ID:        5,
+	Type:      "link",
+	Section:   "",
+	Title:     "platform",
+	To:        "/platform",
+	Component: "platform/index",
 	Icon:      "ri-contacts-book-upload-line",
 	Links:     nil,
 }
