@@ -213,7 +213,16 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
+    # 检查端口是否被占用,如果被占用则退出
+    port=$(ss -ltnp | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
+
+    if [ -n "$port" ]; then
+       echo_red "端口 $PORT 已被占用: $port", 修改 run.sh 中的 PORT 变量后重新运行
+       exit 1
+    fi
+
     check_glibc
+
     if [ -e "$ExeFile" ]; then
         nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
     else
