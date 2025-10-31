@@ -1,7 +1,7 @@
 package models
 
 type RoomSetting struct {
-	RoomName                  string `gorm:"primaryKey;not null" json:"roomName"`
+	RoomID                    int    `gorm:"primaryKey;not null" json:"roomID"`
 	BackupEnable              bool   `json:"backupEnable"`
 	BackupSetting             string `json:"backupSetting"`
 	BackupCleanEnable         bool   `json:"backupCleanEnable"`
