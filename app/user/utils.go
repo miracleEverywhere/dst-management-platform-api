@@ -1,5 +1,19 @@
 package user
 
+import "dst-management-platform-api/database/dao"
+
+type Handler struct {
+	userDao   *dao.UserDAO
+	systemDao *dao.SystemDAO
+}
+
+func NewUserHandler(userDao *dao.UserDAO, systemDao *dao.SystemDAO) *Handler {
+	return &Handler{
+		userDao:   userDao,
+		systemDao: systemDao,
+	}
+}
+
 type menuItem struct {
 	ID        int        `json:"id"`
 	Type      string     `json:"type"`

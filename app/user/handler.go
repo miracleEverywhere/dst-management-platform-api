@@ -1,7 +1,6 @@
 package user
 
 import (
-	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
@@ -9,18 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
-
-type Handler struct {
-	userDao   *dao.UserDAO
-	systemDao *dao.SystemDAO
-}
-
-func NewUserHandler(userDao *dao.UserDAO, systemDao *dao.SystemDAO) *Handler {
-	return &Handler{
-		userDao:   userDao,
-		systemDao: systemDao,
-	}
-}
 
 func (h *Handler) registerPost(c *gin.Context) {
 	var user models.User
