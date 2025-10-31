@@ -1,8 +1,7 @@
 package models
 
 type Room struct {
-	Name           string `gorm:"primaryKey;not null" json:"name"`
-	DisplayName    string `json:"displayName"`
+	ID             int    `gorm:"primaryKey;autoIncrement" json:"id"`
 	Status         bool   `json:"status"`
 	GameName       string `json:"gameName"`
 	Description    string `json:"description"`
