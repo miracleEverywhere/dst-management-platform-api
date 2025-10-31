@@ -33,7 +33,7 @@ var dashboard = menuItem{
 	Links:     nil,
 }
 
-var gameSetting = menuItem{
+var game = menuItem{
 	ID:        3,
 	Type:      "group",
 	Section:   "",

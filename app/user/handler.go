@@ -151,7 +151,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 		response.Data = []menuItem{
 			rooms,
 			dashboard,
-			gameSetting,
+			game,
 			upload,
 			platform,
 		}
@@ -159,7 +159,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 		response.Data = []menuItem{
 			rooms,
 			dashboard,
-			gameSetting,
+			game,
 			upload,
 		}
 	}
