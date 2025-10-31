@@ -4,7 +4,9 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"errors"
+	"fmt"
 	"gorm.io/gorm"
+	"strconv"
 	"strings"
 )
 
@@ -18,48 +20,48 @@ func NewRoomDAO(db *gorm.DB) *RoomDAO {
 	}
 }
 
-func (d *RoomDAO) GetRoomByName(name string) (*models.Room, error) {
+func (d *RoomDAO) GetRoomByID(id int) (*models.Room, error) {
 	var room models.Room
-	err := d.db.Where("name = ?", name).First(&room).Error
+	err := d.db.Where("id = ?", id).First(&room).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &room, nil
 	}
 	return &room, err
 }
 
-func (d *RoomDAO) ListRooms(roomNames []string, roomName string, page, pageSize int) (*PaginatedResult[models.Room], error) {
+func (d *RoomDAO) ListRooms(roomIDs []int, gameName string, page, pageSize int) (*PaginatedResult[models.Room], error) {
 	var (
 		condition string
 		args      []interface{}
 	)
 	switch {
-	case len(roomNames) == 0 && roomName == "":
+	case len(roomIDs) == 0 && gameName == "":
 		// 无条件查询（返回所有记录）
 		condition = "1 = 1" // 或者直接使用 ""，但部分数据库可能不支持空 WHERE
 
-	case len(roomNames) == 0 && roomName != "":
-		// 仅模糊查询 name 或 display_name
-		searchPattern := "%" + roomName + "%"
-		condition = "name LIKE ? OR display_name LIKE ?"
-		args = []interface{}{searchPattern, searchPattern}
+	case len(roomIDs) == 0 && gameName != "":
+		// 仅模糊查询 gameName
+		searchPattern := "%" + gameName + "%"
+		condition = "game_name LIKE ?"
+		args = []interface{}{searchPattern}
 
-	case len(roomNames) != 0 && roomName == "":
+	case len(roomIDs) != 0 && gameName == "":
 		// 仅查询 name 在 roomNames 列表中的记录
-		condition = "name IN (?)"
-		args = []interface{}{roomNames}
+		condition = "id IN (?)"
+		args = []interface{}{roomIDs}
 
-	case len(roomNames) != 0 && roomName != "":
+	case len(roomIDs) != 0 && gameName != "":
 		// 查询 name 在 roomNames 列表中，并且 name 或 display_name 匹配模糊搜索
-		searchPattern := "%" + roomName + "%"
-		condition = "name IN (?) AND (name LIKE ? OR display_name LIKE ?)"
-		args = []interface{}{roomNames, searchPattern, searchPattern}
+		searchPattern := "%" + gameName + "%"
+		condition = "id IN (?) AND (game_name LIKE ?)"
+		args = []interface{}{roomIDs, searchPattern}
 	}
 
 	rooms, err := d.Query(page, pageSize, condition, args...)
 	return rooms, err
 }
 
-func (d *RoomDAO) DeleteRoomByName(name string) error {
+func (d *RoomDAO) DeleteRoomByID(id int) error {
 	// 开始事务
 	tx := d.db.Begin()
 	if tx.Error != nil {
@@ -74,25 +76,25 @@ func (d *RoomDAO) DeleteRoomByName(name string) error {
 	}()
 
 	// 删除rooms表中的数据
-	if err := tx.Where("name = ?", name).Delete(&models.Room{}).Error; err != nil {
+	if err := tx.Where("id = ?", id).Delete(&models.Room{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
 	// 删除worlds表中的数据
-	if err := tx.Where("room_name = ?", name).Delete(&models.World{}).Error; err != nil {
+	if err := tx.Where("room_id = ?", id).Delete(&models.World{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
 	// 删除room_settings表中的数据
-	if err := tx.Where("room_name = ?", name).Delete(&models.World{}).Error; err != nil {
+	if err := tx.Where("room_id = ?", id).Delete(&models.World{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
 	// 更新users表中的rooms权限
-	if err := d.updateUserRooms(tx, name); err != nil {
+	if err := d.updateUserRooms(tx, id); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -106,11 +108,11 @@ func (d *RoomDAO) DeleteRoomByName(name string) error {
 	return nil
 }
 
-// updateUserRooms 更新用户 rooms 字段，删除指定的 roomName
-func (d *RoomDAO) updateUserRooms(tx *gorm.DB, roomName string) error {
-	// 查询所有包含该 roomName 的用户
+// updateUserRooms 更新用户 rooms 字段, 删除指定的 room id; rooms: 1,2,3
+func (d *RoomDAO) updateUserRooms(tx *gorm.DB, id int) error {
+	// 查询所有包含该 roomID 的用户
 	var users []models.User
-	searchPattern := "%" + roomName + "%"
+	searchPattern := fmt.Sprintf("%%%d%%", id)
 
 	if err := tx.Where("rooms LIKE ?", searchPattern).Find(&users).Error; err != nil {
 		return err
@@ -125,15 +127,23 @@ func (d *RoomDAO) updateUserRooms(tx *gorm.DB, roomName string) error {
 		rooms := strings.Split(user.Rooms, ",")
 
 		// 过滤掉要删除的 roomName
-		var newRooms []string
+		var newRooms []int
 		for _, room := range rooms {
-			if strings.TrimSpace(room) != roomName {
-				newRooms = append(newRooms, room)
+			dbID, err := strconv.Atoi(strings.TrimSpace(room))
+			if err != nil {
+				return err
+			}
+			if dbID != id {
+				newRooms = append(newRooms, id)
 			}
 		}
 
 		// 重新组合 rooms 字符串
-		newRoomsStr := strings.Join(newRooms, ",")
+		var newRoomsIntSlice []string
+		for _, i := range newRooms {
+			newRoomsIntSlice = append(newRoomsIntSlice, strconv.Itoa(i))
+		}
+		newRoomsStr := strings.Join(newRoomsIntSlice, ",")
 
 		// 如果 rooms 字段为空，可以设置为空字符串或 NULL
 		if newRoomsStr == "" {
