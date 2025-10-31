@@ -16,9 +16,9 @@ func NewWorldDAO(db *gorm.DB) *WorldDAO {
 	}
 }
 
-func (d *WorldDAO) GetWorldsByRoomName(roomName string) (*PaginatedResult[models.World], error) {
+func (d *WorldDAO) GetWorldsByRoomID(id int) (*PaginatedResult[models.World], error) {
 	// 获取所有的world，一个room最大world数为64
-	worlds, err := d.Query(1, 64, "room_name = ?", roomName)
+	worlds, err := d.Query(1, 64, "room_id = ?", id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return worlds, nil
 	}
