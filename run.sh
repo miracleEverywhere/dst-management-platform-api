@@ -93,9 +93,10 @@ function prompt_user() {
     echo_green "[6]: 更新run.sh启动脚本"
     echo_yellow "————————————————————————————————————————————————————————————"
     echo_green "[7]: 设置虚拟内存"
-    echo_green "[8]: 退出脚本"
+    echo_green "[8]: 更改端口"
+    echo_green "[9]: 退出脚本"
     echo_yellow "————————————————————————————————————————————————————————————"
-    echo_yellow "请输入要执行的操作 [0-8]: "
+    echo_yellow "请输入要执行的操作 [0-9]: "
 }
 
 # 检查jq
@@ -298,6 +299,25 @@ function update_script() {
     exec "$0"
 }
 
+# 更改端口
+function change_port() {
+    echo_yellow "当前端口: $PORT"
+    read -p "请输入新端口号 (1024-65535): " NEW_PORT
+    if [[ $NEW_PORT =~ ^[0-9]+$ ]] && [ $NEW_PORT -ge 1024 ] && [ $NEW_PORT -le 65535 ]; then
+        # 更新脚本中的PORT变量
+        sed -i "s/^PORT=.*/PORT=$NEW_PORT/" "$0"
+        # 立即更新当前运行中的PORT变量
+        PORT=$NEW_PORT
+        echo_green "端口已成功更改为: $NEW_PORT"
+        echo_yellow "提示: 需要重启 DMP 服务才能使新端口生效"
+        echo_cyan "请返回主菜单选择 [1]启动 或 [3]重启 服务，3秒后自动返回主菜单..."
+        sleep 3
+    else
+        echo_red "无效端口号！请输入 1024-65535 范围内的数字。"
+        sleep 2
+    fi
+}
+
 # 设置虚拟内存
 function set_swap() {
     SWAPFILE=/swapfile
@@ -412,11 +432,17 @@ while true; do
         break
         ;;
     8)
+        set_tty
+        change_port
+        unset_tty
+        continue
+        ;;
+    9)
         exit 0
         break
         ;;
     *)
-        echo_red "请输入正确的数字 [0-8]"
+        echo_red "请输入正确的数字 [0-9]"
         continue
         ;;
     esac
