@@ -3,6 +3,7 @@ package models
 type World struct {
 	ID                 int    `gorm:"primaryKey;autoIncrement" json:"id"`
 	RoomID             int    `gorm:"not null" json:"roomID"`
+	GameID             int    `json:"gameID"`
 	ServerPort         int    `json:"serverPort"`
 	MasterServerPort   int    `json:"masterServerPort"`
 	AuthenticationPort int    `json:"authenticationPort"`
