@@ -197,59 +197,28 @@ func (h *Handler) roomGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
-func (h *Handler) roomLastIDGet(c *gin.Context) {
-	id, err := h.roomDao.GetLastRoomID()
+func (h *Handler) portFactorGet(c *gin.Context) {
+	roomID, err := h.roomDao.GetLastRoomID()
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": id})
-}
+	worldID, err := h.worldDao.GetLastWorldID(roomID)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
 
-//func (h *Handler) baseDelete(c *gin.Context) {
-//	role, _ := c.Get("role")
-//	username, _ := c.Get("username")
-//	hasPermission := false
-//
-//	if role.(string) == "admin" {
-//		hasPermission = true
-//	} else {
-//		dbUser, err := h.userDao.GetUserByUsername(username.(string))
-//		if err != nil {
-//			logger.Logger.Error("查询数据库失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-//			return
-//		}
-//		if dbUser.RoomCreation {
-//			hasPermission = true
-//		}
-//	}
-//
-//	if hasPermission {
-//		var room models.Room
-//		if err := c.ShouldBindJSON(&room); err != nil {
-//			logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
-//			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-//			return
-//		}
-//		if room.Name == "" {
-//			logger.Logger.Info("请求参数错误", "api", c.Request.URL.Path)
-//			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-//			return
-//		}
-//
-//		if errDeleteRoom := h.roomDao.DeleteRoomByName(room.Name); errDeleteRoom != nil {
-//			logger.Logger.Error("删除房间失败", "err", errDeleteRoom)
-//			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "delete fail"), "data": nil})
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-//	return
-//}
+	type Data struct {
+		RoomID  int `json:"roomID"`
+		WorldID int `json:"worldID"`
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
+		RoomID:  roomID,
+		WorldID: worldID,
+	}})
+}
