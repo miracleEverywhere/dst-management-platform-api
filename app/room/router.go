@@ -14,7 +14,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.POST("", middleware.MWtoken(), h.roomPost)
 			room.GET("", middleware.MWtoken(), h.roomGet)
 			room.GET("/list", middleware.MWtoken(), h.listGet)
-			room.GET("/last_id", middleware.MWtoken(), h.roomLastIDGet)
+			room.GET("/port/factor", middleware.MWtoken(), h.portFactorGet)
 		}
 	}
 }

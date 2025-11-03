@@ -32,3 +32,15 @@ func (d *WorldDAO) GetWorldsByRoomID(id int) (*[]models.World, error) {
 
 	return &worlds, err
 }
+
+func (d *WorldDAO) GetLastWorldID(id int) (int, error) {
+	var world models.World
+	err := d.db.Last(&world).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 空表，返回 0
+		return 0, nil
+	}
+
+	return world.ID, err
+}
