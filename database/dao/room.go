@@ -44,11 +44,6 @@ func (d *RoomDAO) GetLastRoomID() (int, error) {
 func (d *RoomDAO) GetRoomByID(id int) (*models.Room, error) {
 	var room models.Room
 	err := d.db.Where("id = ?", id).First(&room).Error
-	// First方法会正确返回gorm.ErrRecordNotFound
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		// 空表，返回 0
-		return &room, nil
-	}
 	return &room, err
 }
 
