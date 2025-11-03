@@ -301,20 +301,47 @@ function update_script() {
 
 # 更改端口
 function change_port() {
-    echo_yellow "当前端口: $PORT"
-    read -p "请输入新端口号 (1024-65535): " NEW_PORT
-    if [[ $NEW_PORT =~ ^[0-9]+$ ]] && [ $NEW_PORT -ge 1024 ] && [ $NEW_PORT -le 65535 ]; then
-        # 更新脚本中的PORT变量
-        sed -i "s/^PORT=.*/PORT=$NEW_PORT/" "$0"
-        # 立即更新当前运行中的PORT变量
-        PORT=$NEW_PORT
-        echo_green "端口已成功更改为: $NEW_PORT"
+    echo_yellow "当前端口: ${PORT}"
+
+    local new_port
+
+    read -rp "请输入新端口号 (1024-65535): " new_port
+
+    if [[ "$new_port" =~ ^[0-9]+$ && "$new_port" -ge 1024 && "$new_port" -le 65535 ]]; then
+
+        if [[ "$new_port" -eq "$PORT" ]]; then
+            echo_yellow "新端口与当前端口相同，无需修改"
+            sleep 2
+            return 0
+        fi
+
+        local port_in_use
+        port_in_use=$(ss -ltnp 2>/dev/null | awk -v port="${new_port}" '$4 ~ ":"port"$" {print $4}')
+
+        if [[ -n "$port_in_use" ]]; then
+            echo_red "错误：端口 ${new_port} 已被占用！"
+            echo_yellow "请选择其他端口，2秒后返回..."
+            sleep 2
+            return 1
+        fi
+
+        if ! sed -i "s|^PORT=.*|PORT=${new_port}|" "$0"; then
+            echo_red "错误：更新脚本文件失败"
+            sleep 2
+            return 1
+        fi
+
+        PORT="${new_port}"
+
+        echo_green "端口已成功更改为: ${new_port}"
         echo_yellow "提示: 需要重启 DMP 服务才能使新端口生效"
         echo_cyan "请返回主菜单选择 [1]启动 或 [3]重启 服务，3秒后自动返回主菜单..."
         sleep 3
+        return 0
     else
         echo_red "无效端口号！请输入 1024-65535 范围内的数字。"
         sleep 2
+        return 1
     fi
 }
 
