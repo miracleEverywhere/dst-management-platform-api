@@ -26,13 +26,14 @@ func main() {
 	userDao := dao.NewUserDAO(db.DB)
 	systemDao := dao.NewSystemDAO(db.DB)
 	roomDao := dao.NewRoomDAO(db.DB)
+	roomSettingDao := dao.NewRoomSettingDAO(db.DB)
 	worldDao := dao.NewWorldDAO(db.DB)
 
 	r := gin.Default()
 
 	userHandler := user.NewUserHandler(userDao, systemDao)
 	userHandler.RegisterRoutes(r)
-	roomHandler := room.NewRoomHandler(roomDao, userDao, worldDao)
+	roomHandler := room.NewRoomHandler(roomDao, userDao, worldDao, roomSettingDao)
 	roomHandler.RegisterRoutes(r)
 
 	// 启动服务器
