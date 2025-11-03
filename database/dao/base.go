@@ -31,6 +31,12 @@ func (d *BaseDAO[T]) Delete(model *T) error {
 	return d.db.Delete(model).Error
 }
 
+func (d *BaseDAO[T]) Find(condition interface{}, args ...interface{}) ([]T, error) {
+	var results []T
+	err := d.db.Where(condition, args...).Find(&results).Error
+	return results, err
+}
+
 func (d *BaseDAO[T]) FindAll() ([]T, error) {
 	var models []T
 	err := d.db.Find(&models).Error
