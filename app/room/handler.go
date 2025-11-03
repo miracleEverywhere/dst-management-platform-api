@@ -160,7 +160,7 @@ func (h *Handler) listGet(c *gin.Context) {
 // roomGet 返回房间、世界、房间设置等所有信息
 func (h *Handler) roomGet(c *gin.Context) {
 	type ReqForm struct {
-		RoomID int `json:"id"`
+		RoomID int `json:"id" form:"id"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
@@ -184,15 +184,15 @@ func (h *Handler) roomGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
-	data.WorldData = world
+	data.WorldData = *world
 
-	roomSetting, err := h.roomSettingDao.FindAll()
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
-	data.RoomSettingData = roomSetting[0]
+	data.RoomSettingData = *roomSetting
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
