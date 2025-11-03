@@ -11,71 +11,66 @@ import (
 )
 
 // createPost 创建房间
-//func (h *Handler) basePost(c *gin.Context) {
-//	role, _ := c.Get("role")
-//	username, _ := c.Get("username")
-//	hasPermission := false
-//
-//	if role.(string) == "admin" {
-//		hasPermission = true
-//	} else {
-//		dbUser, err := h.userDao.GetUserByUsername(username.(string))
-//		if err != nil {
-//			logger.Logger.Error("查询数据库失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-//			return
-//		}
-//		if dbUser.RoomCreation {
-//			hasPermission = true
-//		}
-//	}
-//
-//	if hasPermission {
-//		var room models.Room
-//		if err := c.ShouldBindJSON(&room); err != nil {
-//			logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
-//			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-//			return
-//		}
-//		if room.Name == "" {
-//			logger.Logger.Info("请求参数错误", "api", c.Request.URL.Path)
-//			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-//			return
-//		}
-//
-//		if room.DisplayName == "" {
-//			room.DisplayName = room.Name
-//		}
-//
-//		dbRoom, err := h.roomDao.GetRoomByName(room.Name)
-//		if err != nil {
-//			logger.Logger.Error("查询数据库失败", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-//			return
-//		}
-//
-//		if dbRoom.Name != "" {
-//			logger.Logger.Info("创建房间失败，房间名已存在", "err", err)
-//			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "room name exist"), "data": nil})
-//			return
-//		}
-//
-//		// 新建的房间默认为激活状态
-//		room.Status = true
-//
-//		if errCreate := h.roomDao.Create(&room); errCreate != nil {
-//			logger.Logger.Error("创建房间失败", "err", errCreate)
-//			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-//			return
-//		}
-//
-//		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": nil})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-//	return
-//}
+func (h *Handler) roomPost(c *gin.Context) {
+	role, _ := c.Get("role")
+	username, _ := c.Get("username")
+	hasPermission := false
+
+	if role.(string) == "admin" {
+		hasPermission = true
+	} else {
+		dbUser, err := h.userDao.GetUserByUsername(username.(string))
+		if err != nil {
+			logger.Logger.Error("查询数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+		if dbUser.RoomCreation {
+			hasPermission = true
+		}
+	}
+
+	if hasPermission {
+		var reqForm XRoomTotalInfo
+		if err := c.ShouldBindJSON(&reqForm); err != nil {
+			logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+
+		reqForm.RoomData.ID = 0
+		reqForm.RoomData.Status = true
+
+		room, errCreateRoom := h.roomDao.CreateRoom(&reqForm.RoomData)
+		if errCreateRoom != nil {
+			logger.Logger.Error("创建房间失败", "err", errCreateRoom)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		for _, world := range reqForm.WorldData {
+			world.RoomID = room.ID
+			if errCreateWorld := h.worldDao.Create(&world); errCreateWorld != nil {
+				logger.Logger.Error("创建房间失败", "err", errCreateWorld)
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+				return
+			}
+		}
+
+		reqForm.RoomSettingData.RoomID = room.ID
+		if errCreate := h.roomSettingDao.Create(&reqForm.RoomSettingData); errCreate != nil {
+			logger.Logger.Error("创建房间失败", "err", errCreate)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": room})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+	return
+}
 
 // listGet 按分页获取集群信息，并附带对应世界信息
 func (h *Handler) listGet(c *gin.Context) {
@@ -149,7 +144,7 @@ func (h *Handler) listGet(c *gin.Context) {
 			Room:   room,
 			Worlds: []models.World{},
 		}
-		worlds, errWorld := h.worldDao.GetWorldsByRoomID(room.ID)
+		worlds, errWorld := h.worldDao.GetWorldsByRoomIDWthPage(room.ID)
 		if errWorld != nil {
 			logger.Logger.Error("查询数据库失败", "err", errWorld)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
@@ -160,6 +155,57 @@ func (h *Handler) listGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+// roomGet 返回房间、世界、房间设置等所有信息
+func (h *Handler) roomGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"id"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	var data XRoomTotalInfo
+	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	data.RoomData = *room
+
+	world, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	data.WorldData = world
+
+	roomSetting, err := h.roomSettingDao.FindAll()
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	data.RoomSettingData = roomSetting[0]
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func (h *Handler) roomLastIDGet(c *gin.Context) {
+	id, err := h.roomDao.GetLastRoomID()
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": id})
 }
 
 //func (h *Handler) baseDelete(c *gin.Context) {
