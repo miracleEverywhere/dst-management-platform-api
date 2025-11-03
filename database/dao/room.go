@@ -20,10 +20,33 @@ func NewRoomDAO(db *gorm.DB) *RoomDAO {
 	}
 }
 
+func (d *RoomDAO) CreateRoom(room *models.Room) (*models.Room, error) {
+	err := d.db.Create(room).Error
+	return room, err
+}
+
+func (d *RoomDAO) GetLastRoomID() (int, error) {
+	var room models.Room
+	result := d.db.Last(&room)
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// 空表，返回 0
+		return 0, nil
+	}
+
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	return room.ID, nil
+}
+
 func (d *RoomDAO) GetRoomByID(id int) (*models.Room, error) {
 	var room models.Room
 	err := d.db.Where("id = ?", id).First(&room).Error
+	// First方法会正确返回gorm.ErrRecordNotFound
 	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 空表，返回 0
 		return &room, nil
 	}
 	return &room, err

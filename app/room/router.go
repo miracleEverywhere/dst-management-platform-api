@@ -11,9 +11,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		room := v.Group("room")
 		{
-			//room.POST("/base", middleware.MWtoken(), h.basePost)
-			//room.DELETE("/base", middleware.MWtoken(), h.baseDelete)
+			room.POST("", middleware.MWtoken(), h.roomPost)
+			room.GET("", middleware.MWtoken(), h.roomGet)
 			room.GET("/list", middleware.MWtoken(), h.listGet)
+			room.GET("/last_id", middleware.MWtoken(), h.roomLastIDGet)
 		}
 	}
 }

@@ -6,16 +6,18 @@ import (
 )
 
 type Handler struct {
-	roomDao  *dao.RoomDAO
-	userDao  *dao.UserDAO
-	worldDao *dao.WorldDAO
+	roomDao        *dao.RoomDAO
+	userDao        *dao.UserDAO
+	worldDao       *dao.WorldDAO
+	roomSettingDao *dao.RoomSettingDAO
 }
 
-func NewRoomHandler(roomDao *dao.RoomDAO, userDao *dao.UserDAO, worldDao *dao.WorldDAO) *Handler {
+func NewRoomHandler(roomDao *dao.RoomDAO, userDao *dao.UserDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
 	return &Handler{
-		roomDao:  roomDao,
-		userDao:  userDao,
-		worldDao: worldDao,
+		roomDao:        roomDao,
+		userDao:        userDao,
+		worldDao:       worldDao,
+		roomSettingDao: roomSettingDao,
 	}
 }
 
@@ -27,4 +29,10 @@ type Partition struct {
 type XRoomWorld struct {
 	models.Room
 	Worlds []models.World `json:"worlds"`
+}
+
+type XRoomTotalInfo struct {
+	RoomData        models.Room        `json:"roomData"`
+	WorldData       []models.World     `json:"worldData"`
+	RoomSettingData models.RoomSetting `json:"roomSettingData"`
 }

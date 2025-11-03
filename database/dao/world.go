@@ -2,6 +2,7 @@ package dao
 
 import (
 	"dst-management-platform-api/database/models"
+	"dst-management-platform-api/logger"
 	"errors"
 	"gorm.io/gorm"
 )
@@ -16,7 +17,7 @@ func NewWorldDAO(db *gorm.DB) *WorldDAO {
 	}
 }
 
-func (d *WorldDAO) GetWorldsByRoomID(id int) (*PaginatedResult[models.World], error) {
+func (d *WorldDAO) GetWorldsByRoomIDWthPage(id int) (*PaginatedResult[models.World], error) {
 	// 获取所有的world，一个room最大world数为64
 	worlds, err := d.Query(1, 64, "room_id = ?", id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -24,4 +25,17 @@ func (d *WorldDAO) GetWorldsByRoomID(id int) (*PaginatedResult[models.World], er
 	}
 
 	return worlds, err
+}
+
+func (d *WorldDAO) GetWorldsByRoomID(id int) ([]models.World, error) {
+	var worlds []models.World
+	err := d.db.Find(&worlds).Error
+	if err != nil {
+		logger.Logger.Debug(err.Error())
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return []models.World{}, nil
+	}
+
+	return worlds, nil
 }
