@@ -11,10 +11,16 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"embed"
 	"fmt"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	static "github.com/soulteary/gin-static"
 	"runtime"
 )
+
+//go:embed dist
+var EmbedFS embed.FS
 
 func main() {
 	// 绑定启动参数
@@ -47,6 +53,9 @@ func main() {
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	external.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, systemDao).RegisterRoutes(r)
+
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.Use(static.ServeEmbed("dist", EmbedFS))
 
 	// 启动服务器
 	err := r.Run(fmt.Sprintf(":%d", utils.BindPort))
