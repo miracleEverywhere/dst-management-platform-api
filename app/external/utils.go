@@ -1,6 +1,19 @@
 package external
 
-import "dst-management-platform-api/database/dao"
+import (
+	"dst-management-platform-api/constants"
+	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/logger"
+	"dst-management-platform-api/utils"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"time"
+)
+
+const TimeOut int = 30
 
 type Handler struct {
 	roomDao        *dao.RoomDAO
@@ -9,11 +22,194 @@ type Handler struct {
 	roomSettingDao *dao.RoomSettingDAO
 }
 
-func NewExternalHandler(roomDao *dao.RoomDAO, userDao *dao.UserDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
 	return &Handler{
 		roomDao:        roomDao,
 		userDao:        userDao,
 		worldDao:       worldDao,
 		roomSettingDao: roomSettingDao,
 	}
+}
+
+type JSONResponse struct {
+	Response Response `json:"response"`
+}
+type Response struct {
+	Total                int                    `json:"total"`
+	Publishedfiledetails []PublishedFileDetails `json:"publishedfiledetails"`
+}
+type PublishedFileDetails struct {
+	ID              string   `json:"publishedfileid"`
+	FileSize        string   `json:"file_size"`
+	FileDescription string   `json:"file_description"`
+	FileUrl         string   `json:"file_url"`
+	Title           string   `json:"title"`
+	Tags            []Tags   `json:"tags"`
+	PreviewUrl      string   `json:"preview_url"`
+	VoteData        VoteData `json:"vote_data"`
+}
+type Data struct {
+	Total    int       `json:"total"`
+	Page     int       `json:"page"`
+	PageSize int       `json:"pageSize"`
+	Rows     []ModInfo `json:"rows"`
+}
+type ModInfo struct {
+	Name            string   `json:"name"`
+	ID              int      `json:"id"`
+	Size            string   `json:"size"`
+	Tags            []Tags   `json:"tags"`
+	PreviewUrl      string   `json:"preview_url"`
+	FileDescription string   `json:"file_description"`
+	FileUrl         string   `json:"file_url"`
+	VoteData        VoteData `json:"vote_data"`
+	DownloadedReady bool     `json:"downloadedReady"`
+}
+type Tags struct {
+	Tag         string `json:"tag"`
+	DisplayName string `json:"display_name"`
+}
+type VoteData struct {
+	Score     float64 `json:"score"`
+	VotesUp   int     `json:"votes_up"`
+	VotesDown int     `json:"votes_down"`
+}
+
+func SearchMod(page int, pageSize int, searchText string, lang string) (Data, error) {
+	var (
+		language int
+		url      string
+	)
+	if lang == "zh" {
+		language = 6
+	} else {
+		language = 0
+	}
+	url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&", constants.SteamApiModSearch)
+	url = url + "requiredtags[0]=server_only_mod&requiredtags[1]=all_clients_require_mod&match_all_tags=false&"
+	if searchText == "" {
+		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d",
+			language,
+			utils.GetSteamApiKey(),
+			page,
+			pageSize,
+		)
+	} else {
+		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d&search_text=%s",
+			language,
+			utils.GetSteamApiKey(),
+			page,
+			pageSize,
+			searchText,
+		)
+	}
+
+	client := &http.Client{
+		Timeout: 30 * time.Second, // 设置超时时间为30秒
+	}
+	httpResponse, err := client.Get(url)
+	if err != nil {
+		return Data{}, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Logger.Error("请求关闭失败", "err", err)
+		}
+	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+	// 检查 HTTP 状态码
+	if httpResponse.StatusCode != http.StatusOK {
+		return Data{}, err
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+		logger.Logger.Error("解析JSON失败", "err", err)
+		return Data{}, err
+	}
+
+	var modInfoList []ModInfo
+	for _, i := range jsonResp.Response.Publishedfiledetails {
+		modInfo := ModInfo{
+			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
+			Name:            i.Title,
+			Size:            i.FileSize,
+			Tags:            i.Tags,
+			PreviewUrl:      i.PreviewUrl,
+			FileDescription: i.FileDescription,
+			FileUrl:         i.FileUrl,
+			VoteData:        i.VoteData,
+		}
+		modInfoList = append(modInfoList, modInfo)
+	}
+
+	data := Data{
+		Total:    jsonResp.Response.Total,
+		Page:     page,
+		PageSize: pageSize,
+		Rows:     modInfoList,
+	}
+
+	return data, nil
+}
+
+func SearchModById(id int, lang string) (Data, error) {
+	var (
+		language int
+		url      string
+	)
+	if lang == "zh" {
+		language = 6
+	} else {
+		language = 0
+	}
+
+	url = fmt.Sprintf("%s?language=%d&key=%s", constants.SteamApiModDetail, language, utils.GetSteamApiKey())
+	url = url + fmt.Sprintf("&publishedfileids[0]=%d", id)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second, // 设置超时时间为30秒
+	}
+	httpResponse, err := client.Get(url)
+	if err != nil {
+		return Data{}, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Logger.Error("请求关闭失败", "err", err)
+		}
+	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+	// 检查 HTTP 状态码
+	if httpResponse.StatusCode != http.StatusOK {
+		return Data{}, err
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+		logger.Logger.Error("解析JSON失败", "err", err)
+		return Data{}, err
+	}
+
+	var modInfoList []ModInfo
+	for _, i := range jsonResp.Response.Publishedfiledetails {
+		modInfo := ModInfo{
+			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
+			Name:            i.Title,
+			Size:            i.FileSize,
+			Tags:            i.Tags,
+			PreviewUrl:      i.PreviewUrl,
+			FileDescription: i.FileDescription,
+			FileUrl:         i.FileUrl,
+			VoteData:        i.VoteData,
+		}
+		modInfoList = append(modInfoList, modInfo)
+	}
+
+	data := Data{
+		Total:    1,
+		Page:     1,
+		PageSize: 1,
+		Rows:     modInfoList,
+	}
+
+	return data, nil
 }

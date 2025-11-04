@@ -1,4 +1,4 @@
-package external
+package platform
 
 import (
 	"dst-management-platform-api/constants"
@@ -9,9 +9,9 @@ import (
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(constants.ApiVersion)
 	{
-		external := v.Group("external")
+		platform := v.Group("platform")
 		{
-			external.GET("/mod/search", middleware.MWtoken(), modSearchGet)
+			platform.GET("/status", middleware.MWtoken(), h.statusGet)
 		}
 	}
 }
