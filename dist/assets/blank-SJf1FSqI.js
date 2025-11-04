@@ -1,0 +1,1 @@
+import{_ as o}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{c as t,o as a,a as r,r as c}from"./index-Bnu2ge-9.js";const n={},s={class:"layout-wrapper layout-blank","data-allow-mismatch":""};function _(l,m){const e=c("router-view");return a(),t("div",s,[r(e)])}const d=o(n,[["render",_]]);export{d as default};
