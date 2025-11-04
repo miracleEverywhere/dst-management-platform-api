@@ -26,9 +26,9 @@ func NewExtendedI18n() *ExtendedI18n {
 	}
 
 	// 添加扩展翻译
-	i.ZH["register success"] = "注册成功"
+	i.ZH["search fail"] = "搜索失败"
 
-	i.EN["register success"] = "Register Success"
+	i.EN["search fail"] = "Search Fail"
 
 	return i
 }

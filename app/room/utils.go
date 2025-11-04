@@ -13,7 +13,7 @@ type Handler struct {
 	roomSettingDao *dao.RoomSettingDAO
 }
 
-func NewRoomHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
 	return &Handler{
 		roomDao:        roomDao,
 		userDao:        userDao,

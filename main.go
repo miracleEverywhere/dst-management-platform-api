@@ -1,6 +1,8 @@
 package main
 
 import (
+	"dst-management-platform-api/app/external"
+	"dst-management-platform-api/app/platform"
 	"dst-management-platform-api/app/room"
 	"dst-management-platform-api/app/user"
 	"dst-management-platform-api/constants"
@@ -38,13 +40,13 @@ func main() {
 	// 开启定时任务
 	scheduler.Start(roomDao, worldDao, roomSettingDao, systemDao)
 
-	// 初始化Gin
+	// 初始化及注册路由
 	r := gin.Default()
 	gin.SetMode(gin.ReleaseMode)
-	userHandler := user.NewUserHandler(userDao)
-	userHandler.RegisterRoutes(r)
-	roomHandler := room.NewRoomHandler(userDao, roomDao, worldDao, roomSettingDao)
-	roomHandler.RegisterRoutes(r)
+	user.NewHandler(userDao).RegisterRoutes(r)
+	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
+	external.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
+	platform.NewHandler(userDao, systemDao).RegisterRoutes(r)
 
 	// 启动服务器
 	err := r.Run(fmt.Sprintf(":%d", utils.BindPort))

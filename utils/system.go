@@ -3,7 +3,10 @@ package utils
 import (
 	"fmt"
 	"os"
+	"time"
 )
+
+var StartTime = time.Now()
 
 // EnsureDirExists 检查目录是否存在，如果不存在则创建
 func EnsureDirExists(dirPath string) error {
