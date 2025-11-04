@@ -12,9 +12,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		room := v.Group("room")
 		{
 			room.POST("", middleware.MWtoken(), h.roomPost)
+			room.PUT("", middleware.MWtoken(), h.roomPut)
 			room.GET("", middleware.MWtoken(), h.roomGet)
 			room.GET("/list", middleware.MWtoken(), h.listGet)
-			room.GET("/port/factor", middleware.MWtoken(), h.portFactorGet)
+			room.GET("/factor", middleware.MWtoken(), h.factorGet)
 		}
 	}
 }

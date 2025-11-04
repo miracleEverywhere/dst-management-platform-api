@@ -102,11 +102,32 @@ var upload = menuItem{
 
 var platform = menuItem{
 	ID:        5,
-	Type:      "link",
+	Type:      "group",
 	Section:   "",
 	Title:     "platform",
 	To:        "/platform",
 	Component: "platform/index",
 	Icon:      "ri-contacts-book-upload-line",
-	Links:     nil,
+	Links: []menuItem{
+		{
+			ID:        501,
+			Type:      "link",
+			Section:   "",
+			Title:     "platformOverview",
+			To:        "/platform/overview",
+			Component: "platform/overview",
+			Icon:      "ri-sword-line",
+			Links:     nil,
+		},
+		{
+			ID:        502,
+			Type:      "link",
+			Section:   "",
+			Title:     "platformSetting",
+			To:        "/platform/setting",
+			Component: "platform/setting",
+			Icon:      "ri-sword-line",
+			Links:     nil,
+		},
+	},
 }

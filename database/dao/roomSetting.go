@@ -20,3 +20,8 @@ func (d *RoomSettingDAO) GetRoomSettingsByRoomID(id int) (*models.RoomSetting, e
 	err := d.db.Where("room_id = ?", id).First(&roomSettings).Error
 	return &roomSettings, err
 }
+
+func (d *RoomSettingDAO) UpdateRoomSetting(roomSetting *models.RoomSetting) error {
+	err := d.db.Save(roomSetting).Error
+	return err
+}

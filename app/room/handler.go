@@ -12,25 +12,16 @@ import (
 
 // createPost 创建房间
 func (h *Handler) roomPost(c *gin.Context) {
-	role, _ := c.Get("role")
-	username, _ := c.Get("username")
-	hasPermission := false
-
-	if role.(string) == "admin" {
-		hasPermission = true
-	} else {
-		dbUser, err := h.userDao.GetUserByUsername(username.(string))
+	permission, err := h.hasPermission(c)
+	if err != nil {
 		if err != nil {
 			logger.Logger.Error("查询数据库失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 			return
 		}
-		if dbUser.RoomCreation {
-			hasPermission = true
-		}
 	}
 
-	if hasPermission {
+	if permission {
 		var reqForm XRoomTotalInfo
 		if err := c.ShouldBindJSON(&reqForm); err != nil {
 			logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
@@ -65,6 +56,54 @@ func (h *Handler) roomPost(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": room})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+	return
+}
+
+// roomPut 修改房间
+func (h *Handler) roomPut(c *gin.Context) {
+	permission, err := h.hasPermission(c)
+	if err != nil {
+		if err != nil {
+			logger.Logger.Error("查询数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+	}
+
+	if permission {
+		var reqForm XRoomTotalInfo
+		if err := c.ShouldBindJSON(&reqForm); err != nil {
+			logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+
+		err = h.roomDao.UpdateRoom(&reqForm.RoomData)
+		if err != nil {
+			logger.Logger.Error("更新房间失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		err = h.worldDao.UpdateWorlds(&reqForm.WorldData)
+		if err != nil {
+			logger.Logger.Error("更新房间失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		err = h.roomSettingDao.UpdateRoomSetting(&reqForm.RoomSettingData)
+		if err != nil {
+			logger.Logger.Error("更新房间失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
 		return
 	}
 
@@ -178,13 +217,13 @@ func (h *Handler) roomGet(c *gin.Context) {
 	}
 	data.RoomData = *room
 
-	world, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
-	data.WorldData = *world
+	data.WorldData = *worlds
 
 	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
 	if err != nil {
@@ -197,15 +236,15 @@ func (h *Handler) roomGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
-func (h *Handler) portFactorGet(c *gin.Context) {
-	roomID, err := h.roomDao.GetLastRoomID()
+func (h *Handler) factorGet(c *gin.Context) {
+	roomCount, err := h.roomDao.Count(nil)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
-	worldID, err := h.worldDao.GetLastWorldID(roomID)
+	worldCount, err := h.worldDao.Count(nil)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -213,12 +252,12 @@ func (h *Handler) portFactorGet(c *gin.Context) {
 	}
 
 	type Data struct {
-		RoomID  int `json:"roomID"`
-		WorldID int `json:"worldID"`
+		Room  int64 `json:"roomCount"`
+		World int64 `json:"worldCount"`
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
-		RoomID:  roomID,
-		WorldID: worldID,
+		Room:  roomCount,
+		World: worldCount,
 	}})
 }

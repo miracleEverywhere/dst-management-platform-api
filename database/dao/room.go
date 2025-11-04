@@ -3,7 +3,6 @@ package dao
 import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
-	"errors"
 	"fmt"
 	"gorm.io/gorm"
 	"strconv"
@@ -25,20 +24,9 @@ func (d *RoomDAO) CreateRoom(room *models.Room) (*models.Room, error) {
 	return room, err
 }
 
-func (d *RoomDAO) GetLastRoomID() (int, error) {
-	var room models.Room
-	result := d.db.Last(&room)
-
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		// 空表，返回 0
-		return 0, nil
-	}
-
-	if result.Error != nil {
-		return 0, result.Error
-	}
-
-	return room.ID, nil
+func (d *RoomDAO) UpdateRoom(room *models.Room) error {
+	err := d.db.Save(room).Error
+	return err
 }
 
 func (d *RoomDAO) GetRoomByID(id int) (*models.Room, error) {
@@ -126,7 +114,6 @@ func (d *RoomDAO) DeleteRoomByID(id int) error {
 	return nil
 }
 
-// updateUserRooms 更新用户 rooms 字段, 删除指定的 room id; rooms: 1,2,3
 func (d *RoomDAO) updateUserRooms(tx *gorm.DB, id int) error {
 	// 查询所有包含该 roomID 的用户
 	var users []models.User
