@@ -6,8 +6,8 @@ import (
 	"dst-management-platform-api/constants"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
-	"dst-management-platform-api/initialize"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -15,31 +15,41 @@ import (
 )
 
 func main() {
-	// 启动后，执行一些初始化和检查
-	initialize.Initialize()
+	// 绑定启动参数
+	utils.BindFlags()
 
+	// 打印版本
 	if utils.VersionShow {
 		fmt.Println(constants.Version + "\n" + runtime.Version())
 		return
 	}
 
+	// 初始化日志
+	logger.InitLogger()
+
+	// 初始化数据库
+	db.InitDB()
 	userDao := dao.NewUserDAO(db.DB)
 	systemDao := dao.NewSystemDAO(db.DB)
 	roomDao := dao.NewRoomDAO(db.DB)
 	roomSettingDao := dao.NewRoomSettingDAO(db.DB)
 	worldDao := dao.NewWorldDAO(db.DB)
 
-	r := gin.Default()
+	// 开启定时任务
+	scheduler.Start(roomDao, worldDao, roomSettingDao, systemDao)
 
-	userHandler := user.NewUserHandler(userDao, systemDao)
+	// 初始化Gin
+	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	userHandler := user.NewUserHandler(userDao)
 	userHandler.RegisterRoutes(r)
-	roomHandler := room.NewRoomHandler(roomDao, userDao, worldDao, roomSettingDao)
+	roomHandler := room.NewRoomHandler(userDao, roomDao, worldDao, roomSettingDao)
 	roomHandler.RegisterRoutes(r)
 
 	// 启动服务器
 	err := r.Run(fmt.Sprintf(":%d", utils.BindPort))
 	if err != nil {
 		logger.Logger.Error("启动服务器失败", "err", err)
-		panic(err)
+		panic(fmt.Sprintf("启动服务器失败: %s", err.Error()))
 	}
 }

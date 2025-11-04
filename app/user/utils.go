@@ -7,10 +7,9 @@ type Handler struct {
 	systemDao *dao.SystemDAO
 }
 
-func NewUserHandler(userDao *dao.UserDAO, systemDao *dao.SystemDAO) *Handler {
+func NewUserHandler(userDao *dao.UserDAO) *Handler {
 	return &Handler{
-		userDao:   userDao,
-		systemDao: systemDao,
+		userDao: userDao,
 	}
 }
 
