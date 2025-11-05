@@ -1,6 +1,9 @@
 package utils
 
-import "encoding/hex"
+import (
+	"encoding/base64"
+	"encoding/hex"
+)
 
 func GetSteamApiKey() string {
 	obfuscated := []byte{
@@ -12,4 +15,15 @@ func GetSteamApiKey() string {
 		data = append(data, b^0x55)
 	}
 	return hex.EncodeToString(data)
+}
+
+func GetDstToken() string {
+	decoded := "VjFSQ2ExVXlWbkpsUm1oaFVqRmFWVlJXV21GaVZsWnlZVWRHV0dKV1JqUldNakI0V1ZaS1YyTkhlRlpOVjFKeVZrUkJOVkpzY0VkYVJtaFVVakpSZVZac1dsTlNNazE0VW14a1VtSlZXbWhVVlZKelUyeHJlRlZyT1ZaaVJscEpWMnRTUzFac1NYbFVXSEJhWld0YWRsa3haRWRYVms1VlZHeGtWMDFZUWtoV01qRjNZbTFXV0Zac1dtcFNSVXB2V2xkd1FrOVJQVDA9"
+	times := 5
+	for i := 0; i < times; i++ {
+		data, _ := base64.StdEncoding.DecodeString(decoded)
+		decoded = string(data)
+	}
+
+	return decoded
 }
