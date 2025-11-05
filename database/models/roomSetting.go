@@ -15,7 +15,7 @@ type RoomSetting struct {
 	ScheduledStartStopEnable  bool   `json:"scheduledStartStopEnable"`
 	ScheduledStartStopSetting string `json:"scheduledStartStopSetting"`
 	TickRate                  int    `json:"tickRate"`
-	Bit64                     bool   `json:"bit64"`
+	StartType                 string `json:"startType"`
 }
 
 func (RoomSetting) TableName() string {

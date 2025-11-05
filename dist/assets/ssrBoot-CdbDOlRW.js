@@ -1,1 +1,0 @@
-import{a4 as t,f as e,a2 as s,a1 as n}from"./index-Bnu2ge-9.js";function i(){const o=t(!1);return e(()=>{window.requestAnimationFrame(()=>{o.value=!0})}),{ssrBootStyles:s(()=>o.value?void 0:{transition:"none !important"}),isBooted:n(o)}}export{i as u};

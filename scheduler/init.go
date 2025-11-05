@@ -26,24 +26,24 @@ type JobConfig struct {
 }
 
 type Handler struct {
-	roomDao        *dao.RoomDAO
-	worldDao       *dao.WorldDAO
-	roomSettingDao *dao.RoomSettingDAO
-	systemDao      *dao.SystemDAO
+	roomDao          *dao.RoomDAO
+	worldDao         *dao.WorldDAO
+	roomSettingDao   *dao.RoomSettingDAO
+	globalSettingDao *dao.GlobalSettingDAO
 }
 
-func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, systemDao *dao.SystemDAO) {
-	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, systemDao)
+func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) {
+	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao)
 	registerJobs()
 	go Scheduler.StartAsync()
 }
 
-func newDBHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, systemDao *dao.SystemDAO) *Handler {
+func newDBHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) *Handler {
 	return &Handler{
-		roomDao:        roomDao,
-		worldDao:       worldDao,
-		roomSettingDao: roomSettingDao,
-		systemDao:      systemDao,
+		roomDao:          roomDao,
+		worldDao:         worldDao,
+		roomSettingDao:   roomSettingDao,
+		globalSettingDao: globalSettingDao,
 	}
 }
 
