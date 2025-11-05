@@ -3,6 +3,7 @@ package room
 import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
+	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
@@ -106,11 +107,11 @@ func (h *Handler) roomPut(c *gin.Context) {
 			return
 		}
 
-		//game := dst.NewGameController(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
-		//err = game.Save()
-		//if err != nil {
-		//	logger.Logger.Error("配置写入磁盘失败", "err", err)
-		//}
+		game := dst.NewGameController(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData, c.Request.Header.Get("X-I18n-Lang"))
+		err = game.Save()
+		if err != nil {
+			logger.Logger.Error("配置写入磁盘失败", "err", err)
+		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
 		return
