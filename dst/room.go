@@ -47,7 +47,7 @@ func (g *Game) getClusterIni() string {
 		gameMode = g.room.GameMode
 	}
 
-	switch lang {
+	switch g.lang {
 	case "zh":
 		lang = "zh"
 	case "en":
