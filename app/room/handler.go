@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -28,6 +29,7 @@ func (h *Handler) roomPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
+		logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
 		reqForm.RoomData.ID = 0
 		reqForm.RoomData.Status = true
@@ -81,6 +83,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
+		logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
 		err = h.roomDao.UpdateRoom(&reqForm.RoomData)
 		if err != nil {
@@ -103,6 +106,12 @@ func (h *Handler) roomPut(c *gin.Context) {
 			return
 		}
 
+		//game := dst.NewGameController(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
+		//err = game.Save()
+		//if err != nil {
+		//	logger.Logger.Error("配置写入磁盘失败", "err", err)
+		//}
+
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
 		return
 	}
@@ -124,6 +133,7 @@ func (h *Handler) listGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": data})
 		return
 	}
+	logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
 	role, _ := c.Get("role")
 	var (
@@ -207,6 +217,7 @@ func (h *Handler) roomGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+	logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
 	var data XRoomTotalInfo
 	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)

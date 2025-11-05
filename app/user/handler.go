@@ -16,6 +16,7 @@ func (h *Handler) registerPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	num, err := h.userDao.Count(nil)
 	if err != nil {
@@ -51,6 +52,7 @@ func (h *Handler) basePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	dbUser, err := h.userDao.GetUserByUsername(user.Username)
 	if err != nil {
@@ -82,6 +84,8 @@ func (h *Handler) loginPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+	logger.Logger.Debug(utils.StructToFlatString(user))
+
 	if user.Username == "" || user.Password == "" {
 		logger.Logger.Info("请求参数缺失", "api", c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})

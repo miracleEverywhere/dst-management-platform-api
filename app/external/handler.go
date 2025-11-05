@@ -2,6 +2,7 @@ package external
 
 import (
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -26,6 +27,7 @@ func modSearchGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+	logger.Logger.Debug(utils.StructToFlatString(searchForm))
 
 	if searchForm.SearchType == "id" {
 		id, err := strconv.Atoi(searchForm.SearchText)

@@ -1,7 +1,6 @@
 package external
 
 import (
-	"dst-management-platform-api/constants"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -85,7 +84,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	} else {
 		language = 0
 	}
-	url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&", constants.SteamApiModSearch)
+	url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&", utils.SteamApiModSearch)
 	url = url + "requiredtags[0]=server_only_mod&requiredtags[1]=all_clients_require_mod&match_all_tags=false&"
 	if searchText == "" {
 		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d",
@@ -163,7 +162,7 @@ func SearchModById(id int, lang string) (Data, error) {
 		language = 0
 	}
 
-	url = fmt.Sprintf("%s?language=%d&key=%s", constants.SteamApiModDetail, language, utils.GetSteamApiKey())
+	url = fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
 	url = url + fmt.Sprintf("&publishedfileids[0]=%d", id)
 
 	client := &http.Client{

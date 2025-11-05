@@ -1,0 +1,118 @@
+package utils
+
+import (
+	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// StructToFlatString 递归转换结构体为单行字符串 用于日志打印
+func StructToFlatString(obj interface{}) string {
+	return convertValue(reflect.ValueOf(obj), "", 0)
+}
+
+func convertValue(v reflect.Value, path string, depth int) string {
+	// 防止无限递归，设置最大深度
+	if depth > 10 {
+		return path + ":<max_depth_reached>"
+	}
+
+	// 处理指针类型
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return path + ":nil"
+		}
+		v = v.Elem()
+	}
+
+	// 处理不可导出的字段或零值
+	if !v.IsValid() {
+		return path + ":<invalid>"
+	}
+
+	switch v.Kind() {
+	case reflect.Struct:
+		// 特殊处理time.Time类型
+		if v.Type() == reflect.TypeOf(time.Time{}) {
+			return path + ":" + v.Interface().(time.Time).Format("2006-01-02 15:04:05")
+		}
+
+		var parts []string
+		t := v.Type()
+		for i := 0; i < v.NumField(); i++ {
+			field := t.Field(i)
+			// 跳过非导出字段
+			if field.PkgPath != "" && !field.Anonymous {
+				continue
+			}
+
+			fieldValue := v.Field(i)
+			fieldName := field.Name
+
+			var newPath string
+			if path == "" {
+				newPath = fieldName
+			} else {
+				newPath = path + "." + fieldName
+			}
+
+			part := convertValue(fieldValue, newPath, depth+1)
+			parts = append(parts, part)
+		}
+		return strings.Join(parts, " ")
+
+	case reflect.Slice, reflect.Array:
+		if v.Len() == 0 {
+			return path + ":[]"
+		}
+
+		var parts []string
+		for i := 0; i < v.Len(); i++ {
+			elemValue := v.Index(i)
+			newPath := path + "[" + strconv.Itoa(i) + "]"
+			part := convertValue(elemValue, newPath, depth+1)
+			parts = append(parts, part)
+		}
+		return strings.Join(parts, " ")
+
+	case reflect.Map:
+		if v.Len() == 0 {
+			return path + ":{}"
+		}
+
+		var parts []string
+		for _, key := range v.MapKeys() {
+			mapValue := v.MapIndex(key)
+			keyStr := fmt.Sprintf("%v", key.Interface())
+			// 处理key中的特殊字符
+			keyStr = strings.ReplaceAll(keyStr, " ", "_")
+			newPath := path + "[" + keyStr + "]"
+			part := convertValue(mapValue, newPath, depth+1)
+			parts = append(parts, part)
+		}
+		return strings.Join(parts, " ")
+
+	case reflect.String:
+		return path + ":\"" + v.String() + "\""
+
+	case reflect.Bool:
+		return path + ":" + strconv.FormatBool(v.Bool())
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return path + ":" + strconv.FormatInt(v.Int(), 10)
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return path + ":" + strconv.FormatUint(v.Uint(), 10)
+
+	case reflect.Float32, reflect.Float64:
+		return path + ":" + strconv.FormatFloat(v.Float(), 'f', -1, 64)
+
+	case reflect.Interface:
+		return convertValue(v.Elem(), path, depth+1)
+
+	default:
+		return path + ":" + fmt.Sprintf("%v", v.Interface())
+	}
+}

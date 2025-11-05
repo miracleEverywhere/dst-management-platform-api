@@ -1,13 +1,13 @@
 package user
 
 import (
-	"dst-management-platform-api/constants"
 	"dst-management-platform-api/middleware"
+	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
-	v := r.Group(constants.ApiVersion)
+	v := r.Group(utils.ApiVersion)
 	{
 		user := v.Group("user")
 		{

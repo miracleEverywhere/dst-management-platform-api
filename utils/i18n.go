@@ -36,6 +36,7 @@ var I18n = BaseI18n{
 		"delete success":    "删除成功",
 		"delete fail":       "删除失败",
 		"permission needed": "权限不足",
+		"token fail":        "Token认证失败",
 	},
 	EN: map[string]string{
 		"bad request":       "Bad Request",
@@ -47,5 +48,6 @@ var I18n = BaseI18n{
 		"delete success":    "Delete Success",
 		"delete fail":       "Delete Fail",
 		"permission needed": "Insufficient Permissions",
+		"token fail":        "Token Auth Fail",
 	},
 }

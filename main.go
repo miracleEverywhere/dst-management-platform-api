@@ -5,7 +5,6 @@ import (
 	"dst-management-platform-api/app/platform"
 	"dst-management-platform-api/app/room"
 	"dst-management-platform-api/app/user"
-	"dst-management-platform-api/constants"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/logger"
@@ -19,7 +18,8 @@ import (
 	"runtime"
 )
 
-//go:embed dist
+//go:embed dist/*
+//go:embed dist/assets/*
 var EmbedFS embed.FS
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 
 	// 打印版本
 	if utils.VersionShow {
-		fmt.Println(constants.Version + "\n" + runtime.Version())
+		fmt.Println(utils.Version + "\n" + runtime.Version())
 		return
 	}
 
@@ -42,9 +42,10 @@ func main() {
 	roomDao := dao.NewRoomDAO(db.DB)
 	roomSettingDao := dao.NewRoomSettingDAO(db.DB)
 	worldDao := dao.NewWorldDAO(db.DB)
+	globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
 
 	// 开启定时任务
-	scheduler.Start(roomDao, worldDao, roomSettingDao, systemDao)
+	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao)
 
 	// 初始化及注册路由
 	r := gin.Default()
