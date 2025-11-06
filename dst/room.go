@@ -52,6 +52,8 @@ func (g *Game) getClusterIni() string {
 		gameMode = "survival"
 	case "lightsOut":
 		gameMode = "survival"
+	case "custom":
+		gameMode = g.room.CustomGameMode
 	default:
 		gameMode = g.room.GameMode
 	}

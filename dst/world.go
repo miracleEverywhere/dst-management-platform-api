@@ -89,7 +89,7 @@ func (g *Game) startWorld(id int) error {
 
 	// 如果正在运行，则跳过
 	if g.worldUpStatus(id) {
-		logger.Logger.Info("当前世界正在运行中，跳过")
+		logger.Logger.Info("当前世界正在运行中，跳过", "世界ID", id)
 		return nil
 	}
 
@@ -120,7 +120,7 @@ func (g *Game) startAllWorld() error {
 	for _, world := range g.worldSaveData {
 		// 如果正在运行，则跳过
 		if g.worldUpStatus(world.ID) {
-			logger.Logger.Info("当前世界正在运行中，跳过")
+			logger.Logger.Info("当前世界正在运行中，跳过", "世界ID", world.ID)
 			continue
 		}
 
