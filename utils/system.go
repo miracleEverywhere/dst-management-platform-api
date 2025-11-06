@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -25,6 +26,28 @@ func EnsureDirExists(dirPath string) error {
 	return nil
 }
 
+// EnsureFileExists 检查文件是否存在，如果不存在则创建空文件
+func EnsureFileExists(filePath string) error {
+	// 检查文件是否存在
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		// 文件不存在，创建一个空文件
+		file, err := os.Create(filePath)
+		if err != nil {
+			return err
+		}
+		err = file.Close()
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		// 其他错误
+		return err
+	}
+
+	return nil
+}
+
 // TruncAndWriteFile 将指定内容完整写入文件，如果文件已存在会清空原有内容，如果文件不存在会创建新文件
 func TruncAndWriteFile(fileName string, fileContent string) error {
 	fileContentByte := []byte(fileContent)
@@ -41,6 +64,37 @@ func TruncAndWriteFile(fileName string, fileContent string) error {
 	}
 
 	return nil
+}
+
+// ReadLinesToSlice 文件内容按行读取到切片中
+func ReadLinesToSlice(filePath string) ([]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
+}
+
+// WriteLinesFromSlice 将切片内容按元素+\n写回文件
+func WriteLinesFromSlice(filePath string, lines []string) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		_, _ = writer.WriteString(line + "\n")
+	}
+	return writer.Flush()
 }
 
 // BashCMD 执行Linux Bash 命令

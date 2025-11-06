@@ -58,6 +58,12 @@ func (h *Handler) roomPost(c *gin.Context) {
 			return
 		}
 
+		game := dst.NewGameController(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData, c.Request.Header.Get("X-I18n-Lang"))
+		err = game.SaveAll()
+		if err != nil {
+			logger.Logger.Error("配置写入磁盘失败", "err", err)
+		}
+
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": room})
 		return
 	}
@@ -108,7 +114,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 		}
 
 		game := dst.NewGameController(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData, c.Request.Header.Get("X-I18n-Lang"))
-		err = game.Save()
+		err = game.SaveAll()
 		if err != nil {
 			logger.Logger.Error("配置写入磁盘失败", "err", err)
 		}

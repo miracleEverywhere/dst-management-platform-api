@@ -15,25 +15,30 @@ type Game struct {
 	lang    string
 	roomSaveData
 	worldSaveData []worldSaveData
+	playerSaveData
 	// room全局文件锁
 	roomMutex sync.Mutex
 	// world全局文件锁
 	worldMutex sync.Mutex
+	// player全局文件锁
+	playerMutex sync.Mutex
 }
 
 func NewGameController(room *models.Room, worlds *[]models.World, setting *models.RoomSetting, lang string) *Game {
-	return &Game{
+	game := &Game{
 		room:    room,
 		worlds:  worlds,
 		setting: setting,
 		lang:    lang,
 	}
+
+	game.initInfo()
+	logger.Logger.Debug(utils.StructToFlatString(game))
+
+	return game
 }
 
-func (g *Game) Save() error {
-	g.initInfo()
-	logger.Logger.Debug(utils.StructToFlatString(g))
-
+func (g *Game) SaveAll() error {
 	var err error
 
 	// cluster
@@ -90,7 +95,16 @@ func (g *Game) initInfo() {
 			levelDataOverridePath: levelDataOverridePath,
 			modOverridesPath:      modOverridesPath,
 			startCmd:              startCmd,
+			screenName:            screenName,
 			World:                 world,
 		})
 	}
+
+	// players
+	g.adminlistPath = fmt.Sprintf("%s/adminlist.txt", g.clusterPath)
+	g.whitelistPath = fmt.Sprintf("%s/whitelist.txt", g.clusterPath)
+	g.blocklistPath = fmt.Sprintf("%s/blocklist.txt", g.clusterPath)
+	g.adminlist = getPlayerList(g.adminlistPath)
+	g.whitelist = getPlayerList(g.whitelistPath)
+	g.blocklist = getPlayerList(g.blocklistPath)
 }
