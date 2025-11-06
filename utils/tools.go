@@ -116,3 +116,18 @@ func convertValue(v reflect.Value, path string, depth int) string {
 		return path + ":" + fmt.Sprintf("%v", v.Interface())
 	}
 }
+
+// MinIntSlice 返回int切片中的最小值
+//func MinIntSlice(nums []int) int {
+//	if len(nums) == 0 {
+//		return 0 // 或者返回一个错误值
+//	}
+//
+//	minInt := nums[0]
+//	for _, num := range nums[1:] {
+//		if num < minInt {
+//			minInt = num
+//		}
+//	}
+//	return minInt
+//}
