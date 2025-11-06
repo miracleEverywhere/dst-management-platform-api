@@ -6,6 +6,15 @@ import (
 	"strconv"
 )
 
+type roomSaveData struct {
+	// dir
+	clusterName string
+	clusterPath string
+	// file
+	clusterIniPath      string
+	clusterTokenTxtPath string
+}
+
 func (g *Game) createRoom() error {
 	g.roomMutex.Lock()
 	defer g.roomMutex.Unlock()
