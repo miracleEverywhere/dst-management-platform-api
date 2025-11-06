@@ -47,6 +47,7 @@ func CheckTables() {
 		&models.World{},
 		&models.RoomSetting{},
 		&models.GlobalSetting{},
+		&models.UidMap{},
 	)
 	if err != nil {
 		slog.Logger.Error("数据库表结构检查失败", "err", err)

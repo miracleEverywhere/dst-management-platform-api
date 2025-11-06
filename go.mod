@@ -11,6 +11,7 @@ require (
 	github.com/go-co-op/gocron v1.37.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/soulteary/gin-static v0.2.6
+	github.com/yuin/gopher-lua v1.1.1
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
 )
