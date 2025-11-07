@@ -66,6 +66,15 @@ func TruncAndWriteFile(fileName string, fileContent string) error {
 	return nil
 }
 
+func RemoveDir(dirPath string) error {
+	// 调用 os.RemoveAll 删除目录及其所有内容
+	err := os.RemoveAll(dirPath)
+	if err != nil {
+		return fmt.Errorf("删除目录失败: %w", err)
+	}
+	return nil
+}
+
 // ReadLinesToSlice 文件内容按行读取到切片中
 func ReadLinesToSlice(filePath string) ([]string, error) {
 	file, err := os.Open(filePath)
