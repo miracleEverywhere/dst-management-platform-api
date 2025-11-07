@@ -115,5 +115,5 @@ func (g *Game) initInfo() {
 	g.blocklist = getPlayerList(g.blocklistPath)
 
 	// mods
-	g.ugcPath = fmt.Sprintf("%s/dst/ugc_mods/Cluster_3", db.CurrentDir)
+	g.ugcPath = fmt.Sprintf("%s/dst/ugc_mods/%s", db.CurrentDir, g.clusterName)
 }
