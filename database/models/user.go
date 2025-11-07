@@ -10,6 +10,7 @@ type User struct {
 	Rooms         string `json:"rooms"`
 	RoomCreation  bool   `gorm:"not null" json:"roomCreation"`
 	MaxWorlds     int    `gorm:"not null" json:"maxWorlds"`
+	MaxPlayers    int    `json:"maxPlayers"`
 	CustomSetting string `json:"customSetting"`
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"dst-management-platform-api/app/external"
+	"dst-management-platform-api/app/mod"
 	"dst-management-platform-api/app/platform"
 	"dst-management-platform-api/app/room"
 	"dst-management-platform-api/app/user"
@@ -52,6 +53,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
+	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	external.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, systemDao).RegisterRoutes(r)
 
