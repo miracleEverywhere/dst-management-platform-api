@@ -1,8 +1,8 @@
 package dst
 
 import (
+	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
-	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"sync"
@@ -16,12 +16,15 @@ type Game struct {
 	roomSaveData
 	worldSaveData []worldSaveData
 	playerSaveData
+	modSaveData
 	// room全局文件锁
 	roomMutex sync.Mutex
 	// world全局文件锁
 	worldMutex sync.Mutex
 	// player全局文件锁
 	playerMutex sync.Mutex
+	// acf文件锁
+	acfMutex sync.Mutex
 }
 
 func NewGameController(room *models.Room, worlds *[]models.World, setting *models.RoomSetting, lang string) *Game {
@@ -33,7 +36,6 @@ func NewGameController(room *models.Room, worlds *[]models.World, setting *model
 	}
 
 	game.initInfo()
-	logger.Logger.Debug(utils.StructToFlatString(game))
 
 	return game
 }
@@ -62,6 +64,10 @@ func (g *Game) StartWorld(id int) error {
 
 func (g *Game) StartAllWorld() error {
 	return g.startAllWorld()
+}
+
+func (g *Game) DownloadMod(id int, ugc bool) {
+	go g.downloadMod(id, ugc)
 }
 
 func (g *Game) initInfo() {
@@ -107,4 +113,7 @@ func (g *Game) initInfo() {
 	g.adminlist = getPlayerList(g.adminlistPath)
 	g.whitelist = getPlayerList(g.whitelistPath)
 	g.blocklist = getPlayerList(g.blocklistPath)
+
+	// mods
+	g.ugcPath = fmt.Sprintf("%s/dst/ugc_mods/Cluster_3", db.CurrentDir)
 }
