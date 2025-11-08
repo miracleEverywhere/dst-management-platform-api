@@ -1,4 +1,4 @@
-package external
+package dashboard
 
 import (
 	"dst-management-platform-api/middleware"
@@ -9,9 +9,9 @@ import (
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
-		external := v.Group("external")
+		dashboard := v.Group("dashboard")
 		{
-			external.GET("/mod/search", middleware.MWtoken(), modSearchGet)
+			dashboard.POST("/exec/game", middleware.MWtoken(), h.execGamePost)
 		}
 	}
 }
