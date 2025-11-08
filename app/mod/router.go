@@ -11,7 +11,9 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		mod := v.Group("mod")
 		{
+			mod.GET("/search", middleware.MWtoken(), modSearchGet)
 			mod.POST("/download", middleware.MWtoken(), h.downloadPost)
+			mod.GET("/downloaded", middleware.MWtoken(), h.downloadedModsGet)
 		}
 	}
 }

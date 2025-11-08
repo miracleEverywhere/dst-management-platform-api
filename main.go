@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dst-management-platform-api/app/external"
+	"dst-management-platform-api/app/dashboard"
 	"dst-management-platform-api/app/mod"
 	"dst-management-platform-api/app/platform"
 	"dst-management-platform-api/app/room"
@@ -9,7 +9,6 @@ import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"embed"
 	"fmt"
@@ -43,10 +42,10 @@ func main() {
 	roomDao := dao.NewRoomDAO(db.DB)
 	roomSettingDao := dao.NewRoomSettingDAO(db.DB)
 	worldDao := dao.NewWorldDAO(db.DB)
-	globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
+	//globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
 
 	// 开启定时任务
-	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao)
+	//scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao)
 
 	// 初始化及注册路由
 	r := gin.Default()
@@ -54,7 +53,7 @@ func main() {
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	external.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
+	dashboard.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, systemDao).RegisterRoutes(r)
 
 	r.Use(gzip.Gzip(gzip.DefaultCompression))

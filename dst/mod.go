@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/yuin/gopher-lua"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -148,6 +147,12 @@ func (g *Game) processAcf(id int) error {
 	dmpAcfPath := fmt.Sprintf("dmp_files/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", g.clusterName)
 	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
 
+	err := utils.EnsureFileExists(gameAcfPath)
+	if err != nil {
+		logger.Logger.Error("EnsureFileExists失败", "path", gameAcfPath)
+		return err
+	}
+
 	dmpAcfContent, err := os.ReadFile(dmpAcfPath)
 	if err != nil {
 		return err
@@ -158,24 +163,34 @@ func (g *Game) processAcf(id int) error {
 	}
 
 	dmpAcfParser := NewParser(string(dmpAcfContent))
-	gameAcfParser := NewParser(string(gameAcfContent))
 
-	var (
-		gameAcfTargetIndex int
-		hasMod             bool
-	)
-	for index, i := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
-		if i.ID == acfID {
-			gameAcfTargetIndex = index
-			hasMod = true
-		}
-	}
-	if hasMod {
-		gameAcfParser.AppWorkshop.WorkshopItemsInstalled[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[0]
-		gameAcfParser.AppWorkshop.WorkshopItemDetails[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemDetails[0]
+	var writtenContent string
+
+	if len(gameAcfContent) == 0 {
+		// 如果游戏mod目录没有acf文件，直接使用dmp下载的acf文件
+		writtenContent = dmpAcfParser.FileContent()
 	} else {
-		gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled, dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[0])
-		gameAcfParser.AppWorkshop.WorkshopItemDetails = append(gameAcfParser.AppWorkshop.WorkshopItemDetails, dmpAcfParser.AppWorkshop.WorkshopItemDetails[0])
+		// 如果游戏mod目录含有acf文件，处理游戏acf文件
+		gameAcfParser := NewParser(string(gameAcfContent))
+		var (
+			gameAcfTargetIndex int
+			hasMod             bool
+		)
+		for index, i := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
+			if i.ID == acfID {
+				gameAcfTargetIndex = index
+				hasMod = true
+			}
+		}
+		if hasMod {
+			gameAcfParser.AppWorkshop.WorkshopItemsInstalled[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[0]
+			gameAcfParser.AppWorkshop.WorkshopItemDetails[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemDetails[0]
+		} else {
+			gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled, dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[0])
+			gameAcfParser.AppWorkshop.WorkshopItemDetails = append(gameAcfParser.AppWorkshop.WorkshopItemDetails, dmpAcfParser.AppWorkshop.WorkshopItemDetails[0])
+		}
+
+		writtenContent = gameAcfParser.FileContent()
 	}
 
 	for _, world := range g.worldSaveData {
@@ -184,7 +199,7 @@ func (g *Game) processAcf(id int) error {
 		if err != nil {
 			return err
 		}
-		err = utils.TruncAndWriteFile(gameAcfPath, gameAcfParser.FileContent())
+		err = utils.TruncAndWriteFile(gameAcfPath, writtenContent)
 		if err != nil {
 			return err
 		}
@@ -193,281 +208,44 @@ func (g *Game) processAcf(id int) error {
 	return nil
 }
 
-type Parser struct {
-	content     string
-	AppWorkshop *AppWorkshop
+type DownloadedMod struct {
+	ID         int    `json:"id"`
+	Name       string `json:"name"`
+	LocalSize  string `json:"localSize"`
+	ServerSize string `json:"serverSize"`
+	FileURL    string `json:"file_url"`
+	PreviewURL string `json:"preview_url"`
 }
 
-func NewParser(c string) *Parser {
-	p := &Parser{
-		content:     c,
-		AppWorkshop: &AppWorkshop{},
+func (g *Game) getDownloadedMods() *[]DownloadedMod {
+	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
+	err := utils.EnsureFileExists(gameAcfPath)
+	if err != nil {
+		logger.Logger.Error("EnsureFileExists失败", "path", gameAcfPath)
+		return &[]DownloadedMod{}
 	}
 
-	p.parse()
-
-	return p
-}
-
-type AppWorkshop struct {
-	AppID                  string
-	SizeOnDisk             string
-	NeedsUpdate            string
-	NeedsDownload          string
-	TimeLastUpdated        string
-	TimeLastAppRan         string
-	LastBuildID            string
-	WorkshopItemsInstalled []ItemInstalled
-	WorkshopItemDetails    []ItemDetails
-}
-
-type ItemInstalled struct {
-	ID          string
-	Size        string
-	TimeUpdated string
-	Manifest    string
-}
-
-type ItemDetails struct {
-	ID                string
-	Manifest          string
-	TimeUpdated       string
-	TimeTouched       string
-	LatestTimeUpdated string
-	LatestManifest    string
-}
-
-func (p *Parser) parse() {
-	lines := strings.Split(p.content, "\n")
-	appWorkshop := &AppWorkshop{
-		WorkshopItemsInstalled: []ItemInstalled{},
-		WorkshopItemDetails:    []ItemDetails{},
+	gameAcfContent, err := os.ReadFile(gameAcfPath)
+	if err != nil {
+		return &[]DownloadedMod{}
 	}
-	var currentItemID string
-	var currentInstalled ItemInstalled
-	var currentDetail ItemDetails
-	inItemsInstalled := false
-	inItemDetails := false
 
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
+	if len(gameAcfContent) == 0 {
+		return &[]DownloadedMod{}
+	}
+
+	var downloadedMods []DownloadedMod
+	gameAcfParser := NewParser(string(gameAcfContent))
+	for _, mod := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
+		id, err := strconv.Atoi(mod.ID)
+		if err != nil {
+			id = 0
 		}
-
-		if strings.HasPrefix(line, "\"WorkshopItemsInstalled\"") {
-			inItemsInstalled = true
-			inItemDetails = false
-			continue
-		}
-		if strings.HasPrefix(line, "\"WorkshopItemDetails\"") {
-			inItemsInstalled = false
-			inItemDetails = true
-			continue
-		}
-		if inItemsInstalled || inItemDetails {
-			line = strings.ReplaceAll(line, "\"", "")
-			line = strings.ReplaceAll(line, "\t", "")
-			if line == "{" {
-				continue
-			}
-			if line == "}" {
-				continue
-			}
-
-			intRe := regexp.MustCompile(`^(\d+)$`)
-			intReMatches := intRe.FindStringSubmatch(line)
-			if intReMatches != nil {
-				currentItemID = intReMatches[1]
-				continue
-			}
-			if currentItemID != "" {
-				sizeRe := regexp.MustCompile(`^size(\d+)$`)
-				sizeReMatches := sizeRe.FindStringSubmatch(line)
-				if sizeReMatches != nil {
-					currentInstalled.Size = sizeReMatches[1]
-
-					continue
-				}
-
-				timeupdatedRe := regexp.MustCompile(`^timeupdated(\d+)$`)
-				timeupdatedReMatches := timeupdatedRe.FindStringSubmatch(line)
-				if timeupdatedReMatches != nil {
-					if inItemsInstalled {
-						currentInstalled.TimeUpdated = timeupdatedReMatches[1]
-					}
-					if inItemDetails {
-						currentDetail.TimeUpdated = timeupdatedReMatches[1]
-					}
-
-					continue
-				}
-
-				manifestRe := regexp.MustCompile(`^manifest(\d+)$`)
-				manifestReMatches := manifestRe.FindStringSubmatch(line)
-				if manifestReMatches != nil {
-					if inItemsInstalled {
-						currentInstalled.Manifest = manifestReMatches[1]
-						currentInstalled.ID = currentItemID
-						appWorkshop.WorkshopItemsInstalled = append(appWorkshop.WorkshopItemsInstalled, currentInstalled)
-						currentInstalled = ItemInstalled{}
-						currentItemID = ""
-					}
-					if inItemDetails {
-						currentDetail.Manifest = manifestReMatches[1]
-					}
-
-					continue
-				}
-
-				timetouchedRe := regexp.MustCompile(`^timetouched(\d+)$`)
-				timetouchedReMatches := timetouchedRe.FindStringSubmatch(line)
-				if timetouchedReMatches != nil {
-					currentDetail.TimeTouched = timetouchedReMatches[1]
-
-					continue
-				}
-
-				latestTimeupdatedRe := regexp.MustCompile(`^latest_timeupdated(\d+)$`)
-				latestTimeupdatedReMatches := latestTimeupdatedRe.FindStringSubmatch(line)
-				if latestTimeupdatedReMatches != nil {
-					currentDetail.LatestTimeUpdated = latestTimeupdatedReMatches[1]
-
-					continue
-				}
-
-				latestManifestRe := regexp.MustCompile(`^latest_manifest(\d+)$`)
-				latestManifestReMatches := latestManifestRe.FindStringSubmatch(line)
-				if latestManifestReMatches != nil {
-					currentDetail.LatestManifest = latestManifestReMatches[1]
-					currentDetail.ID = currentItemID
-					appWorkshop.WorkshopItemDetails = append(appWorkshop.WorkshopItemDetails, currentDetail)
-					currentDetail = ItemDetails{}
-					currentItemID = ""
-
-					continue
-				}
-
-			}
-		} else {
-			line = strings.ReplaceAll(line, "\"", "")
-			line = strings.ReplaceAll(line, "\t", "")
-
-			appidRe := regexp.MustCompile(`^appid(\d+)$`)
-			appidReMatches := appidRe.FindStringSubmatch(line)
-			if appidReMatches != nil {
-				appWorkshop.AppID = appidReMatches[1]
-
-				continue
-			}
-
-			sizeOnDiskRe := regexp.MustCompile(`^SizeOnDisk(\d+)$`)
-			sizeOnDiskReMatches := sizeOnDiskRe.FindStringSubmatch(line)
-			if sizeOnDiskReMatches != nil {
-				appWorkshop.SizeOnDisk = sizeOnDiskReMatches[1]
-
-				continue
-			}
-
-			needsUpdateRe := regexp.MustCompile(`^NeedsUpdate(\d+)$`)
-			needsUpdateReMatches := needsUpdateRe.FindStringSubmatch(line)
-			if needsUpdateReMatches != nil {
-				appWorkshop.NeedsUpdate = needsUpdateReMatches[1]
-
-				continue
-			}
-
-			needsDownloadRe := regexp.MustCompile(`^NeedsDownload(\d+)$`)
-			needsDownloadReMatches := needsDownloadRe.FindStringSubmatch(line)
-			if needsDownloadReMatches != nil {
-				appWorkshop.NeedsDownload = needsDownloadReMatches[1]
-
-				continue
-			}
-
-			timeLastUpdatedRe := regexp.MustCompile(`^TimeLastUpdated(\d+)$`)
-			timeLastUpdatedReMatches := timeLastUpdatedRe.FindStringSubmatch(line)
-			if timeLastUpdatedReMatches != nil {
-				appWorkshop.TimeLastUpdated = timeLastUpdatedReMatches[1]
-
-				continue
-			}
-
-			timeLastAppRanRe := regexp.MustCompile(`^TimeLastAppRan(\d+)$`)
-			timeLastAppRanReMatches := timeLastAppRanRe.FindStringSubmatch(line)
-			if timeLastAppRanReMatches != nil {
-				appWorkshop.TimeLastAppRan = timeLastAppRanReMatches[1]
-
-				continue
-			}
-
-			lastBuildIDRe := regexp.MustCompile(`^LastBuildID(\d+)$`)
-			lastBuildIDReMatches := lastBuildIDRe.FindStringSubmatch(line)
-			if lastBuildIDReMatches != nil {
-				appWorkshop.LastBuildID = lastBuildIDReMatches[1]
-
-				continue
-			}
-		}
+		downloadedMods = append(downloadedMods, DownloadedMod{
+			ID:        id,
+			LocalSize: mod.Size,
+		})
 	}
 
-	p.AppWorkshop = appWorkshop
-}
-
-func (p *Parser) FileContent() string {
-	var (
-		workshopItemsInstalled string
-		workshopItemDetails    string
-	)
-
-	for _, itemInstalled := range p.AppWorkshop.WorkshopItemsInstalled {
-		workshopItemsInstalled = workshopItemsInstalled + generateItemInstalled(itemInstalled)
-	}
-
-	for _, itemDetails := range p.AppWorkshop.WorkshopItemDetails {
-		workshopItemDetails = workshopItemDetails + generateItemDetails(itemDetails)
-	}
-
-	content := `"AppWorkshop"
-{
-	"appid"		"322330"
-	"SizeOnDisk"		"2071004"
-	"NeedsUpdate"		"0"
-	"NeedsDownload"		"0"
-	"TimeLastUpdated"		"0"
-	"TimeLastAppRan"		"0"
-	"LastBuildID"		"0"
-	"WorkshopItemsInstalled"
-	{
-` + workshopItemsInstalled + `
-	}
-	"WorkshopItemDetails"
-	{
-` + workshopItemDetails + `
-	}
-}`
-
-	return content
-}
-
-func generateItemInstalled(i ItemInstalled) string {
-	return `		"` + i.ID + `"
-		{
-			"size"		"` + i.Size + `"
-			"timeupdated"		"` + i.TimeUpdated + `"
-			"manifest"		"` + i.Manifest + `"
-		}
-`
-}
-
-func generateItemDetails(i ItemDetails) string {
-	return `		"` + i.ID + `"
-		{
-			"manifest"		"` + i.Manifest + `"
-			"timeupdated"		"` + i.TimeUpdated + `"
-			"timetouched"		"` + i.TimeTouched + `"
-			"latest_timeupdated"		"` + i.LatestTimeUpdated + `"
-			"latest_manifest"		"` + i.LatestManifest + `"
-		}
-`
+	return &downloadedMods
 }
