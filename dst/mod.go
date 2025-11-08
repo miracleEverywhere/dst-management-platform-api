@@ -58,7 +58,6 @@ func (g *Game) downloadMod(id int, ugc bool) error {
 		// 1. ugc mod 统一下载到 dmp_files/ugc, 也就是dmp_files/ugc/{cluster}/steamapps/workshop{appworkshop_322330.acf  content  downloads}
 		// 2. 下载完成后，将下载的mod文件全部移动至dst/ugc_mods/{cluster}/{worlds}/ 删除-复制
 		// 3. 读取游戏acf文件和dmp_files的acf文件，更新当前mod-id所对应的所有字段
-		// 4. 清理下载的临时文件，rm -rf dmp_files/ugc/{cluster}/*
 
 		// 1
 		downloadCmd := g.generateModDownloadCmd(id)
@@ -88,12 +87,6 @@ func (g *Game) downloadMod(id int, ugc bool) error {
 		if err != nil {
 			logger.Logger.Error("修改acf文件失败", "err", err)
 			return err
-		}
-
-		// 4
-		err = utils.RemoveDir(fmt.Sprintf("dmp_files/mods/ugc/%s", g.clusterName))
-		if err != nil {
-			logger.Logger.Warn("删除临时模组失败", "err", err)
 		}
 
 		return nil
@@ -183,11 +176,20 @@ func (g *Game) processAcf(id int) error {
 			}
 		}
 		if hasMod {
-			gameAcfParser.AppWorkshop.WorkshopItemsInstalled[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[0]
-			gameAcfParser.AppWorkshop.WorkshopItemDetails[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemDetails[0]
+			for index, mod := range dmpAcfParser.AppWorkshop.WorkshopItemsInstalled {
+				if strconv.Itoa(id) == mod.ID {
+					gameAcfParser.AppWorkshop.WorkshopItemsInstalled[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[index]
+					gameAcfParser.AppWorkshop.WorkshopItemDetails[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemDetails[index]
+				}
+			}
 		} else {
-			gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled, dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[0])
-			gameAcfParser.AppWorkshop.WorkshopItemDetails = append(gameAcfParser.AppWorkshop.WorkshopItemDetails, dmpAcfParser.AppWorkshop.WorkshopItemDetails[0])
+			for index, mod := range dmpAcfParser.AppWorkshop.WorkshopItemsInstalled {
+				if strconv.Itoa(id) == mod.ID {
+					gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled, dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[index])
+					gameAcfParser.AppWorkshop.WorkshopItemDetails = append(gameAcfParser.AppWorkshop.WorkshopItemDetails, dmpAcfParser.AppWorkshop.WorkshopItemDetails[index])
+				}
+			}
+
 		}
 
 		writtenContent = gameAcfParser.FileContent()

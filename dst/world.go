@@ -82,6 +82,16 @@ func (g *Game) worldUpStatus(id int) bool {
 }
 
 func (g *Game) startWorld(id int) error {
+	// 启动游戏后，删除mod临时下载目录
+	g.acfMutex.Lock()
+	defer g.acfMutex.Unlock()
+	defer func() {
+		err := utils.RemoveDir(fmt.Sprintf("dmp_files/mods/ugc/%s", g.clusterName))
+		if err != nil {
+			logger.Logger.Warn("删除临时模组失败", "err", err)
+		}
+	}()
+
 	var (
 		err   error
 		world *worldSaveData
