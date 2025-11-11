@@ -75,21 +75,9 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		return
 	}
 
-	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取房间失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Error("获取世界失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Error("获取房间设置失败", "err", err)
+		logger.Logger.Error("获取基本信息失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -111,21 +99,9 @@ func (h *Handler) downloadedModsGet(c *gin.Context) {
 		return
 	}
 
-	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取房间失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Error("获取世界失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Error("获取房间设置失败", "err", err)
+		logger.Logger.Error("获取基本信息失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -139,4 +115,35 @@ func (h *Handler) downloadedModsGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": downloadedMods})
+}
+
+func (h *Handler) settingGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID  int    `form:"roomID"`
+		WorldID int    `form:"worldID"`
+		ID      int    `json:"id"`
+		FileURL string `json:"file_url"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	options, err := game.GetModConfigureOptions(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
+	if err != nil {
+		logger.Logger.Error("获取模组设置失败")
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "success", "data": options})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": options})
 }

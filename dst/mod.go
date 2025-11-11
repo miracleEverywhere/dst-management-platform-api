@@ -51,7 +51,7 @@ func (g *Game) dsModsSetup() error {
 	return nil
 }
 
-func (g *Game) downloadMod(id int, ugc bool) error {
+func (g *Game) downloadMod(id int, ugc bool) {
 	var err error
 
 	if ugc {
@@ -65,33 +65,28 @@ func (g *Game) downloadMod(id int, ugc bool) error {
 		err = utils.BashCMD(downloadCmd)
 		if err != nil {
 			logger.Logger.Error("下载模组失败", "err", err)
-			return err
 		}
 
 		// 2
 		err = g.removeGameOldMod(id)
 		if err != nil {
 			logger.Logger.Warn("移动模组失败", "err", err)
-			return err
 		}
 		copyCmd := g.generateModCopyCmd(id)
 		logger.Logger.Debug(copyCmd)
 		err = utils.BashCMD(copyCmd)
 		if err != nil {
 			logger.Logger.Warn("移动模组失败", "err", err)
-			return err
 		}
 
 		// 3
 		err = g.processAcf(id)
 		if err != nil {
 			logger.Logger.Error("修改acf文件失败", "err", err)
-			return err
 		}
 
-		return nil
 	} else {
-		return nil
+
 	}
 }
 
@@ -155,7 +150,7 @@ func (g *Game) processAcf(id int) error {
 		return err
 	}
 
-	dmpAcfParser := NewParser(string(dmpAcfContent))
+	dmpAcfParser := NewAcfParser(string(dmpAcfContent))
 
 	var writtenContent string
 
@@ -164,7 +159,7 @@ func (g *Game) processAcf(id int) error {
 		writtenContent = dmpAcfParser.FileContent()
 	} else {
 		// 如果游戏mod目录含有acf文件，处理游戏acf文件
-		gameAcfParser := NewParser(string(gameAcfContent))
+		gameAcfParser := NewAcfParser(string(gameAcfContent))
 		var (
 			gameAcfTargetIndex int
 			hasMod             bool
@@ -237,7 +232,7 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	}
 
 	var downloadedMods []DownloadedMod
-	gameAcfParser := NewParser(string(gameAcfContent))
+	gameAcfParser := NewAcfParser(string(gameAcfContent))
 	for _, mod := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
 		id, err := strconv.Atoi(mod.ID)
 		if err != nil {
@@ -250,4 +245,84 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	}
 
 	return &downloadedMods
+}
+
+func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]ConfigurationOption, error) {
+	var modinfoLuaPath string
+	if g.room.ModInOne {
+		if ugc {
+			modinfoLuaPath = fmt.Sprintf("%s/%s/content/322330/%d/modinfo.lua", g.ugcPath, g.worldSaveData[0].WorldName, modID)
+		} else {
+			modinfoLuaPath = fmt.Sprintf("dst/mods/workshop-%d/modinfo.lua", modID)
+		}
+	} else {
+		if ugc {
+			var wi int
+			for index, world := range g.worldSaveData {
+				if worldID == world.ID {
+					wi = index
+					break
+				}
+			}
+			modinfoLuaPath = fmt.Sprintf("%s/%s/content/322330/%d/modinfo.lua", g.ugcPath, g.worldSaveData[wi].WorldName, modID)
+		} else {
+			modinfoLuaPath = fmt.Sprintf("dst/mods/workshop-%d/modinfo.lua", modID)
+		}
+	}
+
+	parser, err := NewModInfoParser(modinfoLuaPath)
+	if err != nil {
+		logger.Logger.Error("读取modinfo文件失败", "err", err)
+		return parser.Configuration, err
+	}
+
+	err = parser.Parse(g.lang)
+	if err != nil {
+		logger.Logger.Error("解析modinfo文件失败", "err", err)
+		return parser.Configuration, err
+	}
+
+	return parser.Configuration, nil
+}
+
+func (g *Game) modEnable(worldID, modID int, ugc bool) (string, error) {
+	options, err := g.getModConfigureOptions(worldID, modID, ugc)
+	if err != nil {
+		return "", err
+	}
+
+	newModConfig := &ModORConfig{
+		ConfigurationOptions: nil,
+		Enabled:              true,
+	}
+	for _, option := range *options {
+		key := option.Name
+		value := option.Default
+		newModConfig.ConfigurationOptions[key] = value
+	}
+
+	modORParser := NewModORParser()
+	defer modORParser.close()
+
+	var modORContent string
+	if g.room.ModInOne {
+		modORContent = g.room.ModData
+	} else {
+		for _, world := range g.worldSaveData {
+			if world.ID == worldID {
+				modORContent = world.ModData
+				break
+			}
+		}
+	}
+
+	mods, err := modORParser.Parse(modORContent)
+	if err != nil {
+		return "", err
+	}
+
+	mods.AddModConfig(fmt.Sprintf("workshop-%d", modID), newModConfig)
+	newModORContent := mods.ToLuaCode()
+
+	return newModORContent, nil
 }

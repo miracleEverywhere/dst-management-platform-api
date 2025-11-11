@@ -33,3 +33,12 @@ func (g *Game) DownloadMod(id int, ugc bool) {
 func (g *Game) GetDownloadedMods() *[]DownloadedMod {
 	return g.getDownloadedMods()
 }
+
+func (g *Game) GetModConfigureOptions(worldID, modID int, ugc bool) (*[]ConfigurationOption, error) {
+	return g.getModConfigureOptions(worldID, modID, ugc)
+}
+
+// ModEnable 保存文件，返回给handler函数保存到数据库
+func (g *Game) ModEnable(worldID, modID int, ugc bool) (string, error) {
+	return g.modEnable(worldID, modID, ugc)
+}
