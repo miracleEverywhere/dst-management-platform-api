@@ -3,6 +3,7 @@ package dst
 import (
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
+	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
@@ -378,23 +379,6 @@ func generateItemDetails(i ItemDetails) string {
 `
 }
 
-func needDoubleQuotes(s string) bool {
-	if len(s) == 0 {
-		return true
-	}
-
-	// 只有数字
-	onlyNumRe := regexp.MustCompile(`^\d+$`)
-	if onlyNumRe.MatchString(s) {
-		return true
-	}
-
-	// 正常变量
-	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
-
-	return re.MatchString(s)
-}
-
 // ============== //
 // modinfo.lua
 // ============== //
@@ -518,6 +502,7 @@ func (mf *ModInfoParser) Parse(lang string) error {
 
 	// 加载并执行 Lua 脚本
 	if err := L.DoString(mf.ModInfoLua); err != nil {
+		logger.Logger.Debug("执行modinfo.lua失败", "err", err)
 		return err
 	}
 
@@ -606,9 +591,23 @@ func (p *ModORParser) close() {
 }
 
 // Parse 解析Lua配置文件内容
-func (p *ModORParser) Parse(luaContent string) (ModORCollection, error) {
+func (p *ModORParser) Parse(luaContent, lang string) (ModORCollection, error) {
 	// 执行Lua脚本
+	p.L.SetGlobal("locale", lua.LString(lang))
+	// insight模组需要ChooseTranslationTable才能返回i18n
+	p.L.SetGlobal("ChooseTranslationTable", p.L.NewFunction(func(L *lua.LState) int {
+		tbl := L.ToTable(1)
+		CTT := tbl.RawGetString(lang)
+		if CTT != lua.LNil {
+			L.Push(CTT)
+		} else {
+			L.Push(tbl.RawGetInt(1))
+		}
+		return 1
+	}))
+
 	if err := p.L.DoString(luaContent); err != nil {
+		logger.Logger.Debug("这里出问题?", "err", err)
 		return nil, err
 	}
 
@@ -849,9 +848,9 @@ func (mc ModORCollection) ToLuaCode() string {
 			value := config.ConfigurationOptions[key]
 			if j == len(optionKeys)-1 {
 				// 最后一个配置选项不加逗号
-				builder.WriteString(fmt.Sprintf("      %s=%s\n", key, formatLuaValue(value)))
+				builder.WriteString(fmt.Sprintf("      %s=%s\n", validLuaKey(key), formatLuaValue(value)))
 			} else {
-				builder.WriteString(fmt.Sprintf("      %s=%s,\n", key, formatLuaValue(value)))
+				builder.WriteString(fmt.Sprintf("      %s=%s,\n", validLuaKey(key), formatLuaValue(value)))
 			}
 		}
 
@@ -939,4 +938,24 @@ func isValidLuaIdentifier(s string) bool {
 	}
 
 	return true
+}
+
+func validLuaKey(s string) string {
+	if len(s) == 0 {
+		return fmt.Sprintf("[\"\"]")
+	}
+
+	// 数字开头
+	numRe := regexp.MustCompile(`^\d`)
+	if numRe.MatchString(s) {
+		return fmt.Sprintf("[\"%s\"]", s)
+	}
+
+	// 正常变量
+	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
+	if re.MatchString(s) {
+		return fmt.Sprintf("[\"%s\"]", s)
+	}
+
+	return s
 }

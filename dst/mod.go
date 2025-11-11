@@ -285,14 +285,15 @@ func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]Configur
 	return parser.Configuration, nil
 }
 
-func (g *Game) modEnable(worldID, modID int, ugc bool) (string, error) {
+func (g *Game) modEnable(worldID, modID int, ugc bool) error {
 	options, err := g.getModConfigureOptions(worldID, modID, ugc)
 	if err != nil {
-		return "", err
+		logger.Logger.Debug("这里出问题?", "err", err)
+		return err
 	}
 
 	newModConfig := &ModORConfig{
-		ConfigurationOptions: nil,
+		ConfigurationOptions: make(map[string]interface{}),
 		Enabled:              true,
 	}
 	for _, option := range *options {
@@ -308,21 +309,49 @@ func (g *Game) modEnable(worldID, modID int, ugc bool) (string, error) {
 	if g.room.ModInOne {
 		modORContent = g.room.ModData
 	} else {
-		for _, world := range g.worldSaveData {
-			if world.ID == worldID {
-				modORContent = world.ModData
-				break
-			}
+		world, err := g.getWorldByID(worldID)
+		if err != nil {
+			logger.Logger.Debug("这里出问题?", "err", err)
+			return err
 		}
+		modORContent = world.ModData
 	}
 
-	mods, err := modORParser.Parse(modORContent)
+	mods, err := modORParser.Parse(modORContent, g.lang)
 	if err != nil {
-		return "", err
+		logger.Logger.Debug("这里出问题?", "err", err)
+		return err
 	}
 
 	mods.AddModConfig(fmt.Sprintf("workshop-%d", modID), newModConfig)
 	newModORContent := mods.ToLuaCode()
 
-	return newModORContent, nil
+	if g.room.ModInOne {
+		g.room.ModData = newModORContent
+	} else {
+		for i := range g.worldSaveData {
+			worlds := *g.worlds
+			worlds[i].ModData = newModORContent
+		}
+	}
+
+	return g.saveMods()
+}
+
+func (g *Game) saveMods() error {
+	var modContent string
+	for _, world := range g.worldSaveData {
+		if g.room.ModInOne {
+			modContent = g.room.ModData
+		} else {
+			modContent = world.ModData
+		}
+
+		err := utils.TruncAndWriteFile(world.modOverridesPath, modContent)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

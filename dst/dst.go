@@ -39,6 +39,6 @@ func (g *Game) GetModConfigureOptions(worldID, modID int, ugc bool) (*[]Configur
 }
 
 // ModEnable 保存文件，返回给handler函数保存到数据库
-func (g *Game) ModEnable(worldID, modID int, ugc bool) (string, error) {
+func (g *Game) ModEnable(worldID, modID int, ugc bool) error {
 	return g.modEnable(worldID, modID, ugc)
 }
