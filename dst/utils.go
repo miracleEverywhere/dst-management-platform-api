@@ -848,9 +848,9 @@ func (mc ModORCollection) ToLuaCode() string {
 			value := config.ConfigurationOptions[key]
 			if j == len(optionKeys)-1 {
 				// 最后一个配置选项不加逗号
-				builder.WriteString(fmt.Sprintf("      %s=%s\n", validLuaKey(key), formatLuaValue(value)))
+				builder.WriteString(fmt.Sprintf("      %s=%s\n", formatLuaKey(key), formatLuaValue(value)))
 			} else {
-				builder.WriteString(fmt.Sprintf("      %s=%s,\n", validLuaKey(key), formatLuaValue(value)))
+				builder.WriteString(fmt.Sprintf("      %s=%s,\n", formatLuaKey(key), formatLuaValue(value)))
 			}
 		}
 
@@ -940,7 +940,7 @@ func isValidLuaIdentifier(s string) bool {
 	return true
 }
 
-func validLuaKey(s string) string {
+func formatLuaKey(s string) string {
 	if len(s) == 0 {
 		return fmt.Sprintf("[\"\"]")
 	}
