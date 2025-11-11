@@ -304,15 +304,33 @@ function change_port() {
     echo_yellow "当前端口: ${PORT}"
 
     local new_port
+    local min_port=1024
 
-    read -rp "请输入新端口号 (1024-65535): " new_port
+    # 检查是否为root用户
+    if [[ "${USER}" == "root" ]]; then
+        min_port=1
+        echo_cyan "当前为root权限，可以使用 1-65535 范围内的端口"
+        read -rp "请输入新端口号 (1-65535): " new_port
+    else
+        echo_yellow "当前为非root权限，只能使用 1024-65535 范围内的端口"
+        echo_yellow "如需使用 1-1023 端口，请使用root用户执行此脚本"
+        read -rp "请输入新端口号 (1024-65535): " new_port
+    fi
 
-    if [[ "$new_port" =~ ^[0-9]+$ && "$new_port" -ge 1024 && "$new_port" -le 65535 ]]; then
+    if [[ "$new_port" =~ ^[0-9]+$ && "$new_port" -ge "$min_port" && "$new_port" -le 65535 ]]; then
 
         if [[ "$new_port" -eq "$PORT" ]]; then
             echo_yellow "新端口与当前端口相同，无需修改"
             sleep 2
             return 0
+        fi
+
+        # 非root用户尝试使用系统端口时给出警告
+        if [[ "${USER}" != "root" && "$new_port" -lt 1024 ]]; then
+            echo_red "错误：端口 ${new_port} 为系统保留端口（1-1023）"
+            echo_yellow "非root用户无法使用此端口，请使用 1024-65535 范围内的端口"
+            sleep 2
+            return 1
         fi
 
         local port_in_use
@@ -339,7 +357,11 @@ function change_port() {
         sleep 3
         return 0
     else
-        echo_red "无效端口号！请输入 1024-65535 范围内的数字。"
+        if [[ "${USER}" == "root" ]]; then
+            echo_red "无效端口号！请输入 1-65535 范围内的数字。"
+        else
+            echo_red "无效端口号！请输入 1024-65535 范围内的数字。"
+        fi
         sleep 2
         return 1
     fi
