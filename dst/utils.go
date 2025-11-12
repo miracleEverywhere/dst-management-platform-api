@@ -33,6 +33,8 @@ type Game struct {
 	playerMutex sync.Mutex
 	// acf文件锁
 	acfMutex sync.Mutex
+	// mod 文件、map锁
+	modMutex sync.Mutex
 }
 
 func NewGameController(room *models.Room, worlds *[]models.World, setting *models.RoomSetting, lang string) *Game {
