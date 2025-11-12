@@ -14,8 +14,11 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			mod.GET("/search", middleware.MWtoken(), modSearchGet)
 			mod.POST("/download", middleware.MWtoken(), h.downloadPost)
 			mod.GET("/downloaded", middleware.MWtoken(), h.downloadedModsGet)
-			mod.POST("/add/enable", middleware.MWtoken(), h.addEnableGet)
-			mod.GET("/setting", middleware.MWtoken(), h.settingGet)
+			mod.POST("/add/enable", middleware.MWtoken(), h.addEnablePost)
+			mod.GET("/setting/mod_config_struct", middleware.MWtoken(), h.settingModConfigStructGet)
+			mod.GET("/setting/mod_config_value", middleware.MWtoken(), h.settingModConfigValueGet)
+			mod.PUT("/setting/mod_config_value", middleware.MWtoken(), h.settingModConfigValuePut)
+			mod.GET("/setting/enabled", middleware.MWtoken(), h.getEnabledModsGet)
 		}
 	}
 }

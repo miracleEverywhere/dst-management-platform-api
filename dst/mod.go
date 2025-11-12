@@ -285,6 +285,38 @@ func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]Configur
 	return parser.Configuration, nil
 }
 
+func (g *Game) getModConfigureOptionsValues(worldID, modID int, ugc bool) (*ModORConfig, error) {
+	modORParser := NewModORParser()
+	defer modORParser.close()
+
+	var modORContent string
+	if g.room.ModInOne {
+		modORContent = g.room.ModData
+	} else {
+		world, err := g.getWorldByID(worldID)
+		if err != nil {
+			logger.Logger.Debug("这里出问题?", "err", err)
+			return &ModORConfig{}, err
+		}
+		modORContent = world.ModData
+	}
+
+	mods, err := modORParser.Parse(modORContent, g.lang)
+	if err != nil {
+		logger.Logger.Debug("这里出问题?", "err", err)
+		return &ModORConfig{}, err
+	}
+
+	for key, mod := range mods {
+		modKey := fmt.Sprintf("workshop-%d", modID)
+		if key == modKey {
+			return mod, nil
+		}
+	}
+
+	return &ModORConfig{}, fmt.Errorf("在modoverrides.lua文件中没有找到该mod的配置")
+}
+
 func (g *Game) modEnable(worldID, modID int, ugc bool) error {
 	options, err := g.getModConfigureOptions(worldID, modID, ugc)
 	if err != nil {
@@ -354,4 +386,84 @@ func (g *Game) saveMods() error {
 	}
 
 	return nil
+}
+
+func (g *Game) modConfigureOptionsValuesChange(worldID, modID int, modConfig *ModORConfig) error {
+	g.modMutex.Lock()
+	defer g.modMutex.Unlock()
+
+	modORParser := NewModORParser()
+	defer modORParser.close()
+
+	var modORContent string
+	if g.room.ModInOne {
+		modORContent = g.room.ModData
+	} else {
+		world, err := g.getWorldByID(worldID)
+		if err != nil {
+			logger.Logger.Debug("这里出问题?", "err", err)
+			return err
+		}
+		modORContent = world.ModData
+	}
+
+	mods, err := modORParser.Parse(modORContent, g.lang)
+	if err != nil {
+		logger.Logger.Debug("这里出问题?", "err", err)
+		return err
+	}
+
+	modKey := fmt.Sprintf("workshop-%d", modID)
+
+	mods[modKey] = modConfig
+
+	newModORContent := mods.ToLuaCode()
+
+	if g.room.ModInOne {
+		g.room.ModData = newModORContent
+	} else {
+		for i := range g.worldSaveData {
+			worlds := *g.worlds
+			worlds[i].ModData = newModORContent
+		}
+	}
+
+	return g.saveMods()
+}
+
+func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
+	modORParser := NewModORParser()
+	defer modORParser.close()
+
+	var modORContent string
+	if g.room.ModInOne {
+		modORContent = g.room.ModData
+	} else {
+		world, err := g.getWorldByID(worldID)
+		if err != nil {
+			logger.Logger.Debug("这里出问题?", "err", err)
+			return []DownloadedMod{}, err
+		}
+		modORContent = world.ModData
+	}
+
+	mods, err := modORParser.Parse(modORContent, g.lang)
+	if err != nil {
+		logger.Logger.Debug("这里出问题?", "err", err)
+		return []DownloadedMod{}, err
+	}
+
+	var modsID []DownloadedMod
+	for k := range mods {
+		modIDSlice := strings.Split(k, "-")
+		modID, err := strconv.Atoi(modIDSlice[1])
+		if err != nil {
+			modID = -1
+		}
+		modsID = append(modsID, DownloadedMod{
+			ID: modID,
+		})
+	}
+
+	return modsID, nil
 }
