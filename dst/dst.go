@@ -49,11 +49,17 @@ func (g *Game) ModConfigureOptionsValuesChange(worldID, modID int, modConfig *Mo
 	return g.modConfigureOptionsValuesChange(worldID, modID, modConfig)
 }
 
-// ModEnable 保存文件，返回给handler函数保存到数据库
+// ModEnable 启用mod，保存文件，返回给handler函数保存到数据库
 func (g *Game) ModEnable(worldID, modID int, ugc bool) error {
 	return g.modEnable(worldID, modID, ugc)
 }
 
+// GetEnabledMods 获取启用的mod列表
 func (g *Game) GetEnabledMods(worldID int) ([]DownloadedMod, error) {
 	return g.getEnabledMods(worldID)
+}
+
+// ModDisable 禁用mod，保存文件，返回给handler函数保存到数据库
+func (g *Game) ModDisable(modID int) error {
+	return g.modDisable(modID)
 }

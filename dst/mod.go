@@ -318,10 +318,19 @@ func (g *Game) getModConfigureOptionsValues(worldID, modID int, ugc bool) (*ModO
 }
 
 func (g *Game) modEnable(worldID, modID int, ugc bool) error {
-	options, err := g.getModConfigureOptions(worldID, modID, ugc)
-	if err != nil {
-		logger.Logger.Debug("这里出问题?", "err", err)
-		return err
+	var (
+		err     error
+		options *[]ConfigurationOption
+	)
+	// 区分是否为禁本地配置
+	if modID == 0 {
+		options = &[]ConfigurationOption{}
+	} else {
+		options, err = g.getModConfigureOptions(worldID, modID, ugc)
+		if err != nil {
+			logger.Logger.Debug("这里出问题?", "err", err)
+			return err
+		}
 	}
 
 	newModConfig := &ModORConfig{
@@ -340,46 +349,62 @@ func (g *Game) modEnable(worldID, modID int, ugc bool) error {
 	var modORContent string
 	if g.room.ModInOne {
 		modORContent = g.room.ModData
-	} else {
-		world, err := g.getWorldByID(worldID)
-		if err != nil {
-			logger.Logger.Debug("这里出问题?", "err", err)
-			return err
+		mods := make(ModORCollection)
+		if modORContent != "" {
+			mods, err = modORParser.Parse(modORContent, g.lang)
+			if err != nil {
+				logger.Logger.Debug("这里出问题?", "err", err)
+				return err
+			}
 		}
-		modORContent = world.ModData
-	}
-
-	mods, err := modORParser.Parse(modORContent, g.lang)
-	if err != nil {
-		logger.Logger.Debug("这里出问题?", "err", err)
-		return err
-	}
-
-	mods.AddModConfig(fmt.Sprintf("workshop-%d", modID), newModConfig)
-	newModORContent := mods.ToLuaCode()
-
-	if g.room.ModInOne {
+		// 区分是否为禁本地配置
+		if modID == 0 {
+			mods.AddModConfig(fmt.Sprintf("client_mods_disabled"), newModConfig)
+		} else {
+			mods.AddModConfig(fmt.Sprintf("workshop-%d", modID), newModConfig)
+		}
+		newModORContent := mods.ToLuaCode()
 		g.room.ModData = newModORContent
 	} else {
-		for i := range g.worldSaveData {
-			worlds := *g.worlds
+		// 为保留每个世界的独立模组配置，需要分开处理，增加指定的mod，并修改db，最后返回
+		worlds := *g.worlds
+		for i, world := range g.worldSaveData {
+			modORContent = world.ModData
+			mods := make(ModORCollection)
+			if modORContent != "" {
+				mods, err = modORParser.Parse(modORContent, g.lang)
+				if err != nil {
+					logger.Logger.Debug("这里出问题?", "err", err)
+					return err
+				}
+			}
+
+			// 区分是否为禁本地配置
+			if modID == 0 {
+				mods.AddModConfig(fmt.Sprintf("client_mods_disabled"), newModConfig)
+			} else {
+				mods.AddModConfig(fmt.Sprintf("workshop-%d", modID), newModConfig)
+			}
+			newModORContent := mods.ToLuaCode()
+
 			worlds[i].ModData = newModORContent
 		}
 	}
 
+	// 统一保存文件
 	return g.saveMods()
 }
 
 func (g *Game) saveMods() error {
 	var modContent string
-	for _, world := range g.worldSaveData {
+
+	for idx, world := range *g.worlds {
 		if g.room.ModInOne {
 			modContent = g.room.ModData
 		} else {
 			modContent = world.ModData
 		}
-
-		err := utils.TruncAndWriteFile(world.modOverridesPath, modContent)
+		err := utils.TruncAndWriteFile(g.worldSaveData[idx].modOverridesPath, modContent)
 		if err != nil {
 			return err
 		}
@@ -424,7 +449,9 @@ func (g *Game) modConfigureOptionsValuesChange(worldID, modID int, modConfig *Mo
 	} else {
 		for i := range g.worldSaveData {
 			worlds := *g.worlds
-			worlds[i].ModData = newModORContent
+			if worlds[i].ID == worldID {
+				worlds[i].ModData = newModORContent
+			}
 		}
 	}
 
@@ -447,6 +474,10 @@ func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
 		modORContent = world.ModData
 	}
 
+	if modORContent == "" {
+		return []DownloadedMod{}, nil
+	}
+
 	mods, err := modORParser.Parse(modORContent, g.lang)
 	if err != nil {
 		logger.Logger.Debug("这里出问题?", "err", err)
@@ -456,9 +487,15 @@ func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
 	var modsID []DownloadedMod
 	for k := range mods {
 		modIDSlice := strings.Split(k, "-")
-		modID, err := strconv.Atoi(modIDSlice[1])
-		if err != nil {
-			modID = -1
+		var modID int
+		if len(modIDSlice) < 2 {
+			// 禁本地配置
+			modID = 0
+		} else {
+			modID, err = strconv.Atoi(modIDSlice[1])
+			if err != nil {
+				modID = 0
+			}
 		}
 		modsID = append(modsID, DownloadedMod{
 			ID: modID,
@@ -466,4 +503,53 @@ func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
 	}
 
 	return modsID, nil
+}
+
+func (g *Game) modDisable(modID int) error {
+	modORParser := NewModORParser()
+	defer modORParser.close()
+
+	var modORContent string
+	if g.room.ModInOne {
+		modORContent = g.room.ModData
+		mods, err := modORParser.Parse(modORContent, g.lang)
+		if err != nil {
+			logger.Logger.Debug("这里出问题?", "err", err)
+			return err
+		}
+		// 区分是否为禁本地配置
+		if modID == 0 {
+			delete(mods, fmt.Sprintf("client_mods_disabled"))
+		} else {
+			delete(mods, fmt.Sprintf("workshop-%d", modID))
+		}
+
+		newModORContent := mods.ToLuaCode()
+
+		g.room.ModData = newModORContent
+	} else {
+		// 为保留每个世界的独立模组配置，需要分开处理，删除指定的mod，并修改db，最后返回
+		worlds := *g.worlds
+		for i, world := range g.worldSaveData {
+			modORContent = world.ModData
+			mods, err := modORParser.Parse(modORContent, g.lang)
+			if err != nil {
+				logger.Logger.Debug("这里出问题?", "err", err)
+				return err
+			}
+
+			// 区分是否为禁本地配置
+			if modID == 0 {
+				delete(mods, fmt.Sprintf("client_mods_disabled"))
+			} else {
+				delete(mods, fmt.Sprintf("workshop-%d", modID))
+			}
+
+			newModORContent := mods.ToLuaCode()
+
+			worlds[i].ModData = newModORContent
+		}
+	}
+
+	return g.saveMods()
 }

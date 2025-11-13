@@ -25,7 +25,26 @@ func NewExtendedI18n() *ExtendedI18n {
 	}
 
 	i.ZH["downloading"] = "开始下载模组"
+	i.ZH["mod configuration options error"] = "获取模组配置信息失败"
+	i.ZH["mod configuration values error"] = "获取模组配置失败"
+	i.ZH["modify mod configuration values error"] = "修改模组配置失败"
+	i.ZH["modify mod configuration values success"] = "修改模组配置成功"
+	i.ZH["mod enable fail"] = "模组启用失败"
+	i.ZH["mod enable success"] = "模组启用成功"
+	i.ZH["mod disable fail"] = "模组禁用失败"
+	i.ZH["mod disable success"] = "模组禁用成功"
+	i.ZH["get enabled mod fail"] = "获取启用模组失败"
+
 	i.EN["downloading"] = "Downloading Mod"
+	i.EN["mod configuration options error"] = "Generate Mod Configuration Options Error"
+	i.EN["mod configuration values error"] = "Generate Mod Configurations Error"
+	i.EN["modify mod configuration values error"] = "Modify Mod Configuration Error"
+	i.EN["modify mod configuration values success"] = "Modify Mod Configuration Success"
+	i.EN["mod enable fail"] = "Mod Enable Fail"
+	i.EN["mod enable success"] = "Mod Enable Success"
+	i.EN["mod disable fail"] = "Mod Disable Fail"
+	i.EN["mod disable success"] = "Mod Disable Success"
+	i.EN["get enabled mod fail"] = "Get Enabled Mods Fail"
 
 	return i
 }

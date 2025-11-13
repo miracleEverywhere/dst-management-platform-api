@@ -54,7 +54,7 @@ func main() {
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	dashboard.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	platform.NewHandler(userDao, systemDao).RegisterRoutes(r)
+	platform.NewHandler(userDao, roomDao, worldDao, systemDao).RegisterRoutes(r)
 
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(static.ServeEmbed("dist", EmbedFS))
