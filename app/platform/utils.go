@@ -8,12 +8,16 @@ import (
 
 type Handler struct {
 	userDao   *dao.UserDAO
+	roomDao   *dao.RoomDAO
+	worldDao  *dao.WorldDAO
 	systemDao *dao.SystemDAO
 }
 
-func NewHandler(userDao *dao.UserDAO, systemDao *dao.SystemDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, systemDao *dao.SystemDAO) *Handler {
 	return &Handler{
 		userDao:   userDao,
+		roomDao:   roomDao,
+		worldDao:  worldDao,
 		systemDao: systemDao,
 	}
 }

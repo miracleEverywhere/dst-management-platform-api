@@ -225,6 +225,7 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 
 	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
 	for index, mod := range *mods {
+		logger.Logger.Debug(fmt.Sprintf("mod id %d", mod.ID))
 		url = url + fmt.Sprintf("&publishedfileids[%d]=%d", index, mod.ID)
 	}
 

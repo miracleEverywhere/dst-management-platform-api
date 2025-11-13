@@ -142,7 +142,7 @@ func (h *Handler) settingModConfigStructGet(c *gin.Context) {
 	options, err := game.GetModConfigureOptions(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
 	if err != nil {
 		logger.Logger.Error("获取模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": options})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod configuration options error"), "data": options})
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *Handler) settingModConfigValueGet(c *gin.Context) {
 	options, err := game.GetModConfigureOptionsValues(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
 	if err != nil {
 		logger.Logger.Error("获取模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": options})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod configuration values error"), "data": options})
 		return
 	}
 
@@ -206,7 +206,7 @@ func (h *Handler) settingModConfigValuePut(c *gin.Context) {
 	err = game.ModConfigureOptionsValuesChange(reqForm.WorldID, reqForm.ID, &reqForm.ModORConfig)
 	if err != nil {
 		logger.Logger.Error("修改模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "modify mod configuration values error"), "data": nil})
 		return
 	}
 
@@ -224,7 +224,7 @@ func (h *Handler) settingModConfigValuePut(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "modify mod configuration values success"), "data": nil})
 }
 
 func (h *Handler) addEnablePost(c *gin.Context) {
@@ -252,7 +252,7 @@ func (h *Handler) addEnablePost(c *gin.Context) {
 	err = game.ModEnable(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
 	if err != nil {
 		logger.Logger.Error("模组启用失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod enable fail"), "data": nil})
 		return
 	}
 
@@ -270,7 +270,52 @@ func (h *Handler) addEnablePost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "mod enable success"), "data": nil})
+}
+
+func (h *Handler) addDisablePost(c *gin.Context) {
+	type ReqForm struct {
+		RoomID  int `json:"roomID"`
+		WorldID int `json:"worldID"`
+		ID      int `json:"id"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	err = game.ModDisable(reqForm.ID)
+	if err != nil {
+		logger.Logger.Error("模组禁用失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod disable fail"), "data": nil})
+		return
+	}
+
+	err = h.roomDao.UpdateRoom(room)
+	if err != nil {
+		logger.Logger.Error("更新房间失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	err = h.worldDao.UpdateWorlds(worlds)
+	if err != nil {
+		logger.Logger.Error("更新房间失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "mod disable success"), "data": nil})
 }
 
 func (h *Handler) getEnabledModsGet(c *gin.Context) {
@@ -296,7 +341,7 @@ func (h *Handler) getEnabledModsGet(c *gin.Context) {
 	modsID, err := game.GetEnabledMods(reqForm.WorldID)
 	if err != nil {
 		logger.Logger.Error("获取模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "fail", "data": modsID})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get enabled mod fail"), "data": modsID})
 		return
 	}
 

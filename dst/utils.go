@@ -594,20 +594,6 @@ func (p *ModORParser) close() {
 
 // Parse 解析Lua配置文件内容
 func (p *ModORParser) Parse(luaContent, lang string) (ModORCollection, error) {
-	// 执行Lua脚本
-	p.L.SetGlobal("locale", lua.LString(lang))
-	// insight模组需要ChooseTranslationTable才能返回i18n
-	p.L.SetGlobal("ChooseTranslationTable", p.L.NewFunction(func(L *lua.LState) int {
-		tbl := L.ToTable(1)
-		CTT := tbl.RawGetString(lang)
-		if CTT != lua.LNil {
-			L.Push(CTT)
-		} else {
-			L.Push(tbl.RawGetInt(1))
-		}
-		return 1
-	}))
-
 	if err := p.L.DoString(luaContent); err != nil {
 		logger.Logger.Debug("这里出问题?", "err", err)
 		return nil, err
@@ -833,7 +819,12 @@ func (mc ModORCollection) ToLuaCode() string {
 
 	// 处理每个mod配置
 	for i, workshopID := range workshopIDs {
-		builder.WriteString(fmt.Sprintf("  [\"%s\"]={\n", workshopID))
+		// 处理禁本地配置
+		if workshopID == "client_mods_disabled" {
+			builder.WriteString(fmt.Sprintf("  client_mods_disabled={\n"))
+		} else {
+			builder.WriteString(fmt.Sprintf("  [\"%s\"]={\n", workshopID))
+		}
 		config := mc[workshopID]
 
 		builder.WriteString("    configuration_options={\n")

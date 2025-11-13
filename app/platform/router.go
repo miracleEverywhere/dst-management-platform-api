@@ -11,7 +11,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		platform := v.Group("platform")
 		{
-			platform.GET("/status", middleware.MWtoken(), h.statusGet)
+			platform.GET("/overview", middleware.MWtoken(), h.overviewGet)
 		}
 	}
 }

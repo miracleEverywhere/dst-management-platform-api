@@ -15,6 +15,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			mod.POST("/download", middleware.MWtoken(), h.downloadPost)
 			mod.GET("/downloaded", middleware.MWtoken(), h.downloadedModsGet)
 			mod.POST("/add/enable", middleware.MWtoken(), h.addEnablePost)
+			mod.POST("/setting/disable", middleware.MWtoken(), h.addDisablePost)
 			mod.GET("/setting/mod_config_struct", middleware.MWtoken(), h.settingModConfigStructGet)
 			mod.GET("/setting/mod_config_value", middleware.MWtoken(), h.settingModConfigValueGet)
 			mod.PUT("/setting/mod_config_value", middleware.MWtoken(), h.settingModConfigValuePut)
