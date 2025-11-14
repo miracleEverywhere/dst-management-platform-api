@@ -4,6 +4,8 @@ const Version = "v3.0.0"
 
 const ApiVersion = "v3"
 
+const HttpTimeout = 30
+
 const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
 const DSTLocalVersionPath = "dst/version.txt"

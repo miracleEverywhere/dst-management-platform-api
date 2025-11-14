@@ -102,7 +102,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	}
 
 	client := &http.Client{
-		Timeout: 30 * time.Second, // 设置超时时间为30秒
+		Timeout: utils.HttpTimeout * time.Second,
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
@@ -164,7 +164,7 @@ func SearchModById(id int, lang string) (Data, error) {
 	url = url + fmt.Sprintf("&publishedfileids[0]=%d", id)
 
 	client := &http.Client{
-		Timeout: 30 * time.Second, // 设置超时时间为30秒
+		Timeout: utils.HttpTimeout * time.Second,
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {
@@ -230,7 +230,7 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 	}
 
 	client := &http.Client{
-		Timeout: 30 * time.Second, // 设置超时时间为 30 秒
+		Timeout: utils.HttpTimeout * time.Second,
 	}
 	httpResponse, err := client.Get(url)
 	if err != nil {

@@ -144,6 +144,8 @@ func (h *Handler) menuGet(c *gin.Context) {
 			dashboard,
 			game,
 			upload,
+			install,
+			tools,
 			platform,
 		}
 	} else {
@@ -151,6 +153,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 			rooms,
 			dashboard,
 			game,
+			tools,
 			upload,
 		}
 	}

@@ -52,3 +52,7 @@ func (h *Handler) overviewGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
+
+func gameVersion(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": GetDSTVersion()})
+}
