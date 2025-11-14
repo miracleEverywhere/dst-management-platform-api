@@ -99,8 +99,41 @@ var upload = menuItem{
 	Links:     nil,
 }
 
-var platform = menuItem{
+var install = menuItem{
 	ID:        5,
+	Type:      "link",
+	Section:   "",
+	Title:     "install",
+	To:        "/install",
+	Component: "install/index",
+	Icon:      "ri-import-line",
+	Links:     nil,
+}
+
+var tools = menuItem{
+	ID:        6,
+	Type:      "group",
+	Section:   "",
+	Title:     "tools",
+	To:        "/tools",
+	Component: "tools/backup",
+	Icon:      "ri-wrench-line",
+	Links: []menuItem{
+		{
+			ID:        601,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsBackup",
+			To:        "/tools/backup",
+			Component: "tools/backup",
+			Icon:      "ri-save-line",
+			Links:     nil,
+		},
+	},
+}
+
+var platform = menuItem{
+	ID:        7,
 	Type:      "link",
 	Section:   "",
 	Title:     "platform",
