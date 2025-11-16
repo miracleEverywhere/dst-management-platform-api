@@ -177,3 +177,45 @@ func ScreenCMDOutput(cmd string, cmdIdentifier string, screenName string, logPat
 
 	return "", fmt.Errorf("在日志中未找到对应输出")
 }
+
+// GetDirs 获取指定目录下的目录，不包含子目录和文件
+func GetDirs(dirPath string, fullPath bool) ([]string, error) {
+	var dirs []string
+	// 如果路径中包含 ~，则将其替换为用户的 home 目录
+	if strings.HasPrefix(dirPath, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return []string{}, err
+		}
+		dirPath = strings.Replace(dirPath, "~", homeDir, 1)
+	}
+	// 打开目录
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return []string{}, err
+	}
+	defer dir.Close()
+
+	// 读取目录条目
+	entries, err := dir.Readdir(-1)
+	if err != nil {
+		return []string{}, err
+	}
+
+	// 遍历目录条目，只输出目录
+	for _, entry := range entries {
+		if entry.IsDir() {
+			if fullPath {
+				lastChar := string([]rune(dirPath)[len([]rune(dirPath))-1])
+				if lastChar != "/" {
+					dirs = append(dirs, dirPath+"/"+entry.Name())
+				} else {
+					dirs = append(dirs, dirPath+entry.Name())
+				}
+			} else {
+				dirs = append(dirs, entry.Name())
+			}
+		}
+	}
+	return dirs, nil
+}
