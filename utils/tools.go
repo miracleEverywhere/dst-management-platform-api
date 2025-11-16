@@ -116,3 +116,14 @@ func convertValue(v reflect.Value, path string, depth int) string {
 		return path + ":" + fmt.Sprintf("%v", v.Interface())
 	}
 }
+
+// Contains 是否含有元素
+func Contains[T comparable](s []T, i T) bool {
+	for _, v := range s {
+		if v == i {
+			return true
+		}
+	}
+
+	return false
+}
