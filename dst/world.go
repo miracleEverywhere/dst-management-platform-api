@@ -22,8 +22,12 @@ func (g *Game) createWorlds() error {
 	g.worldMutex.Lock()
 	defer g.worldMutex.Unlock()
 
-	var err error
+	var (
+		err        error
+		worldsName []string
+	)
 
+	// 保存文件
 	for _, world := range g.worldSaveData {
 
 		err = utils.EnsureDirExists(world.worldPath)
@@ -53,6 +57,18 @@ func (g *Game) createWorlds() error {
 			}
 		}
 
+		worldsName = append(worldsName, world.WorldName)
+	}
+
+	// 清理删除的世界
+	fileSystemWorlds, err := utils.GetDirs(g.clusterPath, false)
+	for _, fileSystemWorld := range fileSystemWorlds {
+		if !utils.Contains(worldsName, fileSystemWorld) {
+			err = utils.RemoveDir(fmt.Sprintf("%s/%s", g.clusterPath, fileSystemWorld))
+			if err != nil {
+				logger.Logger.Warn("清理世界失败", "err", err)
+			}
+		}
 	}
 
 	return nil
