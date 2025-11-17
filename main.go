@@ -8,19 +8,15 @@ import (
 	"dst-management-platform-api/app/user"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/embedFS"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
-	"embed"
 	"fmt"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
 	"runtime"
 )
-
-//go:embed dist/*
-//go:embed dist/assets/*
-var EmbedFS embed.FS
 
 func main() {
 	// 绑定启动参数
@@ -34,6 +30,9 @@ func main() {
 
 	// 初始化日志
 	logger.InitLogger()
+
+	// 初始化文件
+	embedFS.GenerateDefaultFile()
 
 	// 初始化数据库
 	db.InitDB()
@@ -57,7 +56,7 @@ func main() {
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao).RegisterRoutes(r)
 
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	r.Use(static.ServeEmbed("dist", EmbedFS))
+	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 
 	// 启动服务器
 	err := r.Run(fmt.Sprintf(":%d", utils.BindPort))

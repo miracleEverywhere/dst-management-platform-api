@@ -71,6 +71,8 @@ func (g *Game) initInfo() {
 			startCmd = fmt.Sprintf("cd dst/bin/ && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", screenName, g.clusterName, world.WorldName)
 		case "64-bit":
 			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s -shard %s", screenName, g.clusterName, world.WorldName)
+		case "luajit":
+			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s ./dontstarve_dedicated_server_nullrenderer_x64_luajit -console -cluster %s -shard %s", screenName, g.clusterName, world.WorldName)
 		default:
 			startCmd = "exit 1"
 		}
