@@ -13,6 +13,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		{
 			platform.GET("/overview", middleware.MWtoken(), h.overviewGet)
 			platform.GET("/game_version", middleware.MWtoken(), gameVersion)
+			platform.GET("/webssh", webSshWS)
 		}
 	}
 }
