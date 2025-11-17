@@ -1,14 +1,14 @@
 module dst-management-platform-api
 
-go 1.24.0
-
-toolchain go1.24.9
+go 1.25.4
 
 require (
+	github.com/creack/pty v1.1.24
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-contrib/gzip v1.2.5
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-co-op/gocron v1.37.0
+	github.com/olahol/melody v1.4.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/soulteary/gin-static v0.2.6
 	github.com/yuin/gopher-lua v1.1.1
@@ -30,6 +30,7 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/uuid v1.4.0 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
