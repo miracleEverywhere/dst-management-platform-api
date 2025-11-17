@@ -219,3 +219,8 @@ func GetDirs(dirPath string, fullPath bool) ([]string, error) {
 	}
 	return dirs, nil
 }
+
+// ChangeFileMode 修改文件权限
+func ChangeFileMode(filepath string, mod os.FileMode) error {
+	return os.Chmod(filepath, mod)
+}
