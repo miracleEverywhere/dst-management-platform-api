@@ -1,6 +1,7 @@
 package user
 
 import (
+	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
@@ -172,4 +173,47 @@ func (h *Handler) baseGet(c *gin.Context) {
 	dbUser.Password = ""
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": dbUser})
+}
+
+func (h *Handler) userListGet(c *gin.Context) {
+	type ReqForm struct {
+		Partition
+		Username string `json:"username" form:"username"`
+	}
+	var (
+		reqForm ReqForm
+		data    dao.PaginatedResult[models.User]
+	)
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": data})
+		return
+	}
+
+	role, _ := c.Get("role")
+	if role.(string) != "admin" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": data})
+		return
+	}
+
+	users, err := h.userDao.ListUsers(reqForm.Username, reqForm.Page, reqForm.PageSize)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
+		return
+	}
+
+	for _, user := range users.Data {
+		user.Password = ""
+		data.Data = append(data.Data, user)
+	}
+	data.Page = users.Page
+	data.PageSize = users.PageSize
+	data.TotalCount = users.TotalCount
+
+	if data.TotalCount == 0 {
+		data.Data = []models.User{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
