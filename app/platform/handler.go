@@ -61,11 +61,11 @@ func (h *Handler) overviewGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
-func gameVersion(c *gin.Context) {
+func gameVersionGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": GetDSTVersion()})
 }
 
-func webSshWS(c *gin.Context) {
+func websshWS(c *gin.Context) {
 	// JWT 认证
 	token := c.Query("token")
 	tokenSecret := db.JwtSecret
@@ -202,4 +202,14 @@ func webSshWS(c *gin.Context) {
 	// 等待命令结束
 	cmd.Wait()
 	logger.Logger.Info("WebSSH会话结束, 用户: ", claims.Username)
+}
+
+func osInfoGet(c *gin.Context) {
+	osInfo, err := getOSInfo()
+	if err != nil {
+		logger.Logger.Error("获取系统信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "get os info fail"), "data": osInfo})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": osInfo})
 }
