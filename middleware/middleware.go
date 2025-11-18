@@ -22,3 +22,18 @@ func MWtoken() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// MWAdminOnly 仅管理员接口
+func MWAdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exist := c.Get("role")
+		if exist && role == "admin" {
+			c.Next()
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "permission needed"), "data": nil})
+		c.Abort()
+		return
+	}
+}

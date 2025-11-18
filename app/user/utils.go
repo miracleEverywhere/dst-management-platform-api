@@ -142,3 +142,8 @@ var platform = menuItem{
 	Icon:      "ri-vip-crown-2-line",
 	Links:     nil,
 }
+
+type Partition struct {
+	Page     int `json:"page" form:"page"`
+	PageSize int `json:"pageSize" form:"pageSize"`
+}
