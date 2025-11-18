@@ -26,9 +26,9 @@ func NewExtendedI18n() *ExtendedI18n {
 	}
 
 	// 添加扩展翻译
-	i.ZH["game version fail"] = "游戏版本获取失败"
+	i.ZH["get os info fail"] = "获取系统信息失败"
 
-	i.EN["game version fail"] = "Get Game Version Fail"
+	i.EN["get os info fail"] = "Get OS Info Fail"
 
 	return i
 }

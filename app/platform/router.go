@@ -12,8 +12,9 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		platform := v.Group("platform")
 		{
 			platform.GET("/overview", middleware.MWtoken(), h.overviewGet)
-			platform.GET("/game_version", middleware.MWtoken(), gameVersion)
-			platform.GET("/webssh", webSshWS)
+			platform.GET("/game_version", middleware.MWtoken(), gameVersionGet)
+			platform.GET("/webssh", websshWS)
+			platform.GET("/os_info", middleware.MWtoken(), osInfoGet)
 		}
 	}
 }
