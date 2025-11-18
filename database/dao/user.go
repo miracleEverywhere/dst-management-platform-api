@@ -24,3 +24,18 @@ func (d *UserDAO) GetUserByUsername(username string) (*models.User, error) {
 	}
 	return &user, err
 }
+
+func (d *UserDAO) ListUsers(username string, page, pageSize int) (*PaginatedResult[models.User], error) {
+	var (
+		condition string
+		args      []interface{}
+	)
+	if username != "" {
+		searchPattern := "%" + username + "%"
+		condition = "username LIKE ?"
+		args = []interface{}{searchPattern}
+	}
+
+	rooms, err := d.Query(page, pageSize, condition, args...)
+	return rooms, err
+}
