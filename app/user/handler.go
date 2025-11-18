@@ -203,17 +203,15 @@ func (h *Handler) userListGet(c *gin.Context) {
 		return
 	}
 
+	data.Data = []models.User{} // 防止Data为nil
 	for _, user := range users.Data {
 		user.Password = ""
 		data.Data = append(data.Data, user)
 	}
+
 	data.Page = users.Page
 	data.PageSize = users.PageSize
 	data.TotalCount = users.TotalCount
-
-	if data.TotalCount == 0 {
-		data.Data = []models.User{}
-	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
