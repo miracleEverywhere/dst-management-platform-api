@@ -46,38 +46,6 @@ func (h *Handler) registerPost(c *gin.Context) {
 	return
 }
 
-func (h *Handler) basePost(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-	logger.Logger.Debug(utils.StructToFlatString(user))
-
-	dbUser, err := h.userDao.GetUserByUsername(user.Username)
-	if err != nil {
-		logger.Logger.Error("查询数据库失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	if dbUser.Username != "" {
-		logger.Logger.Info("创建用户失败，用户已存在", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user exist"), "data": nil})
-		return
-	}
-
-	if errCreate := h.userDao.Create(&user); errCreate != nil {
-		logger.Logger.Error("创建用户失败", "err", errCreate)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": nil})
-	return
-}
-
 func (h *Handler) loginPost(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -162,6 +130,38 @@ func (h *Handler) menuGet(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func (h *Handler) basePost(c *gin.Context) {
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	logger.Logger.Debug(utils.StructToFlatString(user))
+
+	dbUser, err := h.userDao.GetUserByUsername(user.Username)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	if dbUser.Username != "" {
+		logger.Logger.Info("创建用户失败，用户已存在", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user exist"), "data": nil})
+		return
+	}
+
+	if errCreate := h.userDao.Create(&user); errCreate != nil {
+		logger.Logger.Error("创建用户失败", "err", errCreate)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": nil})
+	return
+}
+
 func (h *Handler) baseGet(c *gin.Context) {
 	username, _ := c.Get("username")
 	dbUser, err := h.userDao.GetUserByUsername(username.(string))
@@ -173,6 +173,56 @@ func (h *Handler) baseGet(c *gin.Context) {
 	dbUser.Password = ""
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": dbUser})
+}
+
+func (h *Handler) basePut(c *gin.Context) {
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	logger.Logger.Debug(utils.StructToFlatString(user))
+
+	dbUser, err := h.userDao.GetUserByUsername(user.Username)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if dbUser.Username == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user not exist"), "data": nil})
+		return
+	}
+
+	user.Password = dbUser.Password
+	err = h.userDao.UpdateUser(&user)
+	if err != nil {
+		logger.Logger.Error("更新数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}
+
+func (h *Handler) baseDelete(c *gin.Context) {
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	logger.Logger.Debug(utils.StructToFlatString(user))
+
+	err := h.userDao.Delete(&user)
+	if err != nil {
+		logger.Logger.Error("更新数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "delete fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
 }
 
 func (h *Handler) userListGet(c *gin.Context) {

@@ -40,3 +40,8 @@ func (d *UserDAO) ListUsers(q string, page, pageSize int) (*PaginatedResult[mode
 	rooms, err := d.Query(page, pageSize, condition, args...)
 	return rooms, err
 }
+
+func (d *UserDAO) UpdateUser(user *models.User) error {
+	err := d.db.Save(user).Error
+	return err
+}
