@@ -163,6 +163,7 @@ func (h *Handler) listGet(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
 			return
 		}
+		// 非管理员无房间权限直接返回
 		if user.Rooms == "" {
 			data.Page = reqForm.Page
 			data.PageSize = reqForm.PageSize
@@ -254,6 +255,7 @@ func (h *Handler) roomGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
+// factorGet 前端自动分配端口
 func (h *Handler) factorGet(c *gin.Context) {
 	roomCount, err := h.roomDao.Count(nil)
 	if err != nil {
@@ -278,4 +280,16 @@ func (h *Handler) factorGet(c *gin.Context) {
 		Room:  roomCount,
 		World: worldCount,
 	}})
+}
+
+// allRoomBasicGet 获取room基本信息 name和id
+func (h *Handler) allRoomBasicGet(c *gin.Context) {
+	rooms, err := h.roomDao.GetRoomBasic()
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": rooms})
 }

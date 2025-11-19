@@ -165,3 +165,25 @@ func (d *RoomDAO) updateUserRooms(tx *gorm.DB, id int) error {
 
 	return nil
 }
+
+type RoomBasic struct {
+	RoomName string `json:"roomName"`
+	RoomID   int    `json:"roomID"`
+}
+
+func (d *RoomDAO) GetRoomBasic() (*[]RoomBasic, error) {
+	var rooms []models.Room
+	var roomBasics []RoomBasic
+	err := d.db.Find(&rooms).Error
+	if err != nil {
+		return &roomBasics, err
+	}
+	for _, room := range rooms {
+		roomBasics = append(roomBasics, RoomBasic{
+			RoomName: room.GameName,
+			RoomID:   room.ID,
+		})
+	}
+
+	return &roomBasics, nil
+}

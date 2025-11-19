@@ -16,6 +16,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.GET("", middleware.MWtoken(), h.roomGet)
 			room.GET("/list", middleware.MWtoken(), h.listGet)
 			room.GET("/factor", middleware.MWtoken(), h.factorGet)
+			room.GET("/basic", middleware.MWtoken(), h.allRoomBasicGet)
 		}
 	}
 }

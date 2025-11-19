@@ -178,7 +178,7 @@ func (h *Handler) baseGet(c *gin.Context) {
 func (h *Handler) userListGet(c *gin.Context) {
 	type ReqForm struct {
 		Partition
-		Username string `json:"username" form:"username"`
+		Q string `json:"q" form:"q"`
 	}
 	var (
 		reqForm ReqForm
@@ -196,7 +196,7 @@ func (h *Handler) userListGet(c *gin.Context) {
 		return
 	}
 
-	users, err := h.userDao.ListUsers(reqForm.Username, reqForm.Page, reqForm.PageSize)
+	users, err := h.userDao.ListUsers(reqForm.Q, reqForm.Page, reqForm.PageSize)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
