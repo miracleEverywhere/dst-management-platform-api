@@ -3,7 +3,9 @@ package dst
 import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"fmt"
 	"strconv"
+	"strings"
 )
 
 type roomSaveData struct {
@@ -98,4 +100,51 @@ cluster_key = ` + g.room.ClusterKey + `
 	logger.Logger.Debug(contents)
 
 	return contents
+}
+
+func (g *Game) reset(force bool) error {
+	if force {
+		defer func() {
+			_ = g.startAllWorld()
+		}()
+
+		err := g.stopAllWorld()
+		if err != nil {
+			return err
+		}
+
+		allSuccess := true
+
+		for _, world := range g.worldSaveData {
+			err = utils.RemoveDir(world.savePath)
+			if err != nil {
+				allSuccess = false
+				logger.Logger.Error("删除存档文件失败", "err", err)
+			}
+		}
+
+		if allSuccess {
+			return nil
+		} else {
+			return fmt.Errorf("删除存档文件失败")
+		}
+
+	} else {
+		resetCmd := fmt.Sprintf("c_regenerateworld()")
+		return utils.ScreenCMD(resetCmd, g.worldSaveData[0].screenName)
+	}
+}
+
+func (g *Game) announce(message string) error {
+	s := strings.ReplaceAll(message, "'", "")
+	s = strings.ReplaceAll(s, "\"", "")
+	cmd := fmt.Sprintf("c_announce('%s')", s)
+	for _, world := range g.worldSaveData {
+		err := utils.ScreenCMD(cmd, world.screenName)
+		if err == nil {
+			return err
+		}
+	}
+
+	return fmt.Errorf("执行失败")
 }
