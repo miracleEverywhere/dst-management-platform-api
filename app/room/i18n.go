@@ -25,6 +25,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	}
 
 	i.ZH["room name exist"] = "房间名重复"
+
 	i.EN["room name exist"] = "Room Name Already Existed"
 
 	return i
