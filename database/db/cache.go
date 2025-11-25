@@ -5,8 +5,9 @@ import (
 )
 
 var (
-	JwtSecret  string
-	CurrentDir string
+	JwtSecret   string
+	CurrentDir  string
+	DstUpdating bool
 )
 
 func init() {
