@@ -61,6 +61,7 @@ func (g *Game) initInfo() {
 	for _, world := range *g.worlds {
 		worldPath := fmt.Sprintf("%s/%s", g.clusterPath, world.WorldName)
 		serverIniPath := fmt.Sprintf("%s/server.ini", worldPath)
+		savePath := fmt.Sprintf("%s/save", worldPath)
 		levelDataOverridePath := fmt.Sprintf("%s/leveldataoverride.lua", worldPath)
 		modOverridesPath := fmt.Sprintf("%s/modoverrides.lua", worldPath)
 		screenName := fmt.Sprintf("DMP_%s_%s", g.clusterName, world.WorldName)
@@ -80,6 +81,7 @@ func (g *Game) initInfo() {
 		g.worldSaveData = append(g.worldSaveData, worldSaveData{
 			worldPath:             worldPath,
 			serverIniPath:         serverIniPath,
+			savePath:              savePath,
 			levelDataOverridePath: levelDataOverridePath,
 			modOverridesPath:      modOverridesPath,
 			startCmd:              startCmd,

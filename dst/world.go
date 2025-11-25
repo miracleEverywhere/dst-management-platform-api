@@ -6,11 +6,14 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type worldSaveData struct {
 	worldPath             string
 	serverIniPath         string
+	savePath              string
 	levelDataOverridePath string
 	modOverridesPath      string
 	startCmd              string
@@ -160,9 +163,56 @@ func (g *Game) startAllWorld() error {
 	return nil
 }
 
-func (g *Game) stopWorld() error {
+func (g *Game) stopWorld(id int) error {
+	world, err := g.getWorldByID(id)
+	if err != nil {
+		return err
+	}
+
+	err = utils.ScreenCMD("c_shutdown()", world.screenName)
+	if err != nil {
+		logger.Logger.Info("执行ScreenCMD失败，可能是未运行", "msg", err, "cmd", "c_shutdown()")
+	}
+
+	time.Sleep(1 * time.Second)
+
+	killCMD := fmt.Sprintf("ps -ef | grep %s | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $2}' | xargs kill -9", world.screenName)
+	err = utils.BashCMD(killCMD)
+	if err != nil {
+		logger.Logger.Info("结束进程失败，可能是未运行", "err", err)
+	}
 
 	return nil
+}
+
+func (g *Game) stopAllWorld() error {
+	for _, world := range g.worldSaveData {
+		err := g.stopWorld(world.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (g *Game) deleteWorld(id int) error {
+	_ = g.stopWorld(id)
+	world, err := g.getWorldByID(id)
+	if err != nil {
+		return err
+	}
+	return utils.RemoveDir(world.savePath)
+}
+
+func (g *Game) consoleCmd(cmd string, id int) error {
+	world, err := g.getWorldByID(id)
+	if err != nil {
+		return err
+	}
+	s := strings.ReplaceAll(cmd, "\"", "'")
+
+	return utils.ScreenCMD(s, world.screenName)
 }
 
 func (g *Game) getWorldByID(id int) (*worldSaveData, error) {

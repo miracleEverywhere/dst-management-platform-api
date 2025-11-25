@@ -1,5 +1,6 @@
 package dst
 
+// SaveAll 保存所有配置文件
 func (g *Game) SaveAll() error {
 	var err error
 
@@ -18,18 +19,52 @@ func (g *Game) SaveAll() error {
 	return nil
 }
 
+// StartWorld 启动一个世界
 func (g *Game) StartWorld(id int) error {
 	return g.startWorld(id)
 }
 
+// StartAllWorld 启动所有世界
 func (g *Game) StartAllWorld() error {
 	return g.startAllWorld()
 }
 
+// StopWorld 关闭一个世界
+func (g *Game) StopWorld(id int) error {
+	return g.stopWorld(id)
+}
+
+// StopAllWorld 关闭所有世界
+func (g *Game) StopAllWorld() error {
+	return g.stopAllWorld()
+}
+
+// DeleteWorld 删除指定世界
+func (g *Game) DeleteWorld(id int) error {
+	return g.deleteWorld(id)
+}
+
+// Reset 重置世界，force：关闭世界--删除世界--启动世界
+func (g *Game) Reset(force bool) error {
+	return g.reset(force)
+}
+
+// Announce 宣告，会循环所有世界，直到执行成功
+func (g *Game) Announce(message string) error {
+	return g.announce(message)
+}
+
+// ConsoleCmd 指定世界执行命令
+func (g *Game) ConsoleCmd(cmd string, worldID int) error {
+	return g.consoleCmd(cmd, worldID)
+}
+
+// DownloadMod 下载模组
 func (g *Game) DownloadMod(id int, ugc bool) {
 	go g.downloadMod(id, ugc)
 }
 
+// GetDownloadedMods 获取已经下载的模组
 func (g *Game) GetDownloadedMods() *[]DownloadedMod {
 	return g.getDownloadedMods()
 }
