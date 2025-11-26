@@ -19,6 +19,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			user.DELETE("/base", middleware.MWtoken(), middleware.MWAdminOnly(), h.baseDelete)
 			user.GET("/menu", middleware.MWtoken(), h.menuGet)
 			user.GET("/list", middleware.MWtoken(), middleware.MWAdminOnly(), h.userListGet)
+			user.PUT("/myself", middleware.MWtoken(), h.myselfPut)
 		}
 	}
 }

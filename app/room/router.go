@@ -10,13 +10,14 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		room := v.Group("room")
+		room.Use(middleware.MWtoken())
 		{
-			room.POST("", middleware.MWtoken(), h.roomPost)
-			room.PUT("", middleware.MWtoken(), h.roomPut)
-			room.GET("", middleware.MWtoken(), h.roomGet)
-			room.GET("/list", middleware.MWtoken(), h.listGet)
-			room.GET("/factor", middleware.MWtoken(), h.factorGet)
-			room.GET("/basic", middleware.MWtoken(), h.allRoomBasicGet)
+			room.POST("", h.roomPost)
+			room.PUT("", h.roomPut)
+			room.GET("", h.roomGet)
+			room.GET("/list", h.listGet)
+			room.GET("/factor", h.factorGet)
+			room.GET("/basic", h.allRoomBasicGet)
 		}
 	}
 }
