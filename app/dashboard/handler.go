@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -152,5 +153,34 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+}
 
+func (h *Handler) infoBaseGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"id" form:"id"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	type Data struct {
+		Room         models.Room        `json:"room"`
+		Worlds       []models.World     `json:"worlds"`
+		WorldSetting models.RoomSetting `json:"worldSetting"`
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
+		Room:         *room,
+		Worlds:       *worlds,
+		WorldSetting: *roomSetting,
+	}})
 }
