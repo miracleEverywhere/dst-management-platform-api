@@ -10,16 +10,17 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		mod := v.Group("mod")
+		mod.Use(middleware.MWtoken())
 		{
-			mod.GET("/search", middleware.MWtoken(), modSearchGet)
-			mod.POST("/download", middleware.MWtoken(), h.downloadPost)
-			mod.GET("/downloaded", middleware.MWtoken(), h.downloadedModsGet)
-			mod.POST("/add/enable", middleware.MWtoken(), h.addEnablePost)
-			mod.POST("/setting/disable", middleware.MWtoken(), h.addDisablePost)
-			mod.GET("/setting/mod_config_struct", middleware.MWtoken(), h.settingModConfigStructGet)
-			mod.GET("/setting/mod_config_value", middleware.MWtoken(), h.settingModConfigValueGet)
-			mod.PUT("/setting/mod_config_value", middleware.MWtoken(), h.settingModConfigValuePut)
-			mod.GET("/setting/enabled", middleware.MWtoken(), h.getEnabledModsGet)
+			mod.GET("/search", modSearchGet)
+			mod.POST("/download", h.downloadPost)
+			mod.GET("/downloaded", h.downloadedModsGet)
+			mod.POST("/add/enable", h.addEnablePost)
+			mod.POST("/setting/disable", h.addDisablePost)
+			mod.GET("/setting/mod_config_struct", h.settingModConfigStructGet)
+			mod.GET("/setting/mod_config_value", h.settingModConfigValueGet)
+			mod.PUT("/setting/mod_config_value", h.settingModConfigValuePut)
+			mod.GET("/setting/enabled", h.getEnabledModsGet)
 		}
 	}
 }

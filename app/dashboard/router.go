@@ -10,8 +10,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		dashboard := v.Group("dashboard")
+		dashboard.Use(middleware.MWtoken())
 		{
-			dashboard.POST("/exec/game", middleware.MWtoken(), h.execGamePost)
+			dashboard.POST("/exec/game", h.execGamePost)
+			dashboard.GET("/info/base", h.infoBaseGet)
 		}
 	}
 }
