@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -12,6 +13,7 @@ func MWtoken() gin.HandlerFunc {
 		token := c.Request.Header.Get("X-DMP-TOKEN")
 		claims, err := utils.ValidateJWT(token, []byte(db.JwtSecret))
 		if err != nil {
+			logger.Logger.Warn("token验证失败", "ip", c.ClientIP())
 			c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "token fail"), "data": nil})
 			c.Abort()
 			return
@@ -31,7 +33,15 @@ func MWAdminOnly() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-
+		username, exist := c.Get("username")
+		if !exist {
+			username = "获取失败"
+		}
+		nickname, exist := c.Get("nickname")
+		if !exist {
+			nickname = "获取失败"
+		}
+		logger.Logger.Warn("越权请求", "ip", c.ClientIP(), "user", username, "nickname", nickname)
 		c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "permission needed"), "data": nil})
 		c.Abort()
 		return
