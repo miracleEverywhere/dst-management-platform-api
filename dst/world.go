@@ -14,6 +14,7 @@ type worldSaveData struct {
 	worldPath             string
 	serverIniPath         string
 	savePath              string
+	sessionPath           string
 	levelDataOverridePath string
 	modOverridesPath      string
 	startCmd              string
@@ -101,6 +102,8 @@ func (g *Game) worldUpStatus(id int) bool {
 }
 
 func (g *Game) startWorld(id int) error {
+	_ = utils.BashCMD("screen -wipe")
+
 	// 启动游戏后，删除mod临时下载目录
 	g.acfMutex.Lock()
 	defer g.acfMutex.Unlock()
@@ -139,6 +142,8 @@ func (g *Game) startWorld(id int) error {
 }
 
 func (g *Game) startAllWorld() error {
+	_ = utils.BashCMD("screen -wipe")
+
 	var err error
 
 	err = g.dsModsSetup()
