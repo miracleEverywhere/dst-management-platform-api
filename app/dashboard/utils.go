@@ -3,6 +3,9 @@ package dashboard
 import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
+	"dst-management-platform-api/logger"
+	"github.com/gin-gonic/gin"
+	"strings"
 )
 
 type Handler struct {
@@ -36,4 +39,28 @@ func (h *Handler) fetchGameInfo(roomID int) (*models.Room, *[]models.World, *mod
 	}
 
 	return room, worlds, roomSetting, nil
+}
+
+func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
+	role, _ := c.Get("role")
+	username, _ := c.Get("username")
+
+	// 管理员直接返回true
+	if role.(string) == "admin" {
+		return true
+	} else {
+		dbUser, err := h.userDao.GetUserByUsername(username.(string))
+		if err != nil {
+			logger.Logger.Error("查询数据库失败")
+			return false
+		}
+		roomIDs := strings.Split(dbUser.Rooms, ",")
+		for _, id := range roomIDs {
+			if id == roomID {
+				return true
+			}
+		}
+	}
+
+	return false
 }
