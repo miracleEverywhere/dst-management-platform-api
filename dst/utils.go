@@ -62,6 +62,7 @@ func (g *Game) initInfo() {
 		worldPath := fmt.Sprintf("%s/%s", g.clusterPath, world.WorldName)
 		serverIniPath := fmt.Sprintf("%s/server.ini", worldPath)
 		savePath := fmt.Sprintf("%s/save", worldPath)
+		sessionPath := fmt.Sprintf("%s/session", savePath)
 		levelDataOverridePath := fmt.Sprintf("%s/leveldataoverride.lua", worldPath)
 		modOverridesPath := fmt.Sprintf("%s/modoverrides.lua", worldPath)
 		screenName := fmt.Sprintf("DMP_%s_%s", g.clusterName, world.WorldName)
@@ -82,6 +83,7 @@ func (g *Game) initInfo() {
 			worldPath:             worldPath,
 			serverIniPath:         serverIniPath,
 			savePath:              savePath,
+			sessionPath:           sessionPath,
 			levelDataOverridePath: levelDataOverridePath,
 			modOverridesPath:      modOverridesPath,
 			startCmd:              startCmd,

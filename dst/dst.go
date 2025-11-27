@@ -59,6 +59,11 @@ func (g *Game) ConsoleCmd(cmd string, worldID int) error {
 	return g.consoleCmd(cmd, worldID)
 }
 
+// SessionInfo 获取存档信息
+func (g *Game) SessionInfo() *RoomSessionInfo {
+	return g.sessionInfo()
+}
+
 // DownloadMod 下载模组
 func (g *Game) DownloadMod(id int, ugc bool) {
 	go g.downloadMod(id, ugc)
