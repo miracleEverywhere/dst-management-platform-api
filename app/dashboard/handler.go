@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 func (h *Handler) execGamePost(c *gin.Context) {
@@ -157,7 +158,7 @@ func (h *Handler) execGamePost(c *gin.Context) {
 
 func (h *Handler) infoBaseGet(c *gin.Context) {
 	type ReqForm struct {
-		RoomID int `json:"id" form:"id"`
+		RoomID int `json:"roomID" form:"roomID"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
@@ -165,6 +166,17 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 420, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
 	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
 	if err != nil {
 		logger.Logger.Error("获取基本信息失败", "err", err)
@@ -172,15 +184,19 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 		return
 	}
 
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+
 	type Data struct {
-		Room         models.Room        `json:"room"`
-		Worlds       []models.World     `json:"worlds"`
-		WorldSetting models.RoomSetting `json:"worldSetting"`
+		Room         models.Room         `json:"room"`
+		Worlds       []models.World      `json:"worlds"`
+		WorldSetting models.RoomSetting  `json:"worldSetting"`
+		Session      dst.RoomSessionInfo `json:"session"`
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
 		Room:         *room,
 		Worlds:       *worlds,
 		WorldSetting: *roomSetting,
+		Session:      *game.SessionInfo(),
 	}})
 }
