@@ -1,15 +1,15 @@
 package models
 
 type GlobalSetting struct {
-	ID                    int    `gorm:"primaryKey;not null"`
-	PlayerGetFrequency    int    `json:"playerGetFrequency"`
-	UIDMaintainEnable     bool   `json:"UIDMaintainEnable"`
-	UIDMaintainSetting    string `json:"UIDMaintainSetting"`
-	SysMetricsEnable      bool   `json:"sysMetricsEnable"`
-	SysMetricsSetting     string `json:"sysMetricsSetting"`
-	AutoUpdateEnable      bool   `json:"autoUpdateEnable"`
-	AutoUpdateSetting     string `json:"autoUpdateSetting"`
-	PlayerUpdateModEnable bool   `json:"playerUpdateModEnable"`
+	ID                    int    `gorm:"primaryKey;not null;column:id" json:"id"`
+	PlayerGetFrequency    int    `gorm:"column:player_get_frequency" json:"playerGetFrequency"`
+	UIDMaintainEnable     bool   `gorm:"column:uid_maintain_enable" json:"UIDMaintainEnable"`
+	UIDMaintainSetting    string `gorm:"column:uid_maintain_setting" json:"UIDMaintainSetting"`
+	SysMetricsEnable      bool   `gorm:"column:sys_metrics_enable" json:"sysMetricsEnable"`
+	SysMetricsSetting     string `gorm:"column:sys_metrics_setting" json:"sysMetricsSetting"`
+	AutoUpdateEnable      bool   `gorm:"column:auto_update_enable" json:"autoUpdateEnable"`
+	AutoUpdateSetting     string `gorm:"column:auto_update_setting" json:"autoUpdateSetting"`
+	PlayerUpdateModEnable bool   `gorm:"column:player_update_mod_enable" json:"playerUpdateModEnable"`
 }
 
 func (GlobalSetting) TableName() string {
