@@ -25,6 +25,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	}
 
 	i.ZH["downloading"] = "开始下载模组"
+	i.ZH["update completed"] = "更新完成"
 	i.ZH["mod configuration options error"] = "获取模组配置信息失败"
 	i.ZH["mod configuration values error"] = "获取模组配置失败"
 	i.ZH["modify mod configuration values error"] = "修改模组配置失败"
@@ -36,6 +37,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["get enabled mod fail"] = "获取启用模组失败"
 
 	i.EN["downloading"] = "Downloading Mod"
+	i.EN["update completed"] = "Update Completed"
 	i.EN["mod configuration options error"] = "Generate Mod Configuration Options Error"
 	i.EN["mod configuration values error"] = "Generate Mod Configurations Error"
 	i.EN["modify mod configuration values error"] = "Modify Mod Configuration Error"

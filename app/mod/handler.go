@@ -67,6 +67,7 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		RoomID  int    `json:"roomID"`
 		ID      int    `json:"id"`
 		FileURL string `json:"file_url"`
+		Update  bool   `json:"update"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
@@ -83,9 +84,13 @@ func (h *Handler) downloadPost(c *gin.Context) {
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	game.DownloadMod(reqForm.ID, reqForm.FileURL == "")
+	game.DownloadMod(reqForm.ID, reqForm.FileURL == "", reqForm.Update)
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "downloading"), "data": nil})
+	if reqForm.Update {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update completed"), "data": nil})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "downloading"), "data": nil})
+	}
 }
 
 func (h *Handler) downloadedModsGet(c *gin.Context) {
