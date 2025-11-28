@@ -2,6 +2,7 @@ package main
 
 import (
 	"dst-management-platform-api/app/dashboard"
+	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/mod"
 	"dst-management-platform-api/app/platform"
 	"dst-management-platform-api/app/room"
@@ -49,11 +50,13 @@ func main() {
 	// 初始化及注册路由
 	r := gin.Default()
 	gin.SetMode(gin.ReleaseMode)
+
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao).RegisterRoutes(r)
+	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
