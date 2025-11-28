@@ -65,8 +65,12 @@ func (g *Game) SessionInfo() *RoomSessionInfo {
 }
 
 // DownloadMod 下载模组
-func (g *Game) DownloadMod(id int, ugc bool) {
-	go g.downloadMod(id, ugc)
+func (g *Game) DownloadMod(id int, ugc, update bool) {
+	if update {
+		g.downloadMod(id, ugc)
+	} else {
+		go g.downloadMod(id, ugc)
+	}
 }
 
 // GetDownloadedMods 获取已经下载的模组
@@ -102,4 +106,8 @@ func (g *Game) GetEnabledMods(worldID int) ([]DownloadedMod, error) {
 // ModDisable 禁用mod，保存文件，返回给handler函数保存到数据库
 func (g *Game) ModDisable(modID int) error {
 	return g.modDisable(modID)
+}
+
+func (g *Game) LogContent(logType string, id, lines int) []string {
+	return g.getLogContent(logType, id, lines)
 }
