@@ -181,7 +181,7 @@ func (g *Game) stopWorld(id int) error {
 
 	time.Sleep(1 * time.Second)
 
-	killCMD := fmt.Sprintf("ps -ef | grep %s | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $2}' | xargs kill -9", world.screenName)
+	killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
 	err = utils.BashCMD(killCMD)
 	if err != nil {
 		logger.Logger.Info("结束进程失败，可能是未运行", "err", err)
