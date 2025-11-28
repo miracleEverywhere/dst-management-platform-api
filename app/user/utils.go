@@ -116,7 +116,7 @@ var tools = menuItem{
 	Section:   "",
 	Title:     "tools",
 	To:        "/tools",
-	Component: "tools/backup",
+	Component: "",
 	Icon:      "ri-wrench-line",
 	Links: []menuItem{
 		{
@@ -132,8 +132,80 @@ var tools = menuItem{
 	},
 }
 
-var platform = menuItem{
+var logs = menuItem{
 	ID:        7,
+	Type:      "group",
+	Section:   "",
+	Title:     "logs",
+	To:        "/logs",
+	Component: "",
+	Icon:      "ri-blogger-line",
+	Links: []menuItem{
+		{
+			ID:        701,
+			Type:      "link",
+			Section:   "",
+			Title:     "logsGame",
+			To:        "/logs/game",
+			Component: "logs/game",
+			Icon:      "ri-game-line",
+			Links:     nil,
+		},
+		{
+			ID:        702,
+			Type:      "link",
+			Section:   "",
+			Title:     "logsChat",
+			To:        "/logs/chat",
+			Component: "logs/chat",
+			Icon:      "ri-chat-smile-3-line",
+			Links:     nil,
+		},
+		{
+			ID:        703,
+			Type:      "link",
+			Section:   "",
+			Title:     "logsSteam",
+			To:        "/logs/steam",
+			Component: "logs/steam",
+			Icon:      "ri-steam-line",
+			Links:     nil,
+		},
+		{
+			ID:        704,
+			Type:      "link",
+			Section:   "",
+			Title:     "logsAccess",
+			To:        "/logs/access",
+			Component: "logs/access",
+			Icon:      "ri-code-box-line",
+			Links:     nil,
+		},
+		{
+			ID:        705,
+			Type:      "link",
+			Section:   "",
+			Title:     "logsRuntime",
+			To:        "/logs/runtime",
+			Component: "logs/runtime",
+			Icon:      "ri-terminal-box-line",
+			Links:     nil,
+		},
+		{
+			ID:        706,
+			Type:      "link",
+			Section:   "",
+			Title:     "logsClean",
+			To:        "/logs/clean",
+			Component: "logs/clean",
+			Icon:      "ri-file-shred-line",
+			Links:     nil,
+		},
+	},
+}
+
+var platform = menuItem{
+	ID:        8,
 	Type:      "link",
 	Section:   "",
 	Title:     "platform",
