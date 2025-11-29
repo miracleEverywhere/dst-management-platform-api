@@ -84,7 +84,7 @@ func (h *Handler) downloadPost(c *gin.Context) {
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	game.DownloadMod(reqForm.ID, reqForm.FileURL == "", reqForm.Update)
+	game.DownloadMod(reqForm.ID, reqForm.FileURL, reqForm.Update)
 
 	if reqForm.Update {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update completed"), "data": nil})

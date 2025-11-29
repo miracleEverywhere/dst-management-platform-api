@@ -51,8 +51,15 @@ func (g *Game) dsModsSetup() error {
 	return nil
 }
 
-func (g *Game) downloadMod(id int, ugc bool) {
-	var err error
+func (g *Game) downloadMod(id int, fileURL string) {
+	var (
+		err error
+		ugc bool
+	)
+
+	if fileURL == "" {
+		ugc = true
+	}
 
 	if ugc {
 		// 1. ugc mod 统一下载到 dmp_files/ugc, 也就是dmp_files/ugc/{cluster}/steamapps/workshop{appworkshop_322330.acf  content  downloads}
@@ -86,7 +93,12 @@ func (g *Game) downloadMod(id int, ugc bool) {
 		}
 
 	} else {
-
+		// 1. 下载zip文件并保存
+		// 2. 解压zip文件至dst/mods/workshop-id
+		err = downloadNotUGCMod(fileURL, id)
+		if err != nil {
+			logger.Logger.Error("下载mod失败", "err", err)
+		}
 	}
 }
 
@@ -215,6 +227,7 @@ type DownloadedMod struct {
 }
 
 func (g *Game) getDownloadedMods() *[]DownloadedMod {
+	// 获取ugc
 	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
 	err := utils.EnsureFileExists(gameAcfPath)
 	if err != nil {
@@ -244,6 +257,23 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 		})
 	}
 
+	// 获取非ugc
+	modDirs, err := utils.GetDirs("dst/mods", false)
+	for _, dir := range modDirs {
+		if strings.HasPrefix(dir, "workshop") {
+			parts := strings.Split(dir, "-")
+			if len(parts) == 2 {
+				idStr := parts[len(parts)-1]
+				id, err := strconv.Atoi(idStr)
+				if err == nil {
+					downloadedMods = append(downloadedMods, DownloadedMod{
+						ID:        id,
+						LocalSize: "0",
+					})
+				}
+			}
+		}
+	}
 	return &downloadedMods
 }
 
