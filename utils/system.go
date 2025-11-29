@@ -1,11 +1,14 @@
 package utils
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -66,11 +69,21 @@ func TruncAndWriteFile(fileName string, fileContent string) error {
 	return nil
 }
 
+// RemoveDir 删除目录
 func RemoveDir(dirPath string) error {
 	// 调用 os.RemoveAll 删除目录及其所有内容
 	err := os.RemoveAll(dirPath)
 	if err != nil {
 		return fmt.Errorf("删除目录失败: %w", err)
+	}
+	return nil
+}
+
+// RemoveFile 删除文件
+func RemoveFile(filename string) error {
+	err := os.Remove(filename)
+	if err != nil {
+		return fmt.Errorf("删除文件失败: %v", err)
 	}
 	return nil
 }
@@ -220,7 +233,163 @@ func GetDirs(dirPath string, fullPath bool) ([]string, error) {
 	return dirs, nil
 }
 
+// GetDirSize 计算目录大小
+func GetDirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
+}
+
 // ChangeFileMode 修改文件权限
 func ChangeFileMode(filepath string, mod os.FileMode) error {
 	return os.Chmod(filepath, mod)
+}
+
+// Zip 压缩文件或目录
+func Zip(source, target string) error {
+	// 创建目标ZIP文件
+	zipFile, err := os.Create(target)
+	if err != nil {
+		return fmt.Errorf("创建ZIP文件失败: %v", err)
+	}
+	defer zipFile.Close()
+
+	// 创建ZIP写入器
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	// 获取源文件信息
+	info, err := os.Stat(source)
+	if err != nil {
+		return fmt.Errorf("获取源文件信息失败: %v", err)
+	}
+
+	var baseDir string
+	if info.IsDir() {
+		baseDir = filepath.Base(source)
+	}
+
+	// 遍历文件并添加到ZIP
+	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 创建ZIP文件头
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		// 设置文件头名称
+		header.Name, err = filepath.Rel(filepath.Dir(source), path)
+		if err != nil {
+			return err
+		}
+
+		if baseDir != "" {
+			header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
+		}
+
+		// 如果是目录，需要在名称后加斜杠
+		if info.IsDir() {
+			header.Name += "/"
+		} else {
+			// 设置压缩方法
+			header.Method = zip.Deflate
+		}
+
+		// 创建ZIP文件条目
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		// 如果是目录，不需要写入内容
+		if info.IsDir() {
+			return nil
+		}
+
+		// 打开源文件
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		// 将文件内容复制到ZIP条目
+		_, err = io.Copy(writer, file)
+		return err
+	})
+}
+
+// Unzip 解压ZIP文件
+func Unzip(zipFile, dest string) error {
+	// 打开ZIP文件
+	reader, err := zip.OpenReader(zipFile)
+	if err != nil {
+		return fmt.Errorf("打开ZIP文件失败: %v", err)
+	}
+	defer reader.Close()
+
+	// 创建目标目录
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return fmt.Errorf("创建目标目录失败: %v", err)
+	}
+
+	// 遍历ZIP文件中的每个条目
+	for _, file := range reader.File {
+		// 解析文件路径（防止路径遍历攻击）
+		filePath := filepath.Join(dest, file.Name)
+		if !strings.HasPrefix(filePath, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("无效的文件路径: %s", filePath)
+		}
+
+		// 如果是目录，创建目录
+		if file.FileInfo().IsDir() {
+			if err := os.MkdirAll(filePath, file.Mode()); err != nil {
+				return fmt.Errorf("创建目录失败: %v", err)
+			}
+			continue
+		}
+
+		// 确保文件的父目录存在
+		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+			return fmt.Errorf("创建父目录失败: %v", err)
+		}
+
+		// 创建目标文件
+		outFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return fmt.Errorf("创建文件失败: %v", err)
+		}
+
+		// 打开ZIP中的文件
+		rc, err := file.Open()
+		if err != nil {
+			outFile.Close()
+			return fmt.Errorf("打开ZIP内文件失败: %v", err)
+		}
+
+		// 复制文件内容
+		_, err = io.Copy(outFile, rc)
+
+		// 关闭文件句柄
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return fmt.Errorf("写入文件失败: %v", err)
+		}
+	}
+
+	return nil
 }
