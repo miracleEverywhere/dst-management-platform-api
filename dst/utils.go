@@ -7,12 +7,15 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
+	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 )
 
@@ -957,4 +960,49 @@ func formatLuaKey(s string) string {
 	}
 
 	return s
+}
+
+func downloadNotUGCMod(url string, id int) error {
+	filename := strconv.Itoa(id) + ".zip"              // 临时zip文件名
+	filepath := fmt.Sprintf("dst/mods/%s", filename)   // 临时zip文件路径
+	modPath := fmt.Sprintf("dst/mods/workshop-%d", id) // mod路径
+
+	_ = utils.RemoveFile(filepath)
+	_ = utils.RemoveDir(modPath)
+
+	// 创建目标文件
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	client := &http.Client{
+		Timeout: utils.HttpTimeout * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// 检查HTTP响应状态码
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("下载mod失败，HTTP代码：" + resp.Status)
+	}
+	// 将响应体写入文件
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return fmt.Errorf("下载mod失败，HTTP代码：" + err.Error())
+	}
+
+	err = utils.Unzip(filepath, modPath)
+	if err != nil {
+		return err
+	}
+
+	defer utils.RemoveFile(filepath)
+
+	return nil
 }

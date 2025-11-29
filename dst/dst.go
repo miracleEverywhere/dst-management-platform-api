@@ -65,11 +65,11 @@ func (g *Game) SessionInfo() *RoomSessionInfo {
 }
 
 // DownloadMod 下载模组
-func (g *Game) DownloadMod(id int, ugc, update bool) {
+func (g *Game) DownloadMod(id int, fileURL string, update bool) {
 	if update {
-		g.downloadMod(id, ugc)
+		g.downloadMod(id, fileURL)
 	} else {
-		go g.downloadMod(id, ugc)
+		go g.downloadMod(id, fileURL)
 	}
 }
 
