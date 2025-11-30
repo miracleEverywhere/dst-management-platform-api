@@ -293,3 +293,38 @@ func (h *Handler) allRoomBasicGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": rooms})
 }
+
+func (h *Handler) roomWorldsGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	type Data struct {
+		ID        int    `json:"id"`
+		WorldName string `json:"worldName"`
+	}
+
+	var data []Data
+
+	for _, world := range *worlds {
+		data = append(data, Data{
+			ID:        world.ID,
+			WorldName: world.WorldName,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
