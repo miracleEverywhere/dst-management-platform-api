@@ -17,6 +17,7 @@ func (g *Game) getLogContent(logType string, id, lines int) []string {
 			return []string{}
 		}
 		logPath = fmt.Sprintf("%s/server_log.txt", world.worldPath)
+		logger.Logger.Debug(logPath)
 	default:
 		return []string{}
 	}
