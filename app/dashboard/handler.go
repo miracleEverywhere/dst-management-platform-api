@@ -186,17 +186,46 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 
+	type GameWorldInfo struct {
+		*models.World
+		Status            bool                  `json:"status"`
+		PerformanceStatus dst.PerformanceStatus `json:"performanceStatus"`
+	}
+
+	var gameWorldInfo []GameWorldInfo
+
+	for _, world := range *worlds {
+		gameWorldInfo = append(gameWorldInfo, GameWorldInfo{
+			World:             &world,
+			Status:            game.WorldUpStatus(world.ID),
+			PerformanceStatus: game.WorldPerformanceStatus(world.ID),
+		})
+	}
+
 	type Data struct {
 		Room         models.Room         `json:"room"`
-		Worlds       []models.World      `json:"worlds"`
+		Worlds       []GameWorldInfo     `json:"worlds"`
 		WorldSetting models.RoomSetting  `json:"worldSetting"`
 		Session      dst.RoomSessionInfo `json:"session"`
+		Players      []db.PlayerInfo     `json:"players"`
+	}
+
+	db.PlayersStatisticMutex.Lock()
+	defer db.PlayersStatisticMutex.Unlock()
+
+	var players []db.PlayerInfo
+
+	if len(db.PlayersStatistic[reqForm.RoomID]) > 0 {
+		players = db.PlayersStatistic[reqForm.RoomID][len(db.PlayersStatistic[reqForm.RoomID])-1].PlayerInfo
+	} else {
+		players = []db.PlayerInfo{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
 		Room:         *room,
-		Worlds:       *worlds,
+		Worlds:       gameWorldInfo,
 		WorldSetting: *roomSetting,
 		Session:      *game.SessionInfo(),
+		Players:      players,
 	}})
 }
