@@ -2,23 +2,26 @@ package room
 
 import (
 	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	roomDao        *dao.RoomDAO
-	userDao        *dao.UserDAO
-	worldDao       *dao.WorldDAO
-	roomSettingDao *dao.RoomSettingDAO
+	roomDao          *dao.RoomDAO
+	userDao          *dao.UserDAO
+	worldDao         *dao.WorldDAO
+	roomSettingDao   *dao.RoomSettingDAO
+	globalSettingDao *dao.GlobalSettingDAO
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) *Handler {
 	return &Handler{
-		roomDao:        roomDao,
-		userDao:        userDao,
-		worldDao:       worldDao,
-		roomSettingDao: roomSettingDao,
+		roomDao:          roomDao,
+		userDao:          userDao,
+		worldDao:         worldDao,
+		roomSettingDao:   roomSettingDao,
+		globalSettingDao: globalSettingDao,
 	}
 }
 
@@ -29,7 +32,8 @@ type Partition struct {
 
 type XRoomWorld struct {
 	models.Room
-	Worlds []models.World `json:"worlds"`
+	Worlds  []models.World `json:"worlds"`
+	Players []db.Players   `json:"players"`
 }
 
 type XRoomTotalInfo struct {
