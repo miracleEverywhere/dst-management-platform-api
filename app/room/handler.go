@@ -2,6 +2,7 @@ package room
 
 import (
 	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -191,6 +192,14 @@ func (h *Handler) listGet(c *gin.Context) {
 
 	}
 
+	var globalSetting models.GlobalSetting
+	err = h.globalSettingDao.GetGlobalSetting(&globalSetting)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
+		return
+	}
+
 	data.Page = rooms.Page
 	data.PageSize = rooms.PageSize
 	data.TotalCount = rooms.TotalCount
@@ -208,6 +217,18 @@ func (h *Handler) listGet(c *gin.Context) {
 			return
 		}
 		xRoomWorld.Worlds = worlds.Data
+		if len(db.PlayersStatistic[room.ID]) > 0 {
+			dataLength := 3600 / globalSetting.PlayerGetFrequency
+			// 返回最近一个小时的数据
+			if len(db.PlayersStatistic[room.ID]) > dataLength {
+				xRoomWorld.Players = db.PlayersStatistic[room.ID][len(db.PlayersStatistic[room.ID])-dataLength:]
+			} else {
+				xRoomWorld.Players = db.PlayersStatistic[room.ID]
+			}
+
+		} else {
+			xRoomWorld.Players = []db.Players{}
+		}
 		data.Data = append(data.Data, xRoomWorld)
 	}
 
