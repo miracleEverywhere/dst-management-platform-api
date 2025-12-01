@@ -229,3 +229,15 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 		Players:      players,
 	}})
 }
+
+func (h *Handler) infoSysGet(c *gin.Context) {
+	type Data struct {
+		Cpu    float64 `json:"cpu"`
+		Memory float64 `json:"memory"`
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
+		Cpu:    cpuUsage(),
+		Memory: memoryUsage(),
+	}})
+}
