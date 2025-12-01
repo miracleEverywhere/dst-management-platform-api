@@ -34,6 +34,7 @@ type Handler struct {
 
 func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) {
 	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao)
+	initJobs()
 	registerJobs()
 	go Scheduler.StartAsync()
 }
