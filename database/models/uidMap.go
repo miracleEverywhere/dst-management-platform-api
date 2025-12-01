@@ -1,8 +1,9 @@
 package models
 
 type UidMap struct {
-	UID      string `gorm:"primaryKey;not null" json:"uid"`
-	Nickname string `gorm:"not null" json:"nickname"`
+	UID      string `gorm:"primaryKey;not null;column:nickname" json:"uid"`
+	Nickname string `gorm:"not null;column:nickname" json:"nickname"`
+	RoomID   int    `gorm:"not null;column:room_id" json:"room_id"`
 }
 
 func (UidMap) TableName() string {
