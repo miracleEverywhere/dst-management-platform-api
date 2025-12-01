@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func onlinePlayerGet() {
+func onlinePlayerGet(interval int) {
 	db.PlayersStatisticMutex.Lock()
 	defer db.PlayersStatisticMutex.Unlock()
 	roomsBasic, err := DBHandler.roomDao.GetRoomBasic()
@@ -43,6 +43,10 @@ func onlinePlayerGet() {
 					}
 					Players.PlayerInfo = ps
 					Players.Timestamp = utils.GetTimestamp()
+					if len(db.PlayersStatistic[rbs.RoomID]) > (86400 / interval) {
+						// 只保留一天的数据量
+						db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID][:0], db.PlayersStatistic[rbs.RoomID][1:]...)
+					}
 					db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID], Players)
 					// 获取到数据就执行下一个房间
 					goto LOOP
