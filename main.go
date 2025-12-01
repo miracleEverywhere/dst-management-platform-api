@@ -11,6 +11,7 @@ import (
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/embedFS"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"github.com/gin-contrib/gzip"
@@ -42,10 +43,10 @@ func main() {
 	roomDao := dao.NewRoomDAO(db.DB)
 	roomSettingDao := dao.NewRoomSettingDAO(db.DB)
 	worldDao := dao.NewWorldDAO(db.DB)
-	//globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
+	globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
 
 	// 开启定时任务
-	//scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao)
+	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao)
 
 	// 初始化及注册路由
 	r := gin.Default()
@@ -55,7 +56,7 @@ func main() {
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	platform.NewHandler(userDao, roomDao, worldDao, systemDao).RegisterRoutes(r)
+	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
