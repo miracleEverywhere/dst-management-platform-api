@@ -1006,3 +1006,18 @@ func downloadNotUGCMod(url string, id int) error {
 
 	return nil
 }
+
+// UniqueSliceKeepOrderString 从一个字符串切片中移除重复的元素，并保持元素的原始顺序
+func uniqueSliceKeepOrderString(slice []string) []string {
+	encountered := map[string]bool{}
+	var result []string
+
+	for _, value := range slice {
+		if !encountered[value] {
+			encountered[value] = true
+			result = append(result, value)
+		}
+	}
+
+	return result
+}
