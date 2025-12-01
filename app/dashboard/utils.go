@@ -5,6 +5,8 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"github.com/gin-gonic/gin"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 	"strings"
 )
 
@@ -63,4 +65,20 @@ func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
 	}
 
 	return false
+}
+
+func cpuUsage() float64 {
+	percent, err := cpu.Percent(0, false)
+	if err != nil {
+		return 0
+	}
+	return percent[0]
+}
+
+func memoryUsage() float64 {
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		return 0
+	}
+	return vmStat.UsedPercent
 }
