@@ -39,6 +39,14 @@ func (g *Game) StopAllWorld() error {
 	return g.stopAllWorld()
 }
 
+func (g *Game) WorldUpStatus(id int) bool {
+	return g.worldUpStatus(id)
+}
+
+func (g *Game) WorldPerformanceStatus(id int) PerformanceStatus {
+	return g.worldPerformanceStatus(id)
+}
+
 // DeleteWorld 删除指定世界
 func (g *Game) DeleteWorld(id int) error {
 	return g.deleteWorld(id)
@@ -108,6 +116,12 @@ func (g *Game) ModDisable(modID int) error {
 	return g.modDisable(modID)
 }
 
+// LogContent 获取日志
 func (g *Game) LogContent(logType string, id, lines int) []string {
 	return g.getLogContent(logType, id, lines)
+}
+
+// GetPlayerList 获取玩家列表
+func (g *Game) GetPlayerList(id int) ([]string, error) {
+	return g.getPlayerList(id)
 }

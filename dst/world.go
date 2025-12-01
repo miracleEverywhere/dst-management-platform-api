@@ -1,10 +1,14 @@
 package dst
 
 import (
+	"bufio"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
+	"github.com/shirou/gopsutil/v3/process"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -99,6 +103,84 @@ func (g *Game) worldUpStatus(id int) bool {
 	}
 
 	return stat
+}
+
+type PerformanceStatus struct {
+	CPU     float64 `json:"cpu"`
+	Mem     float64 `json:"mem"`
+	MemSize float64 `json:"memSize"`
+	Disk    int64   `json:"disk"`
+}
+
+func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
+	var performanceStatus PerformanceStatus
+
+	world, err := g.getWorldByID(id)
+	if err != nil {
+		return performanceStatus
+	}
+
+	diskUsed, err := utils.GetDirSize(world.worldPath)
+	if err != nil {
+		logger.Logger.Warn("获取世界磁盘使用量失败", "world", world.ID, "err", err)
+		diskUsed = 0
+	}
+
+	performanceStatus.Disk = diskUsed
+
+	if !g.worldUpStatus(id) {
+		return performanceStatus
+	}
+
+	cmd := fmt.Sprintf("ps -ef | grep dontstarve_dedicated_server_nullrenderer | grep Cluster_%d | grep %s | grep -v luajit | grep -vi screen | awk '{print $2}'", g.room.ID, world.WorldName)
+	logger.Logger.Debug(cmd)
+	out, _, _ := utils.BashCMDOutput(cmd)
+	logger.Logger.Debug(out)
+
+	if len(out) < 2 {
+		logger.Logger.Warn("获取世界PID失败", "world", world.ID)
+		return performanceStatus
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(out))
+	if err != nil {
+		logger.Logger.Warn("获取世界PID失败", "world", world.ID, "err", err)
+		return performanceStatus
+	}
+
+	p, err := process.NewProcess(int32(pid))
+	if err != nil {
+		logger.Logger.Warn("获取世界进程失败", "world", world.ID, "err", err)
+		return performanceStatus
+	}
+
+	cpu, err := p.Percent(time.Millisecond * 100)
+	if err != nil {
+		logger.Logger.Warn("获取世界CPU失败", "world", world.ID, "err", err)
+		return performanceStatus
+	}
+
+	performanceStatus.CPU = cpu
+
+	mem, err := p.MemoryPercent()
+	if err != nil {
+		logger.Logger.Warn("获取世界内存使用率失败", "world", world.ID, "err", err)
+		return performanceStatus
+	}
+
+	performanceStatus.Mem = float64(mem)
+
+	memSize, err := p.MemoryInfo()
+	if err != nil {
+		logger.Logger.Warn("获取世界内存使用量失败", "world", world.ID, "err", err)
+		return performanceStatus
+	}
+
+	performanceStatus.MemSize = float64(memSize.RSS / 1024 / 1024)
+
+	logger.Logger.Debug(utils.StructToFlatString(performanceStatus))
+
+	return performanceStatus
 }
 
 func (g *Game) startWorld(id int) error {
@@ -246,4 +328,91 @@ authentication_port = ` + strconv.Itoa(world.AuthenticationPort) + `
 [ACCOUNT]
 encode_user_path = ` + strconv.FormatBool(world.EncodeUserPath)
 	return contents
+}
+
+func (g *Game) getPlayerList(id int) ([]string, error) {
+	world, err := g.getWorldByID(id)
+	if err != nil {
+		return []string{}, err
+	}
+
+	listScreenCmd := fmt.Sprintf("screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n", world.screenName)
+	err = utils.BashCMD(listScreenCmd)
+	if err != nil {
+		return []string{}, err
+	}
+	// 等待命令执行完毕
+	time.Sleep(time.Second * 2)
+	// 获取日志文件中的list
+	logPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
+	file, err := os.Open(logPath)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Logger.Error("文件关闭失败", "err", err)
+		}
+	}(file)
+
+	// 逐行读取文件
+	scanner := bufio.NewScanner(file)
+	var linesAfterKeyword []string
+	var lines []string
+	keyword := "playerlist 99999999 [0]"
+	var foundKeyword bool
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	// 反向遍历行
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+
+		// 将行添加到结果切片
+		linesAfterKeyword = append(linesAfterKeyword, line)
+
+		// 检查是否包含关键字
+		if strings.Contains(line, keyword) {
+			foundKeyword = true
+			break
+		}
+	}
+
+	if !foundKeyword {
+		return nil, fmt.Errorf("keyword not found in the file")
+	}
+
+	// 正则表达式匹配模式
+	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`
+	re := regexp.MustCompile(pattern)
+
+	var players []string
+
+	// 查找匹配的行并提取所需字段
+	for _, line := range linesAfterKeyword {
+		if matches := re.FindStringSubmatch(line); matches != nil {
+			// 检查是否包含 [Host]
+			if !regexp.MustCompile(`\[Host]`).MatchString(line) {
+				uid := strings.ReplaceAll(matches[1], "\t", "")
+				//uid = strings.ReplaceAll(uid, " ", "")
+				nickName := strings.ReplaceAll(matches[2], "\t", "")
+				//nickName = strings.ReplaceAll(nickName, " ", "")
+				prefab := strings.ReplaceAll(matches[3], "\t", "")
+				//prefab = strings.ReplaceAll(prefab, " ", "")
+				player := uid + "<-@dmp@->" + nickName + "<-@dmp@->" + prefab
+				players = append(players, player)
+			}
+		}
+	}
+
+	players = uniqueSliceKeepOrderString(players)
+
+	return players, nil
 }
