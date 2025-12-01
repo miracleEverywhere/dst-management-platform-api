@@ -2,13 +2,27 @@ package db
 
 import (
 	"os"
+	"sync"
 )
 
 var (
-	JwtSecret   string
-	CurrentDir  string
-	DstUpdating bool
+	JwtSecret             string
+	CurrentDir            string
+	DstUpdating           bool
+	PlayersStatistic      = make(map[int][]Players)
+	PlayersStatisticMutex sync.Mutex
 )
+
+type PlayerInfo struct {
+	UID      string `json:"uid"`
+	Nickname string `json:"nickname"`
+	Prefab   string `json:"prefab"`
+}
+
+type Players struct {
+	PlayerInfo []PlayerInfo `json:"playerInfo"`
+	Timestamp  int64        `json:"timestamp"`
+}
 
 func init() {
 	setCurrentDir()
