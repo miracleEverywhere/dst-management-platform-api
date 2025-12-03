@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -117,6 +118,29 @@ func WriteLinesFromSlice(filePath string, lines []string) error {
 		_, _ = writer.WriteString(line + "\n")
 	}
 	return writer.Flush()
+}
+
+func StructToJsonFile[T any](filePath string, s T) error {
+	data, err := json.MarshalIndent(s, "", "    ") // 格式化输出
+	if err != nil {
+		return fmt.Errorf("序列化配置失败: %w", err)
+	}
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return fmt.Errorf("打开文件失败: %w", err)
+	}
+	defer file.Close()
+
+	_, err = file.Write(data)
+	if err != nil {
+		return fmt.Errorf("写入文件失败: %w", err)
+	}
+	// 确保数据刷入磁盘
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("同步文件到磁盘失败: %w", err)
+	}
+
+	return nil
 }
 
 // BashCMD 执行Linux Bash 命令
