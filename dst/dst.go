@@ -125,3 +125,8 @@ func (g *Game) LogContent(logType string, id, lines int) []string {
 func (g *Game) GetPlayerList(id int) ([]string, error) {
 	return g.getPlayerList(id)
 }
+
+// Backup 创建备份文件
+func (g *Game) Backup() error {
+	return g.backup()
+}
