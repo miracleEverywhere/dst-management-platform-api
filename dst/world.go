@@ -190,7 +190,7 @@ func (g *Game) startWorld(id int) error {
 	g.acfMutex.Lock()
 	defer g.acfMutex.Unlock()
 	defer func() {
-		err := utils.RemoveDir(fmt.Sprintf("dmp_files/mods/ugc/%s", g.clusterName))
+		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc/%s", utils.DmpFiles, g.clusterName))
 		if err != nil {
 			logger.Logger.Warn("删除临时模组失败", "err", err)
 		}
