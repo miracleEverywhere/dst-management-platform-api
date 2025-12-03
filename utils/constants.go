@@ -21,3 +21,5 @@ const SteamApiModDetail = "http://api.steampowered.com/IPublishedFileService/Get
 const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/QueryFiles/v1/"
 
 const ClusterPath = ".klei/DoNotStarveTogether"
+
+const DmpFiles = "dmp_files"
