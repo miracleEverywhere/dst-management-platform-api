@@ -103,7 +103,7 @@ func (g *Game) downloadMod(id int, fileURL string) {
 }
 
 func (g *Game) generateModDownloadCmd(id int) string {
-	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/dmp_files/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", db.CurrentDir, g.clusterName, id)
+	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/%s/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", db.CurrentDir, utils.DmpFiles, g.clusterName, id)
 }
 
 func (g *Game) removeGameOldMod(id int) error {
@@ -122,7 +122,7 @@ func (g *Game) generateModCopyCmd(id int) string {
 		return ""
 	}
 
-	dmpPath := fmt.Sprintf("dmp_files/mods/ugc/%s/steamapps/workshop/content/322330/%d", g.clusterName, id)
+	dmpPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/content/322330/%d", utils.DmpFiles, g.clusterName, id)
 
 	var cmds []string
 
@@ -144,7 +144,7 @@ func (g *Game) processAcf(id int) error {
 
 	acfID := strconv.Itoa(id)
 
-	dmpAcfPath := fmt.Sprintf("dmp_files/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", g.clusterName)
+	dmpAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", utils.DmpFiles, g.clusterName)
 	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
 
 	err := utils.EnsureFileExists(gameAcfPath)
