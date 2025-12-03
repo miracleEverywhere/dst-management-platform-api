@@ -51,12 +51,12 @@ func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir string, includeF
 func GenerateDefaultFile() {
 	var err error
 	// luajit
-	err = utils.EnsureDirExists("dmp_files/luajit")
+	err = utils.EnsureDirExists(fmt.Sprintf("%s/luajit", utils.DmpFiles))
 	if err != nil {
 		logger.Logger.Error("创建dmp_files/luajit失败", "err", err)
 		return
 	}
-	err = CopyEmbeddedFiles(LuaJit, "luajit", "dmp_files/luajit/", "liblua.so", "libluajit.so", "libpreload.so")
+	err = CopyEmbeddedFiles(LuaJit, "luajit", fmt.Sprintf("%s/luajit/", utils.DmpFiles), "liblua.so", "libluajit.so", "libpreload.so")
 	if err != nil {
 		logger.Logger.Error("生成luajit依赖失败", "err", err)
 		return
