@@ -49,7 +49,7 @@ func newDBHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *
 }
 
 func registerJobs() {
-	for _, job := range jobs {
+	for _, job := range Jobs {
 		err := UpdateJob(&job)
 		if err != nil {
 			logger.Logger.Error("注册定时任务失败", "err", err)
@@ -98,4 +98,15 @@ func UpdateJob(jobConfig *JobConfig) error {
 	logger.Logger.Debug(fmt.Sprintf("定时任务[%s]已写入map", jobConfig.Name))
 
 	return nil
+}
+
+func DeleteJob(jobName string) {
+	jobMutex.Lock()
+	defer jobMutex.Unlock()
+
+	if job, exists := currentJobs[jobName]; exists {
+		Scheduler.RemoveByReference(job)
+		delete(currentJobs, jobName)
+		logger.Logger.Debug(fmt.Sprintf("删除已存在定时任务[%s]", jobName))
+	}
 }
