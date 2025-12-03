@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -133,4 +134,22 @@ func GetTimestamp() int64 {
 	now := time.Now()
 	milliseconds := now.UnixNano() / int64(time.Millisecond)
 	return milliseconds
+}
+
+// Base64Encode 对字符串进行Base64编码
+func Base64Encode(str string) string {
+	// 将字符串转换为字节切片
+	data := []byte(str)
+	// 使用标准Base64编码
+	return base64.StdEncoding.EncodeToString(data)
+}
+
+// Base64Decode 对Base64字符串进行解码
+func Base64Decode(encodedStr string) (string, error) {
+	// 使用标准Base64解码
+	data, err := base64.StdEncoding.DecodeString(encodedStr)
+	if err != nil {
+		return "", fmt.Errorf("Base64解码失败: %v", err)
+	}
+	return string(data), nil
 }
