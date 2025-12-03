@@ -1,6 +1,7 @@
 package dst
 
 import (
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -264,6 +265,46 @@ func (g *Game) sessionInfo() *RoomSessionInfo {
 	}
 
 	return &roomSessionInfo
+}
+
+func (g *Game) backup() error {
+	// 生成房间信息
+	type SaveJson struct {
+		Room        models.Room        `json:"room"`
+		Worlds      []models.World     `json:"worlds"`
+		RoomSetting models.RoomSetting `json:"roomSetting"`
+	}
+	saveJson := SaveJson{
+		Room:        *g.room,
+		Worlds:      *g.worlds,
+		RoomSetting: *g.setting,
+	}
+	// 房间信息写入文件
+	err := utils.StructToJsonFile(fmt.Sprintf("%s/dmp.json", g.clusterPath), saveJson)
+	if err != nil {
+		return err
+	}
+
+	// 生成压缩文件
+	cycle := g.sessionInfo().Cycles
+	ts := utils.GetTimestamp()
+	fileName := fmt.Sprintf("%s<-@dmp@->%d<-@dmp@->%d", g.room.GameName, cycle, ts)
+	fileNameEncode := utils.Base64Encode(fileName) + ".zip"
+
+	zipPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID)
+	err = utils.EnsureDirExists(zipPath)
+	if err != nil {
+		return err
+	}
+
+	zipFilePath := fmt.Sprintf("%s/%s", zipPath, fileNameEncode)
+
+	err = utils.Zip(g.clusterPath, zipFilePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func findLatestMetaFile(directory string) (string, error) {
