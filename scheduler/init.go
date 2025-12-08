@@ -68,7 +68,7 @@ func UpdateJob(jobConfig *JobConfig) error {
 	if job, exists := currentJobs[jobConfig.Name]; exists {
 		Scheduler.RemoveByReference(job)
 		delete(currentJobs, jobConfig.Name)
-		logger.Logger.Debug(fmt.Sprintf("发现已存在定时任务[%s]，移除。。。", jobConfig.Name))
+		logger.Logger.Debug(fmt.Sprintf("发现已存在定时任务[%s]，移除", jobConfig.Name))
 	}
 
 	// 添加新任务
@@ -95,7 +95,7 @@ func UpdateJob(jobConfig *JobConfig) error {
 	}
 
 	currentJobs[jobConfig.Name] = job
-	logger.Logger.Debug(fmt.Sprintf("定时任务[%s]已写入map", jobConfig.Name))
+	logger.Logger.Debug(fmt.Sprintf("定时任务[%s]已写入任务池", jobConfig.Name))
 
 	return nil
 }
@@ -107,6 +107,6 @@ func DeleteJob(jobName string) {
 	if job, exists := currentJobs[jobName]; exists {
 		Scheduler.RemoveByReference(job)
 		delete(currentJobs, jobName)
-		logger.Logger.Debug(fmt.Sprintf("删除已存在定时任务[%s]", jobName))
+		logger.Logger.Debug(fmt.Sprintf("删除定时任务[%s]", jobName))
 	}
 }
