@@ -1,0 +1,1 @@
+import{h as r}from"./axios-CIK0f--r.js";const e={overview:{url:"/platform/overview",get:async function(t){return await r.get(this.url,t)}},gameVersion:{url:"/platform/game_version",get:async function(t){return await r.get(this.url,t)}},osInfo:{url:"/platform/os_info",get:async function(t){return await r.get(this.url,t)}}};export{e as p};
