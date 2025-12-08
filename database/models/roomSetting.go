@@ -16,6 +16,8 @@ type RoomSetting struct {
 	ScheduledStartStopSetting string `gorm:"column:scheduled_start_stop_setting" json:"scheduledStartStopSetting"`
 	TickRate                  int    `gorm:"column:tick_rate" json:"tickRate"`
 	StartType                 string `gorm:"column:start_type" json:"startType"`
+	CustomIP                  string `gorm:"column:custom_ip" json:"customIP"`
+	CustomPort                int    `gorm:"column:custom_port" json:"customPort"`
 }
 
 func (RoomSetting) TableName() string {
