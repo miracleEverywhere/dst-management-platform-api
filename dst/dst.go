@@ -126,6 +126,11 @@ func (g *Game) GetPlayerList(id int) ([]string, error) {
 	return g.getPlayerList(id)
 }
 
+// GetLastAliveTime 获取指定世界最后的存活时间
+func (g *Game) GetLastAliveTime(id int) (string, error) {
+	return g.getLastAliveTime(id)
+}
+
 // Backup 创建备份文件
 func (g *Game) Backup() error {
 	return g.backup()

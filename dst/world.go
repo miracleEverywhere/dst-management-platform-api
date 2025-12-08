@@ -416,3 +416,56 @@ func (g *Game) getPlayerList(id int) ([]string, error) {
 
 	return players, nil
 }
+
+func (g *Game) getLastAliveTime(id int) (string, error) {
+	world, err := g.getWorldByID(id)
+	if err != nil {
+		return "", err
+	}
+
+	_ = utils.ScreenCMD("print('DMP Keepalive')", world.screenName)
+	time.Sleep(1 * time.Second)
+
+	return getWorldLastTime(fmt.Sprintf("%s/server_log.txt", world.worldPath))
+}
+
+func getWorldLastTime(logfile string) (string, error) {
+	// 获取日志文件中的list
+	file, err := os.Open(logfile)
+	if err != nil {
+		logger.Logger.Error("打开文件失败", "err", err, "file", logfile)
+		return "", err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Logger.Error("关闭文件失败", "err", err, "file", logfile)
+		}
+	}(file)
+
+	// 逐行读取文件
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	timeRegex := regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}]`)
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Logger.Error("文件scan失败", "err", err)
+		return "", err
+	}
+	// 反向遍历行
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		// 将行添加到结果切片
+		match := timeRegex.FindString(line)
+		if match != "" {
+			// 去掉方括号
+			lastTime := strings.Trim(match, "[]")
+			return lastTime, nil
+		}
+	}
+
+	return "", fmt.Errorf("没有找到日志时间戳")
+}
