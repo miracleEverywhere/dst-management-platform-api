@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// Start 开启定时任务
 func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) {
 	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao)
 	initJobs()
@@ -16,7 +17,7 @@ func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.Roo
 	go Scheduler.StartAsync()
 }
 
-// UpdateJob 更新特定任务
+// UpdateJob 更新指定任务
 func UpdateJob(jobConfig *JobConfig) error {
 	jobMutex.Lock()
 	defer jobMutex.Unlock()
@@ -57,6 +58,7 @@ func UpdateJob(jobConfig *JobConfig) error {
 	return nil
 }
 
+// DeleteJob 删除指定任务
 func DeleteJob(jobName string) {
 	jobMutex.Lock()
 	defer jobMutex.Unlock()
@@ -68,6 +70,7 @@ func DeleteJob(jobName string) {
 	}
 }
 
+// GetJobs 根据任务名获取定时任务
 func GetJobs(roomID int, jobType string) []string {
 	var n []string
 
