@@ -6,10 +6,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
-	"encoding/json"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -68,6 +65,8 @@ func (h *Handler) roomPost(c *gin.Context) {
 			logger.Logger.Error("配置写入磁盘失败", "err", err)
 		}
 
+		processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
+
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": room})
 		return
 	}
@@ -123,55 +122,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 			logger.Logger.Error("配置写入磁盘失败", "err", err)
 		}
 
-		// 更新定时任务
-		// 备份
-		if reqForm.RoomSettingData.BackupEnable {
-			currentNames := scheduler.GetBackupNames(reqForm.RoomData.ID)
-			type BackupSetting struct {
-				Time string `json:"time"`
-			}
-			var backupSettings []BackupSetting
-			if err := json.Unmarshal([]byte(reqForm.RoomSettingData.BackupSetting), &backupSettings); err != nil {
-				logger.Logger.Error("获取房间备份设置失败", "err", err)
-			}
-
-			if len(backupSettings) >= len(currentNames) {
-				// 新设置长度大于旧设置，直接更新
-				for i, s := range backupSettings {
-					err = scheduler.UpdateJob(&scheduler.JobConfig{
-						Name:     fmt.Sprintf("%d-%d-backup", reqForm.RoomData.ID, i),
-						Func:     scheduler.Backup,
-						Args:     []interface{}{game},
-						TimeType: "day",
-						Interval: 0,
-						DayAt:    s.Time,
-					})
-					if err != nil {
-						logger.Logger.Error("创建备份定时任务失败", "err", err)
-					}
-				}
-			} else {
-				// 新设置长度小于旧设置，超出的删除
-				for i, jobName := range currentNames {
-					if i >= len(backupSettings) {
-						scheduler.DeleteJob(jobName)
-					} else {
-						err = scheduler.UpdateJob(&scheduler.JobConfig{
-							Name:     fmt.Sprintf("%d-%d-backup", reqForm.RoomData.ID, i),
-							Func:     scheduler.Backup,
-							Args:     []interface{}{game},
-							TimeType: "day",
-							Interval: 0,
-							DayAt:    backupSettings[i].Time,
-						})
-						if err != nil {
-							logger.Logger.Error("创建备份定时任务失败", "err", err)
-						}
-					}
-				}
-			}
-
-		}
+		processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
 		return
