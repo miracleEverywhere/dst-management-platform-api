@@ -9,10 +9,13 @@
 PORT=80
 
 # 数据库文件所在目录，例如：./config
-CONFIG_DIR="./"
+CONFIG_DIR="./data"
 
 # 虚拟内存大小，例如 1G 4G等
 SWAPSIZE=2G
+
+# 日志等级，例如：debug info warn error
+LEVEL="info"
 # --------------- ↑可修改↑ --------------- #
 
 ###########################################
@@ -25,6 +28,7 @@ ExeFile="$HOME/dmp"
 DMP_GITHUB_HOME_URL="https://github.com/miracleEverywhere/dst-management-platform-api"
 DMP_GITHUB_API_URL="https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest"
 SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh"
+DMP_HOME="https://miraclesses.top/"
 
 cd "$HOME" || exit
 
@@ -80,6 +84,8 @@ function prompt_user() {
        [[ $(echo "${DMP_GITHUB_API_URL}" | tr '/' '\n' | grep -vc "^$") != "7" ]] ||
        [[ $(echo "${SCRIPT_GITHUB}" | tr '/' '\n' | grep -vc "^$") != "6" ]]; then
         echo_red_blink "饥荒管理平台 run.sh 脚本可能被加速站点篡改，请切换加速站点重新下载"
+        echo_cyan $DMP_HOME
+        echo_green "如有疑问，请查阅帮助文档"
     fi
     echo_yellow "————————————————————————————————————————————————————————————"
     echo_green "[0]: 下载并启动饥荒管理平台"
@@ -182,10 +188,10 @@ function install_dmp() {
     echo_yellow "正在使用加速站点[${acceleration_index}]进行下载，如果下载失败，请切换加速站点，切换方式："
     echo_yellow "./run.sh 大于等于0的数字。例如：./run.sh 2"
     echo_yellow "如果不输入数字，则默认为0"
+    echo_cyan $DMP_HOME
+    echo_green "如有疑问，请查阅帮助文档"
     if download "${url}" "dmp.tgz" 10; then
-        if [ -e "dmp.tgz" ]; then
-            echo_green "DMP下载成功"
-        else
+        if [ ! -e "dmp.tgz" ]; then
             echo_red "DMP下载失败"
             exit 1
         fi
@@ -195,7 +201,7 @@ function install_dmp() {
     fi
 
     set -e
-    tar zxvf dmp.tgz
+    tar zxvf dmp.tgz > /dev/null
     rm -f dmp.tgz
     chmod +x "$ExeFile"
     set +e
@@ -204,7 +210,7 @@ function install_dmp() {
 # 检查进程状态
 function check_dmp() {
     sleep 1
-    if pgrep dmp >/dev/null; then
+    if pgrep dmp > /dev/null; then
         echo_green "启动成功"
     else
         echo_red "启动失败"
@@ -225,10 +231,10 @@ function start_dmp() {
     check_glibc
 
     if [ -e "$ExeFile" ]; then
-        nohup "$ExeFile" >dmp.log 2>&1 &
+        nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} > /dev/null 2>&1 &
     else
         install_dmp
-        nohup "$ExeFile" -c -l ${PORT} -s ${CONFIG_DIR} >dmp.log 2>&1 &
+        nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} > /dev/null 2>&1 &
     fi
 }
 
@@ -242,7 +248,7 @@ function stop_dmp() {
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
 function clear_dmp() {
     echo_cyan "正在执行清理"
-    rm -f dmp dmp.log dmpProcess.log
+    rm -f dmp dmp.tgz logs/*
 }
 
 # 检查当前版本号
@@ -291,58 +297,13 @@ function update_script() {
     sed -i "s/^PORT=.*/PORT=${PORT}/" $TEMP_FILE
     sed -i "s/^SWAPSIZE=.*/SWAPSIZE=${SWAPSIZE}/" $TEMP_FILE
     sed -i "s#^CONFIG_DIR=.*#CONFIG_DIR=${CONFIG_DIR}#" $TEMP_FILE
+    sed -i "s#^LEVEL=.*#LEVEL=${LEVEL}#" $TEMP_FILE
 
     # 替换当前脚本
     mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
     echo_green "脚本更新完成，3 秒后重新启动..."
     sleep 3
     exec "$0"
-}
-
-# 更改端口
-function change_port() {
-    echo_yellow "当前端口: ${PORT}"
-
-    local new_port
-
-    read -rp "请输入新端口号 (1024-65535): " new_port
-
-    if [[ "$new_port" =~ ^[0-9]+$ && "$new_port" -ge 1024 && "$new_port" -le 65535 ]]; then
-
-        if [[ "$new_port" -eq "$PORT" ]]; then
-            echo_yellow "新端口与当前端口相同，无需修改"
-            sleep 2
-            return 0
-        fi
-
-        local port_in_use
-        port_in_use=$(ss -ltnp 2>/dev/null | awk -v port="${new_port}" '$4 ~ ":"port"$" {print $4}')
-
-        if [[ -n "$port_in_use" ]]; then
-            echo_red "错误：端口 ${new_port} 已被占用！"
-            echo_yellow "请选择其他端口，2秒后返回..."
-            sleep 2
-            return 1
-        fi
-
-        if ! sed -i "s|^PORT=.*|PORT=${new_port}|" "$0"; then
-            echo_red "错误：更新脚本文件失败"
-            sleep 2
-            return 1
-        fi
-
-        PORT="${new_port}"
-
-        echo_green "端口已成功更改为: ${new_port}"
-        echo_yellow "提示: 需要重启 DMP 服务才能使新端口生效"
-        echo_cyan "请返回主菜单选择 [1]启动 或 [3]重启 服务，3秒后自动返回主菜单..."
-        sleep 3
-        return 0
-    else
-        echo_red "无效端口号！请输入 1024-65535 范围内的数字。"
-        sleep 2
-        return 1
-    fi
 }
 
 # 设置虚拟内存
@@ -459,17 +420,11 @@ while true; do
         break
         ;;
     8)
-        set_tty
-        change_port
-        unset_tty
-        continue
-        ;;
-    9)
         exit 0
         break
         ;;
     *)
-        echo_red "请输入正确的数字 [0-9]"
+        echo_red "请输入正确的数字 [0-8]"
         continue
         ;;
     esac
