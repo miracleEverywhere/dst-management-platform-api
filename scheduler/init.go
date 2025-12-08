@@ -5,58 +5,15 @@ import (
 	"dst-management-platform-api/logger"
 	"fmt"
 	"github.com/go-co-op/gocron"
-	"sync"
-	"time"
+	"strconv"
+	"strings"
 )
-
-var (
-	Scheduler   = gocron.NewScheduler(time.Local)
-	jobMutex    sync.RWMutex
-	currentJobs = make(map[string]*gocron.Job)
-	DBHandler   *Handler
-)
-
-type JobConfig struct {
-	Name     string
-	Func     interface{}
-	Args     []interface{}
-	TimeType string
-	Interval int
-	DayAt    string
-}
-
-type Handler struct {
-	roomDao          *dao.RoomDAO
-	worldDao         *dao.WorldDAO
-	roomSettingDao   *dao.RoomSettingDAO
-	globalSettingDao *dao.GlobalSettingDAO
-}
 
 func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) {
 	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao)
 	initJobs()
 	registerJobs()
 	go Scheduler.StartAsync()
-}
-
-func newDBHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) *Handler {
-	return &Handler{
-		roomDao:          roomDao,
-		worldDao:         worldDao,
-		roomSettingDao:   roomSettingDao,
-		globalSettingDao: globalSettingDao,
-	}
-}
-
-func registerJobs() {
-	for _, job := range Jobs {
-		err := UpdateJob(&job)
-		if err != nil {
-			logger.Logger.Error("注册定时任务失败", "err", err)
-			panic("注册定时任务失败")
-		}
-		logger.Logger.Info(fmt.Sprintf("定时任务[%s]注册成功", job.Name))
-	}
 }
 
 // UpdateJob 更新特定任务
@@ -109,4 +66,23 @@ func DeleteJob(jobName string) {
 		delete(currentJobs, jobName)
 		logger.Logger.Debug(fmt.Sprintf("删除定时任务[%s]", jobName))
 	}
+}
+
+func GetJobs(roomID int, jobType string) []string {
+	var n []string
+
+	for _, job := range Jobs {
+		if strings.HasSuffix(job.Name, jobType) {
+			s := strings.Split(job.Name, "-")
+			if s[0] == strconv.Itoa(roomID) {
+				n = append(n, job.Name)
+			}
+		}
+	}
+
+	if n == nil {
+		return []string{}
+	}
+
+	return n
 }
