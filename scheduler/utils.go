@@ -23,12 +23,13 @@ func fetchGameInfo(roomID int) (*models.Room, *[]models.World, *models.RoomSetti
 	return room, worlds, roomSetting, nil
 }
 
-func GetBackupNames(id int) []string {
+func GetJobs(roomID int, jobType string) []string {
 	var n []string
+
 	for _, job := range Jobs {
-		if strings.HasSuffix(job.Name, "backup") {
+		if strings.HasSuffix(job.Name, jobType) {
 			s := strings.Split(job.Name, "-")
-			if s[0] == strconv.Itoa(id) {
+			if s[0] == strconv.Itoa(roomID) {
 				n = append(n, job.Name)
 			}
 		}
