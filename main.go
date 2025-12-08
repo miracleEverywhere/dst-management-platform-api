@@ -14,7 +14,6 @@ import (
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
-	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
 	"runtime"
@@ -59,7 +58,7 @@ func main() {
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 
-	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	//r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 
 	// 启动服务器
