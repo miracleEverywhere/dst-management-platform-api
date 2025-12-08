@@ -99,10 +99,9 @@ function prompt_user() {
     echo_green "[6]: 更新run.sh启动脚本"
     echo_yellow "————————————————————————————————————————————————————————————"
     echo_green "[7]: 设置虚拟内存"
-    echo_green "[8]: 更改端口"
-    echo_green "[9]: 退出脚本"
+    echo_green "[8]: 退出脚本"
     echo_yellow "————————————————————————————————————————————————————————————"
-    echo_yellow "请输入要执行的操作 [0-9]: "
+    echo_yellow "请输入要执行的操作 [0-8]: "
 }
 
 # 检查jq
