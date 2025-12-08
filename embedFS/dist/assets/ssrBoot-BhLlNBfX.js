@@ -1,1 +1,0 @@
-import{a6 as t,f as e,a4 as s,a3 as n}from"./index-Dko6h61I.js";function i(){const o=t(!1);return e(()=>{window.requestAnimationFrame(()=>{o.value=!0})}),{ssrBootStyles:s(()=>o.value?void 0:{transition:"none !important"}),isBooted:n(o)}}export{i as u};
