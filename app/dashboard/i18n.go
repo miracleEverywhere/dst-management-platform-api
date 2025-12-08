@@ -39,6 +39,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["announce success"] = "宣告成功"
 	i.ZH["exec fail"] = "执行失败"
 	i.ZH["exec success"] = "执行成功"
+	i.ZH["connection code fail"] = "直连代码获取失败"
 
 	i.EN["startup game fail"] = "Startup Fail"
 	i.EN["startup game success"] = "Startup Success"
@@ -55,6 +56,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["announce success"] = "Announce Success"
 	i.EN["exec fail"] = "Execute Fail"
 	i.EN["exec success"] = "Execute Success"
+	i.EN["connection code fail"] = "Get Connection Code Fail"
 
 	return i
 }
