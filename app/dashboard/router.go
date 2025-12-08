@@ -15,6 +15,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			dashboard.POST("/exec/game", h.execGamePost)
 			dashboard.GET("/info/base", h.infoBaseGet)
 			dashboard.GET("/info/sys", h.infoSysGet)
+			dashboard.GET("/connection_code", h.connectionCodeGet)
+			dashboard.PUT("/connection_code", h.connectionCodePut)
 		}
 	}
 }
