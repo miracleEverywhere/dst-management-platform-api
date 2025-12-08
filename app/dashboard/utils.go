@@ -4,10 +4,16 @@ import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/utils"
+	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
+	"io"
+	"net/http"
 	"strings"
+	"time"
 )
 
 type Handler struct {
@@ -81,4 +87,77 @@ func memoryUsage() float64 {
 		return 0
 	}
 	return vmStat.UsedPercent
+}
+
+func getInternetIP1() (string, error) {
+	type JSONResponse struct {
+		Status      string  `json:"status"`
+		Country     string  `json:"country"`
+		CountryCode string  `json:"countryCode"`
+		Region      string  `json:"region"`
+		RegionName  string  `json:"regionName"`
+		City        string  `json:"city"`
+		Zip         string  `json:"zip"`
+		Lat         float64 `json:"lat"`
+		Lon         float64 `json:"lon"`
+		Timezone    string  `json:"timezone"`
+		Isp         string  `json:"isp"`
+		Org         string  `json:"org"`
+		As          string  `json:"as"`
+		Query       string  `json:"query"`
+	}
+	client := &http.Client{
+		Timeout: 5 * time.Second, // 设置超时时间为 5 秒
+	}
+	httpResponse, err := client.Get(utils.InternetIPApi1)
+	if err != nil {
+		return "", err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Logger.Error("请求关闭失败", "err", err)
+		}
+	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+
+	// 检查 HTTP 状态码
+	if httpResponse.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP 请求失败，状态码: %d", httpResponse.StatusCode)
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+		logger.Logger.Error("解析JSON失败", "err", err)
+		return "", err
+	}
+	return jsonResp.Query, nil
+}
+
+func getInternetIP2() (string, error) {
+	type JSONResponse struct {
+		Ip string `json:"ip"`
+	}
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 设置超时时间为 10 秒
+	}
+	httpResponse, err := client.Get(utils.InternetIPApi2)
+	if err != nil {
+		return "", err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Logger.Error("请求关闭失败", "err", err)
+		}
+	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+
+	// 检查 HTTP 状态码
+	if httpResponse.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP 请求失败，状态码: %d", httpResponse.StatusCode)
+	}
+	var jsonResp JSONResponse
+	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
+		logger.Logger.Error("解析JSON失败", "err", err)
+		return "", err
+	}
+	return jsonResp.Ip, nil
 }
