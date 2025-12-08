@@ -203,11 +203,11 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 	}
 
 	type Data struct {
-		Room         models.Room         `json:"room"`
-		Worlds       []GameWorldInfo     `json:"worlds"`
-		WorldSetting models.RoomSetting  `json:"worldSetting"`
-		Session      dst.RoomSessionInfo `json:"session"`
-		Players      []db.PlayerInfo     `json:"players"`
+		Room        models.Room         `json:"room"`
+		Worlds      []GameWorldInfo     `json:"worlds"`
+		RoomSetting models.RoomSetting  `json:"roomSetting"`
+		Session     dst.RoomSessionInfo `json:"session"`
+		Players     []db.PlayerInfo     `json:"players"`
 	}
 
 	db.PlayersStatisticMutex.Lock()
@@ -222,11 +222,11 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
-		Room:         *room,
-		Worlds:       gameWorldInfo,
-		WorldSetting: *roomSetting,
-		Session:      *game.SessionInfo(),
-		Players:      players,
+		Room:        *room,
+		Worlds:      gameWorldInfo,
+		RoomSetting: *roomSetting,
+		Session:     *game.SessionInfo(),
+		Players:     players,
 	}})
 }
 
@@ -242,4 +242,111 @@ func (h *Handler) infoSysGet(c *gin.Context) {
 		Memory:   memoryUsage(),
 		Updating: db.DstUpdating,
 	}})
+}
+
+func (h *Handler) connectionCodeGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var (
+		reqForm ReqForm
+		err     error
+	)
+	if err = c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 420, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	var connectionCode string
+
+	if roomSetting.CustomIP == "" {
+		// 返回默认直连代码
+		var (
+			internetIp string
+			masterPort int
+		)
+		internetIp, err = getInternetIP1()
+		if err != nil {
+			logger.Logger.Warn("调用公网ip接口1失败", "err", err)
+			internetIp, err = getInternetIP2()
+			if err != nil {
+				logger.Logger.Warn("调用公网ip接口2失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "connection code fail"), "data": nil})
+				return
+			}
+		}
+		for _, world := range *worlds {
+			if world.IsMaster {
+				masterPort = world.ServerPort
+			}
+		}
+		if masterPort == 0 {
+			masterPort = (*worlds)[0].ServerPort
+		}
+		if room.Password == "" {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d)", internetIp, masterPort)
+		} else {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d, '%s')", internetIp, masterPort, room.Password)
+		}
+	} else {
+		// 返回自定义直连代码
+		if room.Password == "" {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d)", roomSetting.CustomIP, roomSetting.CustomPort)
+		} else {
+			connectionCode = fmt.Sprintf("c_connect('%s', %d, '%s')", roomSetting.CustomIP, roomSetting.CustomPort, room.Password)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": connectionCode})
+}
+
+func (h *Handler) connectionCodePut(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int    `json:"roomID"`
+		IP     string `json:"ip"`
+		Port   int    `json:"port"`
+	}
+
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	roomSetting.CustomIP = reqForm.IP
+	roomSetting.CustomPort = reqForm.Port
+
+	err = h.roomSettingDao.UpdateRoomSetting(roomSetting)
+	if err != nil {
+		logger.Logger.Error("修改房间设置失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
