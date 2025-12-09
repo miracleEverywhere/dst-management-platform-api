@@ -23,15 +23,17 @@ type Handler struct {
 	worldDao         *dao.WorldDAO
 	systemDao        *dao.SystemDAO
 	globalSettingDao *dao.GlobalSettingDAO
+	uidMapDao        *dao.UidMapDAO
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, systemDao *dao.SystemDAO, globalSettingDao *dao.GlobalSettingDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, systemDao *dao.SystemDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO) *Handler {
 	return &Handler{
 		userDao:          userDao,
 		roomDao:          roomDao,
 		worldDao:         worldDao,
 		systemDao:        systemDao,
 		globalSettingDao: globalSettingDao,
+		uidMapDao:        uidMapDao,
 	}
 }
 
