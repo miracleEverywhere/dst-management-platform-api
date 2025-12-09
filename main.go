@@ -43,6 +43,7 @@ func main() {
 	roomSettingDao := dao.NewRoomSettingDAO(db.DB)
 	worldDao := dao.NewWorldDAO(db.DB)
 	globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
+	uidMapDao := dao.NewUidMapDAO(db.DB)
 
 	// 开启定时任务
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao)
@@ -55,7 +56,7 @@ func main() {
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao).RegisterRoutes(r)
+	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 
 	//r.Use(gzip.Gzip(gzip.DefaultCompression))
