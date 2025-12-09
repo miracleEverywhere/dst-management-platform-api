@@ -350,3 +350,42 @@ func (h *Handler) connectionCodePut(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
+
+func checkLobbyPost(c *gin.Context) {
+	type ReqForm struct {
+		GameName  string   `json:"gameName"`
+		MaxPlayer int      `json:"maxPlayer"`
+		Regions   []string `json:"regions"`
+	}
+
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.GameName == "" || reqForm.MaxPlayer == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	var urls []string
+	for _, region := range reqForm.Regions {
+		urls = append(urls, getDSTRoomsApi(region))
+	}
+	rooms, err := checkDstLobbyRoom(urls, reqForm.GameName)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "check lobby fail"), "data": false})
+		return
+	}
+
+	for _, room := range rooms {
+		if room.MaxConnections == reqForm.MaxPlayer {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": true})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": false})
+}
