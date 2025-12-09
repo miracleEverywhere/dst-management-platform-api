@@ -23,6 +23,7 @@ func (h *Handler) overviewGet(c *gin.Context) {
 		RoomCount   int64  `json:"roomCount"`
 		WorldCount  int64  `json:"worldCount"`
 		UserCount   int64  `json:"userCount"`
+		UidCount    int64  `json:"uidCount"`
 	}
 
 	// 运行时间
@@ -47,6 +48,12 @@ func (h *Handler) overviewGet(c *gin.Context) {
 		logger.Logger.Error("统计用户数失败")
 		userCount = 0
 	}
+	// uid数
+	uidCount, err := h.uidMapDao.Count(nil)
+	if err != nil {
+		logger.Logger.Error("统计用户数失败")
+		uidCount = 0
+	}
 	// TODO 1小时cpu、内存、网络上行、网络下行最大值
 	// TODO 玩家数最多的的房间Top3
 
@@ -56,6 +63,7 @@ func (h *Handler) overviewGet(c *gin.Context) {
 		RoomCount:   roomCount,
 		WorldCount:  worldCount,
 		UserCount:   userCount,
+		UidCount:    uidCount,
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
