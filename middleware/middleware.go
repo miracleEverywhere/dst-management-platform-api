@@ -4,8 +4,11 @@ import (
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
+	"time"
 )
 
 func MWtoken() gin.HandlerFunc {
@@ -46,4 +49,33 @@ func MWAdminOnly() gin.HandlerFunc {
 		c.Abort()
 		return
 	}
+}
+
+// MWCacheControl 缓存控制中间件
+func MWCacheControl() gin.HandlerFunc {
+	cacheDuration := 24 * time.Hour
+	return func(c *gin.Context) {
+		// 只对静态资源文件设置缓存
+		if isStaticAsset(c.Request.URL.Path) {
+			// 设置缓存头
+			c.Header("Cache-Control", fmt.Sprintf("public, max-age=%d", int(cacheDuration.Seconds())))
+
+			// 可选：设置过期时间
+			expires := time.Now().Add(cacheDuration).UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
+			c.Header("Expires", expires)
+		}
+
+		c.Next()
+	}
+}
+
+// 判断是否为静态资源文件
+func isStaticAsset(path string) bool {
+	staticExtensions := []string{".js", ".css", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot"}
+	for _, ext := range staticExtensions {
+		if strings.HasSuffix(path, ext) {
+			return true
+		}
+	}
+	return false
 }

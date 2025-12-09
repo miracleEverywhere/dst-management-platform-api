@@ -11,6 +11,7 @@ import (
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/embedFS"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/middleware"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -51,6 +52,7 @@ func main() {
 	// 初始化及注册路由
 	r := gin.Default()
 	gin.SetMode(gin.ReleaseMode)
+	r.Use(middleware.MWCacheControl())
 
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
