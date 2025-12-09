@@ -67,5 +67,6 @@ func (d *BaseDAO[T]) Query(page, pageSize int, condition interface{}, args ...in
 func (d *BaseDAO[T]) Count(condition interface{}, args ...interface{}) (int64, error) {
 	var count int64
 	err := d.db.Model(new(T)).Where(condition, args...).Count(&count).Error
+
 	return count, err
 }
