@@ -400,8 +400,11 @@ func (h *Handler) uploadPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 	}
 
+	currentTS := utils.GetTimestamp()
+
 	// 创建上传文件保存目录
-	err = utils.EnsureDirExists(fmt.Sprintf("%s/upload", utils.DmpFiles))
+	uploadPath := fmt.Sprintf("%s/upload/%d", utils.DmpFiles, currentTS)
+	err = utils.EnsureDirExists(uploadPath)
 	if err != nil {
 		logger.Logger.Error("创建上传目录失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{
@@ -411,7 +414,8 @@ func (h *Handler) uploadPost(c *gin.Context) {
 		})
 	}
 	//保存上传的文件
-	savePath := fmt.Sprintf("%s/upload/", utils.DmpFiles) + file.Filename
+	unzipPath := fmt.Sprintf("%s/", uploadPath)
+	savePath := fmt.Sprintf("%s/%s", unzipPath, file.Filename)
 	if err = c.SaveUploadedFile(file, savePath); err != nil {
 		logger.Logger.Error("文件保存失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{
@@ -429,7 +433,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 		uploadExtraInfo UploadExtraInfo
 	)
 
-	errMsg, err := handleUpload(savePath, &room, &worlds, &roomSetting, &uploadExtraInfo)
+	errMsg, err := handleUpload(savePath, unzipPath, &room, &worlds, &roomSetting, &uploadExtraInfo)
 	if err != nil {
 		logger.Logger.Error("处理上传文件失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{
@@ -611,4 +615,11 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "upload success"), "data": nil})
+
+	defer func() {
+		err = utils.RemoveDir(uploadPath)
+		if err != nil {
+			logger.Logger.Error("清理上传文件失败", "err", err)
+		}
+	}()
 }
