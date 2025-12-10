@@ -243,15 +243,15 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	}
 }
 
-func handleUpload(savePath string, room *models.Room, worlds *[]models.World, roomSetting *models.RoomSetting, uploadExtraInfo *UploadExtraInfo) (string, error) {
+func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]models.World, roomSetting *models.RoomSetting, uploadExtraInfo *UploadExtraInfo) (string, error) {
 	// 1. 解压上传的zip压缩包
-	err := utils.Unzip(savePath, fmt.Sprintf("%s/upload/", utils.DmpFiles))
+	err := utils.Unzip(savePath, unzipPath)
 	if err != nil {
 		return "unzip fail", err
 	}
 
 	// 2. 查找存档的home路径
-	clusterDir, err := findClusterDir(fmt.Sprintf("%s/upload/", utils.DmpFiles))
+	clusterDir, err := findClusterDir(unzipPath)
 	if err != nil {
 		return "find cluster home fail", err
 	}
