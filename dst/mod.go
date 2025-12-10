@@ -227,35 +227,7 @@ type DownloadedMod struct {
 }
 
 func (g *Game) getDownloadedMods() *[]DownloadedMod {
-	// 获取ugc
-	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
-	err := utils.EnsureFileExists(gameAcfPath)
-	if err != nil {
-		logger.Logger.Error("EnsureFileExists失败", "path", gameAcfPath)
-		return &[]DownloadedMod{}
-	}
-
-	gameAcfContent, err := os.ReadFile(gameAcfPath)
-	if err != nil {
-		return &[]DownloadedMod{}
-	}
-
-	if len(gameAcfContent) == 0 {
-		return &[]DownloadedMod{}
-	}
-
 	var downloadedMods []DownloadedMod
-	gameAcfParser := NewAcfParser(string(gameAcfContent))
-	for _, mod := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
-		id, err := strconv.Atoi(mod.ID)
-		if err != nil {
-			id = 0
-		}
-		downloadedMods = append(downloadedMods, DownloadedMod{
-			ID:        id,
-			LocalSize: mod.Size,
-		})
-	}
 
 	// 获取非ugc
 	modDirs, err := utils.GetDirs("dst/mods", false)
@@ -274,6 +246,34 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 			}
 		}
 	}
+
+	// 获取ugc
+	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
+	err = utils.EnsureFileExists(gameAcfPath)
+	if err != nil {
+		logger.Logger.Error("EnsureFileExists失败", "path", gameAcfPath)
+		return &downloadedMods
+	}
+
+	gameAcfContent, err := os.ReadFile(gameAcfPath)
+	if err != nil {
+		return &downloadedMods
+	}
+
+	if len(gameAcfContent) != 0 {
+		gameAcfParser := NewAcfParser(string(gameAcfContent))
+		for _, mod := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
+			id, err := strconv.Atoi(mod.ID)
+			if err != nil {
+				id = 0
+			}
+			downloadedMods = append(downloadedMods, DownloadedMod{
+				ID:        id,
+				LocalSize: mod.Size,
+			})
+		}
+	}
+
 	return &downloadedMods
 }
 
