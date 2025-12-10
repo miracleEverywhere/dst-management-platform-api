@@ -52,6 +52,18 @@ func EnsureFileExists(filePath string) error {
 	return nil
 }
 
+// FileDirectoryExists 检查文件或目录是否存在
+func FileDirectoryExists(filePath string) bool {
+	// 检查文件是否存在
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false
+	} else if err != nil {
+		return false
+	} else {
+		return true
+	}
+}
+
 // TruncAndWriteFile 将指定内容完整写入文件，如果文件已存在会清空原有内容，如果文件不存在会创建新文件
 func TruncAndWriteFile(fileName string, fileContent string) error {
 	fileContentByte := []byte(fileContent)
@@ -156,6 +168,25 @@ func WriteLinesFromSlice(filePath string, lines []string) error {
 		_, _ = writer.WriteString(line + "\n")
 	}
 	return writer.Flush()
+}
+
+// GetFileAllContent 读取文件内容
+func GetFileAllContent(filePath string) (string, error) {
+	// 打开文件
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close() // 确保在函数结束时关闭文件
+	// 创建一个Reader，可以使用任何实现了io.Reader接口的类型
+	reader := file
+
+	// 读取文件内容到byte切片中
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
 
 func StructToJsonFile[T any](filePath string, s T) error {
