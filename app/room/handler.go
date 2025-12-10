@@ -367,13 +367,8 @@ func (h *Handler) roomWorldsGet(c *gin.Context) {
 
 func (h *Handler) uploadPost(c *gin.Context) {
 	roomIDStr := c.PostForm("roomID")
-	roomID, err := strconv.Atoi(roomIDStr)
-	if err != nil {
-		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
 
+	roomID := 0
 	newRoom := false
 	if roomIDStr == "" {
 		// 新建房间，新建权限验证
@@ -388,6 +383,13 @@ func (h *Handler) uploadPost(c *gin.Context) {
 		permission := h.hasRoomPermission(c, roomIDStr)
 		if !permission {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+			return
+		}
+		var err error
+		roomID, err = strconv.Atoi(roomIDStr)
+		if err != nil {
+			logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
 	}
@@ -514,6 +516,17 @@ func (h *Handler) uploadPost(c *gin.Context) {
 		}
 	}
 
+	// 判断是否为统一模组
+	if worlds[0].ModData == worlds[1].ModData {
+		room.ModInOne = true
+		room.ModData = worlds[0].ModData
+		for _, world := range worlds {
+			world.ModData = ""
+		}
+	} else {
+		room.ModInOne = false
+	}
+
 	// 写入数据库
 	if newRoom {
 		_, err = h.roomDao.CreateRoom(&room)
@@ -589,7 +602,9 @@ func (h *Handler) uploadPost(c *gin.Context) {
 			logger.Logger.Error("删除旧存档数据失败", "err", err)
 			continue
 		}
-		err = utils.BashCMD(fmt.Sprintf("cp -r %s %s", world.path, fmt.Sprintf("%s/%s/", clusterPath, world.name)))
+		cmd := fmt.Sprintf("cp -r %s/save %s", world.path, fmt.Sprintf("%s/%s/", clusterPath, world.name))
+		logger.Logger.Debug(cmd)
+		err = utils.BashCMD(cmd)
 		if err != nil {
 			logger.Logger.Error("复制存档数据失败", "err", err)
 		}
