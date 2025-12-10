@@ -19,6 +19,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.GET("/factor", h.factorGet)
 			room.GET("/basic", h.allRoomBasicGet)
 			room.GET("/worlds", h.roomWorldsGet)
+			room.POST("/upload", h.uploadPost)
 		}
 	}
 }
