@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
@@ -152,4 +153,18 @@ func Base64Decode(encodedStr string) (string, error) {
 		return "", fmt.Errorf("Base64解码失败: %v", err)
 	}
 	return string(data), nil
+}
+
+// RandomString 生成指定长度的随机字符串
+func RandomString(length int) string {
+	// 初始化随机种子
+	rand.NewSource(time.Now().UnixNano())
+
+	const letters = "abcdefghijklmnopqrstuvwxyz"
+
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
