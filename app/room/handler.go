@@ -572,6 +572,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	}
 
 	game := dst.NewGameController(&room, &worlds, &roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	_ = game.StopAllWorld()
 	err = game.SaveAll()
 	if err != nil {
 		logger.Logger.Error("配置写入磁盘失败", "err", err)
