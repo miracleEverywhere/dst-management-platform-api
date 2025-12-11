@@ -56,3 +56,7 @@ func onlinePlayerGet(interval int) {
 	LOOP:
 	}
 }
+
+func uidMaintain() {
+
+}
