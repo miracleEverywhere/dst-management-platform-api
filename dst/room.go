@@ -267,13 +267,14 @@ func (g *Game) sessionInfo() *RoomSessionInfo {
 	return &roomSessionInfo
 }
 
+type SaveJson struct {
+	Room        models.Room        `json:"room"`
+	Worlds      []models.World     `json:"worlds"`
+	RoomSetting models.RoomSetting `json:"roomSetting"`
+}
+
 func (g *Game) backup() error {
 	// 生成房间信息
-	type SaveJson struct {
-		Room        models.Room        `json:"room"`
-		Worlds      []models.World     `json:"worlds"`
-		RoomSetting models.RoomSetting `json:"roomSetting"`
-	}
 	saveJson := SaveJson{
 		Room:        *g.room,
 		Worlds:      *g.worlds,
@@ -305,6 +306,121 @@ func (g *Game) backup() error {
 	}
 
 	return nil
+}
+
+func (g *Game) restore(filename string) (*SaveJson, error) {
+	zipPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID)
+	filePath := fmt.Sprintf("%s/%s", zipPath, filename)
+	err := utils.Unzip(filePath, zipPath)
+	if err != nil {
+		return nil, err
+	}
+
+	saveJson := SaveJson{
+		Room:        *g.room,
+		Worlds:      *g.worlds,
+		RoomSetting: *g.setting,
+	}
+
+	dmpJsonPath := fmt.Sprintf("%s/Cluster_%d/dmp.json", zipPath, g.room.ID)
+	logger.Logger.Debug(dmpJsonPath)
+	err = utils.JsonFileToStruct(dmpJsonPath, &saveJson)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = g.stopAllWorld()
+
+	cmd := fmt.Sprintf("rm -rf %s && cp -r %s/Cluster_%d %s", g.clusterPath, zipPath, g.room.ID, utils.ClusterPath)
+	logger.Logger.Debug(cmd)
+	err = utils.BashCMD(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = utils.RemoveDir(fmt.Sprintf("%s/Cluster_%d", zipPath, g.room.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	return &saveJson, nil
+}
+
+type BackupFile struct {
+	GameName  string `json:"gameName"`
+	Cycles    string `json:"cycles"`
+	TimeStamp int    `json:"timestamp"`
+	Size      int64  `json:"size"`
+	FileName  string `json:"fileName"`
+}
+
+func (g *Game) getBackups() ([]BackupFile, error) {
+	zipPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID)
+	zipFiles, err := utils.GetFiles(zipPath)
+	if err != nil {
+		return []BackupFile{}, err
+	}
+
+	var backupFile []BackupFile
+
+	for _, filename := range zipFiles {
+		filenameParts := strings.Split(filename, ".")
+		if len(filenameParts) != 2 {
+			logger.Logger.Debug(filename)
+			continue
+		}
+
+		decodeFilename, err := utils.Base64Decode(filenameParts[0])
+		if err != nil {
+			logger.Logger.Debug(filename)
+			logger.Logger.Debug(err.Error())
+			continue
+		}
+		decodeFilenameParts := strings.Split(decodeFilename, "<-@dmp@->")
+		if len(decodeFilenameParts) != 3 {
+			logger.Logger.Debug(decodeFilename)
+			continue
+		}
+
+		ts, err := strconv.Atoi(decodeFilenameParts[2])
+		if err != nil {
+			logger.Logger.Debug(decodeFilename)
+			continue
+		}
+
+		size, err := utils.GetFileSize(fmt.Sprintf("%s/%s", zipPath, filename))
+		if err != nil {
+			logger.Logger.Warn("获取备份文件大小失败", "err", err)
+		}
+
+		backupFile = append(backupFile, BackupFile{
+			GameName:  decodeFilenameParts[0],
+			Cycles:    decodeFilenameParts[1],
+			TimeStamp: ts,
+			Size:      size,
+			FileName:  filename,
+		})
+	}
+
+	if len(backupFile) == 0 {
+		return []BackupFile{}, nil
+	}
+
+	return backupFile, nil
+}
+
+func (g *Game) deleteBackups(filenames []string) int {
+	s := 0
+	for _, filename := range filenames {
+		filePath := fmt.Sprintf("%s/backup/%d/%s", utils.DmpFiles, g.room.ID, filename)
+		err := utils.RemoveFile(filePath)
+		if err != nil {
+			logger.Logger.Error("删除备份文件失败", "err", err)
+		}
+		s++
+	}
+
+	return s
 }
 
 func findLatestMetaFile(directory string) (string, error) {
