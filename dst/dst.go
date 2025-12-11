@@ -135,3 +135,18 @@ func (g *Game) GetLastAliveTime(id int) (string, error) {
 func (g *Game) Backup() error {
 	return g.backup()
 }
+
+// Restore 恢复备份
+func (g *Game) Restore(filename string) (*SaveJson, error) {
+	return g.restore(filename)
+}
+
+// GetBackups 获取备份文件
+func (g *Game) GetBackups() ([]BackupFile, error) {
+	return g.getBackups()
+}
+
+// DeleteBackups 批量删除备份文件，返回删除的个数
+func (g *Game) DeleteBackups(filenames []string) int {
+	return g.deleteBackups(filenames)
+}
