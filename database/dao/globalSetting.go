@@ -29,7 +29,12 @@ func (d *GlobalSettingDAO) initGlobalSetting() {
 	if count == 0 {
 		globalSetting := models.GlobalSetting{
 			PlayerGetFrequency: 60,
-			// 其他默认值...
+			UIDMaintainEnable:  true,
+			UIDMaintainSetting: 5,
+			SysMetricsEnable:   true,
+			SysMetricsSetting:  6,
+			AutoUpdateEnable:   true,
+			AutoUpdateSetting:  "06:41:38",
 		}
 		err = d.db.Create(&globalSetting).Error
 		if err != nil {
