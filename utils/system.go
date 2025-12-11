@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -189,6 +190,7 @@ func GetFileAllContent(filePath string) (string, error) {
 	return string(content), nil
 }
 
+// StructToJsonFile 结构体保存到json文件
 func StructToJsonFile[T any](filePath string, s T) error {
 	data, err := json.MarshalIndent(s, "", "    ") // 格式化输出
 	if err != nil {
@@ -210,6 +212,18 @@ func StructToJsonFile[T any](filePath string, s T) error {
 	}
 
 	return nil
+}
+
+// JsonFileToStruct 从JSON文件读取并解析到结构体
+func JsonFileToStruct[T any](filePath string, s *T) error {
+	// 读取 JSON 文件
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	// 解析 JSON
+	return json.Unmarshal(data, s)
 }
 
 // BashCMD 执行Linux Bash 命令
@@ -326,6 +340,27 @@ func GetDirs(dirPath string, fullPath bool) ([]string, error) {
 	return dirs, nil
 }
 
+// GetFiles 递归地获取指定目录下的所有文件名
+func GetFiles(dirPath string) ([]string, error) {
+	var fileNames []string
+
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			fileNames = append(fileNames, d.Name())
+		}
+		return nil
+	})
+
+	if err != nil {
+		return []string{}, err
+	}
+
+	return fileNames, nil
+}
+
 // GetDirSize 计算目录大小
 func GetDirSize(path string) (int64, error) {
 	var size int64
@@ -339,6 +374,20 @@ func GetDirSize(path string) (int64, error) {
 		return nil
 	})
 	return size, err
+}
+
+// GetFileSize 文件大小
+func GetFileSize(filePath string) (int64, error) {
+	// 使用 os.Stat 获取文件信息
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return 0, err
+	}
+
+	// 获取文件大小
+	fileSize := fileInfo.Size()
+
+	return fileSize, nil
 }
 
 // ChangeFileMode 修改文件权限
