@@ -23,9 +23,19 @@ func initJobs() {
 	Jobs = append(Jobs, JobConfig{
 		Name:     "onlinePlayerGet",
 		Func:     onlinePlayerGet,
-		Args:     []interface{}{globalSetting.PlayerGetFrequency},
+		Args:     []interface{}{globalSetting.PlayerGetFrequency, globalSetting.UIDMaintainEnable},
 		TimeType: "second",
 		Interval: globalSetting.PlayerGetFrequency,
+		DayAt:    "",
+	})
+
+	// 系统监控
+	Jobs = append(Jobs, JobConfig{
+		Name:     "systemMetricsGet",
+		Func:     systemMetricsGet,
+		Args:     []interface{}{globalSetting.SysMetricsSetting},
+		TimeType: "minute",
+		Interval: 1,
 		DayAt:    "",
 	})
 
