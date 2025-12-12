@@ -1,1 +1,0 @@
-import{_ as o,c as t,o as a,a as r,r as c}from"./index-CMKCSYdO.js";const n={},s={class:"layout-wrapper layout-blank","data-allow-mismatch":""};function _(l,i){const e=c("router-view");return a(),t("div",s,[r(e)])}const p=o(n,[["render",_]]);export{p as default};
