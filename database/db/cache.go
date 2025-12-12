@@ -11,6 +11,7 @@ var (
 	DstUpdating           bool
 	PlayersStatistic      = make(map[int][]Players)
 	PlayersStatisticMutex sync.Mutex
+	SystemMetrics         []SysMetrics
 )
 
 type PlayerInfo struct {
@@ -22,6 +23,15 @@ type PlayerInfo struct {
 type Players struct {
 	PlayerInfo []PlayerInfo `json:"playerInfo"`
 	Timestamp  int64        `json:"timestamp"`
+}
+
+type SysMetrics struct {
+	Timestamp   int64   `json:"timestamp"`
+	Cpu         float64 `json:"cpu"`
+	Memory      float64 `json:"memory"`
+	NetUplink   float64 `json:"netUplink"`
+	NetDownlink float64 `json:"netDownlink"`
+	Disk        float64 `json:"disk"`
 }
 
 func init() {
