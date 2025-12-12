@@ -3,7 +3,9 @@ package platform
 import (
 	"context"
 	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"github.com/creack/pty"
@@ -70,7 +72,7 @@ func (h *Handler) overviewGet(c *gin.Context) {
 }
 
 func gameVersionGet(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": GetDSTVersion()})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": scheduler.GetDSTVersion()})
 }
 
 func websshWS(c *gin.Context) {
@@ -241,4 +243,108 @@ func metricsGet(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.SystemMetrics})
 	}
+}
+
+func (h *Handler) globalSettingsGet(c *gin.Context) {
+	var globalSettings models.GlobalSetting
+
+	err := h.globalSettingDao.GetGlobalSetting(&globalSettings)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": globalSettings})
+}
+
+func (h *Handler) globalSettingsPost(c *gin.Context) {
+	var reqForm models.GlobalSetting
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	var dbGlobalSettings models.GlobalSetting
+
+	err := h.globalSettingDao.GetGlobalSetting(&dbGlobalSettings)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	needUpdateDB := false
+
+	if dbGlobalSettings.PlayerGetFrequency != reqForm.PlayerGetFrequency || dbGlobalSettings.UIDMaintainEnable != reqForm.UIDMaintainEnable {
+		needUpdateDB = true
+		err = scheduler.UpdateJob(&scheduler.JobConfig{
+			Name:     "onlinePlayerGet",
+			Func:     scheduler.OnlinePlayerGet,
+			Args:     []interface{}{reqForm.PlayerGetFrequency, reqForm.UIDMaintainEnable},
+			TimeType: "second",
+			Interval: reqForm.PlayerGetFrequency,
+			DayAt:    "",
+		})
+		if err != nil {
+			logger.Logger.Error("定时任务设置失败", "err", err, "name", "onlinePlayerGet")
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
+			return
+		}
+	}
+
+	if dbGlobalSettings.SysMetricsEnable != reqForm.SysMetricsEnable || dbGlobalSettings.SysMetricsSetting != reqForm.SysMetricsSetting {
+		needUpdateDB = true
+		if reqForm.SysMetricsEnable {
+			err = scheduler.UpdateJob(&scheduler.JobConfig{
+				Name:     "systemMetricsGet",
+				Func:     scheduler.SystemMetricsGet,
+				Args:     []interface{}{reqForm.SysMetricsSetting},
+				TimeType: "minute",
+				Interval: 1,
+				DayAt:    "",
+			})
+			if err != nil {
+				logger.Logger.Error("定时任务设置失败", "err", err, "name", "systemMetricsGet")
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
+				return
+			}
+		} else {
+			scheduler.DeleteJob("systemMetricsGet")
+			db.SystemMetrics = []db.SysMetrics{}
+		}
+	}
+
+	if dbGlobalSettings.AutoUpdateEnable != reqForm.AutoUpdateEnable || dbGlobalSettings.AutoUpdateSetting != reqForm.AutoUpdateSetting {
+		needUpdateDB = true
+		if reqForm.AutoUpdateEnable {
+			err = scheduler.UpdateJob(&scheduler.JobConfig{
+				Name:     "gameUpdate",
+				Func:     scheduler.GameUpdate,
+				Args:     []interface{}{reqForm.AutoUpdateEnable},
+				TimeType: "day",
+				Interval: 0,
+				DayAt:    reqForm.AutoUpdateSetting,
+			})
+			if err != nil {
+				logger.Logger.Error("定时任务设置失败", "err", err, "name", "gameUpdate")
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
+				return
+			}
+		} else {
+			scheduler.DeleteJob("gameUpdate")
+		}
+	}
+
+	if needUpdateDB {
+		err = h.globalSettingDao.UpdateGlobalSetting(&reqForm)
+		if err != nil {
+			logger.Logger.Error("更新数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
