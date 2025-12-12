@@ -2,13 +2,14 @@ package scheduler
 
 import (
 	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"strings"
 )
 
-func onlinePlayerGet(interval int) {
+func onlinePlayerGet(interval int, uidMapEnable bool) {
 	db.PlayersStatisticMutex.Lock()
 	defer db.PlayersStatisticMutex.Unlock()
 	roomsBasic, err := DBHandler.roomDao.GetRoomBasic()
@@ -37,6 +38,18 @@ func onlinePlayerGet(interval int) {
 						playerInfo.Nickname = uidNickName[1]
 						playerInfo.Prefab = uidNickName[2]
 						ps = append(ps, playerInfo)
+
+						if uidMapEnable {
+							uidMap := models.UidMap{
+								UID:      playerInfo.UID,
+								Nickname: playerInfo.Nickname,
+								RoomID:   rbs.RoomID,
+							}
+							err = DBHandler.uidMapDao.UpdateUidMap(&uidMap)
+							if err != nil {
+								logger.Logger.Error("更新UID MAP失败", "err", err)
+							}
+						}
 					}
 					if ps == nil {
 						ps = []db.PlayerInfo{}
@@ -57,6 +70,20 @@ func onlinePlayerGet(interval int) {
 	}
 }
 
-func uidMaintain() {
+func systemMetricsGet(maxHour int) {
+	netUP, netDown := utils.NetStatus()
+	sysMetrics := db.SysMetrics{
+		Timestamp:   utils.GetTimestamp(),
+		Cpu:         utils.CpuUsage(),
+		Memory:      utils.MemoryUsage(),
+		NetUplink:   netUP,
+		NetDownlink: netDown,
+		Disk:        utils.DiskUsage(),
+	}
 
+	if len(db.SystemMetrics) > maxHour*60 {
+		db.SystemMetrics = append(db.SystemMetrics[:0], sysMetrics)
+	} else {
+		db.SystemMetrics = append(db.SystemMetrics, sysMetrics)
+	}
 }
