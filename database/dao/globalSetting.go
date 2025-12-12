@@ -30,7 +30,6 @@ func (d *GlobalSettingDAO) initGlobalSetting() {
 		globalSetting := models.GlobalSetting{
 			PlayerGetFrequency: 60,
 			UIDMaintainEnable:  true,
-			UIDMaintainSetting: 5,
 			SysMetricsEnable:   true,
 			SysMetricsSetting:  6,
 			AutoUpdateEnable:   true,
