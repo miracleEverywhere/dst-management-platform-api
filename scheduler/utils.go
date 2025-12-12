@@ -31,14 +31,16 @@ type Handler struct {
 	worldDao         *dao.WorldDAO
 	roomSettingDao   *dao.RoomSettingDAO
 	globalSettingDao *dao.GlobalSettingDAO
+	uidMapDao        *dao.UidMapDAO
 }
 
-func newDBHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) *Handler {
+func newDBHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO) *Handler {
 	return &Handler{
 		roomDao:          roomDao,
 		worldDao:         worldDao,
 		roomSettingDao:   roomSettingDao,
 		globalSettingDao: globalSettingDao,
+		uidMapDao:        uidMapDao,
 	}
 }
 
