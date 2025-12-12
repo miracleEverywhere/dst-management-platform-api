@@ -22,7 +22,7 @@ func initJobs() {
 	// players online
 	Jobs = append(Jobs, JobConfig{
 		Name:     "onlinePlayerGet",
-		Func:     onlinePlayerGet,
+		Func:     OnlinePlayerGet,
 		Args:     []interface{}{globalSetting.PlayerGetFrequency, globalSetting.UIDMaintainEnable},
 		TimeType: "second",
 		Interval: globalSetting.PlayerGetFrequency,
@@ -32,11 +32,21 @@ func initJobs() {
 	// 系统监控
 	Jobs = append(Jobs, JobConfig{
 		Name:     "systemMetricsGet",
-		Func:     systemMetricsGet,
+		Func:     SystemMetricsGet,
 		Args:     []interface{}{globalSetting.SysMetricsSetting},
 		TimeType: "minute",
 		Interval: 1,
 		DayAt:    "",
+	})
+
+	// 游戏更新
+	Jobs = append(Jobs, JobConfig{
+		Name:     "gameUpdate",
+		Func:     GameUpdate,
+		Args:     []interface{}{globalSetting.AutoUpdateEnable},
+		TimeType: "day",
+		Interval: 0,
+		DayAt:    globalSetting.AutoUpdateSetting,
 	})
 
 	// 房间定时任务
