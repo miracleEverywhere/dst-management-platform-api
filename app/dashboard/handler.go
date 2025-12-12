@@ -238,8 +238,8 @@ func (h *Handler) infoSysGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
-		Cpu:      cpuUsage(),
-		Memory:   memoryUsage(),
+		Cpu:      utils.CpuUsage(),
+		Memory:   utils.MemoryUsage(),
 		Updating: db.DstUpdating,
 	}})
 }
