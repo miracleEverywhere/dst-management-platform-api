@@ -48,7 +48,7 @@ func Run() {
 	uidMapDao := dao.NewUidMapDAO(db.DB)
 
 	// 开启定时任务
-	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao)
+	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
 
 	// 初始化及注册路由
 	r := gin.Default()
