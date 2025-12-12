@@ -6,10 +6,11 @@ import (
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"fmt"
 	"strings"
 )
 
-func onlinePlayerGet(interval int, uidMapEnable bool) {
+func OnlinePlayerGet(interval int, uidMapEnable bool) {
 	db.PlayersStatisticMutex.Lock()
 	defer db.PlayersStatisticMutex.Unlock()
 	roomsBasic, err := DBHandler.roomDao.GetRoomBasic()
@@ -70,7 +71,7 @@ func onlinePlayerGet(interval int, uidMapEnable bool) {
 	}
 }
 
-func systemMetricsGet(maxHour int) {
+func SystemMetricsGet(maxHour int) {
 	netUP, netDown := utils.NetStatus()
 	sysMetrics := db.SysMetrics{
 		Timestamp:   utils.GetTimestamp(),
@@ -85,5 +86,26 @@ func systemMetricsGet(maxHour int) {
 		db.SystemMetrics = append(db.SystemMetrics[:0], sysMetrics)
 	} else {
 		db.SystemMetrics = append(db.SystemMetrics, sysMetrics)
+	}
+}
+
+func GameUpdate(enable bool) {
+	if !enable {
+		return
+	}
+
+	if db.DstUpdating {
+		return
+	}
+
+	v := GetDSTVersion()
+	if v.Local < v.Server {
+		logger.Logger.Info("检测到游戏需要更新")
+		logger.Logger.Info("开始执行游戏更新")
+		db.DstUpdating = true
+		updateCmd := fmt.Sprintf("cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit")
+		_ = utils.BashCMD(updateCmd)
+		logger.Logger.Info("游戏更新结束")
+		db.DstUpdating = false
 	}
 }
