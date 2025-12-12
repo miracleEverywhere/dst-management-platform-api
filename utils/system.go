@@ -6,6 +6,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/net"
 	"io"
 	"io/fs"
 	"os"
@@ -534,4 +538,130 @@ func Unzip(zipFile, dest string) error {
 	}
 
 	return nil
+}
+
+// CpuUsage 获取cpu使用率
+func CpuUsage() float64 {
+	percent, err := cpu.Percent(0, false)
+	if err != nil {
+		return 0
+	}
+	return percent[0]
+}
+
+// MemoryUsage 获取内存使用率
+func MemoryUsage() float64 {
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		return 0
+	}
+	return vmStat.UsedPercent
+}
+
+// NetStatus 获取网络使用情况
+func NetStatus() (float64, float64) {
+	// 获取初始的网络统计信息
+	initialCounters, err := net.IOCounters(true)
+	if err != nil {
+		return 0, 0
+	}
+
+	// 记录初始时间
+	initialTime := time.Now()
+
+	// 等待0.5秒
+	time.Sleep(500 * time.Millisecond)
+
+	// 获取新的网络统计信息
+	newCounters, err := net.IOCounters(true)
+	if err != nil {
+		return 0, 0
+	}
+
+	// 记录新时间
+	newTime := time.Now()
+
+	// 计算时间差（秒）
+	timeDiff := newTime.Sub(initialTime).Seconds()
+
+	// 计算所有接口的总数据
+	var (
+		totalSentBytes float64
+		totalRecvBytes float64
+	)
+	for i, counter := range newCounters {
+		if i < len(initialCounters) {
+			sentBytes := float64(counter.BytesSent - initialCounters[i].BytesSent)
+			recvBytes := float64(counter.BytesRecv - initialCounters[i].BytesRecv)
+			totalSentBytes += sentBytes
+			totalRecvBytes += recvBytes
+		}
+	}
+
+	// 计算总数据速率（KB/s）
+	totalSentKB := totalSentBytes / 1024.0
+	totalUplinkKBps := totalSentKB / timeDiff
+	totalRecvKB := totalRecvBytes / 1024.0
+	totalDownlinkKBps := totalRecvKB / timeDiff
+
+	return totalUplinkKBps, totalDownlinkKBps
+}
+
+// DiskUsage 获取当前分区磁盘使用率
+func DiskUsage() float64 {
+	// 获取当前目录
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return 0
+	}
+
+	// 获取当前目录所在的挂载点
+	mountPoint := findMountPoint(currentDir)
+	if mountPoint == "" {
+		return 0
+	}
+
+	// 获取挂载点的磁盘使用情况
+	usage, err := disk.Usage(mountPoint)
+	if err != nil {
+		return 0
+	}
+	return usage.UsedPercent
+}
+
+func findMountPoint(path string) string {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return ""
+	}
+
+	for {
+		partitions, err := disk.Partitions(false)
+		if err != nil {
+			return ""
+		}
+
+		for _, partition := range partitions {
+			if isSubPath(absPath, partition.Mountpoint) {
+				return partition.Mountpoint
+			}
+		}
+
+		// 向上遍历目录
+		parent := filepath.Dir(absPath)
+		if parent == absPath {
+			break
+		}
+		absPath = parent
+	}
+
+	return ""
+}
+
+func isSubPath(path, mountpoint string) bool {
+	rel, err := filepath.Rel(mountpoint, path)
+	if err != nil {
+		return false
+	}
+	return !strings.Contains(rel, "..")
 }
