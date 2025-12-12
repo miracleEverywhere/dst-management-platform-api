@@ -10,8 +10,8 @@ import (
 )
 
 // Start 开启定时任务
-func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO) {
-	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao)
+func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO) {
+	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
 	initJobs()
 	registerJobs()
 	go Scheduler.StartAsync()
