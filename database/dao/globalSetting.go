@@ -21,6 +21,10 @@ func (d *GlobalSettingDAO) GetGlobalSetting(setting *models.GlobalSetting) error
 	return d.db.First(setting).Error
 }
 
+func (d *GlobalSettingDAO) UpdateGlobalSetting(setting *models.GlobalSetting) error {
+	return d.db.Save(setting).Error
+}
+
 func (d *GlobalSettingDAO) initGlobalSetting() {
 	count, err := d.Count(nil)
 	if err != nil {
