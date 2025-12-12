@@ -221,3 +221,24 @@ func osInfoGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": osInfo})
 }
+
+func metricsGet(c *gin.Context) {
+	type ReqForm struct {
+		TimeRange int `json:"timeRange" form:"timeRange"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	systemMetricsLength := len(db.SystemMetrics)
+	reqLength := reqForm.TimeRange * 60
+
+	if systemMetricsLength > reqLength {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.SystemMetrics[systemMetricsLength-reqLength:]})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.SystemMetrics})
+	}
+}
