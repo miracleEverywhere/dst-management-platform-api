@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/logger"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 var Jobs []JobConfig
@@ -146,6 +147,24 @@ func initJobs() {
 				Interval: roomSetting.KeepaliveSetting,
 				DayAt:    "",
 			})
+		}
+		var announces []AnnounceSetting
+		if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
+			logger.Logger.Error("获取定时通知设置失败", "err", err)
+			continue
+		}
+		for _, announce := range announces {
+			if announce.Status {
+				// 注意，-为分隔符，需要删除uuid中的-
+				Jobs = append(Jobs, JobConfig{
+					Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
+					Func:     Announce,
+					Args:     []interface{}{game, announce.Content},
+					TimeType: "second",
+					Interval: announce.Interval,
+					DayAt:    "",
+				})
+			}
 		}
 	}
 }
