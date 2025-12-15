@@ -56,8 +56,12 @@ func initJobs() {
 		logger.Logger.Error("获取房间失败", "err", err)
 		return
 	}
-
 	for _, r := range *roomBasic {
+		// 未激活的房间不添加定时任务
+		if !r.Status {
+			continue
+		}
+
 		room, worlds, roomSetting, err := fetchGameInfo(r.RoomID)
 		if err != nil {
 			logger.Logger.Error("获取房间设置失败", "err", err)

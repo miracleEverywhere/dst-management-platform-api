@@ -134,7 +134,9 @@ func (h *Handler) roomPut(c *gin.Context) {
 			})
 		}
 
-		processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
+		if reqForm.RoomData.Status {
+			processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
+		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
 		return

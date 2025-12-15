@@ -20,6 +20,11 @@ func OnlinePlayerGet(interval int, uidMapEnable bool) {
 	}
 
 	for _, rbs := range *roomsBasic {
+		// 未激活的房间不添加定时任务
+		if !rbs.Status {
+			continue
+		}
+
 		room, worlds, roomSetting, err := fetchGameInfo(rbs.RoomID)
 		if err != nil {
 			logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
