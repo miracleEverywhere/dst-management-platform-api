@@ -72,9 +72,16 @@ func (g *Game) createWorlds() error {
 	fileSystemWorlds, err := utils.GetDirs(g.clusterPath, false)
 	for _, fileSystemWorld := range fileSystemWorlds {
 		if !utils.Contains(worldsName, fileSystemWorld) {
+			// 清理文件
 			err = utils.RemoveDir(fmt.Sprintf("%s/%s", g.clusterPath, fileSystemWorld))
 			if err != nil {
-				logger.Logger.Warn("清理世界失败", "err", err)
+				logger.Logger.Warn("清理世界失败，删除文件失败", "err", err)
+			}
+			// 清理screen
+			cmd := fmt.Sprintf("screen -X -S DMP_Cluster_%d_%s quit", g.room.ID, fileSystemWorld)
+			err = utils.BashCMD(cmd)
+			if err != nil {
+				logger.Logger.Warn("清理世界失败，清理SCREEN失败", "err", err)
 			}
 		}
 	}
