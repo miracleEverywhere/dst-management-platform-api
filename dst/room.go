@@ -58,6 +58,9 @@ func (g *Game) createRoom() error {
 		return err
 	}
 
+	// 创建备份目录
+	_ = utils.EnsureDirExists(fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID))
+
 	return nil
 }
 
