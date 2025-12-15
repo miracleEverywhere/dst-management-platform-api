@@ -173,3 +173,10 @@ func GetDSTVersion() DSTVersion {
 
 	return dstVersion
 }
+
+type AnnounceSetting struct {
+	ID       string `json:"id"`
+	Status   bool   `json:"status"`
+	Interval int    `json:"interval"`
+	Content  string `json:"content"`
+}
