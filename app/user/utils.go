@@ -126,7 +126,7 @@ var tools = menuItem{
 			Title:     "toolsBackup",
 			To:        "/tools/backup",
 			Component: "tools/backup",
-			Icon:      "ri-save-line",
+			Icon:      "ri-save-2-line",
 			Links:     nil,
 		},
 		{
