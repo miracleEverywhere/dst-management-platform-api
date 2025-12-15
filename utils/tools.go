@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/google/uuid"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -167,4 +168,9 @@ func RandomString(length int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+// GenerateUUID 生成UUID
+func GenerateUUID() string {
+	return uuid.New().String()
 }
