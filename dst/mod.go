@@ -34,6 +34,13 @@ func (g *Game) dsModsSetup() error {
 	modsTable := L.Get(-1)
 	fileContent := ""
 	if tbl, ok := modsTable.(*lua.LTable); ok {
+		// 有配置，但为空
+		if tbl.Len() == 0 {
+			err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+			if err != nil {
+				return err
+			}
+		}
 		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
 			// 检查键是否是字符串，并且以 "workshop-" 开头
 			if strKey, ok := key.(lua.LString); ok && strings.HasPrefix(string(strKey), "workshop-") {
@@ -42,6 +49,13 @@ func (g *Game) dsModsSetup() error {
 				fileContent = fileContent + "ServerModSetup(\"" + workshopID + "\")\n"
 			}
 		})
+		// 有配置，不为空
+		err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+		if err != nil {
+			return err
+		}
+	} else {
+		// 无配置
 		err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
 		if err != nil {
 			return err
