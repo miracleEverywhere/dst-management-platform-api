@@ -152,6 +152,7 @@ func initJobs() {
 				DayAt:    "",
 			})
 		}
+		// 定时通知 [{id: '', content: '', interval: 0, status: false}]
 		var announces []AnnounceSetting
 		if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
 			logger.Logger.Error("获取定时通知设置失败", "err", err)
