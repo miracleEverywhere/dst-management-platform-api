@@ -95,3 +95,10 @@ func Keepalive(game *dst.Game, roomID int) {
 		}
 	}
 }
+
+func Announce(game *dst.Game, content string) {
+	err := game.Announce(content)
+	if err != nil {
+		logger.Logger.Error("定时通知失败", "err", err)
+	}
+}
