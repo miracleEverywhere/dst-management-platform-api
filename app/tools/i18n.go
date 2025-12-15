@@ -29,12 +29,14 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["create backup success"] = "创建成功"
 	i.ZH["restore fail"] = "恢复失败"
 	i.ZH["restore success"] = "恢复成功"
+	i.ZH["get setting fail"] = "获取定时通知设置失败"
 
 	i.EN["get backup fail"] = "get backup fail"
 	i.EN["create backup fail"] = "create backup fail"
 	i.EN["create backup success"] = "create success"
 	i.EN["restore fail"] = "restore fail"
 	i.EN["restore success"] = "restore success"
+	i.EN["get setting fail"] = "Get Announce Settings Fail"
 
 	return i
 }

@@ -64,3 +64,10 @@ func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
 
 	return false
 }
+
+type AnnounceSetting struct {
+	ID       string `json:"id"`
+	Status   bool   `json:"status"`
+	Interval int    `json:"interval"`
+	Content  string `json:"content"`
+}

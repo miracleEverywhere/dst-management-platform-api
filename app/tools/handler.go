@@ -3,6 +3,7 @@ package tools
 import (
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -233,4 +234,24 @@ func (h *Handler) announceGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
 	}
+
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	var announceSetting []AnnounceSetting
+	if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announceSetting); err != nil {
+		logger.Logger.Error("获取定时通知设置失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "get setting fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": announceSetting})
+}
+
+func (h *Handler) announcePut(c *gin.Context) {
+
 }
