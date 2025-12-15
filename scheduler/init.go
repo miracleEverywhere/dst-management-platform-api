@@ -72,13 +72,16 @@ func DeleteJob(jobName string) {
 
 // GetJobs 根据任务名获取定时任务
 func GetJobs(roomID int, jobType string) []string {
-	var n []string
+	jobMutex.Lock()
+	defer jobMutex.Unlock()
 
-	for _, job := range Jobs {
-		if strings.HasSuffix(job.Name, jobType) {
-			s := strings.Split(job.Name, "-")
+	var n []string
+	for jobName, _ := range currentJobs {
+		logger.Logger.Debug("定时任务名", "jobName", jobName, "jobType", jobType)
+		if strings.HasSuffix(jobName, jobType) {
+			s := strings.Split(jobName, "-")
 			if s[0] == strconv.Itoa(roomID) {
-				n = append(n, job.Name)
+				n = append(n, jobName)
 			}
 		}
 	}
