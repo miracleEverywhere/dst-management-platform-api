@@ -19,10 +19,10 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v3
 
-      - name: Setup Go 1.23.1
+      - name: Setup Go 1.25.4
         uses: actions/setup-go@v5
         with:
-          go-version: 1.23.1
+          go-version: 1.25.4
 
       - name: build-linux
         env:
