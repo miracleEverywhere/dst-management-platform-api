@@ -45,7 +45,7 @@ func MWAdminOnly() gin.HandlerFunc {
 			nickname = "获取失败"
 		}
 		logger.Logger.Warn("越权请求", "ip", c.ClientIP(), "user", username, "nickname", nickname)
-		c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "permission needed"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": utils.I18n.Get(c, "permission needed"), "data": nil})
 		c.Abort()
 		return
 	}
