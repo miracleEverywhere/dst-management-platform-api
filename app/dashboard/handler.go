@@ -173,7 +173,7 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 	}
 
 	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 420, "message": message.Get(c, "permission needed"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
 	}
 
@@ -264,7 +264,7 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 	}
 
 	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 420, "message": message.Get(c, "permission needed"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
 	}
 
