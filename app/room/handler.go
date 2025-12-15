@@ -54,6 +54,7 @@ func (h *Handler) roomPost(c *gin.Context) {
 		}
 
 		reqForm.RoomSettingData.RoomID = room.ID
+		reqForm.RoomSettingData.AnnounceSetting = "{}"
 		if errCreate := h.roomSettingDao.Create(&reqForm.RoomSettingData); errCreate != nil {
 			logger.Logger.Error("创建房间失败", "err", errCreate)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
