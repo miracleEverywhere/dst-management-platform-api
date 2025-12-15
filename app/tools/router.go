@@ -17,6 +17,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			tools.DELETE("/backup", h.backupDelete)
 			tools.POST("/backup/restore", h.backupRestorePost)
 			tools.GET("/backup/download", h.backupDownloadGet)
+			tools.GET("/announce", h.announceGet)
+			tools.PUT("/announce", h.announcePut)
 		}
 	}
 }
