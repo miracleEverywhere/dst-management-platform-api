@@ -287,36 +287,38 @@ func (h *Handler) announcePut(c *gin.Context) {
 		return
 	}
 
-	// 更新定时任务
-	jobNames := scheduler.GetJobs(reqForm.RoomID, "Announce")
-	logger.Logger.Debug(utils.StructToFlatString(jobNames))
-	for _, jobName := range jobNames {
-		// 删除所有通知任务
-		scheduler.DeleteJob(jobName)
-	}
-	var announces []scheduler.AnnounceSetting
-	if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
-		logger.Logger.Error("获取定时通知设置失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
-		return
-	}
+	if room.Status {
+		// 更新定时任务
+		jobNames := scheduler.GetJobs(reqForm.RoomID, "Announce")
+		logger.Logger.Debug(utils.StructToFlatString(jobNames))
+		for _, jobName := range jobNames {
+			// 删除所有通知任务
+			scheduler.DeleteJob(jobName)
+		}
+		var announces []scheduler.AnnounceSetting
+		if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
+			logger.Logger.Error("获取定时通知设置失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+			return
+		}
 
-	logger.Logger.Debug(utils.StructToFlatString(announces))
+		logger.Logger.Debug(utils.StructToFlatString(announces))
 
-	for _, announce := range announces {
-		// 创建通知任务
-		if announce.Status {
-			// 注意，-为分隔符，需要删除uuid中的-
-			err = scheduler.UpdateJob(&scheduler.JobConfig{
-				Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
-				Func:     scheduler.Announce,
-				Args:     []interface{}{game, announce.Content},
-				TimeType: "second",
-				Interval: announce.Interval,
-				DayAt:    "",
-			})
-			if err != nil {
-				logger.Logger.Error("重启定时任务处理失败", "err", err)
+		for _, announce := range announces {
+			// 创建通知任务
+			if announce.Status {
+				// 注意，-为分隔符，需要删除uuid中的-
+				err = scheduler.UpdateJob(&scheduler.JobConfig{
+					Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
+					Func:     scheduler.Announce,
+					Args:     []interface{}{game, announce.Content},
+					TimeType: "second",
+					Interval: announce.Interval,
+					DayAt:    "",
+				})
+				if err != nil {
+					logger.Logger.Error("重启定时任务处理失败", "err", err)
+				}
 			}
 		}
 	}

@@ -169,6 +169,7 @@ func (d *RoomDAO) updateUserRooms(tx *gorm.DB, id int) error {
 type RoomBasic struct {
 	RoomName string `json:"roomName"`
 	RoomID   int    `json:"roomID"`
+	Status   bool   `json:"status"`
 }
 
 func (d *RoomDAO) GetRoomBasic() (*[]RoomBasic, error) {
@@ -182,6 +183,7 @@ func (d *RoomDAO) GetRoomBasic() (*[]RoomBasic, error) {
 		roomBasics = append(roomBasics, RoomBasic{
 			RoomName: room.GameName,
 			RoomID:   room.ID,
+			Status:   room.Status,
 		})
 	}
 
