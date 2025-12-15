@@ -129,6 +129,16 @@ var tools = menuItem{
 			Icon:      "ri-save-line",
 			Links:     nil,
 		},
+		{
+			ID:        602,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsAnnounce",
+			To:        "/tools/announce",
+			Component: "tools/announce",
+			Icon:      "ri-chat-smile-ai-3-line",
+			Links:     nil,
+		},
 	},
 }
 
