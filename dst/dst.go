@@ -150,3 +150,7 @@ func (g *Game) GetBackups() ([]BackupFile, error) {
 func (g *Game) DeleteBackups(filenames []string) int {
 	return g.deleteBackups(filenames)
 }
+
+func (g *Game) RunningScreens() ([]string, error) {
+	return g.runningScreen()
+}
