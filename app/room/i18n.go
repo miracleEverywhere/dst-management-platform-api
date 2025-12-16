@@ -43,6 +43,9 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["number of worlds does not match"] = "上传存档世界个数与当前房间世界个数不相等"
 	i.ZH["write file fail"] = "写入文件失败"
 	i.ZH["upload success"] = "上传成功"
+	i.ZH["deactivate success"] = "关闭成功"
+	i.ZH["activate fail"] = "激活成功"
+	i.ZH["activate success"] = "激活成功"
 
 	i.EN["room name exist"] = "Room Name Already Existed"
 	i.EN["upload save fail"] = "file save fail"
@@ -63,6 +66,9 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["number of worlds does not match"] = "the number of worlds does not match"
 	i.EN["write file fail"] = "write file fail"
 	i.EN["upload success"] = "upload success"
+	i.EN["deactivate success"] = "Deactivate Success"
+	i.EN["activate fail"] = "Activate Fail"
+	i.EN["activate success"] = "Activate Success"
 
 	return i
 }
