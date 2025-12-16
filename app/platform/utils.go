@@ -2,6 +2,7 @@ package platform
 
 import (
 	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/models"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -17,9 +18,10 @@ type Handler struct {
 	systemDao        *dao.SystemDAO
 	globalSettingDao *dao.GlobalSettingDAO
 	uidMapDao        *dao.UidMapDAO
+	roomSettingDao   *dao.RoomSettingDAO
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, systemDao *dao.SystemDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, systemDao *dao.SystemDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
 	return &Handler{
 		userDao:          userDao,
 		roomDao:          roomDao,
@@ -27,6 +29,7 @@ func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldD
 		systemDao:        systemDao,
 		globalSettingDao: globalSettingDao,
 		uidMapDao:        uidMapDao,
+		roomSettingDao:   roomSettingDao,
 	}
 }
 
@@ -94,4 +97,21 @@ func getOSInfo() (*OSInfo, error) {
 		Uptime:          uptime,
 		PlatformVersion: platformVersion,
 	}, nil
+}
+
+func (h *Handler) fetchGameInfo(roomID int) (*models.Room, *[]models.World, *models.RoomSetting, error) {
+	room, err := h.roomDao.GetRoomByID(roomID)
+	if err != nil {
+		return &models.Room{}, &[]models.World{}, &models.RoomSetting{}, err
+	}
+	worlds, err := h.worldDao.GetWorldsByRoomID(roomID)
+	if err != nil {
+		return &models.Room{}, &[]models.World{}, &models.RoomSetting{}, err
+	}
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(roomID)
+	if err != nil {
+		return &models.Room{}, &[]models.World{}, &models.RoomSetting{}, err
+	}
+
+	return room, worlds, roomSetting, nil
 }
