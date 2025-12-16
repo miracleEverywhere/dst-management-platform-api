@@ -45,3 +45,10 @@ func (d *UserDAO) UpdateUser(user *models.User) error {
 	err := d.db.Save(user).Error
 	return err
 }
+
+func (d *UserDAO) GetNonAdminUsers() (*[]models.User, error) {
+	var users []models.User
+	err := d.db.Where("role != 'admin'").Find(&users).Error
+
+	return &users, err
+}
