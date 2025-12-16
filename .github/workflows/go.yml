@@ -2,7 +2,7 @@ name: release-packages
 
 on:
   push:
-    tags: ["v*"]
+    tags: [ "v*" ]
 
 env:
   REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api

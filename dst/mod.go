@@ -5,10 +5,11 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
-	"github.com/yuin/gopher-lua"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/yuin/gopher-lua"
 )
 
 type modSaveData struct {
