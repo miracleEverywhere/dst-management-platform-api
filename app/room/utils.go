@@ -107,7 +107,7 @@ func (h *Handler) hasRoomPermission(c *gin.Context, roomID string) bool {
 // 处理定时任务
 func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	// 备份 //
-	backupNames := scheduler.GetJobs(roomID, "Backup")
+	backupNames := scheduler.GetJobsByType(roomID, "Backup")
 	type BackupSetting struct {
 		Time string `json:"time"`
 	}

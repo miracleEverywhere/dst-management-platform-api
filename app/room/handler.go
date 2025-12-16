@@ -6,7 +6,9 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -136,6 +138,13 @@ func (h *Handler) roomPut(c *gin.Context) {
 
 		if reqForm.RoomData.Status {
 			processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
+		} else {
+			// 删除所有的定时任务
+			jobNames := scheduler.GetJobsByRoomID(reqForm.RoomData.ID)
+			logger.Logger.Debug(utils.StructToFlatString(jobNames))
+			for _, jobName := range jobNames {
+				scheduler.DeleteJob(jobName)
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
@@ -626,4 +635,157 @@ func (h *Handler) uploadPost(c *gin.Context) {
 			logger.Logger.Error("清理上传文件失败", "err", err)
 		}
 	}()
+}
+
+func (h *Handler) deactivatePost(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	// 关闭游戏进程
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	_ = game.StopAllWorld()
+	// 删除定时任务
+	jobNames := scheduler.GetJobsByRoomID(reqForm.RoomID)
+	logger.Logger.Debug(utils.StructToFlatString(jobNames))
+	for _, jobName := range jobNames {
+		scheduler.DeleteJob(jobName)
+	}
+	// 删除玩家统计
+	db.PlayersStatisticMutex.Lock()
+	defer db.PlayersStatisticMutex.Unlock()
+	delete(db.PlayersStatistic, reqForm.RoomID)
+	// 更新数据库
+	room.Status = false
+	err = h.roomDao.UpdateRoom(room)
+	if err != nil {
+		logger.Logger.Error("写入数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "deactivate success"), "data": nil})
+}
+
+func (h *Handler) activatePost(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	// 启动游戏
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	_ = game.StartAllWorld()
+	// 更新数据库
+	room.Status = true
+	err = h.roomDao.UpdateRoom(room)
+	if err != nil {
+		logger.Logger.Error("写入数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	// 添加定时任务
+	processJobs(game, reqForm.RoomID, *roomSetting)
+	// 添加定时通知
+	jobNames := scheduler.GetJobsByType(reqForm.RoomID, "Announce")
+	logger.Logger.Debug(utils.StructToFlatString(jobNames))
+	for _, jobName := range jobNames {
+		// 删除所有通知任务
+		scheduler.DeleteJob(jobName)
+	}
+	var announces []scheduler.AnnounceSetting
+	if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
+		logger.Logger.Error("获取定时通知设置失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "activate fail"), "data": nil})
+		return
+	}
+	logger.Logger.Debug(utils.StructToFlatString(announces))
+	for _, announce := range announces {
+		// 创建通知任务
+		if announce.Status {
+			// 注意，-为分隔符，需要删除uuid中的-
+			err = scheduler.UpdateJob(&scheduler.JobConfig{
+				Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
+				Func:     scheduler.Announce,
+				Args:     []interface{}{game, announce.Content},
+				TimeType: "second",
+				Interval: announce.Interval,
+				DayAt:    "",
+			})
+			if err != nil {
+				logger.Logger.Error("定时通知定时任务处理失败", "err", err)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "activate success"), "data": nil})
 }
