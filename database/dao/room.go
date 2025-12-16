@@ -2,7 +2,6 @@ package dao
 
 import (
 	"dst-management-platform-api/database/models"
-	"dst-management-platform-api/logger"
 	"fmt"
 	"gorm.io/gorm"
 	"strconv"
@@ -65,53 +64,6 @@ func (d *RoomDAO) ListRooms(roomIDs []int, gameName string, page, pageSize int) 
 
 	rooms, err := d.Query(page, pageSize, condition, args...)
 	return rooms, err
-}
-
-func (d *RoomDAO) DeleteRoomByID(id int) error {
-	// 开始事务
-	tx := d.db.Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			logger.Logger.Error("回滚事务失败", "panic", r)
-		}
-	}()
-
-	// 删除rooms表中的数据
-	if err := tx.Where("id = ?", id).Delete(&models.Room{}).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// 删除worlds表中的数据
-	if err := tx.Where("room_id = ?", id).Delete(&models.World{}).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// 删除room_settings表中的数据
-	if err := tx.Where("room_id = ?", id).Delete(&models.World{}).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// 更新users表中的rooms权限
-	if err := d.updateUserRooms(tx, id); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return nil
 }
 
 func (d *RoomDAO) updateUserRooms(tx *gorm.DB, id int) error {
