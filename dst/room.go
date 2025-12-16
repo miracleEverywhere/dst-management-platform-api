@@ -491,3 +491,25 @@ func (g *Game) runningScreen() ([]string, error) {
 
 	return strings.Split(screenNamesStr, "\n"), nil
 }
+
+func (g *Game) deleteRoom() error {
+	// 关闭游戏
+	_ = g.stopAllWorld()
+	// 删除配置文件
+	err := utils.RemoveDir(g.clusterPath)
+	if err != nil {
+		return err
+	}
+	// 删除mod
+	err = utils.RemoveDir(g.ugcPath)
+	if err != nil {
+		return err
+	}
+	// 删除备份
+	err = utils.RemoveDir(fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
