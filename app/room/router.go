@@ -22,6 +22,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.POST("/upload", h.uploadPost)
 			room.POST("/activate", h.activatePost)
 			room.POST("/deactivate", h.deactivatePost)
+			room.DELETE("", middleware.MWAdminOnly(), h.roomDelete)
 		}
 	}
 }
