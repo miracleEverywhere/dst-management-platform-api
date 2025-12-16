@@ -154,3 +154,7 @@ func (g *Game) DeleteBackups(filenames []string) int {
 func (g *Game) RunningScreens() ([]string, error) {
 	return g.runningScreen()
 }
+
+func (g *Game) DeleteRoom() error {
+	return g.deleteRoom()
+}
