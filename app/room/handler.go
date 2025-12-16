@@ -789,3 +789,112 @@ func (h *Handler) activatePost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "activate success"), "data": nil})
 }
+
+func (h *Handler) roomDelete(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+	nonAdminUsers, err := h.userDao.GetNonAdminUsers()
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	// 删除游戏相关
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	err = game.DeleteRoom()
+	if err != nil {
+		logger.Logger.Error("删除游戏相关文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
+		return
+	}
+	// 删除定时任务
+	jobNames := scheduler.GetJobsByRoomID(reqForm.RoomID)
+	logger.Logger.Debug(utils.StructToFlatString(jobNames))
+	for _, jobName := range jobNames {
+		scheduler.DeleteJob(jobName)
+	}
+	// 删除玩家统计
+	db.PlayersStatisticMutex.Lock()
+	defer db.PlayersStatisticMutex.Unlock()
+	delete(db.PlayersStatistic, reqForm.RoomID)
+	// 更新用户权限
+	roomIDStr := strconv.Itoa(reqForm.RoomID)
+	for _, user := range *nonAdminUsers {
+		if user.Rooms != "" {
+			roomParts := strings.Split(user.Rooms, ",")
+			var newRooms []string
+			for _, rid := range roomParts {
+				if rid != roomIDStr {
+					newRooms = append(newRooms, rid)
+				}
+			}
+			user.Rooms = strings.Join(newRooms, ",")
+			err = h.userDao.UpdateUser(&user)
+			if err != nil {
+				logger.Logger.Error("更新数据库失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+				return
+			}
+		}
+
+	}
+	// 更新数据库
+	err = h.roomDao.Delete(room)
+	if err != nil {
+		logger.Logger.Error("更新数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	err = h.roomSettingDao.Delete(roomSetting)
+	if err != nil {
+		logger.Logger.Error("更新数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	for _, world := range *worlds {
+		err = h.worldDao.Delete(&world)
+		if err != nil {
+			logger.Logger.Error("更新数据库失败", "err", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+}
