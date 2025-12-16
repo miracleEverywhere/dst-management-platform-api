@@ -18,6 +18,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			platform.GET("/metrics", middleware.MWtoken(), middleware.MWAdminOnly(), metricsGet)
 			platform.GET("/global_settings", middleware.MWtoken(), middleware.MWAdminOnly(), h.globalSettingsGet)
 			platform.POST("/global_settings", middleware.MWtoken(), middleware.MWAdminOnly(), h.globalSettingsPost)
+			platform.GET("/screen/running", middleware.MWtoken(), middleware.MWAdminOnly(), h.screenRunningGet)
+			platform.POST("/screen/kill", middleware.MWtoken(), middleware.MWAdminOnly(), screenKillPost)
 		}
 	}
 }

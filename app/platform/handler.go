@@ -4,10 +4,12 @@ import (
 	"context"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
+	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"encoding/json"
+	"fmt"
 	"github.com/creack/pty"
 	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
@@ -347,4 +349,65 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}
+
+func (h *Handler) screenRunningGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	screens, err := game.RunningScreens()
+	if err != nil {
+		logger.Logger.Error("获取正在运行的screen失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get screens fail"), "data": []string{}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": screens})
+}
+
+func screenKillPost(c *gin.Context) {
+	type ReqForm struct {
+		ScreenName string `json:"screenName"`
+	}
+
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	if reqForm.ScreenName == "" {
+		logger.Logger.Info("请求参数错误", "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	cmd := fmt.Sprintf("screen -X -S %s quit", reqForm.ScreenName)
+	err := utils.BashCMD(cmd)
+	if err != nil {
+		logger.Logger.Warn("关闭Screen失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "kill screen fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "kill screen success"), "data": nil})
 }
