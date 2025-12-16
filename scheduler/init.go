@@ -70,8 +70,8 @@ func DeleteJob(jobName string) {
 	}
 }
 
-// GetJobs 根据任务名获取定时任务
-func GetJobs(roomID int, jobType string) []string {
+// GetJobsByType 根据任务名获取定时任务
+func GetJobsByType(roomID int, jobType string) []string {
 	jobMutex.Lock()
 	defer jobMutex.Unlock()
 
@@ -83,6 +83,26 @@ func GetJobs(roomID int, jobType string) []string {
 			if s[0] == strconv.Itoa(roomID) {
 				n = append(n, jobName)
 			}
+		}
+	}
+
+	if n == nil {
+		return []string{}
+	}
+
+	return n
+}
+
+// GetJobsByRoomID 根据房间ID获取定时任务
+func GetJobsByRoomID(roomID int) []string {
+	jobMutex.Lock()
+	defer jobMutex.Unlock()
+
+	var n []string
+	for jobName, _ := range currentJobs {
+		jobNameParts := strings.Split(jobName, "-")
+		if jobNameParts[0] == strconv.Itoa(roomID) {
+			n = append(n, jobName)
 		}
 	}
 
