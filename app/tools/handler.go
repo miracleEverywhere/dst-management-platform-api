@@ -289,7 +289,7 @@ func (h *Handler) announcePut(c *gin.Context) {
 
 	if room.Status {
 		// 更新定时任务
-		jobNames := scheduler.GetJobs(reqForm.RoomID, "Announce")
+		jobNames := scheduler.GetJobsByType(reqForm.RoomID, "Announce")
 		logger.Logger.Debug(utils.StructToFlatString(jobNames))
 		for _, jobName := range jobNames {
 			// 删除所有通知任务
@@ -317,7 +317,7 @@ func (h *Handler) announcePut(c *gin.Context) {
 					DayAt:    "",
 				})
 				if err != nil {
-					logger.Logger.Error("重启定时任务处理失败", "err", err)
+					logger.Logger.Error("定时通知定时任务处理失败", "err", err)
 				}
 			}
 		}
