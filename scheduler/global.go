@@ -34,7 +34,7 @@ func OnlinePlayerGet(interval int, uidMapEnable bool) {
 		var Players db.Players // 当前房间总的玩家结构体
 		for _, world := range *worlds {
 			if game.WorldUpStatus(world.ID) {
-				players, err := game.GetPlayerList(world.ID)
+				players, err := game.GetOnlinePlayerList(world.ID)
 				if err == nil {
 					var ps []db.PlayerInfo
 					for _, player := range players {

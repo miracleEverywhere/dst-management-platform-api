@@ -337,7 +337,7 @@ encode_user_path = ` + strconv.FormatBool(world.EncodeUserPath)
 	return contents
 }
 
-func (g *Game) getPlayerList(id int) ([]string, error) {
+func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 	world, err := g.getWorldByID(id)
 	if err != nil {
 		return []string{}, err
