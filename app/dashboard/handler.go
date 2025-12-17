@@ -34,6 +34,11 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		return
 	}
 
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 
 	switch reqForm.Type {
@@ -133,6 +138,10 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete game success"), "data": nil})
 		return
 	case "announce":
+		if reqForm.Extra == "" {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "announce fail"), "data": nil})
+			return
+		}
 		err = game.Announce(reqForm.Extra)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "announce fail"), "data": nil})
@@ -142,6 +151,10 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "announce success"), "data": nil})
 		return
 	case "console":
+		if reqForm.Extra == "" {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "exec fail"), "data": nil})
+			return
+		}
 		err = game.ConsoleCmd(reqForm.Extra, reqForm.WorldID)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "exec fail"), "data": nil})
@@ -329,6 +342,11 @@ func (h *Handler) connectionCodePut(c *gin.Context) {
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
 	}
 
