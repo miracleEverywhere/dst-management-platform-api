@@ -1,5 +1,10 @@
 package dst
 
+import (
+	"dst-management-platform-api/logger"
+	"dst-management-platform-api/utils"
+)
+
 // SaveAll 保存所有配置文件
 func (g *Game) SaveAll() error {
 	var err error
@@ -121,9 +126,9 @@ func (g *Game) LogContent(logType string, id, lines int) []string {
 	return g.getLogContent(logType, id, lines)
 }
 
-// GetPlayerList 获取玩家列表
-func (g *Game) GetPlayerList(id int) ([]string, error) {
-	return g.getPlayerList(id)
+// GetOnlinePlayerList 获取玩家列表
+func (g *Game) GetOnlinePlayerList(id int) ([]string, error) {
+	return g.getOnlinePlayerList(id)
 }
 
 // GetLastAliveTime 获取指定世界最后的存活时间
@@ -151,10 +156,37 @@ func (g *Game) DeleteBackups(filenames []string) int {
 	return g.deleteBackups(filenames)
 }
 
+// RunningScreens 获取正在运行的screen
 func (g *Game) RunningScreens() ([]string, error) {
 	return g.runningScreen()
 }
 
+// DeleteRoom 删除房间相关文件
 func (g *Game) DeleteRoom() error {
 	return g.deleteRoom()
+}
+
+// AddPlayerList 三个名单添加uid
+func (g *Game) AddPlayerList(uid, listType string) error {
+	return g.addPlayerList(uid, listType)
+}
+
+// RemovePlayerList 三个名单删除uid
+func (g *Game) RemovePlayerList(uid, listType string) error {
+	return g.removePlayerList(uid, listType)
+}
+
+// GetPlayerList 获取三个名单
+func (g *Game) GetPlayerList(listType string) []string {
+	switch listType {
+	case "adminlist":
+		logger.Logger.Debug(utils.StructToFlatString(g.adminlist))
+		return g.adminlist
+	case "blocklist":
+		return g.blocklist
+	case "whitelist":
+		return g.whitelist
+	default:
+		return []string{}
+	}
 }
