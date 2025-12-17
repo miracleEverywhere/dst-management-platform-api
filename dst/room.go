@@ -102,7 +102,7 @@ vote_kick_enabled = ` + strconv.FormatBool(g.room.Vote) + `
 
 [NETWORK]
 cluster_description = ` + g.room.Description + `
-whitelist_slots = ` + strconv.Itoa(len(g.adminlist)) + `
+whitelist_slots = ` + strconv.Itoa(len(g.whitelist)) + `
 cluster_name = ` + g.room.GameName + `
 cluster_password = ` + g.room.Password + `
 cluster_language = ` + lang + `
