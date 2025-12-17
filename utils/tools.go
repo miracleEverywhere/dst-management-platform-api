@@ -168,3 +168,14 @@ func RandomString(length int) string {
 	}
 	return string(b)
 }
+
+// RemoveItem 移除切片中的指定元素
+func RemoveItem[T comparable](slice []T, target T) []T {
+	result := make([]T, 0, len(slice))
+	for _, v := range slice {
+		if v != target {
+			result = append(result, v)
+		}
+	}
+	return result
+}
