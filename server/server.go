@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/mod"
 	"dst-management-platform-api/app/platform"
+	"dst-management-platform-api/app/player"
 	"dst-management-platform-api/app/room"
 	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/app/user"
@@ -62,6 +63,7 @@ func Run() {
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
+	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao).RegisterRoutes(r)
 
 	//r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
