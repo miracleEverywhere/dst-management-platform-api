@@ -13,6 +13,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		logs.Use(middleware.MWtoken())
 		{
 			logs.GET("/content", h.contentGet)
+			logs.GET("/history/list", h.historyListGet)
+			logs.GET("/history/content", h.historyContentGet)
 		}
 	}
 }
