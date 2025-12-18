@@ -52,8 +52,8 @@ func Run() {
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
 
 	// 初始化及注册路由
-	r := gin.Default()
 	gin.SetMode(gin.ReleaseMode)
+	r := gin.Default()
 	r.Use(middleware.MWCacheControl())
 
 	user.NewHandler(userDao).RegisterRoutes(r)
