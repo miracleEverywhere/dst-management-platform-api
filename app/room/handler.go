@@ -485,9 +485,12 @@ func (h *Handler) uploadPost(c *gin.Context) {
 
 		room.MasterPort = 21000 + int(roomCount) + 1
 		for index, world := range worlds {
-			world.ServerPort = 11000 + int(worldCount) + index + 1
-			world.MasterServerPort = 31000 + int(worldCount) + index + 1
-			world.AuthenticationPort = 41000 + int(worldCount) + index + 1
+			worlds[index].ServerPort = 11000 + int(worldCount) + index + 1
+			logger.Logger.Debug("正在设置ServerPort", "world.ServerPort", world.ServerPort)
+			worlds[index].MasterServerPort = 31000 + int(worldCount) + index + 1
+			logger.Logger.Debug("正在设置MasterServerPort", "world.MasterServerPort", world.MasterServerPort)
+			worlds[index].AuthenticationPort = 41000 + int(worldCount) + index + 1
+			logger.Logger.Debug("正在设置AuthenticationPort", "world.AuthenticationPort", world.AuthenticationPort)
 		}
 
 		// roomSetting
