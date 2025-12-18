@@ -665,3 +665,28 @@ func isSubPath(path, mountpoint string) bool {
 	}
 	return !strings.Contains(rel, "..")
 }
+
+// GetFileLastNLines 获取文件的最后N行，返回字符串切片
+func GetFileLastNLines(filename string, n int) []string {
+	file, err := os.Open(filename)
+	if err != nil {
+		return []string{}
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+		if len(lines) > n {
+			lines = lines[1:] // 移除前面的行，保持最后 n 行
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return []string{}
+	}
+
+	return lines
+}
