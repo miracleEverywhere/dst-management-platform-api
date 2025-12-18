@@ -179,3 +179,10 @@ func RemoveItem[T comparable](slice []T, target T) []T {
 	}
 	return result
 }
+
+// ReverseSlice 将切片的元素倒序排列
+func ReverseSlice[T any](s []T) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
