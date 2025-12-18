@@ -126,6 +126,16 @@ func (g *Game) LogContent(logType string, id, lines int) []string {
 	return g.getLogContent(logType, id, lines)
 }
 
+// HistoryFileList 获取历史日志文件列表
+func (g *Game) HistoryFileList(logType string, id int) []string {
+	return g.historyFileList(logType, id)
+}
+
+// HistoryFileContent 获取历史日志文件内容
+func (g *Game) HistoryFileContent(logType, logfileName string, id int) string {
+	return g.historyFileContent(logType, logfileName, id)
+}
+
 // GetOnlinePlayerList 获取玩家列表
 func (g *Game) GetOnlinePlayerList(id int) ([]string, error) {
 	return g.getOnlinePlayerList(id)
