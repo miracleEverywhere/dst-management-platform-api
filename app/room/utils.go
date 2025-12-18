@@ -307,15 +307,13 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 		return "cluster.ini game_mode not found", fmt.Errorf("未发现游戏模式")
 	}
 	room.GameMode = clusterIni["game_mode"]
-	if clusterIni["max_players"] == "" {
-		return "cluster.ini max_players not found", fmt.Errorf("未发现玩家数量")
-	}
 	maxPlayer, err := strconv.Atoi(clusterIni["max_players"])
 	if err != nil {
 		logger.Logger.Info("玩家个数获取异常，设置为默认值6")
 		room.MaxPlayer = 6
+	} else {
+		room.MaxPlayer = maxPlayer
 	}
-	room.MaxPlayer = maxPlayer
 	if clusterIni["pvp"] == "" {
 		logger.Logger.Info("玩家对战获取异常，设置为默认值关闭")
 		room.Pvp = false
@@ -356,31 +354,36 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 	if err != nil {
 		logger.Logger.Info("回档天数获取异常，设置为默认值10")
 		room.MaxRollBack = 10
+	} else {
+		room.MaxRollBack = maxRollBack
 	}
-	room.MaxRollBack = maxRollBack
 	room.Password = clusterIni["cluster_password"]
 	if clusterIni["master_ip"] == "" {
 		logger.Logger.Info("主世界IP获取异常，设置为默认值127.0.0.1")
 		room.MasterIP = "127.0.0.1"
+	} else {
+		room.MasterIP = clusterIni["master_ip"]
 	}
-	room.MasterIP = clusterIni["master_ip"]
 	if clusterIni["cluster_key"] == "" {
 		logger.Logger.Info("世界认证密码获取异常，设置随机密码")
 		room.ClusterKey = utils.RandomString(14)
+	} else {
+		room.ClusterKey = clusterIni["cluster_key"]
 	}
-	room.ClusterKey = clusterIni["cluster_key"]
 	tickRate, err := strconv.Atoi(clusterIni["tick_rate"])
 	if err != nil {
 		logger.Logger.Info("tick rate获取异常，设置为默认值15")
 		roomSetting.TickRate = 15
+	} else {
+		roomSetting.TickRate = tickRate
 	}
-	roomSetting.TickRate = tickRate
 
 	// 6. 读取世界目录
 	allWorldsPath, err := utils.GetDirs(clusterDir, false)
 	if err != nil {
 		return "get worlds path fail", err
 	}
+	utils.ReverseSlice(allWorldsPath) // 让Master在Caves前面
 	for _, i := range allWorldsPath {
 		// 判断是否含有奇奇怪怪的目录，MacOS真是狗屎啊
 		if strings.HasPrefix(i, "__") {
@@ -404,8 +407,9 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 		if err != nil {
 			logger.Logger.Info("世界ID获取异常，设置为默认值101")
 			world.GameID = 101
+		} else {
+			world.GameID = worldID
 		}
-		world.GameID = worldID
 		if serverIni["is_master"] == "" {
 			return "server.ini is_master not found", fmt.Errorf("未发现是否为主节点")
 		}
@@ -415,10 +419,19 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 		}
 		world.IsMaster = isMaster
 		if serverIni["name"] == "" {
-			return "server.ini name not found", fmt.Errorf("未发现世界名")
+			if isMaster {
+				logger.Logger.Info("世界名获取异常，设置为默认值Master")
+				world.WorldName = "Master"
+				worldPath.name = "Master"
+			} else {
+				logger.Logger.Info("世界名获取异常，设置为默认值Caves")
+				world.WorldName = "Caves"
+				worldPath.name = "Caves"
+			}
+		} else {
+			world.WorldName = serverIni["name"]
+			worldPath.name = serverIni["name"]
 		}
-		world.WorldName = serverIni["name"]
-		worldPath.name = serverIni["name"]
 		encodeUserPath, err := strconv.ParseBool(serverIni["encode_user_path"])
 		if err != nil {
 			logger.Logger.Info("获取encode_user_path失败，设置为默认值true")
