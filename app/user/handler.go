@@ -6,8 +6,9 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) registerPost(c *gin.Context) {
@@ -112,10 +113,10 @@ func (h *Handler) menuGet(c *gin.Context) {
 			rooms,
 			dashboard,
 			game,
-			upload,
-			install,
 			tools,
 			logs,
+			upload,
+			install,
 			platform,
 		}
 	} else {
