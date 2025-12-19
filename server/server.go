@@ -17,9 +17,10 @@ import (
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
+	"runtime"
+
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
-	"runtime"
 )
 
 func Run() {

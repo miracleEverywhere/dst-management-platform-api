@@ -7,12 +7,13 @@ import (
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {

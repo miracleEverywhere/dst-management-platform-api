@@ -11,11 +11,12 @@ import (
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {

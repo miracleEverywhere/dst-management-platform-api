@@ -3,12 +3,13 @@ package platform
 import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
+	"os"
+	"runtime"
+
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
-	"os"
-	"runtime"
 )
 
 type Handler struct {

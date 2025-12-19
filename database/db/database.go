@@ -5,10 +5,11 @@ import (
 	slog "dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
+	"os"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"os"
 )
 
 var DB *gorm.DB

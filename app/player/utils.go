@@ -4,8 +4,9 @@ import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
-	"github.com/gin-gonic/gin"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {

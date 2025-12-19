@@ -5,10 +5,11 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func MWtoken() gin.HandlerFunc {
