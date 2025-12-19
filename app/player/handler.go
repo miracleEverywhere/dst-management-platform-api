@@ -5,9 +5,10 @@ import (
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) onlineGet(c *gin.Context) {

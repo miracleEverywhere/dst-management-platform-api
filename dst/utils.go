@@ -6,7 +6,6 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
-	lua "github.com/yuin/gopher-lua"
 	"io"
 	"net/http"
 	"os"
@@ -17,6 +16,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	lua "github.com/yuin/gopher-lua"
 )
 
 type Game struct {

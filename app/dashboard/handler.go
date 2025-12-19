@@ -7,9 +7,10 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) execGamePost(c *gin.Context) {

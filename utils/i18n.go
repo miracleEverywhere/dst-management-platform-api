@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"github.com/gin-gonic/gin"
 	"sync"
+
+	"github.com/gin-gonic/gin"
 )
 
 var I18nMutex sync.Mutex
