@@ -34,6 +34,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["wrong password"] = "密码错误"
 	i.ZH["user not exist"] = "用户不存在"
 	i.ZH["disabled"] = "用户已被禁用"
+	i.ZH["myself update success"] = "修改成功，请重新登录"
 
 	i.EN["register success"] = "Register Success"
 	i.EN["register fail"] = "Register Fail"
@@ -43,6 +44,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["wrong password"] = "Wrong Password"
 	i.EN["user not exist"] = "User Not Exist"
 	i.EN["disabled"] = "User is Disabled"
+	i.EN["myself update success"] = "Update success, please re-login"
 
 	return i
 }
