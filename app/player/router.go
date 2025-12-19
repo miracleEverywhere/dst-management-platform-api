@@ -11,7 +11,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		player := v.Group("player")
-		player.Use(middleware.MWtoken())
+		player.Use(middleware.TokenCheck())
 		{
 			player.GET("/online", h.onlineGet)
 			player.GET("/list", h.listGet)

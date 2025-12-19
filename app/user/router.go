@@ -14,13 +14,13 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		{
 			user.POST("/register", h.registerPost)
 			user.POST("/login", h.loginPost)
-			user.GET("/base", middleware.MWtoken(), h.baseGet)
-			user.POST("/base", middleware.MWtoken(), middleware.MWAdminOnly(), h.basePost)
-			user.PUT("/base", middleware.MWtoken(), middleware.MWAdminOnly(), h.basePut)
-			user.DELETE("/base", middleware.MWtoken(), middleware.MWAdminOnly(), h.baseDelete)
-			user.GET("/menu", middleware.MWtoken(), h.menuGet)
-			user.GET("/list", middleware.MWtoken(), middleware.MWAdminOnly(), h.userListGet)
-			user.PUT("/myself", middleware.MWtoken(), h.myselfPut)
+			user.GET("/base", middleware.TokenCheck(), h.baseGet)
+			user.POST("/base", middleware.TokenCheck(), middleware.AdminOnly(), h.basePost)
+			user.PUT("/base", middleware.TokenCheck(), middleware.AdminOnly(), h.basePut)
+			user.DELETE("/base", middleware.TokenCheck(), middleware.AdminOnly(), h.baseDelete)
+			user.GET("/menu", middleware.TokenCheck(), h.menuGet)
+			user.GET("/list", middleware.TokenCheck(), middleware.AdminOnly(), h.userListGet)
+			user.PUT("/myself", middleware.TokenCheck(), h.myselfPut)
 		}
 	}
 }
