@@ -2,19 +2,21 @@ package utils
 
 import (
 	"dst-management-platform-api/database/models"
-	"fmt"
-	"github.com/dgrijalva/jwt-go"
+	"errors"
 	"math/rand"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`
 	Role     string `json:"role"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
+// GenerateJWTSecret 生成JWT密钥
 func GenerateJWTSecret() string {
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
@@ -29,14 +31,18 @@ func GenerateJWTSecret() string {
 	return string(randomString)
 }
 
-func GenerateJWT(user models.User, jwtSecret []byte, expiration int) (string, error) {
-
+// GenerateJWT 生成 JWT Token
+func GenerateJWT(user models.User, jwtSecret []byte, expirationHours int) (string, error) {
 	claims := Claims{
 		Username: user.Username,
 		Nickname: user.Nickname,
 		Role:     user.Role,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Duration(expiration) * time.Hour).Unix(), // 过期时间
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirationHours) * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "饥荒管理平台(DMP)",
+			Subject:   user.Username,
 		},
 	}
 
@@ -44,9 +50,13 @@ func GenerateJWT(user models.User, jwtSecret []byte, expiration int) (string, er
 	return token.SignedString(jwtSecret)
 }
 
+// ValidateJWT 验证 JWT Token
 func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		// 验证签名算法
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
 		return jwtSecret, nil
 	})
 
@@ -58,5 +68,5 @@ func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
 		return claims, nil
 	}
 
-	return nil, fmt.Errorf("invalid token")
+	return nil, errors.New("invalid token")
 }
