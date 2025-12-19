@@ -291,12 +291,12 @@ func (h *Handler) myselfPut(c *gin.Context) {
 	dbUser.Nickname = user.Nickname
 	dbUser.Avatar = user.Avatar
 
-	err = h.userDao.UpdateUser(&user)
+	err = h.userDao.UpdateUser(dbUser)
 	if err != nil {
 		logger.Logger.Error("更新数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "myself update success"), "data": nil})
 }
