@@ -11,7 +11,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		mod := v.Group("mod")
-		mod.Use(middleware.MWtoken())
+		mod.Use(middleware.TokenCheck())
 		{
 			mod.GET("/search", modSearchGet)
 			mod.POST("/download", h.downloadPost)

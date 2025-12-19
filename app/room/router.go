@@ -11,7 +11,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		room := v.Group("room")
-		room.Use(middleware.MWtoken())
+		room.Use(middleware.TokenCheck())
 		{
 			room.POST("", h.roomPost)
 			room.PUT("", h.roomPut)
@@ -23,7 +23,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.POST("/upload", h.uploadPost)
 			room.POST("/activate", h.activatePost)
 			room.POST("/deactivate", h.deactivatePost)
-			room.DELETE("", middleware.MWAdminOnly(), h.roomDelete)
+			room.DELETE("", middleware.AdminOnly(), h.roomDelete)
 		}
 	}
 }

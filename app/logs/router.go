@@ -11,7 +11,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		logs := v.Group("logs")
-		logs.Use(middleware.MWtoken())
+		logs.Use(middleware.TokenCheck())
 		{
 			logs.GET("/content", h.contentGet)
 			logs.GET("/history/list", h.historyListGet)

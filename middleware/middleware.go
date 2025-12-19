@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func MWtoken() gin.HandlerFunc {
+func TokenCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Request.Header.Get("X-DMP-TOKEN")
 		claims, err := utils.ValidateJWT(token, []byte(db.JwtSecret))
@@ -29,8 +29,8 @@ func MWtoken() gin.HandlerFunc {
 	}
 }
 
-// MWAdminOnly 仅管理员接口
-func MWAdminOnly() gin.HandlerFunc {
+// AdminOnly 仅管理员接口
+func AdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exist := c.Get("role")
 		if exist && role == "admin" {
@@ -52,8 +52,8 @@ func MWAdminOnly() gin.HandlerFunc {
 	}
 }
 
-// MWCacheControl 缓存控制中间件
-func MWCacheControl() gin.HandlerFunc {
+// CacheControl 缓存控制中间件
+func CacheControl() gin.HandlerFunc {
 	cacheDuration := 24 * time.Hour
 	return func(c *gin.Context) {
 		// 只对静态资源文件设置缓存

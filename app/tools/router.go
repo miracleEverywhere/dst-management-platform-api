@@ -11,7 +11,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		tools := v.Group("tools")
-		tools.Use(middleware.MWtoken())
+		tools.Use(middleware.TokenCheck())
 		{
 			tools.GET("/backup", h.backupGet)
 			tools.POST("/backup", h.backupPost)

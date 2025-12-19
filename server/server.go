@@ -55,7 +55,7 @@ func Run() {
 	// 初始化及注册路由
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-	r.Use(middleware.MWCacheControl())
+	r.Use(middleware.CacheControl())
 
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
