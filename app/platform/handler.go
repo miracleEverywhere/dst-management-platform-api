@@ -10,14 +10,15 @@ import (
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
-	"github.com/creack/pty"
-	"github.com/gin-gonic/gin"
-	"github.com/olahol/melody"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/creack/pty"
+	"github.com/gin-gonic/gin"
+	"github.com/olahol/melody"
 )
 
 func (h *Handler) overviewGet(c *gin.Context) {
@@ -409,5 +410,5 @@ func screenKillPost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "kill screen success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "kill screen success"), "data": nil})
 }
