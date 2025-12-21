@@ -21,6 +21,7 @@ SWAPSIZE=2G
 
 USER=$(whoami)
 ExeFile="$HOME/dmp"
+install_dir="$HOME/dst"
 
 DMP_GITHUB_HOME_URL="https://github.com/miracleEverywhere/dst-management-platform-api"
 DMP_GITHUB_API_URL="https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest"
@@ -510,18 +511,18 @@ function install_dst() {
     sudo apt-get install -y unzip
     echo_green "环境依赖安装完毕"
 
-    mkdir -p ~/.klei/DMP_BACKUP
-    mkdir -p ~/.klei/DMP_MOD/not_ugc
-    mkdir -p ~/.klei/DoNotStarveTogether/MyDediServer/Master
-    mkdir -p ~/.klei/DoNotStarveTogether/MyDediServer/Caves
-    touch ~/.klei/DoNotStarveTogether/MyDediServer/cluster_token.txt
-    touch ~/.klei/DoNotStarveTogether/MyDediServer/adminlist.txt
-    touch ~/.klei/DoNotStarveTogether/MyDediServer/blocklist.txt
-    touch ~/.klei/DoNotStarveTogether/MyDediServer/whitelist.txt
+    mkdir -p $HOME/.klei/DMP_BACKUP
+    mkdir -p $HOME/.klei/DMP_MOD/not_ugc
+    mkdir -p $HOME/.klei/DoNotStarveTogether/MyDediServer/Master
+    mkdir -p $HOME/.klei/DoNotStarveTogether/MyDediServer/Caves
+    touch $HOME/.klei/DoNotStarveTogether/MyDediServer/cluster_token.txt
+    touch $HOME/.klei/DoNotStarveTogether/MyDediServer/adminlist.txt
+    touch $HOME/.klei/DoNotStarveTogether/MyDediServer/blocklist.txt
+    touch $HOME/.klei/DoNotStarveTogether/MyDediServer/whitelist.txt
     echo_green "饥荒初始文件夹创建完成"
 
-    mkdir ~/steamcmd
-    cd ~/steamcmd
+    mkdir $HOME/steamcmd
+    cd $HOME/steamcmd
     
     file_name="steamcmd_linux.tar.gz"
     check_for_file "$file_name"
@@ -538,7 +539,7 @@ function install_dst() {
     ./steamcmd.sh +login anonymous +force_install_dir "$install_dir" +app_update 343050 validate +quit
     
     echo_cyan "正在验证服务器安装..."
-    cd ~/dst/bin/ || {
+    cd $HOME/dst/bin/ || {
         echo
         echo_red "======================================"
         echo_red "✘ 服务器安装验证失败！"
@@ -550,14 +551,14 @@ function install_dst() {
     }
 
     # 服务器安装验证通过后，执行MOD修复
-    if [ -d ~/dst/bin/ ]; then
+    if [ -d $HOME/dst/bin/ ]; then
         echo_green "=================================================="
         echo_green "✅ 服务器安装验证通过！"
         echo_green "=================================================="
         
         echo_cyan "正在执行MOD修复..."
-        cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
-        cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/
+        cp $HOME/steamcmd/linux32/libstdc++.so.6 $HOME/dst/bin/lib32/
+        cp $HOME/steamcmd/linux32/steamclient.so $HOME/dst/bin/lib32/
         echo_green "MOD更新bug已修复"
         
         echo_green "=================================================="
