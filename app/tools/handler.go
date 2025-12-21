@@ -326,3 +326,85 @@ func (h *Handler) announcePut(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
+
+func (h *Handler) mapGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID  int `form:"roomID"`
+		WorldID int `form:"worldID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	mapData, err := game.GenerateBackgroundMap(reqForm.WorldID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "generate map fail"), "data": nil})
+		return
+	}
+
+	type Prefab struct {
+		Name string `json:"name"`
+		X    int    `json:"x"`
+		Y    int    `json:"y"`
+	}
+	var Prefabs []Prefab
+
+	var prefabs = []string{"pigking", "multiplayer_portal", "moonbase", "lava_pond", "oasislake", "antlion"}
+
+	for _, prefab := range prefabs {
+		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
+		x, y, err := game.GetCoordinate(cmd, reqForm.WorldID)
+		if err != nil {
+			logger.Logger.Warn("坐标获取失败，跳过", "err", err)
+			continue
+		}
+		X, Y := game.CoordinateToPx(mapData.Height, x, y)
+		Prefabs = append(Prefabs, Prefab{
+			Name: prefab,
+			X:    X,
+			Y:    Y,
+		})
+	}
+
+	count := game.CountPrefabs(reqForm.WorldID)
+
+	players := game.PlayerPosition(reqForm.WorldID)
+	for index, _ := range players {
+		players[index].Coordinate.X, players[index].Coordinate.Y = game.CoordinateToPx(mapData.Height, players[index].Coordinate.X, players[index].Coordinate.Y)
+	}
+
+	type Data struct {
+		Image   dst.MapData          `json:"image"`
+		Prefabs []Prefab             `json:"prefabs"`
+		Count   []dst.PrefabItem     `json:"count"`
+		Players []dst.PlayerPosition `json:"players"`
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
+		Image:   mapData,
+		Prefabs: Prefabs,
+		Count:   count,
+		Players: players,
+	}})
+}

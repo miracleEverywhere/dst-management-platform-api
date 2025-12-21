@@ -20,6 +20,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			tools.GET("/backup/download", h.backupDownloadGet)
 			tools.GET("/announce", h.announceGet)
 			tools.PUT("/announce", h.announcePut)
+			tools.GET("/map", h.mapGet)
 		}
 	}
 }
