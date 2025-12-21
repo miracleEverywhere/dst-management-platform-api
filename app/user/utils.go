@@ -139,6 +139,16 @@ var tools = menuItem{
 			Icon:      "ri-chat-smile-ai-3-line",
 			Links:     nil,
 		},
+		{
+			ID:        603,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsMap",
+			To:        "/tools/map",
+			Component: "tools/map",
+			Icon:      "ri-road-map-line",
+			Links:     nil,
+		},
 	},
 }
 
