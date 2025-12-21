@@ -2,7 +2,7 @@ name: release-packages
 
 on:
   push:
-    tags: [ "v*" ]
+    tags: ["v*"]
 
 env:
   REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
@@ -13,16 +13,22 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ macos-latest, ubuntu-latest ]
 
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v3
 
-      - name: Setup Go 1.25.4
+      - name: Setup Go 1.23.1
         uses: actions/setup-go@v5
         with:
-          go-version: 1.25.4
+          go-version: 1.23.1
+
+      - name: build-mac
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        if: matrix.os == 'macos-latest'
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o ./dmp && tar zcf dmp_darwin.tgz dmp
 
       - name: build-linux
         env:
@@ -66,7 +72,7 @@ jobs:
         with:
           file: ./docker/Dockerfile
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }},${{ env.REGISTRY_SERVER_ADDRESS }}:${{ env.TAG }}
           labels: ${{ steps.meta.outputs.labels }}
