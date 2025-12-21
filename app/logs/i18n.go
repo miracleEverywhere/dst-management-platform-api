@@ -1,20 +1,34 @@
 package logs
 
-func response(message string, lang string) string {
-	responseZH := map[string]string{
-		"tarFail":      "打包日志压缩文件失败",
-		"fileReadFail": "读取文件失败",
-		"cleanSuccess": "日志清理成功",
-	}
-	responseEN := map[string]string{
-		"installing":   "Failed to compress log files into a package",
-		"fileReadFail": "File Read Fail",
-		"cleanSuccess": "Clean Logs Success",
+import "dst-management-platform-api/utils"
+
+type ExtendedI18n struct {
+	utils.BaseI18n
+}
+
+func NewExtendedI18n() *ExtendedI18n {
+	i := &ExtendedI18n{
+		BaseI18n: utils.BaseI18n{
+			ZH: make(map[string]string),
+			EN: make(map[string]string),
+		},
 	}
 
-	if lang == "zh" {
-		return responseZH[message]
-	} else {
-		return responseEN[message]
+	utils.I18nMutex.Lock()
+	defer utils.I18nMutex.Unlock()
+
+	for k, v := range utils.I18n.ZH {
+		i.ZH[k] = v
 	}
+	for k, v := range utils.I18n.EN {
+		i.EN[k] = v
+	}
+
+	i.ZH["startup game fail"] = "启动失败"
+
+	i.EN["startup game fail"] = "Startup Fail"
+
+	return i
 }
+
+var message = NewExtendedI18n()
