@@ -200,3 +200,28 @@ func (g *Game) GetPlayerList(listType string) []string {
 		return []string{}
 	}
 }
+
+// GenerateBackgroundMap filepath: 最新的存档文件 返回背景地图base64
+func (g *Game) GenerateBackgroundMap(worldID int) (MapData, error) {
+	return g.generateBackgroundMap(worldID)
+}
+
+// CoordinateToPx 返回地图上的xy坐标
+func (g *Game) CoordinateToPx(size, a, b int) (int, int) {
+	return coordinateToPx(size, a, b)
+}
+
+// GetCoordinate 获取游戏内prefab的坐标
+func (g *Game) GetCoordinate(cmd string, worldID int) (int, int, error) {
+	return g.getCoordinate(cmd, worldID)
+}
+
+// CountPrefabs 统计指定世界prefab的个数
+func (g *Game) CountPrefabs(worldID int) []PrefabItem {
+	return g.countPrefabs(worldID)
+}
+
+// PlayerPosition 获取玩家实时坐标
+func (g *Game) PlayerPosition(worldID int) []PlayerPosition {
+	return g.playerPosition(worldID)
+}
