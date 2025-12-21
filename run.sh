@@ -94,7 +94,8 @@ function prompt_user() {
     echo_yellow "————————————————————————————————————————————————————————————"
     echo_green "[7]: 设置虚拟内存"
     echo_green "[8]: 更改端口"
-    echo_green "[9]: 退出脚本"
+    echo_green "[9]: 安装饥荒服务器"
+    echo_green "Ctrl+C: 退出脚本"
     echo_yellow "————————————————————————————————————————————————————————————"
     echo_yellow "请输入要执行的操作 [0-9]: "
 }
@@ -158,47 +159,157 @@ function check_glibc() {
     fi
 }
 
-# 下载函数:下载链接,尝试次数,超时时间(s)
+# 下载函数
 function download() {
     local url="$1"
     local output="$2"
-    local timeout="$3"
-
-    unset_tty
-    curl -L --connect-timeout "${timeout}" --progress-bar -o "${output}" "${url}"
-    set_tty
-
-    return $? # 返回 wget 的退出状态
+    local retries="${3:-3}"
+    local timeout="${4:-30}"
+    
+    echo_cyan "下载文件: $url"
+    echo_cyan "保存到: $output"
+    echo_cyan "超时时间: ${timeout}秒，重试次数: ${retries}"
+    
+    for i in $(seq 1 $retries); do
+        echo_yellow "尝试第 $i 次下载..."
+        unset_tty
+        # 使用 wget 替换 curl
+        if wget --timeout=$timeout --tries=1 --progress=bar -O "$output" "$url"; then
+            set_tty
+            echo_green "下载成功"
+            return 0
+        fi
+        set_tty
+        echo_red "第 $i 次下载失败"
+        sleep 2
+    done
+    
+    echo_red "所有下载尝试都失败"
+    return 1
 }
 
-# 安装主程序
 function install_dmp() {
-    check_jq
-    check_curl
-    # 原GitHub下载链接
-    github_url_acc=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
-    # 生成加速链接
-    url="$(curl -s -L https://api.akams.cn/github | jq -r --arg idx "$acceleration_index" '.data[$idx | tonumber].url')/${github_url_acc}"
-    echo_yellow "正在使用加速站点[${acceleration_index}]进行下载，如果下载失败，请切换加速站点，切换方式："
-    echo_yellow "./run.sh 大于等于0的数字。例如：./run.sh 2"
-    echo_yellow "如果不输入数字，则默认为0"
-    if download "${url}" "dmp.tgz" 10; then
-        if [ -e "dmp.tgz" ]; then
-            echo_green "DMP下载成功"
-        else
-            echo_red "DMP下载失败"
-            exit 1
-        fi
-    else
-        echo_red "DMP下载失败"
+    # 检查 jq
+    if ! check_jq; then
+        echo_red "jq安装失败，请检查网络连接"
         exit 1
     fi
+    
+    echo_cyan "开始安装 DMP..."
+    
+    # 获取最新版本信息
+    echo_cyan "正在获取最新版本信息..."
+    local latest_info
+    if ! latest_info=$(wget -qO- "https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest"); then
+        echo_red "获取最新版本信息失败，请检查网络连接"
+        exit 1
+    fi
+    
+    # 解析版本号和下载URL
+    local latest_version
+    local download_url
+    if ! latest_version=$(echo "$latest_info" | jq -r '.tag_name' 2>/dev/null); then
+        echo_red "解析版本号失败"
+        exit 1
+    fi
+    
+    if ! download_url=$(echo "$latest_info" | jq -r '.assets[] | select(.name=="dmp.tgz") | .browser_download_url' 2>/dev/null); then
+        echo_red "解析下载链接失败"
+        exit 1
+    fi
+    
+    if [ -z "$latest_version" ] || [ -z "$download_url" ] || [ "$latest_version" = "null" ] || [ "$download_url" = "null" ]; then
+        echo_red "未找到可用的版本信息"
+        exit 1
+    fi
+    
+    echo_green "最新版本: $latest_version"
+    echo_cyan "下载地址: $download_url"
+    
+    # 构造镜像源URL
+    local base_download_url="https://github.com/miracleEverywhere/dst-management-platform-api/releases/download/${latest_version}/dmp.tgz"
+    local download_urls=(
+        "https://gh.llkk.cc/$base_download_url"
+        "https://github.dpik.top/$base_download_url"
+        "https://ghfast.top/$base_download_url"
+    )
+    
+    local mirror_names=(
+        "镜像源1 (gh.llkk.cc)"
+        "镜像源2 (github.dpik.top)" 
+        "镜像源3 (ghfast.top)"
+    )
+    
+    # 检查当前目录下是否已存在dmp文件
+    if [ -e "dmp" ]; then
+        echo_yellow "检测到当前目录下已存在dmp文件，正在删除..."
+        rm -f "dmp"
+        echo_green "已删除现有dmp文件"
+    fi
 
-    set -e
-    tar zxvf dmp.tgz
-    rm -f dmp.tgz
-    chmod +x "$ExeFile"
-    set +e
+    # 检查当前目录下是否已存在dmp.tgz文件
+    if [ -e "dmp.tgz" ]; then
+        echo_yellow "检测到当前目录下已存在dmp.tgz文件，正在删除..."
+        rm -f "dmp.tgz"
+        echo_green "已删除现有dmp.tgz文件"
+    fi
+    
+    # 显示镜像源选择菜单
+    echo_cyan "请选择下载镜像源："
+    for i in "${!mirror_names[@]}"; do
+        echo_green "$((i+1)). ${mirror_names[i]}"
+    done
+    
+    local selected_mirror
+    while true; do
+        read -p "请输入选择 [1-3]: " selected_mirror
+        
+        case $selected_mirror in
+            1|2|3)
+                break
+                ;;
+            *)
+                echo_red "无效选择，请输入 1-3 之间的数字"
+                ;;
+        esac
+    done
+    
+    local download_success=false
+    local output_file="dmp.tgz"
+    
+    # 使用选择的镜像源
+    local mirror_index=$((selected_mirror-1))
+    echo_cyan "使用镜像源：${mirror_names[mirror_index]}"
+    echo_cyan "下载链接: ${download_urls[mirror_index]}"
+    
+    if download "${download_urls[mirror_index]}" "$output_file" 3 15; then
+        echo_green "镜像源 $selected_mirror 下载成功"
+        download_success=true
+    else
+        echo_red "镜像源 $selected_mirror 下载失败"
+    fi
+
+    # 处理下载的文件
+    if [ "$download_success" = true ] && [ -f "$output_file" ]; then
+        echo_cyan "正在解压文件..."
+        if tar zxvf "$output_file"; then
+            echo_green "文件解压成功"
+            chmod 755 dmp
+            echo_green "DMP 安装完成"
+            echo_green "版本: $latest_version"
+        else
+            echo_red "文件解压失败"
+            download_success=false
+        fi
+    else
+        echo_red "镜像源下载失败"
+        
+        # 提供手动安装指南
+        echo_cyan "请尝试以下手动安装方法:"
+        echo_cyan "1. 手动下载最新版本: $download_url"
+        echo_cyan "2. 将文件保存到当前目录并运行: tar zxvf dmp.tgz && chmod +x dmp"
+        exit 1
+    fi
 }
 
 # 检查进程状态
@@ -206,6 +317,7 @@ function check_dmp() {
     sleep 1
     if pgrep dmp >/dev/null; then
         echo_green "启动成功"
+        echo_green "请在选项9安装饥荒服务器程序"
     else
         echo_red "启动失败"
         exit 1
@@ -270,11 +382,9 @@ function update_script() {
     check_curl
     echo_cyan "正在更新脚本..."
     TEMP_FILE="/tmp/run.sh"
-    # 生成加速链接
-    url="$(curl -s -L https://api.akams.cn/github | jq -r --arg idx "$acceleration_index" '.data[$idx | tonumber].url')/${SCRIPT_GITHUB}"
-    echo_yellow "正在使用加速站点[${acceleration_index}]进行下载，如果下载失败，请切换加速站点，切换方式："
-    echo_yellow "./run.sh 大于等于0的数字。例如：./run.sh 2"
-    echo_yellow "如果不输入数字，则默认为0"
+    # 使用固定 URL 替换动态生成逻辑
+    url="https://ghfast.top/https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh"
+    echo_yellow "正在从固定镜像下载脚本，如果下载失败请检查网络或URL有效性。"
     if download "${url}" "${TEMP_FILE}" 10; then
         if [ -e "${TEMP_FILE}" ]; then
             echo_green "run.sh下载成功"
@@ -287,14 +397,14 @@ function update_script() {
         exit 1
     fi
 
-    # 修改下载好的最新文件
+    # 使用sed命令修改下载文件中的配置参数
     sed -i "s/^PORT=.*/PORT=${PORT}/" $TEMP_FILE
     sed -i "s/^SWAPSIZE=.*/SWAPSIZE=${SWAPSIZE}/" $TEMP_FILE
     sed -i "s#^CONFIG_DIR=.*#CONFIG_DIR=${CONFIG_DIR}#" $TEMP_FILE
 
     # 替换当前脚本
     mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
-    echo_green "脚本更新完成，3 秒后重新启动..."
+    echo_green "脚本更新完成，3秒后重新启动..."
     sleep 3
     exec "$0"
 }
@@ -347,7 +457,8 @@ function change_port() {
 
 # 设置虚拟内存
 function set_swap() {
-    SWAPFILE=/swapfile
+    # 修改交换区命名
+    SWAPFILE=/swapfile.img
 
     # 检查是否已经存在交换文件
     if [ -f $SWAPFILE ]; then
@@ -376,6 +487,94 @@ function set_swap() {
     echo -e 'vm.swappiness = 20\nvm.min_free_kbytes = 100000\n' > /etc/sysctl.d/dmp_swap.conf
 
     echo_green "系统swap设置成功"
+}
+
+# 安装服务器
+function install_dst() {
+    read -p "您确定要安装 Don't Starve Together 服务器吗？(y/n): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo_yellow "安装已取消."
+        return
+    fi
+
+    echo_cyan "正在安装 Don't Starve Together 服务器..."
+    sudo dpkg --add-architecture i386
+    sudo apt-get update
+    sudo apt-get install -y libcurl4-gnutls-dev:i386
+    sudo apt-get install -y lib32gcc1
+    sudo apt-get install -y lib32stdc++6
+    sudo apt-get install -y libcurl4-gnutls-dev
+    sudo apt-get install -y libgcc1
+    sudo apt-get install -y libstdc++6
+    sudo apt-get install -y screen
+    sudo apt-get install -y unzip
+    echo_green "环境依赖安装完毕"
+
+    mkdir -p ~/.klei/DMP_BACKUP
+    mkdir -p ~/.klei/DMP_MOD/not_ugc
+    mkdir -p ~/.klei/DoNotStarveTogether/MyDediServer/Master
+    mkdir -p ~/.klei/DoNotStarveTogether/MyDediServer/Caves
+    touch ~/.klei/DoNotStarveTogether/MyDediServer/cluster_token.txt
+    touch ~/.klei/DoNotStarveTogether/MyDediServer/adminlist.txt
+    touch ~/.klei/DoNotStarveTogether/MyDediServer/blocklist.txt
+    touch ~/.klei/DoNotStarveTogether/MyDediServer/whitelist.txt
+    echo_green "饥荒初始文件夹创建完成"
+
+    mkdir ~/steamcmd
+    cd ~/steamcmd
+    
+    file_name="steamcmd_linux.tar.gz"
+    check_for_file "$file_name"
+
+    if [ $? -eq 0 ]; then
+        echo_yellow "$file_name 存在，正在删除..."
+        rm "$file_name"
+    else
+        echo_cyan "$file_name 不存在，继续下载steamcmd"
+    fi
+
+    wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
+    tar -xvzf steamcmd_linux.tar.gz
+    ./steamcmd.sh +login anonymous +force_install_dir "$install_dir" +app_update 343050 validate +quit
+    
+    echo_cyan "正在验证服务器安装..."
+    cd ~/dst/bin/ || {
+        echo
+        echo_red "======================================"
+        echo_red "✘ 服务器安装验证失败！"
+        echo_red "✘ 请重新安装！"
+        echo_red "======================================"
+        echo
+        cd "$HOME" #返回root根目录
+        exit 1
+    }
+
+    # 服务器安装验证通过后，执行MOD修复
+    if [ -d ~/dst/bin/ ]; then
+        echo_green "=================================================="
+        echo_green "✅ 服务器安装验证通过！"
+        echo_green "=================================================="
+        
+        echo_cyan "正在执行MOD修复..."
+        cp ~/steamcmd/linux32/libstdc++.so.6 ~/dst/bin/lib32/
+        cp ~/steamcmd/linux32/steamclient.so ~/dst/bin/lib32/
+        echo_green "MOD更新bug已修复"
+        
+        echo_green "=================================================="
+        echo_green "✅ Don't Starve Together 服务器安装完成！"
+        echo_green "=================================================="
+    else
+        echo_red "=================================================="
+        echo_red "✘ 服务器安装验证失败！"
+        echo_red "✘ 请重新安装一次！"
+        echo_red "=================================================="
+        cd "$HOME" #返回root根目录
+        exit 1
+    fi
+
+    # 无论成功还是失败，最后都返回root根目录
+    cd "$HOME"
+    echo
 }
 
 # 使用无限循环让用户输入命令
@@ -465,7 +664,8 @@ while true; do
         continue
         ;;
     9)
-        exit 0
+        install_dst
+        unset_tty
         break
         ;;
     *)
