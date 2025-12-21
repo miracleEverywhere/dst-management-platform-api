@@ -1,0 +1,1 @@
+const i={events:{},on(s,t){this.events[s]||(this.events[s]=[]),this.events[s].push(t)},emit(s,t){this.events[s]&&this.events[s].forEach(e=>e(t))},off(s,t){this.events[s]&&(this.events[s]=this.events[s].filter(e=>e!==t))}};export{i as e};

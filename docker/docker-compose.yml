@@ -1,0 +1,47 @@
+services:
+
+  dmp:
+    # image: ghcr.io/harelive/dst-management-platform-api:latest # 测试用
+    # image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest #原地址
+    image: ghcr.nju.edu.cn/miracleeverywhere/dst-management-platform-api:latest #加速地址
+    
+    container_name: dmp
+
+    ports:
+      - 9000:80
+      - 10888:10888/udp # 多服务器模式下Master节点master_port端口，默认为10888
+      - 10998:10998/udp
+      - 10999:10999/udp
+      - 11000:11000/udp
+      - 11001:11001/udp
+      - 27017:27017/udp # steam认证端口，udp和tcp都需要。默认为27017、8767，多服务器配置模式下默认为27018、8768和27019、8769
+      - 27017:27017/tcp
+      - 8767:8767/udp
+      - 8767:8767/tcp
+      - 27018:27018/udp
+      - 27018:27018/tcp
+      - 8768:8768/udp
+      - 8768:8768/tcp
+      - 27019:27019/udp
+      - 27019:27019/tcp
+      - 8769:8769/udp
+      - 8769:8769/tcp
+
+    # 新建一个文件夹存docker-compose.yml,映射文件与docker-compose.yml同一级
+    volumes:
+      - ./.klei:/root/.klei
+      - ./config:/root/config
+      - ./dst:/root/dst
+      - ./steamcmd:/root/steamcmd
+      # 同步宿主机时间(linux内核)
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    network_mode: bridge
+
+    # restart: unless-stopped #开机自启
+    environment:
+      # - TZ=Asia/Shanghai #宿主机非Linux内核使用
+      - PGID=$(id -g)
+      - PUID=$(id -u)
+      - DMP_PORT=80
+
