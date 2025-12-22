@@ -2,7 +2,6 @@ package logger
 
 import (
 	"context"
-	"dst-management-platform-api/server"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,7 +14,7 @@ import (
 
 var Logger *slog.Logger
 
-func InitLogger() {
+func InitLogger(logLevel string) {
 	logDir := "logs"
 	if _, err := os.Stat(logDir); os.IsNotExist(err) {
 		err = os.MkdirAll(logDir, os.ModePerm)
@@ -46,7 +45,7 @@ func InitLogger() {
 		level     slog.Level
 		addSource bool
 	)
-	switch strings.ToLower(server.LogLevel) {
+	switch strings.ToLower(logLevel) {
 	case "debug":
 		level = slog.LevelDebug
 		addSource = true
