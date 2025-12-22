@@ -28,19 +28,19 @@ func Run() {
 	BindFlags()
 
 	// 打印版本
-	if VersionShow {
+	if versionShow {
 		fmt.Println(utils.Version + "\n" + runtime.Version())
 		return
 	}
 
 	// 初始化日志
-	logger.InitLogger()
+	logger.InitLogger(logLevel)
 
 	// 初始化文件
 	embedFS.GenerateDefaultFile()
 
 	// 初始化数据库
-	db.InitDB()
+	db.InitDB(dbPath)
 	userDao := dao.NewUserDAO(db.DB)
 	systemDao := dao.NewSystemDAO(db.DB)
 	roomDao := dao.NewRoomDAO(db.DB)
@@ -66,13 +66,11 @@ func Run() {
 	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao).RegisterRoutes(r)
 
-	//r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 
 	// 启动服务器
-	err := r.Run(fmt.Sprintf(":%d", BindPort))
+	err := r.Run(fmt.Sprintf(":%d", bindPort))
 	if err != nil {
-		logger.Logger.Error("启动服务器失败", "err", err)
 		panic(fmt.Sprintf("启动服务器失败: %s", err.Error()))
 	}
 }
