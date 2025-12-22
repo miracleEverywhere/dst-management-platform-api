@@ -3,7 +3,6 @@ package db
 import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/server"
 	"fmt"
 	"os"
 
@@ -14,16 +13,16 @@ import (
 
 var DB *gorm.DB
 
-func InitDB() {
-	if _, err := os.Stat(server.DBPath); os.IsNotExist(err) {
-		err = os.MkdirAll(server.DBPath, os.ModePerm)
+func InitDB(dbPath string) {
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		err = os.MkdirAll(dbPath, os.ModePerm)
 		if err != nil {
 			panic("无法创建日志目录: " + err.Error())
 		}
 	}
 
 	var err error
-	dsn := fmt.Sprintf("%s/dmp.db?cache=shared", server.DBPath)
+	dsn := fmt.Sprintf("%s/dmp.db?cache=shared", dbPath)
 	logger.Logger.Debug(fmt.Sprintf("数据库连接为%s", dsn))
 
 	DB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{
