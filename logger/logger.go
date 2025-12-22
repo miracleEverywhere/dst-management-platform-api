@@ -2,7 +2,7 @@ package logger
 
 import (
 	"context"
-	"dst-management-platform-api/utils"
+	"dst-management-platform-api/server"
 	"fmt"
 	"io"
 	"log/slog"
@@ -46,7 +46,7 @@ func InitLogger() {
 		level     slog.Level
 		addSource bool
 	)
-	switch strings.ToLower(utils.LogLevel) {
+	switch strings.ToLower(server.LogLevel) {
 	case "debug":
 		level = slog.LevelDebug
 		addSource = true

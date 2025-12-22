@@ -25,10 +25,10 @@ import (
 
 func Run() {
 	// 绑定启动参数
-	utils.BindFlags()
+	BindFlags()
 
 	// 打印版本
-	if utils.VersionShow {
+	if VersionShow {
 		fmt.Println(utils.Version + "\n" + runtime.Version())
 		return
 	}
@@ -70,7 +70,7 @@ func Run() {
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 
 	// 启动服务器
-	err := r.Run(fmt.Sprintf(":%d", utils.BindPort))
+	err := r.Run(fmt.Sprintf(":%d", BindPort))
 	if err != nil {
 		logger.Logger.Error("启动服务器失败", "err", err)
 		panic(fmt.Sprintf("启动服务器失败: %s", err.Error()))
