@@ -1,5 +1,5 @@
 # 第1阶段：构建应用程序
-FROM --platform=$BUILDPLATFORM golang:1.23 AS build
+FROM --platform=$BUILDPLATFORM golang:1.25 AS build
 
 ARG GOPROXY
 ARG GOSUMDB
