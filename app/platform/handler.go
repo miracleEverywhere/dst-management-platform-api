@@ -23,12 +23,16 @@ import (
 
 func (h *Handler) overviewGet(c *gin.Context) {
 	type Data struct {
-		RunningTime int64  `json:"runningTime"`
-		Memory      uint64 `json:"memory"`
-		RoomCount   int64  `json:"roomCount"`
-		WorldCount  int64  `json:"worldCount"`
-		UserCount   int64  `json:"userCount"`
-		UidCount    int64  `json:"uidCount"`
+		RunningTime int64   `json:"runningTime"`
+		Memory      uint64  `json:"memory"`
+		RoomCount   int64   `json:"roomCount"`
+		WorldCount  int64   `json:"worldCount"`
+		UserCount   int64   `json:"userCount"`
+		UidCount    int64   `json:"uidCount"`
+		MaxCpu      float64 `json:"maxCpu"`
+		MaxMemory   float64 `json:"maxMemory"`
+		MaxNetUp    float64 `json:"maxNetUp"`
+		MaxNetDown  float64 `json:"maxNetDown"`
 	}
 
 	// 运行时间
@@ -59,7 +63,31 @@ func (h *Handler) overviewGet(c *gin.Context) {
 		logger.Logger.Error("统计用户数失败")
 		uidCount = 0
 	}
-	// TODO 1小时cpu、内存、网络上行、网络下行最大值
+	// 1小时cpu内存网络最大值
+	systemMetricsLength := len(db.SystemMetrics)
+	reqLength := 60
+	var systemMetricsData []db.SysMetrics
+	if systemMetricsLength > reqLength {
+		systemMetricsData = db.SystemMetrics[systemMetricsLength-reqLength:]
+	} else {
+		systemMetricsData = db.SystemMetrics
+	}
+	var maxCpu, maxMemory, maxNetUp, maxNetDown float64
+	for _, m := range systemMetricsData {
+		if m.Cpu > maxCpu {
+			maxCpu = m.Cpu
+		}
+		if m.Memory > maxMemory {
+			maxMemory = m.Memory
+		}
+		if m.NetUplink > maxNetUp {
+			maxNetUp = m.NetUplink
+		}
+		if m.NetDownlink > maxNetDown {
+			maxNetDown = m.NetDownlink
+		}
+	}
+
 	// TODO 玩家数最多的的房间Top3
 
 	data := Data{
@@ -69,6 +97,10 @@ func (h *Handler) overviewGet(c *gin.Context) {
 		WorldCount:  worldCount,
 		UserCount:   userCount,
 		UidCount:    uidCount,
+		MaxCpu:      maxCpu,
+		MaxMemory:   maxMemory,
+		MaxNetUp:    maxNetUp,
+		MaxNetDown:  maxNetDown,
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
