@@ -1,1 +1,0 @@
-import{h as n}from"./axios-DcC5xP6t.js";const r={content:{url:"/logs/content",get:async function(t){return await n.get(this.url,t)}},history:{list:{url:"/logs/history/list",get:async function(t){return await n.get(this.url,t)}},content:{url:"/logs/history/content",get:async function(t){return await n.get(this.url,t)}}}};export{r as l};
