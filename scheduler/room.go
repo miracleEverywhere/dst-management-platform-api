@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
+	"time"
 )
 
 func Backup(game *dst.Game) {
@@ -28,17 +29,22 @@ func BackupClean(roomID int, days int) {
 
 func Restart(game *dst.Game) {
 	logger.Logger.Info("执行自动重启任务")
-	err := game.StopAllWorld()
-	if err != nil {
-		logger.Logger.Warn("关闭游戏失败", "err", err)
-	}
-	err = game.StartAllWorld()
-	if err != nil {
-		logger.Logger.Error("启动游戏失败", "err", err)
-		logger.Logger.Error("自动重启任务执行失败")
-	} else {
-		logger.Logger.Info("自动重启任务执行成功")
-	}
+	go func() {
+		_ = game.Announce("自动重启任务触发：将在1分钟后重启服务器，在线玩家请在5分钟后重连")
+		_ = game.Announce("Automatic restart task triggered: The server will restart in 1 minute. Online players, please reconnect after 5 minutes")
+		time.Sleep(60 * time.Second)
+		err := game.StopAllWorld()
+		if err != nil {
+			logger.Logger.Warn("关闭游戏失败", "err", err)
+		}
+		err = game.StartAllWorld()
+		if err != nil {
+			logger.Logger.Error("启动游戏失败", "err", err)
+			logger.Logger.Error("自动重启任务执行失败")
+		} else {
+			logger.Logger.Info("自动重启任务执行成功")
+		}
+	}()
 }
 
 func ScheduledStart(game *dst.Game) {
@@ -52,11 +58,16 @@ func ScheduledStart(game *dst.Game) {
 
 func ScheduledStop(game *dst.Game) {
 	logger.Logger.Info("执行自动关闭游戏")
-	err := game.StopAllWorld()
-	if err != nil {
-		logger.Logger.Warn("关闭游戏失败", "err", err)
-	}
-	logger.Logger.Info("自动关闭游戏执行成功")
+	go func() {
+		_ = game.Announce("自动关机任务触发：将在1分钟后关闭服务器")
+		_ = game.Announce("Automatic shutdown task triggered: The server will restart in 1 minute")
+		time.Sleep(60 * time.Second)
+		err := game.StopAllWorld()
+		if err != nil {
+			logger.Logger.Warn("关闭游戏失败", "err", err)
+		}
+		logger.Logger.Info("自动关闭游戏执行成功")
+	}()
 }
 
 func Keepalive(game *dst.Game, roomID int) {
