@@ -29,36 +29,15 @@ COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
 
-RUN mkdir /root/config
+RUN mkdir /root/data
 RUN mkdir /root/.klei
 
 # 环境变量
 # - 平台暴露端口，默认为80
 ENV DMP_PORT=${DMP_PORT:-80}
-ENV DMP_IN_CONTAINER=1
 
 # web端口
 EXPOSE 80/tcp
-# 服务器端口
-# 多服务器模式下Master节点master_port端口，默认为10888
-EXPOSE 10888/udp
-EXPOSE 10998/udp
-EXPOSE 10999/udp
-EXPOSE 11000/udp
-EXPOSE 11001/udp
-# steam验证端口，udp和tcp都需要。默认为27017、8767，多服务器配置模式下默认为27018、8768和27019、8769
-EXPOSE 27017/tcp
-EXPOSE 27017/udp
-EXPOSE 8767/tcp
-EXPOSE 8767/udp
-EXPOSE 27018/tcp
-EXPOSE 27018/udp
-EXPOSE 8768/tcp
-EXPOSE 8768/udp
-EXPOSE 27019/tcp
-EXPOSE 27019/udp
-EXPOSE 8769/tcp
-EXPOSE 8769/udp
 
 # 设置容器启动时执行的脚本
 ENTRYPOINT ["/root/entry-point.sh"]  
