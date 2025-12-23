@@ -182,6 +182,8 @@ function install_dmp() {
     check_curl
     # 原GitHub下载链接
     github_url_acc=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
+    # sha256 digest
+    github_digest=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r '.assets[] | select(.name == "dmp.tgz") | .digest' | awk -F':' '{print $2}')
     # 生成加速链接
     url="$(curl -s -L https://api.akams.cn/github | jq -r --arg idx "$acceleration_index" '.data[$idx | tonumber].url')/${github_url_acc}"
     echo_yellow "正在使用加速站点[${acceleration_index}]进行下载，如果下载失败，请切换加速站点，切换方式："
@@ -190,7 +192,8 @@ function install_dmp() {
     echo_cyan $DMP_HOME
     echo_green "如有疑问，请查阅帮助文档"
     if download "${url}" "dmp.tgz" 10; then
-        if [ ! -e "dmp.tgz" ]; then
+    	file_digest=$(sha256sum dmp.tgz | awk '{print $1}')
+        if [[ "$github_digest" != "$file_digest" ]]; then
             echo_red "DMP下载失败"
             exit 1
         fi
@@ -420,7 +423,6 @@ while true; do
         ;;
     8)
         exit 0
-        break
         ;;
     *)
         echo_red "请输入正确的数字 [0-8]"
