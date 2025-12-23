@@ -1,115 +1,115 @@
 package scheduler
 
 import (
-	"dst-management-platform-api/utils"
+	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/logger"
 	"fmt"
-	"github.com/go-co-op/gocron"
+	"strconv"
 	"strings"
-	"time"
+
+	"github.com/go-co-op/gocron"
 )
 
-var Scheduler = gocron.NewScheduler(time.Local)
+// Start 开启定时任务
+func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO) {
+	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
+	initJobs()
+	registerJobs()
+	go Scheduler.StartAsync()
+}
 
-// InitTasks 初始化定时任务
-func InitTasks() {
-	config, err := utils.ReadConfig()
+// UpdateJob 更新指定任务
+func UpdateJob(jobConfig *JobConfig) error {
+	jobMutex.Lock()
+	defer jobMutex.Unlock()
+
+	// 移除现有任务
+	if job, exists := currentJobs[jobConfig.Name]; exists {
+		Scheduler.RemoveByReference(job)
+		delete(currentJobs, jobConfig.Name)
+		logger.Logger.Debug(fmt.Sprintf("发现已存在定时任务[%s]，移除", jobConfig.Name))
+	}
+
+	// 添加新任务
+	var job *gocron.Job
+	var err error
+
+	switch jobConfig.TimeType {
+	case "second":
+		job, err = Scheduler.Every(jobConfig.Interval).Seconds().Do(jobConfig.Func, jobConfig.Args...)
+	case "minute":
+		job, err = Scheduler.Every(jobConfig.Interval).Minutes().Do(jobConfig.Func, jobConfig.Args...)
+	case "hour":
+		job, err = Scheduler.Every(jobConfig.Interval).Hours().Do(jobConfig.Func, jobConfig.Args...)
+	case "day":
+		job, err = Scheduler.Every(1).Day().At(jobConfig.DayAt).Do(jobConfig.Func, jobConfig.Args...)
+	default:
+		return fmt.Errorf("未知的时间类型: %s, 任务名: %s", jobConfig.TimeType, jobConfig.Name)
+	}
+
+	logger.Logger.Debug("正在创建定时任务", "name", jobConfig.Name, "type", jobConfig.TimeType)
+
 	if err != nil {
-		utils.Logger.Error("配置文件读取失败", "err", err)
-		panic("致命错误：定时任务初始化失败")
+		return err
 	}
 
-	/* ** =============== 公网ip  影响全局 =============== ** */
-	_, _ = Scheduler.Every(6).Hours().Do(getInternetIp)
-	utils.Logger.Info("获取公网IP定时任务已配置")
+	currentJobs[jobConfig.Name] = job
+	logger.Logger.Debug(fmt.Sprintf("定时任务[%s]已写入任务池", jobConfig.Name))
 
-	/* ** ========== SchedulerSetting 影响全局 ========== ** */
-	// 获取当前玩家
-	_, _ = Scheduler.Every(config.SchedulerSetting.PlayerGetFrequency).Seconds().Do(getPlayers, config)
-	utils.Logger.Info("玩家列表定时任务已配置")
+	return nil
+}
 
-	// 维护UID字典
-	if !config.SchedulerSetting.UIDMaintain.Disable {
-		_, _ = Scheduler.Every(config.SchedulerSetting.UIDMaintain.Frequency).Minute().Do(maintainUidMap, config)
-		utils.Logger.Info("UID字典定时维护任务已配置")
+// DeleteJob 删除指定任务
+func DeleteJob(jobName string) {
+	jobMutex.Lock()
+	defer jobMutex.Unlock()
+
+	if job, exists := currentJobs[jobName]; exists {
+		Scheduler.RemoveByReference(job)
+		delete(currentJobs, jobName)
+		logger.Logger.Debug(fmt.Sprintf("删除定时任务[%s]", jobName))
 	}
+}
 
-	// 系统监控
-	if !config.SchedulerSetting.SysMetricsGet.Disable {
-		_, _ = Scheduler.Every(30).Seconds().Do(getSysMetrics, config.SchedulerSetting.SysMetricsGet.MaxSaveHour)
-		utils.Logger.Info("系统监控定时任务已配置")
-	}
+// GetJobsByType 根据任务名获取定时任务
+func GetJobsByType(roomID int, jobType string) []string {
+	jobMutex.Lock()
+	defer jobMutex.Unlock()
 
-	// 自动更新
-	if config.SchedulerSetting.AutoUpdate.Enable {
-		_, _ = Scheduler.Every(1).Day().At(updateTimeFix(config.SchedulerSetting.AutoUpdate.Time)).Do(checkUpdate, config)
-		utils.Logger.Info("自动更新定时任务已配置")
-	}
-
-	// 玩家更新模组
-	if !config.SchedulerSetting.PlayerUpdateMod.Disable {
-		for _, cluster := range config.Clusters {
-			// 关闭的集群直接跳过添加定时任务
-			if !cluster.ClusterSetting.Status {
-				continue
-			}
-			_, _ = Scheduler.Every(config.SchedulerSetting.PlayerUpdateMod.Frequency).Minute().Do(modUpdate, cluster, false)
-			_, _ = Scheduler.Every(60).Seconds().Do(modUpdate, cluster, true)
-		}
-		utils.Logger.Info("玩家更新模组定时任务已配置")
-	}
-
-	/* ** ========== SysSetting 影响集群 ========== ** */
-	for _, cluster := range config.Clusters {
-		// 关闭的集群直接跳过添加定时任务
-		if !cluster.ClusterSetting.Status {
-			continue
-		}
-
-		// 定时通知
-		for _, announce := range cluster.SysSetting.AutoAnnounce {
-			if announce.Enable {
-				_, _ = Scheduler.Every(announce.Frequency).Seconds().Do(doAnnounce, announce.Content, cluster)
-				utils.Logger.Info(fmt.Sprintf("[%s(%s)]-[%s]定时通知定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName, announce.Name))
+	var n []string
+	for jobName, _ := range currentJobs {
+		logger.Logger.Debug("定时任务名", "jobName", jobName, "jobType", jobType)
+		if strings.HasSuffix(jobName, jobType) {
+			s := strings.Split(jobName, "-")
+			if s[0] == strconv.Itoa(roomID) {
+				n = append(n, jobName)
 			}
 		}
+	}
 
-		// 自动重启
-		if cluster.SysSetting.AutoRestart.Enable {
-			if cluster.SysSetting.AutoRestart.Enable {
-				_, _ = Scheduler.Every(1).Day().At(updateTimeFix(cluster.SysSetting.AutoRestart.Time)).Do(doRestart, cluster)
-				utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动重启定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
-			}
-		}
+	if n == nil {
+		return []string{}
+	}
 
-		// 自动备份
-		if cluster.SysSetting.AutoBackup.Enable {
-			times := strings.Split(cluster.SysSetting.AutoBackup.Time, ",")
-			for _, t := range times {
-				if t != "" {
-					_, _ = Scheduler.Every(1).Day().At(t).Do(doBackup, cluster)
-					utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动备份定时任务已配置，备份时间：%s", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName, t))
-				}
-			}
+	return n
+}
 
-		}
+// GetJobsByRoomID 根据房间ID获取定时任务
+func GetJobsByRoomID(roomID int) []string {
+	jobMutex.Lock()
+	defer jobMutex.Unlock()
 
-		// 备份清理
-		if cluster.SysSetting.BackupClean.Enable {
-			_, _ = Scheduler.Every(1).Day().At("16:43:41").Do(doBackupClean, cluster)
-			utils.Logger.Info(fmt.Sprintf("[%s(%s)]备清理定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
-		}
-
-		// 自动保活
-		if cluster.SysSetting.Keepalive.Enable {
-			_, _ = Scheduler.Every(cluster.SysSetting.Keepalive.Frequency).Minute().Do(doKeepalive, cluster.ClusterSetting.ClusterName)
-			utils.Logger.Info(fmt.Sprintf("[%s(%s)]自动保活定时任务已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
-		}
-
-		// 定时开启关闭服务器
-		if cluster.SysSetting.ScheduledStartStop.Enable {
-			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StartTime).Do(doStart, cluster)
-			_, _ = Scheduler.Every(1).Day().At(cluster.SysSetting.ScheduledStartStop.StopTime).Do(doStop, cluster)
-			utils.Logger.Info(fmt.Sprintf("[%s(%s)]定时开启关闭服务器已配置", cluster.ClusterSetting.ClusterName, cluster.ClusterSetting.ClusterDisplayName))
+	var n []string
+	for jobName, _ := range currentJobs {
+		jobNameParts := strings.Split(jobName, "-")
+		if jobNameParts[0] == strconv.Itoa(roomID) {
+			n = append(n, jobName)
 		}
 	}
+
+	if n == nil {
+		return []string{}
+	}
+
+	return n
 }
