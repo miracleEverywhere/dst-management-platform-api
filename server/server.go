@@ -25,7 +25,7 @@ import (
 
 func Run() {
 	// 绑定启动参数
-	BindFlags()
+	bindFlags()
 
 	// 打印版本
 	if versionShow {
