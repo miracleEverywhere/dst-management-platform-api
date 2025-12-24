@@ -99,9 +99,10 @@ function prompt_user() {
 	echo_green "[6]: 更新run.sh启动脚本"
 	echo_yellow "————————————————————————————————————————————————————————————"
 	echo_green "[7]: 设置虚拟内存"
-	echo_green "[8]: 退出脚本"
+	echo_green "[8]: 设置开机自启"
+	echo_green "[9]: 退出脚本"
 	echo_yellow "————————————————————————————————————————————————————————————"
-	echo_yellow "请输入要执行的操作 [0-8]: "
+	echo_yellow "请输入要执行的操作 [0-9]: "
 }
 
 # 检查jq
@@ -397,6 +398,23 @@ function set_swap() {
 	echo_green "系统swap设置成功"
 }
 
+# 设置开机自启
+function auto_start_dmp() {
+	CRON_JOB="@reboot /bin/bash -c 'source /etc/profile && cd /root && echo 1 | /root/run.sh'"
+
+	# 检查 crontab 中是否已存在该命令
+	if crontab -l 2>/dev/null | grep -Fq "$CRON_JOB"; then
+		echo_yellow "已发现开机自启配置，请勿重复添加"
+	else
+		# 如果不存在，则添加到 crontab
+		(
+			crontab -l 2>/dev/null
+			echo "$CRON_JOB"
+		) | crontab -
+		echo_green "已成功设置开机自启"
+	fi
+}
+
 # 使用无限循环让用户输入命令
 while true; do
 	# 提示用户输入
@@ -478,10 +496,16 @@ while true; do
 		break
 		;;
 	8)
+		set_tty
+		auto_start_dmp
+		unset_tty
+		break
+		;;
+	9)
 		exit 0
 		;;
 	*)
-		echo_red "请输入正确的数字 [0-8]"
+		echo_red "请输入正确的数字 [0-9]"
 		continue
 		;;
 	esac
