@@ -74,4 +74,7 @@ func GenerateDefaultFile() {
 		logger.Logger.Error("手动安装脚本添加权限失败", "err", err)
 		return
 	}
+
+	// 删除Windows的换行符
+	_ = utils.BashCMD("sed -i 's/\\r$//' manual_install.sh")
 }
