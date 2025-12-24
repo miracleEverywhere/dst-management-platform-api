@@ -21,11 +21,9 @@ import (
 func (h *Handler) roomPost(c *gin.Context) {
 	permission, err := h.hasPermission(c)
 	if err != nil {
-		if err != nil {
-			logger.Logger.Error("查询数据库失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
 	}
 
 	if permission {
@@ -89,11 +87,9 @@ func (h *Handler) roomPost(c *gin.Context) {
 func (h *Handler) roomPut(c *gin.Context) {
 	permission, err := h.hasPermission(c)
 	if err != nil {
-		if err != nil {
-			logger.Logger.Error("查询数据库失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
 	}
 
 	if permission {
