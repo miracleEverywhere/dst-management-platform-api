@@ -35,7 +35,7 @@ func (h *Handler) roomPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
-		logger.Logger.Debug(utils.StructToFlatString(reqForm))
+		//logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
 		reqForm.RoomData.ID = 0
 		reqForm.RoomData.Status = true
@@ -169,7 +169,7 @@ func (h *Handler) listGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": data})
 		return
 	}
-	logger.Logger.Debug(utils.StructToFlatString(reqForm))
+	//logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
 	role, _ := c.Get("role")
 	var (
