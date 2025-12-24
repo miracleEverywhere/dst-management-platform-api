@@ -136,6 +136,16 @@ func (g *Game) HistoryFileContent(logType, logfileName string, id int) string {
 	return g.historyFileContent(logType, logfileName, id)
 }
 
+// LogsInfo 获取日志大小
+func (g *Game) LogsInfo() LogInfo {
+	return g.logsInfo()
+}
+
+// LogsClean 删除日志
+func (g *Game) LogsClean(cleanLogs *CleanLogs) bool {
+	return g.logsClean(cleanLogs)
+}
+
 // GetOnlinePlayerList 获取玩家列表
 func (g *Game) GetOnlinePlayerList(id int) ([]string, error) {
 	return g.getOnlinePlayerList(id)
