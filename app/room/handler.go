@@ -75,6 +75,28 @@ func (h *Handler) roomPost(c *gin.Context) {
 
 		processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
 
+		// 如果用户不是管理员，且拥有房间创建权限，需要在rooms字段中新增房间id
+		role, _ := c.Get("role")
+		username, _ := c.Get("username")
+		if role.(string) != "admin" {
+			user, err := h.userDao.GetUserByUsername(username.(string))
+			if err != nil {
+				logger.Logger.Error("获取用户信息失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+				return
+			}
+			rooms := strings.Split(user.Rooms, ",")
+			rooms = append(rooms, strconv.Itoa(reqForm.RoomSettingData.RoomID))
+			roomsStr := strings.Join(rooms, ",")
+			user.Rooms = roomsStr
+			err = h.userDao.UpdateUser(user)
+			if err != nil {
+				logger.Logger.Error("更新用户信息失败", "err", err)
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+				return
+			}
+		}
+
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": room})
 		return
 	}
