@@ -6,42 +6,42 @@ DST_DIR="$HOME/dst"
 
 # 工具函数
 function install_ubuntu() {
-    dpkg --add-architecture i386
-    apt update -y
-    apt install -y lib32gcc1
-    apt install -y lib32gcc-s1
-    apt install -y libcurl4-gnutls-dev:i386
-    apt install -y screen
-    apt install -y unzip
+	dpkg --add-architecture i386
+	apt update -y
+	apt install -y lib32gcc1
+	apt install -y lib32gcc-s1
+	apt install -y libcurl4-gnutls-dev:i386
+	apt install -y screen
+	apt install -y unzip
 }
 
 function install_rhel() {
-    yum update -y
-    yum -y install glibc.i686 libstdc++.i686 libcurl.i686
-    yum -y install glibc libstdc++ libcurl
-    yum -y install screen
-    yum install -y unzip
+	yum update -y
+	yum -y install glibc.i686 libstdc++.i686 libcurl.i686
+	yum -y install glibc libstdc++ libcurl
+	yum -y install screen
+	yum install -y unzip
 }
 
 function check_screen() {
 
-    if ! which screen; then
-        echo -e "screen命令安装失败"
-        exit 1
-    fi
+	if ! which screen; then
+		echo -e "screen命令安装失败"
+		exit 1
+	fi
 }
 
 # 安装依赖
 OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
 if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
-    install_ubuntu
+	install_ubuntu
 else
-    if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
-        install_rhel
-    else
-        echo -e "系统不支持"
-        exit 1
-    fi
+	if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+		install_rhel
+	else
+		echo -e "系统不支持"
+		exit 1
+	fi
 fi
 
 # 检查screen命令
@@ -66,16 +66,16 @@ cd "$STEAM_DIR" || exit 1
 
 cd "$HOME" || exit 1
 cp steamcmd/linux32/libstdc++.so.6 dst/bin/lib32/
-ln -s /usr/lib64/libcurl.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
-ln -s /usr/lib/libcurl.so.4 dst/bin/lib32/libcurl-gnutls.so.4
+[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -s /usr/lib64/libcurl.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
+[ ! -L "dst/bin/lib32/libcurl-gnutls.so.4" ] && ln -s /usr/lib/libcurl.so.4 dst/bin/lib32/libcurl-gnutls.so.4
 
 # luajit
 cd "$HOME" || exit 1
 cp dmp_files/luajit/* dst/bin64/
 cat >dst/bin64/dontstarve_dedicated_server_nullrenderer_x64_luajit <<-"EOF"
-            export LD_PRELOAD=./libpreload.so
-            ./dontstarve_dedicated_server_nullrenderer_x64 "$@"
-            unset LD_PRELOAD
+	            export LD_PRELOAD=./libpreload.so
+	            ./dontstarve_dedicated_server_nullrenderer_x64 "$@"
+	            unset LD_PRELOAD
 EOF
 chmod --reference=dst/bin64/dontstarve_dedicated_server_nullrenderer_x64 dst/bin64/dontstarve_dedicated_server_nullrenderer_x64_luajit
 

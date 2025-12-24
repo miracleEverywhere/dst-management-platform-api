@@ -37,6 +37,8 @@ DMP_GITHUB_API_URL="https://api.github.com/repos/miracleEverywhere/dst-managemen
 SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/run.sh"
 DMP_HOME="https://miraclesses.top/"
 
+ACCELERATED_URL=""
+
 cd "$HOME" || exit
 
 function echo_red() {
@@ -99,9 +101,57 @@ function prompt_user() {
 	echo_green "[6]: 更新run.sh启动脚本"
 	echo_yellow "————————————————————————————————————————————————————————————"
 	echo_green "[7]: 设置虚拟内存"
-	echo_green "[8]: 退出脚本"
+	echo_green "[8]: 设置开机自启"
+	echo_green "[9]: 退出脚本"
 	echo_yellow "————————————————————————————————————————————————————————————"
-	echo_yellow "请输入要执行的操作 [0-8]: "
+	echo_yellow "请输入要执行的操作 [0-9]: "
+}
+
+# 加速节点选择
+function generate_acceleration() {
+	local origin_url="$1"
+	# 输出加速节点让用户选择
+	echo_cyan "饥荒管理平台部署在Github, 请选择一个加速节点进行加速:"
+	for i in "${!ACCELERATION_SITE[@]}"; do
+		echo_green "$((i + 1)). ${ACCELERATION_SITE[i]}"
+	done
+	acc_site_len=${#ACCELERATION_SITE[@]}
+	echo_green "$((acc_site_len + 1)). 不使用加速节点直接下载"
+
+	# 获取用户输入
+	read -r -p "请输入选择 (1-$((acc_site_len + 1))): " selected_mirror
+
+	# 输入验证和处理
+	while true; do
+		# 如果输入为空，使用默认值
+		if [[ -z "$selected_mirror" ]]; then
+			selected_mirror=1
+			break
+		fi
+		# 验证是否为数字
+		if [[ ! "$selected_mirror" =~ ^[0-9]+$ ]]; then
+			echo_yellow "输入无效，请输入数字 (1-$((acc_site_len + 1)))"
+			read -r -p "请重新输入: " selected_mirror
+			continue
+		fi
+		# 验证范围
+		if ((selected_mirror < 1 || selected_mirror > acc_site_len + 1)); then
+			echo_yellow "选择超出范围，请输入 1 到 $((acc_site_len + 1)) 之间的数字"
+			read -r -p "请重新输入: " selected_mirror
+			continue
+		fi
+		break
+	done
+
+	# 根据选择设置URL
+	if ((selected_mirror >= 1 && selected_mirror <= acc_site_len)); then
+		index=$((selected_mirror - 1))
+		ACCELERATED_URL="https://${ACCELERATION_SITE[index]}/${origin_url}"
+		echo_green "已选择加速节点 ${selected_mirror}: ${ACCELERATION_SITE[index]}"
+	elif ((selected_mirror == acc_site_len + 1)); then
+		ACCELERATED_URL="${origin_url}"
+		echo_green "已选择直接下载"
+	fi
 }
 
 # 检查jq
@@ -201,48 +251,8 @@ function install_dmp() {
 		exit 1
 	fi
 
-	# 输出加速节点让用户选择
-	echo_cyan "DMP部署在Github, 请选择一个加速节点进行加速:"
-	for i in "${!ACCELERATION_SITE[@]}"; do
-		echo_green "$((i + 1)). ${ACCELERATION_SITE[i]}"
-	done
-	acc_site_len=${#ACCELERATION_SITE[@]}
-	echo_green "$((acc_site_len + 1)). 不使用加速节点直接下载"
-
-	# 获取用户输入
-	read -r -p "请输入选择 (1-$((acc_site_len + 1))): " selected_mirror
-
-	# 输入验证和处理
-	while true; do
-		# 如果输入为空，使用默认值
-		if [[ -z "$selected_mirror" ]]; then
-			selected_mirror=1
-			break
-		fi
-		# 验证是否为数字
-		if [[ ! "$selected_mirror" =~ ^[0-9]+$ ]]; then
-			echo_yellow "输入无效，请输入数字 (1-$((acc_site_len + 1)))"
-			read -r -p "请重新输入: " selected_mirror
-			continue
-		fi
-		# 验证范围
-		if ((selected_mirror < 1 || selected_mirror > acc_site_len + 1)); then
-			echo_yellow "选择超出范围，请输入 1 到 $((acc_site_len + 1)) 之间的数字"
-			read -r -p "请重新输入: " selected_mirror
-			continue
-		fi
-		break
-	done
-
-	# 根据选择设置URL
-	if ((selected_mirror >= 1 && selected_mirror <= acc_site_len)); then
-		index=$((selected_mirror - 1))
-		url="https://${ACCELERATION_SITE[index]}/${github_url}"
-		echo_green "已选择加速节点 ${selected_mirror}: ${ACCELERATION_SITE[index]}"
-	elif ((selected_mirror == acc_site_len + 1)); then
-		url="${github_url}"
-		echo_green "已选择直接下载"
-	fi
+	generate_acceleration "${github_url}"
+	url=$ACCELERATED_URL
 
 	# 开始下载
 	echo_cyan "正在从${url}进行下载"
@@ -332,13 +342,15 @@ function get_latest_version() {
 # 更新启动脚本
 function update_script() {
 	check_curl
-	echo_cyan "正在更新脚本..."
-	TEMP_FILE="/tmp/run.sh"
+
 	# 生成加速链接
-	url="$(curl -s -L https://api.akams.cn/github | jq -r --arg idx "$acceleration_index" '.data[$idx | tonumber].url')/${SCRIPT_GITHUB}"
-	echo_yellow "正在使用加速站点[${acceleration_index}]进行下载，如果下载失败，请切换加速站点，切换方式："
-	echo_yellow "./run.sh 大于等于0的数字。例如：./run.sh 2"
-	echo_yellow "如果不输入数字，则默认为0"
+	generate_acceleration "${SCRIPT_GITHUB}"
+	url=$ACCELERATED_URL
+
+	TEMP_FILE="/tmp/run.sh"
+
+	echo_cyan "正在从${url}进行下载"
+
 	if download "${url}" "${TEMP_FILE}" 10; then
 		if [ -e "${TEMP_FILE}" ]; then
 			echo_green "run.sh下载成功"
@@ -395,6 +407,23 @@ function set_swap() {
 	echo -e 'vm.swappiness = 20\nvm.min_free_kbytes = 100000\n' >/etc/sysctl.d/dmp_swap.conf
 
 	echo_green "系统swap设置成功"
+}
+
+# 设置开机自启
+function auto_start_dmp() {
+	CRON_JOB="@reboot /bin/bash -c 'source /etc/profile && cd /root && echo 1 | /root/run.sh'"
+
+	# 检查 crontab 中是否已存在该命令
+	if crontab -l 2>/dev/null | grep -Fq "$CRON_JOB"; then
+		echo_yellow "已发现开机自启配置，请勿重复添加"
+	else
+		# 如果不存在，则添加到 crontab
+		(
+			crontab -l 2>/dev/null
+			echo "$CRON_JOB"
+		) | crontab -
+		echo_green "已成功设置开机自启"
+	fi
 }
 
 # 使用无限循环让用户输入命令
@@ -478,10 +507,16 @@ while true; do
 		break
 		;;
 	8)
+		set_tty
+		auto_start_dmp
+		unset_tty
+		break
+		;;
+	9)
 		exit 0
 		;;
 	*)
-		echo_red "请输入正确的数字 [0-8]"
+		echo_red "请输入正确的数字 [0-9]"
 		continue
 		;;
 	esac

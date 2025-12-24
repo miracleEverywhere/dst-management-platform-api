@@ -521,7 +521,10 @@ func (mf *ModInfoParser) Parse(lang string) error {
 	// 获取 configuration_options 表
 	configOptions := L.GetGlobal("configuration_options")
 	if configOptions.Type() != lua.LTTable {
-		return fmt.Errorf("获取modinfo.lua中的configuration_options失败")
+		// 写模组没有配置，就写个空变量呗，代码规范啊💔
+		logger.Logger.Warn("获取modinfo.lua中的configuration_options失败，可能是没有模组配置，返回空配置")
+		mf.Configuration = &[]ConfigurationOption{}
+		return nil
 	}
 
 	// 遍历 configuration_options 表
