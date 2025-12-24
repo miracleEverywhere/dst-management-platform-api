@@ -142,15 +142,15 @@ func Base64Encode(str string) string {
 	// 将字符串转换为字节切片
 	data := []byte(str)
 	// 使用标准Base64编码
-	return base64.StdEncoding.EncodeToString(data)
+	return base64.RawURLEncoding.EncodeToString(data)
 }
 
 // Base64Decode 对Base64字符串进行解码
 func Base64Decode(encodedStr string) (string, error) {
 	// 使用标准Base64解码
-	data, err := base64.StdEncoding.DecodeString(encodedStr)
+	data, err := base64.RawURLEncoding.DecodeString(encodedStr)
 	if err != nil {
-		return "", fmt.Errorf("Base64解码失败: %v", err)
+		return "", fmt.Errorf("base64解码失败: %v", err)
 	}
 	return string(data), nil
 }
