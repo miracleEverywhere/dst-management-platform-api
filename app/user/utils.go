@@ -185,6 +185,16 @@ var logs = menuItem{
 			ID:        703,
 			Type:      "link",
 			Section:   "",
+			Title:     "logsExport",
+			To:        "/logs/export",
+			Component: "logs/export",
+			Icon:      "ri-download-2-line",
+			Links:     nil,
+		},
+		{
+			ID:        704,
+			Type:      "link",
+			Section:   "",
 			Title:     "logsSteam",
 			To:        "/logs/steam",
 			Component: "logs/steam",
@@ -192,7 +202,7 @@ var logs = menuItem{
 			Links:     nil,
 		},
 		{
-			ID:        704,
+			ID:        705,
 			Type:      "link",
 			Section:   "",
 			Title:     "logsAccess",
@@ -202,7 +212,7 @@ var logs = menuItem{
 			Links:     nil,
 		},
 		{
-			ID:        705,
+			ID:        706,
 			Type:      "link",
 			Section:   "",
 			Title:     "logsRuntime",
@@ -212,7 +222,7 @@ var logs = menuItem{
 			Links:     nil,
 		},
 		{
-			ID:        706,
+			ID:        707,
 			Type:      "link",
 			Section:   "",
 			Title:     "logsClean",
