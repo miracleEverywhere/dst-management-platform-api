@@ -26,11 +26,11 @@ WORKDIR /root
 COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
-RUN chmod +x /root/dmp
-RUN chmod +x /root/entry-point.sh
-
-RUN mkdir /root/data
-RUN mkdir /root/.klei
+RUN apt-get update && apt-get install -y screen wget \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod +x /root/dmp /root/entry-point.sh \
+    && mkdir -p /root/data /root/.klei
 
 # 环境变量
 # - 平台暴露端口，默认为80
