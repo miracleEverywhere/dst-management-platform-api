@@ -185,3 +185,17 @@ func (g *Game) logsClean(cleanLogs *CleanLogs) bool {
 
 	return allSuccess
 }
+
+func (g *Game) logsList(admin bool) []string {
+	var files []string
+
+	for _, world := range g.worldSaveData {
+		files = append(files, fmt.Sprintf("%s/server_log.txt", world.worldPath))
+	}
+
+	if admin {
+		files = append(files, "logs/access.log", "logs/runtime.log")
+	}
+
+	return files
+}

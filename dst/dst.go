@@ -146,6 +146,11 @@ func (g *Game) LogsClean(cleanLogs *CleanLogs) bool {
 	return g.logsClean(cleanLogs)
 }
 
+// LogsList 获取日志文件列表
+func (g *Game) LogsList(admin bool) []string {
+	return g.logsList(admin)
+}
+
 // GetOnlinePlayerList 获取玩家列表
 func (g *Game) GetOnlinePlayerList(id int) ([]string, error) {
 	return g.getOnlinePlayerList(id)
