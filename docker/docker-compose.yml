@@ -33,6 +33,7 @@ services:
       - ./data:/root/data
       - ./dst:/root/dst
       - ./logs:/root/logs
+      - ./dmp_files:/root/dmp_files
       - ./steamcmd:/root/steamcmd
       # 同步宿主机时间(linux内核)
       - /etc/localtime:/etc/localtime:ro
