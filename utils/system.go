@@ -478,6 +478,73 @@ func Zip(source, target string) error {
 	})
 }
 
+// ZipFiles 压缩多个文件到指定ZIP文件中 files: 要压缩的文件路径列表（只包含文件，不包含目录）target: 压缩后的ZIP文件路径
+func ZipFiles(files []string, target string) error {
+	// 创建目标ZIP文件
+	zipFile, err := os.Create(target)
+	if err != nil {
+		return fmt.Errorf("创建ZIP文件失败: %v", err)
+	}
+	defer zipFile.Close()
+
+	// 创建ZIP写入器
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	// 遍历所有文件
+	for _, filePath := range files {
+		// 打开源文件
+		file, err := os.Open(filePath)
+		if err != nil {
+			return fmt.Errorf("打开文件失败 %s: %v", filePath, err)
+		}
+
+		// 获取文件信息
+		info, err := file.Stat()
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("获取文件信息失败 %s: %v", filePath, err)
+		}
+
+		// 验证是否是普通文件
+		if !info.Mode().IsRegular() {
+			file.Close()
+			return fmt.Errorf("不是普通文件: %s", filePath)
+		}
+
+		// 创建ZIP文件头
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("创建文件头失败 %s: %v", filePath, err)
+		}
+
+		// 设置文件在ZIP中的名称（只保留文件名）
+		header.Name = filepath.Base(filePath)
+
+		// 设置压缩方法
+		header.Method = zip.Deflate
+
+		// 创建ZIP文件条目
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("创建ZIP条目失败 %s: %v", filePath, err)
+		}
+
+		// 将文件内容复制到ZIP条目
+		_, err = io.Copy(writer, file)
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("写入文件内容失败 %s: %v", filePath, err)
+		}
+
+		file.Close()
+	}
+
+	return nil
+}
+
 // Unzip 解压ZIP文件
 func Unzip(zipFile, dest string) error {
 	// 打开ZIP文件
