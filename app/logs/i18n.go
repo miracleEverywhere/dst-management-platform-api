@@ -25,8 +25,10 @@ func NewExtendedI18n() *ExtendedI18n {
 	}
 
 	i.ZH["startup game fail"] = "启动失败"
+	i.ZH["download fail"] = "下载失败"
 
 	i.EN["startup game fail"] = "Startup Fail"
+	i.EN["download fail"] = "Download Fail"
 
 	return i
 }

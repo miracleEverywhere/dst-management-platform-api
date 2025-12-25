@@ -18,6 +18,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			logs.GET("/history/content", h.historyContentGet)
 			logs.GET("/clean/info", middleware.AdminOnly(), h.cleanInfoGet)
 			logs.DELETE("/clean", middleware.AdminOnly(), h.cleanDelete)
+			logs.GET("/download", h.downloadGet)
 		}
 	}
 }
