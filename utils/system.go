@@ -561,22 +561,40 @@ func Unzip(zipFile, dest string) error {
 
 	// 遍历ZIP文件中的每个条目
 	for _, file := range reader.File {
-		// 解析文件路径（防止路径遍历攻击）
-		filePath := filepath.Join(dest, file.Name)
-		if !strings.HasPrefix(filePath, filepath.Clean(dest)+string(os.PathSeparator)) {
+		// 关键修复：将Windows风格的反斜杠路径转换为当前系统的路径分隔符
+		name := file.Name
+
+		// 替换所有反斜杠为正斜杠
+		name = strings.ReplaceAll(name, "\\", "/")
+
+		// 清理路径
+		name = filepath.Clean(name)
+
+		// 构建完整路径
+		filePath := filepath.Join(dest, name)
+
+		// 安全检查：防止路径遍历攻击
+		cleanDest := filepath.Clean(dest)
+		cleanFilePath := filepath.Clean(filePath)
+		if !strings.HasPrefix(cleanFilePath, cleanDest+string(os.PathSeparator)) &&
+			cleanFilePath != cleanDest {
 			return fmt.Errorf("无效的文件路径: %s", filePath)
 		}
 
-		// 如果是目录，创建目录
-		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(filePath, file.Mode()); err != nil {
+		// 检查是否是目录
+		isDir := file.FileInfo().IsDir() || strings.HasSuffix(file.Name, "/")
+
+		if isDir {
+			// 创建目录（包括所有父目录）
+			if err := os.MkdirAll(filePath, 0755); err != nil {
 				return fmt.Errorf("创建目录失败: %v", err)
 			}
 			continue
 		}
 
 		// 确保文件的父目录存在
-		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		parentDir := filepath.Dir(filePath)
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
 			return fmt.Errorf("创建父目录失败: %v", err)
 		}
 
