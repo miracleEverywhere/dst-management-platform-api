@@ -188,8 +188,8 @@ func (g *Game) DeleteRoom() error {
 }
 
 // AddPlayerList 三个名单添加uid
-func (g *Game) AddPlayerList(uid, listType string) error {
-	return g.addPlayerList(uid, listType)
+func (g *Game) AddPlayerList(uids []string, listType string) error {
+	return g.addPlayerList(uids, listType)
 }
 
 // RemovePlayerList 三个名单删除uid
