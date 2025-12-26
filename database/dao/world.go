@@ -29,6 +29,9 @@ func (d *WorldDAO) UpdateWorlds(worlds *[]models.World) error {
 
 		// 获取第一个world的room_id（所有world应该有相同的room_id）
 		roomID := (*worlds)[0].RoomID
+		if roomID == 0 {
+			return errors.New("房间id异常")
+		}
 
 		// 1. 删除该room_id下的所有记录
 		result := tx.Where("room_id = ?", roomID).Delete(&models.World{})
