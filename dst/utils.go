@@ -562,7 +562,11 @@ func (mf *ModInfoParser) Parse(lang string) error {
 					})
 				}
 			})
-			if option.Name != "" && option.Label != "" {
+			if option.Name != "" {
+				if option.Label == "" {
+					// 写模组要记得加上label呀💔
+					option.Label = option.Name
+				}
 				options = append(options, option)
 			}
 		}
