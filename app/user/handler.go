@@ -121,7 +121,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 		}
 	} else {
 		logsLess := logs
-		logsLess.Links = []menuItem{logs.Links[0], logs.Links[1]}
+		logsLess.Links = []menuItem{logs.Links[0], logs.Links[1], logs.Links[2]}
 		response.Data = []menuItem{
 			rooms,
 			dashboard,
