@@ -78,12 +78,8 @@ func (g *Game) SessionInfo() *RoomSessionInfo {
 }
 
 // DownloadMod 下载模组
-func (g *Game) DownloadMod(id int, fileURL string, update bool) {
-	if update {
-		g.downloadMod(id, fileURL)
-	} else {
-		go g.downloadMod(id, fileURL)
-	}
+func (g *Game) DownloadMod(id int, fileURL string) (error, int64) {
+	return g.downloadMod(id, fileURL)
 }
 
 // GetDownloadedMods 获取已经下载的模组
@@ -146,6 +142,11 @@ func (g *Game) LogsClean(cleanLogs *CleanLogs) bool {
 	return g.logsClean(cleanLogs)
 }
 
+// LogsList 获取日志文件列表
+func (g *Game) LogsList(admin bool) []string {
+	return g.logsList(admin)
+}
+
 // GetOnlinePlayerList 获取玩家列表
 func (g *Game) GetOnlinePlayerList(id int) ([]string, error) {
 	return g.getOnlinePlayerList(id)
@@ -187,8 +188,8 @@ func (g *Game) DeleteRoom() error {
 }
 
 // AddPlayerList 三个名单添加uid
-func (g *Game) AddPlayerList(uid, listType string) error {
-	return g.addPlayerList(uid, listType)
+func (g *Game) AddPlayerList(uids []string, listType string) error {
+	return g.addPlayerList(uids, listType)
 }
 
 // RemovePlayerList 三个名单删除uid

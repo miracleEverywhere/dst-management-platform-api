@@ -43,16 +43,21 @@ func getPlayerList(filepath string) []string {
 }
 
 func (g *Game) savePlayerList() error {
+	// 先去重
+	adminlist := utils.RemoveDuplicates(g.adminlist)
+	whitelist := utils.RemoveDuplicates(g.whitelist)
+	blocklist := utils.RemoveDuplicates(g.blocklist)
+
 	var err error
-	err = utils.WriteLinesFromSlice(g.adminlistPath, g.adminlist)
+	err = utils.WriteLinesFromSlice(g.adminlistPath, adminlist)
 	if err != nil {
 		return err
 	}
-	err = utils.WriteLinesFromSlice(g.blocklistPath, g.blocklist)
+	err = utils.WriteLinesFromSlice(g.blocklistPath, blocklist)
 	if err != nil {
 		return err
 	}
-	err = utils.WriteLinesFromSlice(g.whitelistPath, g.whitelist)
+	err = utils.WriteLinesFromSlice(g.whitelistPath, whitelist)
 	if err != nil {
 		return err
 	}
@@ -60,25 +65,16 @@ func (g *Game) savePlayerList() error {
 	return nil
 }
 
-func (g *Game) addPlayerList(uid, listType string) error {
+func (g *Game) addPlayerList(uids []string, listType string) error {
 	switch listType {
 	case "adminlist":
-		if utils.Contains(g.playerSaveData.adminlist, uid) {
-			return nil
-		}
-		g.playerSaveData.adminlist = append(g.playerSaveData.adminlist, uid)
+		g.playerSaveData.adminlist = append(g.playerSaveData.adminlist, uids...)
 		return g.savePlayerList()
 	case "blocklist":
-		if utils.Contains(g.playerSaveData.blocklist, uid) {
-			return nil
-		}
-		g.playerSaveData.blocklist = append(g.playerSaveData.blocklist, uid)
+		g.playerSaveData.blocklist = append(g.playerSaveData.blocklist, uids...)
 		return g.savePlayerList()
 	case "whitelist":
-		if utils.Contains(g.playerSaveData.whitelist, uid) {
-			return nil
-		}
-		g.playerSaveData.whitelist = append(g.playerSaveData.whitelist, uid)
+		g.playerSaveData.whitelist = append(g.playerSaveData.whitelist, uids...)
 		err := g.savePlayerList()
 		if err != nil {
 			return err

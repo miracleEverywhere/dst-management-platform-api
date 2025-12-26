@@ -48,10 +48,10 @@ func (h *Handler) onlineGet(c *gin.Context) {
 
 func (h *Handler) listPost(c *gin.Context) {
 	type ReqForm struct {
-		RoomID     int    `json:"roomID"`
-		UID        string `json:"uid"`
-		ListType   string `json:"listType"`
-		ActionType string `json:"actionType"`
+		RoomID     int      `json:"roomID"`
+		UIDS       []string `json:"uids"`
+		ListType   string   `json:"listType"`
+		ActionType string   `json:"actionType"`
 	}
 
 	var reqForm ReqForm
@@ -81,7 +81,7 @@ func (h *Handler) listPost(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 
 	if reqForm.ActionType == "add" {
-		err = game.AddPlayerList(reqForm.UID, reqForm.ListType)
+		err = game.AddPlayerList(reqForm.UIDS, reqForm.ListType)
 		if err != nil {
 			logger.Logger.Info("修改player list失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "add fail"), "data": nil})
@@ -90,7 +90,7 @@ func (h *Handler) listPost(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "add success"), "data": nil})
 	} else {
-		err = game.RemovePlayerList(reqForm.UID, reqForm.ListType)
+		err = game.RemovePlayerList(reqForm.UIDS[0], reqForm.ListType)
 		if err != nil {
 			logger.Logger.Info("修改player list失败", "err", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})

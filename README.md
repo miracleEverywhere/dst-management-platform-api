@@ -1,3 +1,5 @@
+### [中文文档] | [[README](docs/README.md)]
+
 # DMP 饥荒管理平台
 
 ![GitHub Release](https://img.shields.io/github/v/release/miracleEverywhere/dst-management-platform-api)
@@ -16,15 +18,32 @@
 
 ## :strawberry: 详细文档
 
-本页面的帮助文档仅为简单介绍  
 **详细教程请前往** [https://miraclesses.top](https://miraclesses.top)  
 文档包含快速开始、详细文档等，萌新大佬均可无痛阅读
+
+---
 
 ## :love_letter: 代码贡献
 
 欢迎所有开发者贡献代码，以改善和扩展这个项目！
 
+感谢下方开发者对本项目的代码贡献
+
 ![https://github.com/miracleEverywhere/dst-management-platform-api/graphs/contributors](https://contrib.rocks/image?repo=miracleEverywhere/dst-management-platform-api)
+
+---
+
+## :balloon: 截图
+
+![房间总览](docs/images/zh/rooms.png)
+
+![控制面板](docs/images/zh/dashboard.png)
+
+![游戏设置](docs/images/zh/game.png)
+
+![模组设置](docs/images/zh/mod.png)
+
+![平台总览](docs/images/zh/platform.png)
 
 ---
 

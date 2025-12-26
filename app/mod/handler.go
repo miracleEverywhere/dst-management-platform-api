@@ -69,6 +69,8 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		ID      int    `json:"id"`
 		FileURL string `json:"file_url"`
 		Update  bool   `json:"update"`
+		Size    string `json:"size"`
+		Name    string `json:"name"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
@@ -76,6 +78,15 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+
+	reqSize, err := strconv.Atoi(reqForm.Size)
+	if err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	reqSize64 := int64(reqSize)
 
 	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
 	if err != nil {
@@ -85,12 +96,21 @@ func (h *Handler) downloadPost(c *gin.Context) {
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	game.DownloadMod(reqForm.ID, reqForm.FileURL, reqForm.Update)
+	err, modSize := game.DownloadMod(reqForm.ID, reqForm.FileURL)
+	if err != nil || modSize != reqSize64 {
+		if reqForm.Update {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": reqForm.Name + " " + message.Get(c, "update fail"), "data": nil})
+			return
+		} else {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": reqForm.Name + " " + message.Get(c, "download fail"), "data": nil})
+			return
+		}
+	}
 
 	if reqForm.Update {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update completed"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "update success"), "data": nil})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "downloading"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "download success"), "data": nil})
 	}
 }
 

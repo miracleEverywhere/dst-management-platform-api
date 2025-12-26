@@ -478,6 +478,73 @@ func Zip(source, target string) error {
 	})
 }
 
+// ZipFiles 压缩多个文件到指定ZIP文件中 files: 要压缩的文件路径列表（只包含文件，不包含目录）target: 压缩后的ZIP文件路径
+func ZipFiles(files []string, target string) error {
+	// 创建目标ZIP文件
+	zipFile, err := os.Create(target)
+	if err != nil {
+		return fmt.Errorf("创建ZIP文件失败: %v", err)
+	}
+	defer zipFile.Close()
+
+	// 创建ZIP写入器
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	// 遍历所有文件
+	for _, filePath := range files {
+		// 打开源文件
+		file, err := os.Open(filePath)
+		if err != nil {
+			return fmt.Errorf("打开文件失败 %s: %v", filePath, err)
+		}
+
+		// 获取文件信息
+		info, err := file.Stat()
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("获取文件信息失败 %s: %v", filePath, err)
+		}
+
+		// 验证是否是普通文件
+		if !info.Mode().IsRegular() {
+			file.Close()
+			return fmt.Errorf("不是普通文件: %s", filePath)
+		}
+
+		// 创建ZIP文件头
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("创建文件头失败 %s: %v", filePath, err)
+		}
+
+		// 设置文件在ZIP中的名称（只保留文件名）
+		header.Name = filepath.Base(filePath)
+
+		// 设置压缩方法
+		header.Method = zip.Deflate
+
+		// 创建ZIP文件条目
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("创建ZIP条目失败 %s: %v", filePath, err)
+		}
+
+		// 将文件内容复制到ZIP条目
+		_, err = io.Copy(writer, file)
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("写入文件内容失败 %s: %v", filePath, err)
+		}
+
+		file.Close()
+	}
+
+	return nil
+}
+
 // Unzip 解压ZIP文件
 func Unzip(zipFile, dest string) error {
 	// 打开ZIP文件
@@ -494,22 +561,40 @@ func Unzip(zipFile, dest string) error {
 
 	// 遍历ZIP文件中的每个条目
 	for _, file := range reader.File {
-		// 解析文件路径（防止路径遍历攻击）
-		filePath := filepath.Join(dest, file.Name)
-		if !strings.HasPrefix(filePath, filepath.Clean(dest)+string(os.PathSeparator)) {
+		// 关键修复：将Windows风格的反斜杠路径转换为当前系统的路径分隔符
+		name := file.Name
+
+		// 替换所有反斜杠为正斜杠
+		name = strings.ReplaceAll(name, "\\", "/")
+
+		// 清理路径
+		name = filepath.Clean(name)
+
+		// 构建完整路径
+		filePath := filepath.Join(dest, name)
+
+		// 安全检查：防止路径遍历攻击
+		cleanDest := filepath.Clean(dest)
+		cleanFilePath := filepath.Clean(filePath)
+		if !strings.HasPrefix(cleanFilePath, cleanDest+string(os.PathSeparator)) &&
+			cleanFilePath != cleanDest {
 			return fmt.Errorf("无效的文件路径: %s", filePath)
 		}
 
-		// 如果是目录，创建目录
-		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(filePath, file.Mode()); err != nil {
+		// 检查是否是目录
+		isDir := file.FileInfo().IsDir() || strings.HasSuffix(file.Name, "/")
+
+		if isDir {
+			// 创建目录（包括所有父目录）
+			if err := os.MkdirAll(filePath, 0755); err != nil {
 				return fmt.Errorf("创建目录失败: %v", err)
 			}
 			continue
 		}
 
 		// 确保文件的父目录存在
-		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		parentDir := filepath.Dir(filePath)
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
 			return fmt.Errorf("创建父目录失败: %v", err)
 		}
 

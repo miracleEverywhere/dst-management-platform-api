@@ -66,10 +66,11 @@ func (g *Game) dsModsSetup() error {
 	return nil
 }
 
-func (g *Game) downloadMod(id int, fileURL string) {
+func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 	var (
-		err error
-		ugc bool
+		err     error
+		ugc     bool
+		modSize int64
 	)
 
 	if fileURL == "" {
@@ -87,34 +88,46 @@ func (g *Game) downloadMod(id int, fileURL string) {
 		err = utils.BashCMD(downloadCmd)
 		if err != nil {
 			logger.Logger.Error("下载模组失败", "err", err)
+			return err, modSize
 		}
 
 		// 2
 		err = g.removeGameOldMod(id)
 		if err != nil {
 			logger.Logger.Warn("移动模组失败", "err", err)
+			return err, modSize
 		}
 		copyCmd := g.generateModCopyCmd(id)
 		logger.Logger.Debug(copyCmd)
 		err = utils.BashCMD(copyCmd)
 		if err != nil {
 			logger.Logger.Warn("移动模组失败", "err", err)
+			return err, modSize
 		}
 
 		// 3
 		err = g.processAcf(id)
 		if err != nil {
 			logger.Logger.Error("修改acf文件失败", "err", err)
+			return err, modSize
+		}
+
+		modSize, err = utils.GetDirSize(fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
+		if err != nil {
+			return err, modSize
 		}
 
 	} else {
 		// 1. 下载zip文件并保存
 		// 2. 解压zip文件至dst/mods/workshop-id
-		err = downloadNotUGCMod(fileURL, id)
+		err, modSize = downloadNotUGCMod(fileURL, id)
 		if err != nil {
 			logger.Logger.Error("下载mod失败", "err", err)
+			return err, modSize
 		}
 	}
+
+	return nil, modSize
 }
 
 func (g *Game) generateModDownloadCmd(id int) string {
