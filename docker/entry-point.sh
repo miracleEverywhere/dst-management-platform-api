@@ -3,10 +3,6 @@
 # 定义变量
 DMP_HOME="/root"
 
-# 安装必要的依赖
-apt-get update
-apt-get install -y screen
-
 cd $DMP_HOME || exit
 
 # 定义 SIGTERM 信号处理函数
