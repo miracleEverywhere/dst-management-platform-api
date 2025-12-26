@@ -78,12 +78,8 @@ func (g *Game) SessionInfo() *RoomSessionInfo {
 }
 
 // DownloadMod 下载模组
-func (g *Game) DownloadMod(id int, fileURL string, update bool) {
-	if update {
-		g.downloadMod(id, fileURL)
-	} else {
-		go g.downloadMod(id, fileURL)
-	}
+func (g *Game) DownloadMod(id int, fileURL string) (error, int64) {
+	return g.downloadMod(id, fileURL)
 }
 
 // GetDownloadedMods 获取已经下载的模组

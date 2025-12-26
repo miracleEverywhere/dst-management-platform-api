@@ -966,10 +966,12 @@ func formatLuaKey(s string) string {
 	return s
 }
 
-func downloadNotUGCMod(url string, id int) error {
+func downloadNotUGCMod(url string, id int) (error, int64) {
 	filename := strconv.Itoa(id) + ".zip"              // 临时zip文件名
 	filepath := fmt.Sprintf("dst/mods/%s", filename)   // 临时zip文件路径
 	modPath := fmt.Sprintf("dst/mods/workshop-%d", id) // mod路径
+
+	var modSize int64
 
 	_ = utils.RemoveFile(filepath)
 	_ = utils.RemoveDir(modPath)
@@ -977,7 +979,7 @@ func downloadNotUGCMod(url string, id int) error {
 	// 创建目标文件
 	out, err := os.Create(filepath)
 	if err != nil {
-		return err
+		return err, modSize
 	}
 	defer out.Close()
 
@@ -987,28 +989,30 @@ func downloadNotUGCMod(url string, id int) error {
 
 	resp, err := client.Get(url)
 	if err != nil {
-		return err
+		return err, modSize
 	}
 	defer resp.Body.Close()
 
 	// 检查HTTP响应状态码
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("下载mod失败，HTTP代码：" + resp.Status)
+		return fmt.Errorf("下载mod失败，HTTP代码：" + resp.Status), modSize
 	}
 	// 将响应体写入文件
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		return fmt.Errorf("下载mod失败，HTTP代码：" + err.Error())
+		return fmt.Errorf("下载mod失败，HTTP代码：" + err.Error()), modSize
 	}
+
+	modSize, err = utils.GetFileSize(filepath)
 
 	err = utils.Unzip(filepath, modPath)
 	if err != nil {
-		return err
+		return err, modSize
 	}
 
 	defer utils.RemoveFile(filepath)
 
-	return nil
+	return nil, modSize
 }
 
 // UniqueSliceKeepOrderString 从一个字符串切片中移除重复的元素，并保持元素的原始顺序
