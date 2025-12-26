@@ -186,3 +186,18 @@ func ReverseSlice[T any](s []T) {
 		s[i], s[j] = s[j], s[i]
 	}
 }
+
+// RemoveDuplicates 删除切片中重复的元素
+func RemoveDuplicates[T comparable](slice []T) []T {
+	seen := make(map[T]struct{})
+	result := make([]T, 0, len(slice))
+
+	for _, v := range slice {
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+
+	return result
+}
