@@ -85,7 +85,10 @@ func (h *Handler) roomPost(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 				return
 			}
-			rooms := strings.Split(user.Rooms, ",")
+			var rooms []string
+			if user.Rooms != "" {
+				rooms = strings.Split(user.Rooms, ",")
+			}
 			rooms = append(rooms, strconv.Itoa(reqForm.RoomSettingData.RoomID))
 			roomsStr := strings.Join(rooms, ",")
 			user.Rooms = roomsStr
