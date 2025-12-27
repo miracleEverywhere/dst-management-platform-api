@@ -46,6 +46,8 @@ services:
       - PGID=$(id -g)
       - PUID=$(id -u)
       - DMP_PORT=80
+#      - 日志打印级别
+      - LEVEL=info
     # 修改 dns 降低steam连接失败概率
 #    dns:
 #        - 144.144.144.144

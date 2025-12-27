@@ -20,7 +20,7 @@ cleanup() {
 trap cleanup SIGTERM
 
 # 启动 dmp 并获取其 PID
-./dmp -bind "$DMP_PORT" -dbpath ./data -level info 2>&1 &
+./dmp -bind "$DMP_PORT" -dbpath ./data -level" ${LEVEL:-info}" 2>&1 &
 DMP_PID=$!  # 获取 dmp 进程的 PID
 
 # 让脚本保持运行状态，直到收到信号
