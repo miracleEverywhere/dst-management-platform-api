@@ -328,7 +328,7 @@ func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]Configur
 		}
 	}
 
-	parser, err := NewModInfoParser(modinfoLuaPath)
+	parser, err := NewModInfoParser(modinfoLuaPath, modID)
 	if err != nil {
 		logger.Logger.Error("读取modinfo文件失败", "err", err)
 		return parser.Configuration, err

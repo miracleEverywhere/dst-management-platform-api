@@ -411,10 +411,11 @@ type ConfigurationOption struct {
 
 type ModInfoParser struct {
 	ModInfoLua    string `json:"modInfoLua"`
+	ModID         int    `json:"modID"`
 	Configuration *[]ConfigurationOption
 }
 
-func NewModInfoParser(luaPath string) (*ModInfoParser, error) {
+func NewModInfoParser(luaPath string, modID int) (*ModInfoParser, error) {
 	content, err := os.ReadFile(luaPath)
 	if err != nil {
 		return &ModInfoParser{}, err
@@ -422,6 +423,7 @@ func NewModInfoParser(luaPath string) (*ModInfoParser, error) {
 
 	m := &ModInfoParser{
 		ModInfoLua: string(content),
+		ModID:      modID,
 	}
 
 	return m, nil
@@ -499,7 +501,8 @@ func (mf *ModInfoParser) Parse(lang string) error {
 	L := lua.NewState()
 	defer L.Close()
 
-	L.SetGlobal("locale", lua.LString(lang))
+	L.SetGlobal("locale", lua.LString(lang))                                      // 设置语言
+	L.SetGlobal("folder_name", lua.LString(fmt.Sprintf("workshop-%d", mf.ModID))) //设置目录名
 	// insight模组需要ChooseTranslationTable才能返回i18n
 	L.SetGlobal("ChooseTranslationTable", L.NewFunction(func(L *lua.LState) int {
 		tbl := L.ToTable(1)
