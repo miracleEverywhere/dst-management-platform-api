@@ -370,7 +370,8 @@ func (h *Handler) mapGet(c *gin.Context) {
 	}
 	var Prefabs []Prefab
 
-	var prefabs = []string{"pigking", "multiplayer_portal", "moonbase", "lava_pond", "oasislake", "antlion"}
+	// 猪王 出生门 月台 岩浆池 绿洲 蚁狮 旋涡
+	var prefabs = []string{"pigking", "multiplayer_portal", "moonbase", "lava_pond", "oasislake", "antlion", "oceanwhirlbigportal"}
 
 	for _, prefab := range prefabs {
 		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
