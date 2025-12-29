@@ -71,17 +71,21 @@ cd "$HOME" || error_exit
 rm -f steamcmd_linux.tar.gz
 wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
 
-# 解压安装包
-rm -rf "$STEAM_DIR"
+# 清理，容器中不删除steamcmd
+if [[ "${DMP_IN_CONTAINER}" != "1" ]] ;then
+	rm -rf "$STEAM_DIR"
+fi
 mkdir -p "$STEAM_DIR"
-tar -zxvf steamcmd_linux.tar.gz -C "$STEAM_DIR"
 
-# PR77 清理可能损坏的acf文件
-rm -rf "$DST_DIR/steamapps/appmanifest_343050.acf"
+# 解压安装包
+tar -zxvf steamcmd_linux.tar.gz -C "$STEAM_DIR"
 
 # 安装DST
 cd "$STEAM_DIR" || error_exit
 ./steamcmd.sh +force_install_dir "$DST_DIR" +login anonymous +app_update 343050 validate +quit
+
+# PR77 清理可能损坏的acf文件
+rm -rf "$DST_DIR/steamapps/appmanifest_343050.acf"
 
 cd "$HOME" || error_exit
 cp steamcmd/linux32/libstdc++.so.6 dst/bin/lib32/
