@@ -378,3 +378,34 @@ func (h *Handler) getEnabledModsGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modsID})
 }
+
+func (h *Handler) deletePost(c *gin.Context) {
+	type ReqForm struct {
+		RoomID  int    `json:"roomID"`
+		ID      int    `json:"id"`
+		FileURL string `json:"file_url"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	err = game.ModDelete(reqForm.ID, reqForm.FileURL)
+	if err != nil {
+		logger.Logger.Error("删除模组失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+}
