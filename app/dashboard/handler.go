@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"net/http"
@@ -297,16 +298,24 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 			internetIp string
 			masterPort int
 		)
-		internetIp, err = getInternetIP1()
-		if err != nil {
-			logger.Logger.Warn("调用公网ip接口1失败", "err", err)
-			internetIp, err = getInternetIP2()
+
+		if db.InternetIP == "" {
+			internetIp, err = scheduler.GetInternetIP1()
 			if err != nil {
-				logger.Logger.Warn("调用公网ip接口2失败", "err", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "connection code fail"), "data": nil})
-				return
+				logger.Logger.Warn("调用公网ip接口1失败", "err", err)
+				internetIp, err = scheduler.GetInternetIP2()
+				if err != nil {
+					logger.Logger.Warn("调用公网ip接口2失败", "err", err)
+					c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "connection code fail"), "data": nil})
+					return
+				}
 			}
+			db.InternetIP = internetIp
+		} else {
+			logger.Logger.Info("发现缓存的公网IP")
+			internetIp = db.InternetIP
 		}
+
 		for _, world := range *worlds {
 			if world.IsMaster {
 				masterPort = world.ServerPort
