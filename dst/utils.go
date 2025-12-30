@@ -1036,3 +1036,23 @@ func uniqueSliceKeepOrderString(slice []string) []string {
 
 	return result
 }
+
+func replaceDSTSOFile() {
+	var err error
+	err = utils.BashCMD("mv dst/bin/lib32/steamclient.so dst/bin/lib32/steamclient.so.bak")
+	if err != nil {
+		logger.Logger.Error("替换so文件失败", "err", err)
+	}
+	err = utils.BashCMD("cp steamcmd/linux32/steamclient.so dst/bin/lib32/steamclient.so")
+	if err != nil {
+		logger.Logger.Error("替换so文件失败", "err", err)
+	}
+	err = utils.BashCMD("mv dst/bin64/lib64/steamclient.so dst/bin64/lib64/steamclient.so.bak")
+	if err != nil {
+		logger.Logger.Error("替换so文件失败", "err", err)
+	}
+	err = utils.BashCMD("cp steamcmd/linux64/steamclient.so dst/bin64/lib64/steamclient.so")
+	if err != nil {
+		logger.Logger.Error("替换so文件失败", "err", err)
+	}
+}

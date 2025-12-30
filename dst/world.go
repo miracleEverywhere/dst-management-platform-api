@@ -204,6 +204,12 @@ func (g *Game) startWorld(id int) error {
 		}
 	}()
 
+	// 给klei擦钩子，检查so文件
+	if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
+		logger.Logger.Debug("发现so文件异常，开始替换")
+		replaceDSTSOFile()
+	}
+
 	var (
 		err   error
 		world *worldSaveData
@@ -235,6 +241,12 @@ func (g *Game) startAllWorld() error {
 	_ = utils.BashCMD("screen -wipe")
 
 	var err error
+
+	// 给klei擦钩子，检查so文件
+	if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
+		logger.Logger.Debug("发现so文件异常，开始替换")
+		replaceDSTSOFile()
+	}
 
 	err = g.dsModsSetup()
 	if err != nil {
