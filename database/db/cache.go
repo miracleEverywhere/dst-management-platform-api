@@ -12,6 +12,7 @@ var (
 	PlayersStatistic      = make(map[int][]Players)
 	PlayersStatisticMutex sync.Mutex
 	SystemMetrics         []SysMetrics
+	InternetIP            string
 )
 
 type PlayerInfo struct {
