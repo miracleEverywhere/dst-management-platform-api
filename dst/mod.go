@@ -611,3 +611,66 @@ func (g *Game) modDisable(modID int) error {
 
 	return g.saveMods()
 }
+
+func (g *Game) deleteMod(modID int, fileURL string) error {
+	var ugc bool
+
+	if fileURL == "" {
+		ugc = true
+	}
+
+	if ugc {
+		g.acfMutex.Lock()
+		defer g.acfMutex.Unlock()
+
+		acfID := strconv.Itoa(modID)
+
+		for _, world := range g.worldSaveData {
+			gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
+
+			err := utils.EnsureFileExists(gameAcfPath)
+			if err != nil {
+				logger.Logger.Error("acf文件不存在", "path", gameAcfPath)
+				return err
+			}
+			gameAcfContent, err := os.ReadFile(gameAcfPath)
+			if err != nil {
+				return err
+			}
+
+			gameAcfParser := NewAcfParser(string(gameAcfContent))
+			for index, mod := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
+				if mod.ID == acfID {
+					gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled[:index], gameAcfParser.AppWorkshop.WorkshopItemsInstalled[index+1:]...)
+					break
+				}
+			}
+			for index, mod := range gameAcfParser.AppWorkshop.WorkshopItemDetails {
+				if mod.ID == acfID {
+					gameAcfParser.AppWorkshop.WorkshopItemDetails = append(gameAcfParser.AppWorkshop.WorkshopItemDetails[:index], gameAcfParser.AppWorkshop.WorkshopItemDetails[index+1:]...)
+				}
+			}
+
+			writtenContent := gameAcfParser.FileContent()
+			err = utils.TruncAndWriteFile(gameAcfPath, writtenContent)
+			if err != nil {
+				return err
+			}
+
+			modPath := fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, world.WorldName, modID)
+			err = utils.RemoveDir(modPath)
+			if err != nil {
+				logger.Logger.Error("删除模组失败", "err", err)
+				return err
+			}
+		}
+	} else {
+		err := utils.RemoveDir(fmt.Sprintf("dst/mods/workshop-%d", modID))
+		if err != nil {
+			logger.Logger.Error("删除模组失败", "err", err)
+			return err
+		}
+	}
+
+	return nil
+}

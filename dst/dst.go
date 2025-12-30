@@ -117,6 +117,11 @@ func (g *Game) ModDisable(modID int) error {
 	return g.modDisable(modID)
 }
 
+// ModDelete 删除模组
+func (g *Game) ModDelete(modID int, fileURL string) error {
+	return g.deleteMod(modID, fileURL)
+}
+
 // LogContent 获取日志
 func (g *Game) LogContent(logType string, id, lines int) []string {
 	return g.getLogContent(logType, id, lines)
