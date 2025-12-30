@@ -114,3 +114,21 @@ func GameUpdate(enable bool) {
 		db.DstUpdating = false
 	}
 }
+
+func InternetIPUpdate() {
+	var (
+		internetIp string
+		err        error
+	)
+	internetIp, err = GetInternetIP1()
+	if err != nil {
+		logger.Logger.Warn("调用公网ip接口1失败", "err", err)
+		internetIp, err = GetInternetIP2()
+		if err != nil {
+			logger.Logger.Warn("调用公网ip接口2失败", "err", err)
+			return
+		}
+	}
+
+	db.InternetIP = internetIp
+}
