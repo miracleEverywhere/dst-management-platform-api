@@ -58,7 +58,7 @@ func Run() {
 	r.Use(middleware.CacheControl())
 
 	user.NewHandler(userDao).RegisterRoutes(r)
-	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
+	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao).RegisterRoutes(r)
