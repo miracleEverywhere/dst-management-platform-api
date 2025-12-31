@@ -66,6 +66,6 @@
 
 本项目[前端页面](https://github.com/miracleEverywhere/dst-management-platform-web)
 基于[materio-vuetify-vuejs-admin-template-free](https://github.com/themeselection/materio-vuetify-vuejs-admin-template-free)二次开发，感谢开源  
-1.x与2.x版本基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感谢开源
+v1与v2版本基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感谢开源
 
 感谢加速站点[github.akams.cn](https://github.akams.cn/) 
