@@ -10,7 +10,7 @@ services:
     ports:
       - "9000:80"
       - "11000-12000:11000-12000/udp"
-      - "21000:21000/udp"
+      - "21000-21100:21000-21100/udp"
 
     # 新建一个文件夹存docker-compose.yml,映射文件与docker-compose.yml同一级
     volumes:
