@@ -45,6 +45,15 @@ func OnlinePlayerGet(interval int, uidMapEnable bool) {
 						playerInfo.Prefab = uidNickName[2]
 						ps = append(ps, playerInfo)
 
+						// 玩家在线时长统计
+						db.PlayersOnlineTimeMutex.Lock()
+						if db.PlayersOnlineTime[rbs.RoomID] == nil {
+							db.PlayersOnlineTime[rbs.RoomID] = make(map[string]int)
+						}
+						db.PlayersOnlineTime[rbs.RoomID][playerInfo.Nickname] = db.PlayersOnlineTime[rbs.RoomID][playerInfo.Nickname] + interval
+						db.PlayersOnlineTimeMutex.Unlock()
+
+						// 更新uidMap
 						if uidMapEnable {
 							uidMap := models.UidMap{
 								UID:      playerInfo.UID,
