@@ -876,8 +876,11 @@ func (h *Handler) roomDelete(c *gin.Context) {
 	}
 	// 删除玩家统计
 	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
 	delete(db.PlayersStatistic, reqForm.RoomID)
+	db.PlayersStatisticMutex.Unlock()
+	db.PlayersOnlineTimeMutex.Lock()
+	delete(db.PlayersOnlineTime, reqForm.RoomID)
+	db.PlayersOnlineTimeMutex.Unlock()
 	// 更新用户权限
 	roomIDStr := strconv.Itoa(reqForm.RoomID)
 	for _, user := range *nonAdminUsers {
