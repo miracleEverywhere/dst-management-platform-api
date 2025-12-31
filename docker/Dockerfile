@@ -35,6 +35,8 @@ RUN apt-get update && apt-get install -y screen wget \
 # 环境变量
 # - 平台暴露端口，默认为80
 ENV DMP_PORT=${DMP_PORT:-80}
+# 是否以容器方式启动
+ENV DMP_IN_CONTAINER=1
 
 # web端口
 EXPOSE 80/tcp

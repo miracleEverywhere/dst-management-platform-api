@@ -38,7 +38,6 @@ func getPlayerList(filepath string) []string {
 		uidList = append(uidList, uid)
 	}
 
-	logger.Logger.Debug(utils.StructToFlatString(uidList))
 	return uidList
 }
 

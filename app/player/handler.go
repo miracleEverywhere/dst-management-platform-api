@@ -167,3 +167,57 @@ func (h *Handler) uidMapGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": uidMap})
 }
+
+func (h *Handler) statisticsOnlineTimeGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	db.PlayersOnlineTimeMutex.Lock()
+	defer db.PlayersOnlineTimeMutex.Unlock()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.PlayersOnlineTime[reqForm.RoomID]})
+}
+
+func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `json:"roomID" form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	db.PlayersStatisticMutex.Lock()
+	defer db.PlayersStatisticMutex.Unlock()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.PlayersStatistic[reqForm.RoomID]})
+}

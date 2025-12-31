@@ -45,6 +45,15 @@ func OnlinePlayerGet(interval int, uidMapEnable bool) {
 						playerInfo.Prefab = uidNickName[2]
 						ps = append(ps, playerInfo)
 
+						// 玩家在线时长统计
+						db.PlayersOnlineTimeMutex.Lock()
+						if db.PlayersOnlineTime[rbs.RoomID] == nil {
+							db.PlayersOnlineTime[rbs.RoomID] = make(map[string]int)
+						}
+						db.PlayersOnlineTime[rbs.RoomID][playerInfo.Nickname] = db.PlayersOnlineTime[rbs.RoomID][playerInfo.Nickname] + interval
+						db.PlayersOnlineTimeMutex.Unlock()
+
+						// 更新uidMap
 						if uidMapEnable {
 							uidMap := models.UidMap{
 								UID:      playerInfo.UID,
@@ -113,4 +122,22 @@ func GameUpdate(enable bool) {
 		logger.Logger.Info("游戏更新结束")
 		db.DstUpdating = false
 	}
+}
+
+func InternetIPUpdate() {
+	var (
+		internetIp string
+		err        error
+	)
+	internetIp, err = GetInternetIP1()
+	if err != nil {
+		logger.Logger.Warn("调用公网ip接口1失败", "err", err)
+		internetIp, err = GetInternetIP2()
+		if err != nil {
+			logger.Logger.Warn("调用公网ip接口2失败", "err", err)
+			return
+		}
+	}
+
+	db.InternetIP = internetIp
 }

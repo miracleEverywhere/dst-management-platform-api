@@ -50,6 +50,16 @@ func initJobs() {
 		DayAt:    globalSetting.AutoUpdateSetting,
 	})
 
+	// 公网IP获取
+	Jobs = append(Jobs, JobConfig{
+		Name:     "InternetIPUpdate",
+		Func:     InternetIPUpdate,
+		Args:     nil,
+		TimeType: "hour",
+		Interval: 6,
+		DayAt:    "",
+	})
+
 	// 房间定时任务
 	roomBasic, err := DBHandler.roomDao.GetRoomBasic()
 	if err != nil {

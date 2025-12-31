@@ -1,1 +1,0 @@
-import{h as r}from"./axios-BurQrId6.js";const a={online:{url:"/player/online",get:async function(t){return await r.get(this.url,t)}},list:{url:"/player/list",get:async function(t){return await r.get(this.url,t)},post:async function(t){return await r.post(this.url,t)}},uidmap:{url:"/player/uidmap",get:async function(t){return await r.get(this.url,t)}}};export{a as p};

@@ -876,8 +876,11 @@ func (h *Handler) roomDelete(c *gin.Context) {
 	}
 	// 删除玩家统计
 	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
 	delete(db.PlayersStatistic, reqForm.RoomID)
+	db.PlayersStatisticMutex.Unlock()
+	db.PlayersOnlineTimeMutex.Lock()
+	delete(db.PlayersOnlineTime, reqForm.RoomID)
+	db.PlayersOnlineTimeMutex.Unlock()
 	// 更新用户权限
 	roomIDStr := strconv.Itoa(reqForm.RoomID)
 	for _, user := range *nonAdminUsers {
@@ -919,6 +922,12 @@ func (h *Handler) roomDelete(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 			return
 		}
+	}
+	err = h.uidMapDao.DeleteUidMapByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("更新数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})

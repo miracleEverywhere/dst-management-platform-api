@@ -6,12 +6,15 @@ import (
 )
 
 var (
-	JwtSecret             string
-	CurrentDir            string
-	DstUpdating           bool
-	PlayersStatistic      = make(map[int][]Players)
-	PlayersStatisticMutex sync.Mutex
-	SystemMetrics         []SysMetrics
+	JwtSecret              string
+	CurrentDir             string
+	DstUpdating            bool
+	PlayersStatistic       = make(map[int][]Players)
+	PlayersStatisticMutex  sync.Mutex
+	PlayersOnlineTime      = make(map[int]map[string]int)
+	PlayersOnlineTimeMutex sync.Mutex
+	SystemMetrics          []SysMetrics
+	InternetIP             string
 )
 
 type PlayerInfo struct {
