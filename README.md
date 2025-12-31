@@ -68,4 +68,8 @@
 基于[materio-vuetify-vuejs-admin-template-free](https://github.com/themeselection/materio-vuetify-vuejs-admin-template-free)二次开发，感谢开源  
 v1与v2版本基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感谢开源
 
-感谢加速站点[github.akams.cn](https://github.akams.cn/) 
+感谢加速站点：
+- [github.akams.cn](https://github.akams.cn/) 
+- [gh.llkk.cc](https://gh.llkk.cc/) 
+- [github.dpik.top](https://github.dpik.top/) 
+- [ghfast.top](https://ghfast.top/) 
