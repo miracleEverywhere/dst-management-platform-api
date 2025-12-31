@@ -31,3 +31,7 @@ func (d *UidMapDAO) UpdateUidMap(uidMap *models.UidMap) error {
 
 	return d.db.Save(uidMap).Error
 }
+
+func (d *UidMapDAO) DeleteUidMapByRoomID(roomID int) error {
+	return d.db.Where("room_id = ?", roomID).Delete(&models.UidMap{}).Error
+}
