@@ -920,6 +920,12 @@ func (h *Handler) roomDelete(c *gin.Context) {
 			return
 		}
 	}
+	err = h.uidMapDao.DeleteUidMapByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("更新数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
 }
