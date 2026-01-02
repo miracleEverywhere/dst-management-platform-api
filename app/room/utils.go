@@ -57,7 +57,7 @@ type XRoomTotalInfo struct {
 }
 
 // 是否拥有房间创建权限
-func (h *Handler) hasPermission(c *gin.Context) (bool, error) {
+func (h *Handler) hasCreatePermission(c *gin.Context) (bool, error) {
 	role, _ := c.Get("role")
 	username, _ := c.Get("username")
 	var (

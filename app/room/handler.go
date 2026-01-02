@@ -19,7 +19,7 @@ import (
 
 // createPost 创建房间
 func (h *Handler) roomPost(c *gin.Context) {
-	permission, err := h.hasPermission(c)
+	permission, err := h.hasCreatePermission(c)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -110,71 +110,63 @@ func (h *Handler) roomPost(c *gin.Context) {
 
 // roomPut 修改房间
 func (h *Handler) roomPut(c *gin.Context) {
-	permission, err := h.hasPermission(c)
+	var reqForm XRoomTotalInfo
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	// logger.Logger.Debug(utils.StructToFlatString(reqForm))
+	permission := h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomData.ID))
+	if !permission {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	err := h.roomDao.UpdateRoom(&reqForm.RoomData)
 	if err != nil {
-		logger.Logger.Error("查询数据库失败", "err", err)
+		logger.Logger.Error("更新房间失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
-	if permission {
-		var reqForm XRoomTotalInfo
-		if err := c.ShouldBindJSON(&reqForm); err != nil {
-			logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return
-		}
-		// logger.Logger.Debug(utils.StructToFlatString(reqForm))
-
-		err = h.roomDao.UpdateRoom(&reqForm.RoomData)
-		if err != nil {
-			logger.Logger.Error("更新房间失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		err = h.worldDao.UpdateWorlds(&reqForm.WorldData)
-		if err != nil {
-			logger.Logger.Error("更新房间失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		err = h.roomSettingDao.UpdateRoomSetting(&reqForm.RoomSettingData)
-		if err != nil {
-			logger.Logger.Error("更新房间失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		game := dst.NewGameController(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData, c.Request.Header.Get("X-I18n-Lang"))
-		err = game.SaveAll()
-		if err != nil {
-			logger.Logger.Error("配置写入磁盘失败", "err", err)
-			c.JSON(http.StatusOK, gin.H{
-				"code":    201,
-				"message": message.Get(c, "write file fail"),
-				"data":    nil,
-			})
-		}
-
-		if reqForm.RoomData.Status {
-			processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
-		} else {
-			// 删除所有的定时任务
-			jobNames := scheduler.GetJobsByRoomID(reqForm.RoomData.ID)
-			logger.Logger.Debug(utils.StructToFlatString(jobNames))
-			for _, jobName := range jobNames {
-				scheduler.DeleteJob(jobName)
-			}
-		}
-
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
+	err = h.worldDao.UpdateWorlds(&reqForm.WorldData)
+	if err != nil {
+		logger.Logger.Error("更新房间失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-	return
+	err = h.roomSettingDao.UpdateRoomSetting(&reqForm.RoomSettingData)
+	if err != nil {
+		logger.Logger.Error("更新房间失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData, c.Request.Header.Get("X-I18n-Lang"))
+	err = game.SaveAll()
+	if err != nil {
+		logger.Logger.Error("配置写入磁盘失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    201,
+			"message": message.Get(c, "write file fail"),
+			"data":    nil,
+		})
+	}
+
+	if reqForm.RoomData.Status {
+		processJobs(game, reqForm.RoomData.ID, reqForm.RoomSettingData)
+	} else {
+		// 删除所有的定时任务
+		jobNames := scheduler.GetJobsByRoomID(reqForm.RoomData.ID)
+		logger.Logger.Debug(utils.StructToFlatString(jobNames))
+		for _, jobName := range jobNames {
+			scheduler.DeleteJob(jobName)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
 }
 
 // listGet 按分页获取集群信息，并附带对应世界信息
@@ -406,7 +398,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	newRoom := false
 	if roomIDStr == "" {
 		// 新建房间，新建权限验证
-		permission, _ := h.hasPermission(c)
+		permission, _ := h.hasCreatePermission(c)
 		if !permission {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 			return
@@ -548,12 +540,12 @@ func (h *Handler) uploadPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "number of worlds does not match"), "data": nil})
 			return
 		}
-		for index, world := range worlds {
-			world.ServerPort = (*dbWorlds)[index].ServerPort
-			world.MasterServerPort = (*dbWorlds)[index].MasterServerPort
-			world.AuthenticationPort = (*dbWorlds)[index].AuthenticationPort
+		for index := range worlds {
+			worlds[index].ServerPort = (*dbWorlds)[index].ServerPort
+			worlds[index].MasterServerPort = (*dbWorlds)[index].MasterServerPort
+			worlds[index].AuthenticationPort = (*dbWorlds)[index].AuthenticationPort
 			// 设置roomID
-			world.RoomID = roomID
+			worlds[index].RoomID = roomID
 		}
 	}
 
@@ -561,8 +553,8 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	if worlds[0].ModData == worlds[1].ModData {
 		room.ModInOne = true
 		room.ModData = worlds[0].ModData
-		for _, world := range worlds {
-			world.ModData = ""
+		for index := range worlds {
+			worlds[index].ModData = ""
 		}
 	} else {
 		room.ModInOne = false
