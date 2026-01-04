@@ -41,7 +41,7 @@ func GenerateJWT(user models.User, jwtSecret []byte, expirationHours int) (strin
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirationHours) * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "饥荒管理平台(DMP)",
+			Issuer:    "https://github.com/miracleEverywhere/dst-management-platform-api",
 			Subject:   user.Username,
 		},
 	}
