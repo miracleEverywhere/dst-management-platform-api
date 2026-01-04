@@ -204,6 +204,11 @@ func (g *Game) processAcf(id int) error {
 			gameAcfTargetIndex int
 			hasMod             bool
 		)
+
+		if len(gameAcfParser.AppWorkshop.WorkshopItemsInstalled) != len(gameAcfParser.AppWorkshop.WorkshopItemDetails) {
+			return fmt.Errorf("acf文件异常，WorkshopItemsInstalled与WorkshopItemDetails长度不一致")
+		}
+
 		for index, i := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
 			if i.ID == acfID {
 				gameAcfTargetIndex = index
