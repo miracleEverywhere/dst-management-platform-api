@@ -444,8 +444,8 @@ func tokenPost(c *gin.Context) {
 	var expiration int
 
 	if reqForm.Expiration == 0 {
-		// 生成永久token
-		expiration = 999 * 365 * 24
+		// 生成永久token 99年
+		expiration = 99 * 365 * 24
 	} else {
 		expiration = reqForm.Expiration
 	}
