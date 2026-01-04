@@ -149,6 +149,16 @@ var tools = menuItem{
 			Icon:      "ri-road-map-line",
 			Links:     nil,
 		},
+		{
+			ID:        604,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsToken",
+			To:        "/tools/token",
+			Component: "tools/token",
+			Icon:      "ri-coupon-line",
+			Links:     nil,
+		},
 	},
 }
 

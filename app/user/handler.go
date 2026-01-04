@@ -120,13 +120,24 @@ func (h *Handler) menuGet(c *gin.Context) {
 			platform,
 		}
 	} else {
+		toolsLess := tools
+		toolsLess.Links = []menuItem{
+			tools.Links[0],
+			tools.Links[1],
+			tools.Links[2],
+		}
 		logsLess := logs
-		logsLess.Links = []menuItem{logs.Links[0], logs.Links[1], logs.Links[2]}
+		logsLess.Links = []menuItem{
+			logs.Links[0],
+			logs.Links[1],
+			logs.Links[2],
+		}
+
 		response.Data = []menuItem{
 			rooms,
 			dashboard,
 			game,
-			tools,
+			toolsLess,
 			logsLess,
 			upload,
 		}
