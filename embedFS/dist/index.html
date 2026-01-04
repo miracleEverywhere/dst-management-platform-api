@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>饥荒管理平台 DMP</title>
   <link rel="stylesheet" type="text/css" href="/loader.css" />
-  <script type="module" crossorigin src="/assets/index-1couzVnS.js"></script>
+  <script type="module" crossorigin src="/assets/index-dR3X8DmH.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-8P5yXIS4.css">
 </head>
 
@@ -16,7 +16,13 @@
     <div id="loading-bg">
       <div class="loading-logo">
         <!-- SVG Logo -->
-          <img src="/dmp.svg" alt="SVG Image" style="width: 100px; height: auto;">
+          <img
+            src="/dmp.svg"
+            alt="SVG Image"
+            style="width: 100px; height: auto;"
+            onload="console.log('Logo loaded')"
+            onerror="console.log('Logo load error')"
+          >
       </div>
       <div class="loading">
         <div class="effect-1 effects"></div>
@@ -24,16 +30,17 @@
         <div class="effect-3 effects"></div>
       </div>
     </div>
-  </div>
+  </div>
   <script>
-    const loaderColor = localStorage.getItem('materio-initial-loader-bg') || '#FFFFFF'
-    const primaryColor = localStorage.getItem('materio-initial-loader-color') || '#9155FD'
+    (function () {
+      const loaderColor = localStorage.getItem('materio-initial-loader-bg') || '#FFFFFF'
+      const primaryColor = localStorage.getItem('materio-initial-loader-color') || '#9155FD'
 
-    if (loaderColor)
       document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
-
-    if (primaryColor)
       document.documentElement.style.setProperty('--initial-loader-color', primaryColor)
+
+      console.log('Loading colors', { loaderColor, primaryColor })
+    })()
   </script>
 </body>
 
