@@ -370,14 +370,17 @@ func (h *Handler) mapGet(c *gin.Context) {
 	}
 	var Prefabs []Prefab
 
-	// 猪王 出生门 月台 岩浆池 绿洲 蚁狮 旋涡
-	var prefabs = []string{"pigking", "multiplayer_portal", "moonbase", "lava_pond", "oasislake", "antlion", "oceanwhirlbigportal"}
+	// 猪王 出生门 月台 岩浆池 绿洲 蚁狮 旋涡 巨大蜂窝
+	var prefabs = []string{
+		"pigking", "multiplayer_portal", "moonbase", "lava_pond",
+		"oasislake", "antlion", "oceanwhirlbigportal", "beequeenhivegrown",
+	}
 
 	for _, prefab := range prefabs {
 		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
 		x, y, err := game.GetCoordinate(cmd, reqForm.WorldID)
 		if err != nil {
-			logger.Logger.Warn("坐标获取失败，跳过", "err", err)
+			logger.Logger.Warn("坐标获取失败，跳过", "err", err, "prefab", prefab)
 			continue
 		}
 		X, Y := game.CoordinateToPx(mapData.Height, x, y)
@@ -391,7 +394,7 @@ func (h *Handler) mapGet(c *gin.Context) {
 	count := game.CountPrefabs(reqForm.WorldID)
 
 	players := game.PlayerPosition(reqForm.WorldID)
-	for index, _ := range players {
+	for index := range players {
 		players[index].Coordinate.X, players[index].Coordinate.Y = game.CoordinateToPx(mapData.Height, players[index].Coordinate.X, players[index].Coordinate.Y)
 	}
 
