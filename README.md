@@ -73,3 +73,5 @@ v1与v2版本基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感
 - [gh.llkk.cc](https://gh.llkk.cc/) 
 - [github.dpik.top](https://github.dpik.top/) 
 - [ghfast.top](https://ghfast.top/) 
+
+感谢[饥荒百科](https://dontstarve.huijiwiki.com/wiki/饥荒)
