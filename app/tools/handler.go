@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
@@ -411,4 +413,49 @@ func (h *Handler) mapGet(c *gin.Context) {
 		Count:   count,
 		Players: players,
 	}})
+}
+
+func tokenPost(c *gin.Context) {
+	type ReqForm struct {
+		Expiration int `json:"expiration"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.Expiration < 0 {
+		logger.Logger.Info("请求参数错误", "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	username, _ := c.Get("username")
+	nickname, _ := c.Get("nickname")
+
+	user := models.User{
+		Username: username.(string),
+		Nickname: nickname.(string),
+		Role:     "admin",
+	}
+
+	var expiration int
+
+	if reqForm.Expiration == 0 {
+		// 生成永久token
+		expiration = 999 * 365 * 24
+	} else {
+		expiration = reqForm.Expiration
+	}
+
+	token, err := utils.GenerateJWT(user, []byte(db.JwtSecret), expiration)
+	if err != nil {
+		logger.Logger.Error("创建token失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "create fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": token})
 }
