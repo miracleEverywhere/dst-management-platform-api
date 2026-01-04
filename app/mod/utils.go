@@ -44,6 +44,9 @@ type PublishedFileDetails struct {
 	Tags            []Tags   `json:"tags"`
 	PreviewUrl      string   `json:"preview_url"`
 	VoteData        VoteData `json:"vote_data"`
+	TimeCreated     int      `json:"time_created"`
+	TimeUpdated     int      `json:"time_updated"`
+	Subscriptions   int      `json:"subscriptions"`
 }
 type Data struct {
 	Total    int       `json:"total"`
@@ -61,6 +64,9 @@ type ModInfo struct {
 	FileUrl         string   `json:"file_url"`
 	VoteData        VoteData `json:"vote_data"`
 	DownloadedReady bool     `json:"downloadedReady"`
+	TimeCreated     int      `json:"time_created"`
+	TimeUpdated     int      `json:"time_updated"`
+	Subscriptions   int      `json:"subscriptions"`
 }
 type Tags struct {
 	Tag         string `json:"tag"`
@@ -135,6 +141,9 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 			FileDescription: i.FileDescription,
 			FileUrl:         i.FileUrl,
 			VoteData:        i.VoteData,
+			TimeCreated:     i.TimeCreated,
+			TimeUpdated:     i.TimeUpdated,
+			Subscriptions:   i.Subscriptions,
 		}
 		modInfoList = append(modInfoList, modInfo)
 	}
