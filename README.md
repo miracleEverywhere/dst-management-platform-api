@@ -11,14 +11,17 @@
     <img src="docs/images/dmp.svg" height="200" alt="DMP"/>
     <h3>:sparkling_heart: 支持多房间、多用户、多权限管理 :sparkling_heart:</h3>
     <h3>:star2: 一键开启你的饥荒之旅 :star2:</h3>
-    <h3>:tada: 欢迎加群：<a href="https://qun.qq.com/universal-share/share?ac=1&authKey=ePe2g%2Bq16q8tSAdeJwOXC08NnAKn%2BfmwKeTdf8oS3pD5DzrPKQkoS6eAAD6UivHk&busi_data=eyJncm91cENvZGUiOiI3MzM5NDg2NDQiLCJ0b2tlbiI6Ii9CTmFVWTZOUTNvNUFuaG4rNTdaSnAvQ3U1aERkSUgxcFdCelB1OEhDNWtYNjlvRGhQZnU4allOcWcvcHM4b3IiLCJ1aW4iOiI3NjM0ODM5NjYifQ%3D%3D&data=qjh1K6Pelvxvj6Yl-qeFNEF3jJbc7EJMEC6Edt3ULjtM9WSkvbe0PKTd2q2Qp0v8wA6hXmL-sN-ziKjuf2zEXA&svctype=4&tempid=h5_group_info">733948644</a> :tada:</h3>
+    <h3>:tada: <a href="https://docs.miraclesses.top/faq/group.html">欢迎加群</a> :tada:</h3>
 </div>
 
 ---
 
 ## :strawberry: 详细文档
 
-**详细教程请前往** [https://miraclesses.top](https://miraclesses.top)  
+**项目主页请前往** [https://miraclesses.top](https://miraclesses.top)  
+主页包含作者和用户制作的视频教程、在线预览等
+
+**项目文档请前往** [https://docs.miraclesses.top](https://miraclesses.top)  
 文档包含快速开始、详细文档等，萌新大佬均可无痛阅读
 
 ---
