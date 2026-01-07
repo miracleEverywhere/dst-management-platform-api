@@ -1,1 +1,4 @@
 .idea
+docker/data/
+docker/.klei/
+docker/logs/
