@@ -3,27 +3,29 @@ services:
   dmp:
     # image: ghcr.io/harelive/dst-management-platform-api:latest # 测试用
     # image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest #原地址
-    image: ghcr.nju.edu.cn/miracleeverywhere/dst-management-platform-api:latest #加速地址
+    image: dmp-tag:v1.0.0 #加速地址
     
     container_name: dmp
 
     ports:
-      - "9000:80"
-      - "11000-12000:11000-12000/udp"
-      - "21000-21100:21000-21100/udp"
+      - "11000-11010:11000-11010/udp"
+      - "21000-21010:21000-21010/udp"
 
     # 新建一个文件夹存docker-compose.yml,映射文件与docker-compose.yml同一级
     volumes:
       - ./.klei:/root/.klei
       - ./data:/root/data
-      - ./dst:/root/dst
       - ./logs:/root/logs
-      - ./dmp_files:/root/dmp_files
-      - ./steamcmd:/root/steamcmd
+      # 如需持久化 DST 或 steamcmd 再按需加挂载
+      # - ./dst:/root/dst
+      # - ./dmp_files:/root/dmp_files
+      # - ./steamcmd:/root/steamcmd
       # 同步宿主机时间(linux内核)
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-    network_mode: bridge
+    
+    networks:
+      - dmp-network
 
     # restart: unless-stopped #开机自启
     environment:
@@ -33,9 +35,20 @@ services:
       - DMP_PORT=80
 #      - 日志打印级别
       - LEVEL=info
-    # 修改 dns 降低steam连接失败概率
-#    dns:
-#        - 144.144.144.144
-#        - 223.5.5.5
-#        - 8.8.8.8
-#        - 8.8.4.4
+
+  nginx:
+    image: nginx:alpine
+    container_name: dmp-nginx
+    ports:
+      - "9000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../embedFS/dist:/usr/share/nginx/html:ro  # 确保路径正确
+    networks:
+      - dmp-network
+    depends_on:
+      - dmp
+
+networks:
+  dmp-network:
+    driver: bridge
