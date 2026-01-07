@@ -8,8 +8,8 @@
 # dmp暴露端口，即网页打开时所用的端口
 PORT=80
 
-# 数据库文件所在目录，例如：./config
-CONFIG_DIR="./data"
+# 数据库文件所在目录，例如：$HOME/data
+CONFIG_DIR="$HOME/data"
 
 # 虚拟内存大小，例如 1G 4G等
 SWAPSIZE=2G
@@ -269,7 +269,10 @@ function install_dmp() {
 	fi
 
 	set -e
-	tar zxvf dmp.tgz >/dev/null
+	if ! tar zxvf dmp.tgz; then
+    echo_red "解压失败"
+    exit 1
+	fi
 	rm -f dmp.tgz
 	chmod +x "$ExeFile"
 	set +e
@@ -378,7 +381,7 @@ function update_script() {
 
 # 设置虚拟内存
 function set_swap() {
-	SWAPFILE=/swapfile
+	SWAPFILE=/swap.img #更改为默认交换区命名
 
 	# 检查是否已经存在交换文件
 	if [ -f $SWAPFILE ]; then
