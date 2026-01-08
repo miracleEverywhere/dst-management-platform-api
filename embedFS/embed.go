@@ -75,6 +75,20 @@ func GenerateDefaultFile() {
 		return
 	}
 
+	// update 脚本
+	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_update.sh")
+	if err != nil {
+		logger.Logger.Error("生成手动更新脚本失败", "err", err)
+		return
+	}
+
+	err = utils.ChangeFileMode("./manual_update.sh", 0755)
+	if err != nil {
+		logger.Logger.Error("手动更新脚本添加权限失败", "err", err)
+		return
+	}
+
 	// 删除Windows的换行符
 	_ = utils.BashCMD("sed -i 's/\\r$//' manual_install.sh")
+	_ = utils.BashCMD("sed -i 's/\\r$//' manual_update.sh")
 }
