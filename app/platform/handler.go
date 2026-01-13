@@ -116,12 +116,12 @@ func websshWS(c *gin.Context) {
 	tokenSecret := db.JwtSecret
 	claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
 	if err != nil {
-		logger.Logger.Error("token认证失败: ", err)
+		logger.Logger.ErrorF("token认证失败: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
 		return
 	}
 	if claims.Role != "admin" {
-		logger.Logger.Error("越权请求: 用户角色为 ", claims.Role)
+		logger.Logger.ErrorF("越权请求: 用户角色为 %s", claims.Role)
 		c.JSON(http.StatusForbidden, gin.H{"error": "权限不足"})
 		return
 	}
@@ -141,13 +141,16 @@ func websshWS(c *gin.Context) {
 		Cols: 120,
 	})
 	if err != nil {
-		logger.Logger.Error("创建PTY失败: ", err)
+		logger.Logger.ErrorF("创建PTY失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "终端创建失败"})
 		return
 	}
 	defer func() {
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			err = cmd.Process.Kill()
+			if err != nil {
+				logger.Logger.Error(err.Error())
+			}
 		}
 	}()
 
@@ -170,7 +173,7 @@ func websshWS(c *gin.Context) {
 				read, err := f.Read(buf)
 				if err != nil {
 					if err != io.EOF {
-						logger.Logger.Warn("PTY读取错误: ", err)
+						logger.Logger.WarnF("PTY读取错误: %v", err)
 					}
 					return
 				}
@@ -182,7 +185,7 @@ func websshWS(c *gin.Context) {
 
 					// 使用BroadcastBinary确保二进制数据正确传输
 					if err := m.BroadcastBinary(data); err != nil {
-						logger.Logger.Warn("广播数据失败: ", err)
+						logger.Logger.WarnF("广播数据失败: %v", err)
 					}
 				}
 			}
@@ -193,7 +196,7 @@ func websshWS(c *gin.Context) {
 	m.HandleMessage(func(s *melody.Session, msg []byte) {
 		// 限制消息大小
 		if len(msg) > 1024 {
-			logger.Logger.Warn("消息过大: ", len(msg))
+			logger.Logger.WarnF("消息过大: %d", len(msg))
 			return
 		}
 
@@ -211,7 +214,7 @@ func websshWS(c *gin.Context) {
 					Rows: uint16(resizeMsg.Rows),
 					Cols: uint16(resizeMsg.Cols),
 				}); err != nil {
-					logger.Logger.Warn("调整终端大小失败: ", err)
+					logger.Logger.WarnF("调整终端大小失败: %v", err)
 				}
 				return
 			}
@@ -220,33 +223,37 @@ func websshWS(c *gin.Context) {
 		// 处理普通输入数据
 		_, err := f.Write(msg)
 		if err != nil {
-			logger.Logger.Warn("PTY写入失败: ", err)
+			logger.Logger.WarnF("PTY写入失败: %v", err)
 			//s.CloseWithMessage([]byte("PTY写入失败"))
 		}
 	})
 
 	// 连接关闭处理
 	m.HandleClose(func(s *melody.Session, code int, reason string) error {
-		logger.Logger.Info("WebSocket连接关闭: ", code, reason)
+		logger.Logger.InfoF("WebSocket连接关闭 --> code: %d, reason: %s", code, reason)
 		cancel()
 		return nil
 	})
 
 	// 连接建立处理
 	m.HandleConnect(func(s *melody.Session) {
-		logger.Logger.Info("新的WebSSH连接建立, 用户: ", claims.Username)
+		logger.Logger.InfoF("新的WebSSH连接建立, 用户: %s", claims.Username)
 	})
 
 	// 处理WebSocket升级
 	err = m.HandleRequest(c.Writer, c.Request)
 	if err != nil {
-		logger.Logger.Error("WebSocket升级失败: ", err)
+		logger.Logger.ErrorF("WebSocket升级失败: %v", err)
 		return
 	}
 
 	// 等待命令结束
-	cmd.Wait()
-	logger.Logger.Info("WebSSH会话结束, 用户: ", claims.Username)
+	err = cmd.Wait()
+	if err != nil {
+		logger.Logger.Error(err.Error())
+	}
+
+	logger.Logger.InfoF("WebSSH会话结束, 用户: %s", claims.Username)
 }
 
 func osInfoGet(c *gin.Context) {
