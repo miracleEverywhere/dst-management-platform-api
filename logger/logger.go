@@ -12,7 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var Logger *slog.Logger
+type CustomLogger struct {
+	*slog.Logger
+}
+
+var Logger *CustomLogger
 
 func InitLogger(logLevel string) {
 	logDir := "logs"
@@ -59,10 +63,40 @@ func InitLogger(logLevel string) {
 		level = slog.LevelInfo
 	}
 
-	Logger = slog.New(NewSimpleHandler(slogLogFile, &slog.HandlerOptions{
+	slogLogger := slog.New(NewSimpleHandler(slogLogFile, &slog.HandlerOptions{
 		AddSource: addSource,
 		Level:     level,
 	}))
+
+	Logger = &CustomLogger{Logger: slogLogger}
+}
+
+// DebugF 格式化 Debug 日志
+func (l *CustomLogger) DebugF(format string, args ...any) {
+	if l.Enabled(context.Background(), slog.LevelDebug) {
+		l.Debug(fmt.Sprintf(format, args...))
+	}
+}
+
+// InfoF 格式化 Info 日志
+func (l *CustomLogger) InfoF(format string, args ...any) {
+	if l.Enabled(context.Background(), slog.LevelInfo) {
+		l.Info(fmt.Sprintf(format, args...))
+	}
+}
+
+// WarnF 格式化 Warn 日志
+func (l *CustomLogger) WarnF(format string, args ...any) {
+	if l.Enabled(context.Background(), slog.LevelWarn) {
+		l.Warn(fmt.Sprintf(format, args...))
+	}
+}
+
+// ErrorF 格式化 Error 日志
+func (l *CustomLogger) ErrorF(format string, args ...any) {
+	if l.Enabled(context.Background(), slog.LevelError) {
+		l.Error(fmt.Sprintf(format, args...))
+	}
 }
 
 type simpleHandler struct {
