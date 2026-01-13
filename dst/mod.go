@@ -106,9 +106,24 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		}
 
 		// 3
+		gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
+		gameAcfContent, err := utils.ReadLinesToSlice(gameAcfPath)
+		if err != nil {
+			gameAcfContent = []string{}
+		}
 		err = g.processAcf(id)
 		if err != nil {
 			logger.Logger.Error("修改acf文件失败", "err", err)
+			// 下载失败就恢复下载前的acf文件
+			logger.Logger.Info("正在恢复旧的acf文件")
+			for _, world := range g.worldSaveData {
+				gameAcfPath = fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
+				writeErr := utils.WriteLinesFromSlice(gameAcfPath, gameAcfContent)
+				if writeErr != nil {
+					logger.Logger.Error("恢复acf文件失败", "err", writeErr)
+				}
+			}
+
 			return err, modSize
 		}
 
