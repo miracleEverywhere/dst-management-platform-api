@@ -367,6 +367,8 @@ func (g *Game) getModConfigureOptionsValues(worldID, modID int, ugc bool) (*ModO
 	modORParser := NewModORParser()
 	defer modORParser.close()
 
+	logger.Logger.DebugF("ugc is %t", ugc)
+
 	var modORContent string
 	if g.room.ModInOne {
 		modORContent = g.room.ModData
