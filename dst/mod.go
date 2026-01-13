@@ -220,7 +220,8 @@ func (g *Game) processAcf(id int) error {
 			hasMod             bool
 		)
 
-		if len(gameAcfParser.AppWorkshop.WorkshopItemsInstalled) != len(gameAcfParser.AppWorkshop.WorkshopItemDetails) {
+		if len(gameAcfParser.AppWorkshop.WorkshopItemsInstalled) > len(gameAcfParser.AppWorkshop.WorkshopItemDetails) {
+			// 防止index溢出导致接口500
 			return fmt.Errorf("acf文件异常，WorkshopItemsInstalled与WorkshopItemDetails长度不一致")
 		}
 
