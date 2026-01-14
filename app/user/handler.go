@@ -125,6 +125,7 @@ func (h *Handler) menuGet(c *gin.Context) {
 			tools.Links[0],
 			tools.Links[1],
 			tools.Links[2],
+			tools.Links[4],
 		}
 		logsLess := logs
 		logsLess.Links = []menuItem{

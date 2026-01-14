@@ -159,6 +159,16 @@ var tools = menuItem{
 			Icon:      "ri-coupon-line",
 			Links:     nil,
 		},
+		{
+			ID:        605,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsSnapshot",
+			To:        "/tools/snapshot",
+			Component: "tools/snapshot",
+			Icon:      "ri-flip-horizontal-line",
+			Links:     nil,
+		},
 	},
 }
 
