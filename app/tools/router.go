@@ -22,6 +22,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			tools.PUT("/announce", h.announcePut)
 			tools.GET("/map", h.mapGet)
 			tools.POST("/token", middleware.AdminOnly(), tokenPost)
+			tools.GET("/snapshot", h.snapshotGet)
 		}
 	}
 }
