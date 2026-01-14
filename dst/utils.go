@@ -1056,3 +1056,45 @@ func replaceDSTSOFile() {
 		logger.Logger.Error("替换so文件失败", "err", err)
 	}
 }
+
+// 获取存档文件
+func getSnapshotFiles(dir string) ([]SnapshotFile, error) {
+	// 读取目录
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []SnapshotFile
+	for _, entry := range entries {
+		// 跳过目录
+		if entry.IsDir() {
+			continue
+		}
+
+		// 检查文件扩展名
+		filename := entry.Name()
+		if !strings.HasSuffix(strings.ToLower(filename), ".meta") {
+			fileInfo, err := entry.Info()
+			if err != nil {
+				continue
+			}
+
+			file := SnapshotFile{
+				Name:    filename,
+				Size:    fileInfo.Size(),
+				ModTime: fileInfo.ModTime(),
+			}
+
+			files = append(files, file)
+		}
+	}
+
+	return files, nil
+}
+
+type SnapshotFile struct {
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"modTime"`
+}

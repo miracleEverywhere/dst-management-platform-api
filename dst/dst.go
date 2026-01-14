@@ -241,3 +241,7 @@ func (g *Game) CountPrefabs(worldID int) []PrefabItem {
 func (g *Game) PlayerPosition(worldID int) []PlayerPosition {
 	return g.playerPosition(worldID)
 }
+
+func (g *Game) GetSnapshot() ([]SnapshotFile, error) {
+	return g.getSnapshot()
+}

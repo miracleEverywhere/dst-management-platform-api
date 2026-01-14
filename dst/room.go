@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -513,4 +514,26 @@ func (g *Game) deleteRoom() error {
 	}
 
 	return nil
+}
+
+func (g *Game) getSnapshot() ([]SnapshotFile, error) {
+	shardIndexPath := fmt.Sprintf("%s/shardindex", g.worldSaveData[0].savePath)
+	shardIndexContent, err := os.ReadFile(shardIndexPath)
+	if err != nil {
+		return []SnapshotFile{}, err
+	}
+
+	reSessionID := regexp.MustCompile(`session_id="(.+)",`)
+	matchSessionID := reSessionID.FindSubmatch(shardIndexContent)
+
+	if len(matchSessionID) < 2 {
+		return []SnapshotFile{}, fmt.Errorf("未找到session_id字段")
+	}
+
+	sessionID := string(matchSessionID[1])
+	logger.Logger.DebugF("session_id = %s", sessionID)
+
+	snapshotPath := fmt.Sprintf("%s/%s", g.worldSaveData[0].sessionPath, sessionID)
+
+	return getSnapshotFiles(snapshotPath)
 }
