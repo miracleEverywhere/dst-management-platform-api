@@ -1,0 +1,30 @@
+name: 添加新功能吧
+description: 说说你想要什么吧
+title: "[Feature] "
+labels:
+  - enhancement
+assignees: miracleEverywhere
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 我
+      options:
+        - label: 我搜索了issue，并没有发现相同的
+          required: true
+
+        - label: 我觉得超过四分之一的人需要这个功能
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 功能描述
+      description: 我倒要看看你有什么好点子
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 额外信息

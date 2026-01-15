@@ -1,0 +1,36 @@
+name: Bug上报
+description: 遇到了问题，点我提交
+title: "[Bug] "
+labels:
+  - bug
+assignees: miracleEverywhere
+body:
+  - type: input
+    id: version
+    attributes:
+      label: DMP版本
+      description: 出现Bug的DMP版本
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 系统版本
+      description: DMP部署在什么系统上
+      placeholder: 例如Ubuntu 24.04 LTS
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: bug描述
+      description: 注意，请尽量详细的描述此Bug的复现过程，并附带截图和日志，请勿直接上传日志文件，仅需粘贴相关日志
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 额外信息
