@@ -1,38 +1,49 @@
----
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
-assignees: ''
+name: Bug 上报
+description: Create a report to help us improve
+title: "[Bug]"
+labels:
+- bug
+  assignees: miracleEverywhere
+  body:
 
----
+- type: input
+  id: version
+  attributes:
+  label: 饥荒管理平台版本
+  description: 遇到问题的版本号，例如：v3.0.5
+  value: 
+  placeholder: v0.0.0
+  validations:
+  required: true
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+- type: input
+  id: os
+  attributes:
+  label: 系统类型及版本
+  description: 例如 Ubuntu24
+  value:
+  placeholder: 
+  validations:
+  required: true
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+- type: markdown
+  attributes:
+  value: |
+  ## Describe the bug
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+      > 截图和日志，日志请粘贴平台运行日志
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+- type: textarea
+  id: description
+  attributes:
+  label: 描述你遇到的BUG
+  description: BUG描述，并描述BUG复现过程
+  validations:
+  required: true
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
-
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
-
-**Additional context**
-Add any other context about the problem here.
+- type: textarea
+  id: additional-context
+  attributes:
+  label: 额外信息
+  description: 
+  placeholder: 
