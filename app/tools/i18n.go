@@ -31,6 +31,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["restore success"] = "恢复成功"
 	i.ZH["get setting fail"] = "获取定时通知设置失败"
 	i.ZH["generate map fail"] = "生成地图失败"
+	i.ZH["get snapshot fail"] = "获取备份文件失败"
 
 	i.EN["get backup fail"] = "get backup fail"
 	i.EN["create backup fail"] = "create backup fail"
@@ -39,6 +40,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["restore success"] = "restore success"
 	i.EN["get setting fail"] = "Get Announce Settings Fail"
 	i.EN["generate map fail"] = "generate map fail"
+	i.EN["get snapshot fail"] = "get snapshot fail"
 
 	return i
 }

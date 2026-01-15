@@ -492,7 +492,61 @@ func (h *Handler) snapshotGet(c *gin.Context) {
 	snapshot, err := game.GetSnapshot()
 	if err != nil {
 		logger.Logger.Error("获取游戏存档文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "get snapshot fail", "data": snapshot})
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": snapshot})
+}
+
+func (h *Handler) snapshotDelete(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int    `json:"roomID"`
+		Name   string `json:"name"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+
+	// 关闭游戏
+	err = game.StopAllWorld()
+	if err != nil {
+		logger.Logger.WarnF("关闭游戏失败：%v，可能是游戏未运行，跳过", err)
+	}
+
+	// 删除存档文件
+	err = game.DeleteSnapshot(reqForm.Name)
+	if err != nil {
+		logger.Logger.Error("删除游戏存档文件失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "delete fail", "data": nil})
+	}
+
+	// 启动游戏
+	err = game.StartAllWorld()
+	if err != nil {
+		logger.Logger.ErrorF("启动游戏失败：%", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "delete success", "data": nil})
 }
