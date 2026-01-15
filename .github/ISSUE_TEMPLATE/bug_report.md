@@ -7,6 +7,17 @@ assignees: ''
 
 ---
 
+body:
+  - type: input
+    id: version
+    attributes:
+    label: 饥荒管理平台版本
+    description: Which package are you reporting
+    value: vuepress-theme-hope
+    placeholder: package name
+    validations:
+    required: true
+
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
 
