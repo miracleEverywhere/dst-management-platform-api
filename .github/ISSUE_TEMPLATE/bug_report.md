@@ -4,9 +4,6 @@ about: 使用过程中你遇到的Bug
 title: ''
 labels: ''
 assignees: ''
-
----
-
 body:
   - type: input
     id: version
@@ -17,6 +14,8 @@ body:
     placeholder: package name
     validations:
     required: true
+
+---
 
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
