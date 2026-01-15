@@ -1057,12 +1057,32 @@ func replaceDSTSOFile() {
 	}
 }
 
+func getSessionID(savePath string) (string, error) {
+	shardIndexPath := fmt.Sprintf("%s/shardindex", savePath)
+	shardIndexContent, err := os.ReadFile(shardIndexPath)
+	if err != nil {
+		return "", err
+	}
+
+	reSessionID := regexp.MustCompile(`session_id="(.+)",`)
+	matchSessionID := reSessionID.FindSubmatch(shardIndexContent)
+
+	if len(matchSessionID) < 2 {
+		return "", fmt.Errorf("未找到session_id字段")
+	}
+
+	sessionID := string(matchSessionID[1])
+	logger.Logger.DebugF("session_id = %s", sessionID)
+
+	return sessionID, nil
+}
+
 // 获取存档文件
 func getSnapshotFiles(dir string) ([]SnapshotFile, error) {
 	// 读取目录
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return []SnapshotFile{}, err
 	}
 
 	var files []SnapshotFile

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -517,23 +516,35 @@ func (g *Game) deleteRoom() error {
 }
 
 func (g *Game) getSnapshot() ([]SnapshotFile, error) {
-	shardIndexPath := fmt.Sprintf("%s/shardindex", g.worldSaveData[0].savePath)
-	shardIndexContent, err := os.ReadFile(shardIndexPath)
+	sessionID, err := getSessionID(g.worldSaveData[0].savePath)
 	if err != nil {
 		return []SnapshotFile{}, err
 	}
 
-	reSessionID := regexp.MustCompile(`session_id="(.+)",`)
-	matchSessionID := reSessionID.FindSubmatch(shardIndexContent)
-
-	if len(matchSessionID) < 2 {
-		return []SnapshotFile{}, fmt.Errorf("未找到session_id字段")
-	}
-
-	sessionID := string(matchSessionID[1])
-	logger.Logger.DebugF("session_id = %s", sessionID)
-
 	snapshotPath := fmt.Sprintf("%s/%s", g.worldSaveData[0].sessionPath, sessionID)
 
 	return getSnapshotFiles(snapshotPath)
+}
+
+func (g *Game) deleteSnapshot(filename string) error {
+	for _, world := range g.worldSaveData {
+		sessionID, err := getSessionID(world.savePath)
+		if err != nil {
+			return err
+		}
+
+		sessionFile := fmt.Sprintf("%s/%s/%s", world.sessionPath, sessionID, filename)
+		err = utils.RemoveFile(sessionFile)
+		if err != nil {
+			return err
+		}
+
+		sessionFileMeta := fmt.Sprintf("%s/%s/%s.meta", world.sessionPath, sessionID, filename)
+		err = utils.RemoveFile(sessionFileMeta)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

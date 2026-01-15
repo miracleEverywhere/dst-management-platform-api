@@ -242,6 +242,12 @@ func (g *Game) PlayerPosition(worldID int) []PlayerPosition {
 	return g.playerPosition(worldID)
 }
 
+// GetSnapshot 获取饥荒存档文件
 func (g *Game) GetSnapshot() ([]SnapshotFile, error) {
 	return g.getSnapshot()
+}
+
+// DeleteSnapshot 删除饥荒存档文件，所有世界
+func (g *Game) DeleteSnapshot(filename string) error {
+	return g.deleteSnapshot(filename)
 }
