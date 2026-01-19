@@ -11,6 +11,28 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (h *Handler) registerGet(c *gin.Context) {
+	var registered bool
+
+	num, err := h.userDao.Count(nil)
+	if err != nil {
+		registered = false
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": registered})
+		return
+	}
+
+	if num != 0 {
+		registered = false
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": registered})
+		return
+	} else {
+		registered = true
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": registered})
+		return
+	}
+}
+
 func (h *Handler) registerPost(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {

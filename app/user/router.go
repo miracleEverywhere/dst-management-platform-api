@@ -12,6 +12,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		user := v.Group("user")
 		{
+			user.GET("/register", h.registerGet)
 			user.POST("/register", h.registerPost)
 			user.POST("/login", h.loginPost)
 			user.GET("/base", middleware.TokenCheck(), h.baseGet)
