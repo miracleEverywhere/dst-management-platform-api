@@ -78,3 +78,9 @@ v1与v2版本基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感
 - [ghfast.top](https://ghfast.top/) 
 
 感谢[饥荒百科](https://dontstarve.huijiwiki.com/wiki/饥荒)
+
+---
+
+## :sparkles: 打赏
+
+如果你觉得饥荒管理平台对你有帮助的话，可以请我喝一杯咖啡 :coffee: [爱发电(https://afdian.com/a/miracle-dmp)](https://afdian.com/a/miracle-dmp) 
