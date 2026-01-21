@@ -539,7 +539,7 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 	err = game.DeleteSnapshot(reqForm.Name)
 	if err != nil {
 		logger.Logger.Error("删除游戏存档文件失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "delete fail", "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
 	}
 
 	// 启动游戏
@@ -548,5 +548,5 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 		logger.Logger.ErrorF("启动游戏失败：%", err)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "delete success", "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
 }
