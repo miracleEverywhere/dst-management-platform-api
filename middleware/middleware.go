@@ -54,7 +54,7 @@ func AdminOnly() gin.HandlerFunc {
 
 // CacheControl 缓存控制中间件
 func CacheControl() gin.HandlerFunc {
-	cacheDuration := 24 * time.Hour
+	cacheDuration := 12 * time.Hour
 	return func(c *gin.Context) {
 		// 只对静态资源文件设置缓存
 		if isStaticAsset(c.Request.URL.Path) {
