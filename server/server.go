@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
 )
@@ -56,6 +57,11 @@ func Run() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.Use(middleware.CacheControl())
+
+	// bug日志等级下，注册pprof路由
+	if logLevel == "debug" {
+		pprof.Register(r)
+	}
 
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao).RegisterRoutes(r)
