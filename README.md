@@ -77,10 +77,13 @@ v1与v2版本基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感
 - [github.dpik.top](https://github.dpik.top/) 
 - [ghfast.top](https://ghfast.top/) 
 
-感谢[饥荒百科](https://dontstarve.huijiwiki.com/wiki/饥荒)
+感谢[饥荒百科](https://dontstarve.huijiwiki.com/wiki/饥荒)  
+
+感谢[长鸽门徒](https://www.bilibili.com/opus/814456568458248259)提供的饥荒emoji字体
 
 ---
 
 ## :sparkles: 打赏
 
-如果你觉得饥荒管理平台对你有帮助的话，可以请我喝一杯咖啡 :coffee: [爱发电(https://afdian.com/a/miracle-dmp)](https://afdian.com/a/miracle-dmp) 
+如果你觉得饥荒管理平台对你有帮助的话，可以请我喝一杯咖啡  
+[爱发电(https://afdian.com/a/miracle-dmp)](https://afdian.com/a/miracle-dmp) 
