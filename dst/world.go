@@ -350,171 +350,42 @@ authentication_port = ` + strconv.Itoa(world.AuthenticationPort) + `
 encode_user_path = ` + strconv.FormatBool(world.EncodeUserPath)
 	return contents
 }
-
-//func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
-//	world, err := g.getWorldByID(id)
-//	if err != nil {
-//		return []string{}, err
-//	}
-//
-//	listScreenCmd := fmt.Sprintf("screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n", world.screenName)
-//	err = utils.BashCMD(listScreenCmd)
-//	if err != nil {
-//		return []string{}, err
-//	}
-//	// 等待命令执行完毕
-//	time.Sleep(time.Second * 2)
-//	// 获取日志文件中的list
-//	logPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
-//	file, err := os.Open(logPath)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	defer func(file *os.File) {
-//		err := file.Close()
-//		if err != nil {
-//			logger.Logger.Error("文件关闭失败", "err", err)
-//		}
-//	}(file)
-//
-//	// 逐行读取文件
-//	scanner := bufio.NewScanner(file)
-//	var linesAfterKeyword []string
-//	var lines []string
-//	keyword := "playerlist 99999999 [0]"
-//	var foundKeyword bool
-//
-//	for scanner.Scan() {
-//		lines = append(lines, scanner.Text())
-//	}
-//	if err := scanner.Err(); err != nil {
-//		return nil, err
-//	}
-//
-//	// 反向遍历行
-//	for i := len(lines) - 1; i >= 0; i-- {
-//		line := lines[i]
-//
-//		// 将行添加到结果切片
-//		linesAfterKeyword = append(linesAfterKeyword, line)
-//
-//		// 检查是否包含关键字
-//		if strings.Contains(line, keyword) {
-//			foundKeyword = true
-//			break
-//		}
-//	}
-//
-//	if !foundKeyword {
-//		return nil, fmt.Errorf("keyword not found in the file")
-//	}
-//
-//	// 正则表达式匹配模式
-//	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`
-//	re := regexp.MustCompile(pattern)
-//
-//	var players []string
-//
-//	// 查找匹配的行并提取所需字段
-//	for _, line := range linesAfterKeyword {
-//		if matches := re.FindStringSubmatch(line); matches != nil {
-//			// 检查是否包含 [Host]
-//			if !regexp.MustCompile(`\[Host]`).MatchString(line) {
-//				uid := strings.ReplaceAll(matches[1], "\t", "")
-//				//uid = strings.ReplaceAll(uid, " ", "")
-//				nickName := strings.ReplaceAll(matches[2], "\t", "")
-//				//nickName = strings.ReplaceAll(nickName, " ", "")
-//				prefab := strings.ReplaceAll(matches[3], "\t", "")
-//				//prefab = strings.ReplaceAll(prefab, " ", "")
-//				player := uid + "<-@dmp@->" + nickName + "<-@dmp@->" + prefab
-//				players = append(players, player)
-//			}
-//		}
-//	}
-//
-//	players = uniqueSliceKeepOrderString(players)
-//
-//	return players, nil
-//}
-
 func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 	world, err := g.getWorldByID(id)
 	if err != nil {
 		return []string{}, err
 	}
 
-	// 预编译正则表达式，避免重复编译
-	playerListPattern := regexp.MustCompile(`playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`)
-	hostPattern := regexp.MustCompile(`\[Host]`)
-
-	// 发送获取玩家列表命令
-	listScreenCmd := fmt.Sprintf(
-		"screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n",
-		world.screenName,
-	)
-
-	if err := utils.BashCMD(listScreenCmd); err != nil {
+	listScreenCmd := fmt.Sprintf("screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n", world.screenName)
+	err = utils.BashCMD(listScreenCmd)
+	if err != nil {
 		return []string{}, err
 	}
 
 	// 等待命令执行完毕
 	time.Sleep(time.Second * 2)
 
-	// 获取日志文件路径
+	// 获取日志文件中的list
 	logPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
 
-	// 优化：从文件末尾开始读取，查找最近的关键字
-	linesAfterKeyword, err := readLinesFromEnd(logPath, "playerlist 99999999 [0]", 1000) // 只读取最后1000行
-	if err != nil {
-		return nil, err
-	}
-
-	if len(linesAfterKeyword) == 0 {
-		return nil, fmt.Errorf("keyword not found in the file")
-	}
-
-	var players []string
-	seenPlayers := make(map[string]bool) // 用于去重
-
-	// 处理匹配的行
-	for i := len(linesAfterKeyword) - 1; i >= 0; i-- {
-		line := linesAfterKeyword[i]
-
-		// 如果包含[Host]标记，跳过
-		if hostPattern.MatchString(line) {
-			continue
-		}
-
-		// 匹配玩家信息
-		if matches := playerListPattern.FindStringSubmatch(line); matches != nil {
-			// 清理并构建玩家信息
-			uid := strings.TrimSpace(strings.ReplaceAll(matches[1], "\t", ""))
-			nickName := strings.TrimSpace(strings.ReplaceAll(matches[2], "\t", ""))
-			prefab := strings.TrimSpace(strings.ReplaceAll(matches[3], "\t", ""))
-			player := uid + "<-@dmp@->" + nickName + "<-@dmp@->" + prefab
-
-			// 去重
-			if !seenPlayers[player] {
-				seenPlayers[player] = true
-				players = append(players, player)
-			}
-		}
-	}
-
-	// 反转结果，保持原始顺序
-	reverse(players)
-
-	return players, nil
+	// 使用反向读取，只读取最后几KB
+	return readPlayerListFromEnd(logPath)
 }
 
-// 从文件末尾读取指定数量的行，直到找到关键字
-func readLinesFromEnd(filePath, keyword string, maxLines int) ([]string, error) {
-	file, err := os.Open(filePath)
+func readPlayerListFromEnd(logPath string) ([]string, error) {
+	const bufferSize = 1024 * 4 // 4KB buffer
+
+	// 打开文件
+	file, err := os.Open(logPath)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Logger.Error("文件关闭失败", "err", err)
+		}
+	}(file)
 
 	// 获取文件大小
 	fileInfo, err := file.Stat()
@@ -523,91 +394,73 @@ func readLinesFromEnd(filePath, keyword string, maxLines int) ([]string, error) 
 	}
 	fileSize := fileInfo.Size()
 
-	var lines []string
-	bufSize := int64(64 * 1024) // 64KB缓冲区
-	offset := fileSize
-	buffer := make([]byte, bufSize)
-	foundKeyword := false
+	// 计算从哪里开始读取
+	startPos := fileSize - bufferSize
+	if startPos < 0 {
+		startPos = 0
+	}
 
-	// 从文件末尾开始读取
-	for offset > 0 && len(lines) < maxLines {
-		// 计算本次读取的大小和偏移
-		readSize := bufSize
-		if offset < bufSize {
-			readSize = offset
-		}
-		offset -= readSize
+	// 移动到起始位置
+	_, err = file.Seek(startPos, 0)
+	if err != nil {
+		return nil, err
+	}
 
-		// 读取数据块
-		_, err = file.ReadAt(buffer[:readSize], offset)
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
+	// 读取缓冲区内容
+	buffer := make([]byte, bufferSize)
+	n, err := file.Read(buffer)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
 
-		// 按行分割
-		chunkLines := strings.Split(string(buffer[:readSize]), "\n")
+	content := string(buffer[:n])
 
-		// 将当前块的行与之前读取的行合并
-		if len(lines) > 0 {
-			// 将之前的第一行（不完整的行）与当前块的最后一行合并
-			chunkLines[len(chunkLines)-1] += lines[0]
-			lines = lines[1:]
-		}
+	// 分割成行
+	lines := strings.Split(content, "\n")
 
-		// 从后向前处理当前块的行
-		for i := len(chunkLines) - 1; i >= 0; i-- {
-			line := chunkLines[i]
-			if line == "" {
-				continue
-			}
+	// 从后往前查找
+	var linesAfterKeyword []string
+	keyword := "playerlist 99999999 [0]"
+	var foundKeyword bool
 
-			// 检查是否找到关键字
-			if strings.Contains(line, keyword) {
-				foundKeyword = true
-			}
+	// 从末尾开始遍历
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		linesAfterKeyword = append(linesAfterKeyword, line)
 
-			// 从切片头部插入，保持顺序
-			lines = append([]string{line}, lines...)
-
-			// 如果找到关键字且已收集足够行数，提前返回
-			if foundKeyword && len(lines) >= maxLines {
-				break
-			}
-		}
-
-		if foundKeyword && len(lines) >= maxLines {
+		if strings.Contains(line, keyword) {
+			foundKeyword = true
 			break
 		}
 	}
 
-	// 如果找到了关键字，返回包含关键字的行及其之后的行
-	if foundKeyword {
-		var result []string
-		collecting := false
+	if !foundKeyword {
+		return nil, fmt.Errorf("keyword not found in the file")
+	}
 
-		for i := len(lines) - 1; i >= 0; i-- {
-			result = append([]string{lines[i]}, result...)
-			if strings.Contains(lines[i], keyword) {
-				collecting = true
-				// 继续收集直到达到最大行数
-				if len(result) >= maxLines {
-					break
-				}
-			} else if collecting && len(result) >= maxLines {
-				break
+	// 正则表达式匹配模式
+	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`
+	re := regexp.MustCompile(pattern)
+
+	var players []string
+
+	// 查找匹配的行并提取所需字段
+	for _, line := range linesAfterKeyword {
+		if matches := re.FindStringSubmatch(line); matches != nil {
+			// 检查是否包含 [Host]
+			if !regexp.MustCompile(`\[Host]`).MatchString(line) {
+				uid := strings.ReplaceAll(matches[1], "\t", "")
+				nickName := strings.ReplaceAll(matches[2], "\t", "")
+				prefab := strings.ReplaceAll(matches[3], "\t", "")
+				player := uid + "<-@dmp@->" + nickName + "<-@dmp@->" + prefab
+				players = append(players, player)
 			}
 		}
-		return result, nil
 	}
 
-	return nil, fmt.Errorf("keyword not found in the last %d lines", maxLines)
-}
+	players = uniqueSliceKeepOrderString(players)
 
-// 反转切片
-func reverse(s []string) {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
+	return players, nil
 }
 
 func (g *Game) getLastAliveTime(id int) (string, error) {
