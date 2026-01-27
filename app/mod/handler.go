@@ -98,6 +98,7 @@ func (h *Handler) downloadPost(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	err, modSize := game.DownloadMod(reqForm.ID, reqForm.FileURL)
 	if err != nil || modSize != reqSize64 {
+		logger.Logger.DebugF("模组大小与预期不符, %d, %d", modSize, reqSize64)
 		if reqForm.Update {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": reqForm.Name + " " + message.Get(c, "update fail"), "data": nil})
 			return
