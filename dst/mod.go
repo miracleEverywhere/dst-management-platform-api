@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/yuin/gopher-lua"
 )
@@ -67,6 +69,9 @@ func (g *Game) dsModsSetup() error {
 }
 
 func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
+	atomic.AddInt32(&db.ModDownloadExecuting, 1)
+	defer atomic.AddInt32(&db.ModDownloadExecuting, -1)
+
 	var (
 		err     error
 		ugc     bool
@@ -90,20 +95,22 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 			logger.Logger.Error("下载模组失败", "err", err)
 			return err, modSize
 		}
+		time.Sleep(500 * time.Millisecond)
 
 		// 2
 		err = g.removeGameOldMod(id)
 		if err != nil {
-			logger.Logger.Warn("移动模组失败", "err", err)
+			logger.Logger.Error("移动模组失败", "err", err)
 			return err, modSize
 		}
 		copyCmd := g.generateModCopyCmd(id)
 		logger.Logger.Debug(copyCmd)
 		err = utils.BashCMD(copyCmd)
 		if err != nil {
-			logger.Logger.Warn("移动模组失败", "err", err)
+			logger.Logger.Error("移动模组失败", "err", err)
 			return err, modSize
 		}
+		time.Sleep(500 * time.Millisecond)
 
 		// 3
 		gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
@@ -126,9 +133,13 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 
 			return err, modSize
 		}
+		time.Sleep(500 * time.Millisecond)
 
 		modSize, err = utils.GetDirSize(fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
+		logger.Logger.DebugF("模组路径为%s", fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
+		logger.Logger.DebugF("模组大小为%d", modSize)
 		if err != nil {
+			logger.Logger.Error("获取模组大小失败", "err", err)
 			return err, modSize
 		}
 
