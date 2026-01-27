@@ -8,6 +8,7 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
 func OnlinePlayerGet(interval int, uidMapEnable bool) {
@@ -140,4 +141,13 @@ func InternetIPUpdate() {
 	}
 
 	db.InternetIP = internetIp
+}
+
+func ModDownloadClean() {
+	if atomic.LoadInt32(&db.ModDownloadExecuting) == 0 {
+		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc", utils.DmpFiles))
+		if err != nil {
+			logger.Logger.Warn("删除临时模组失败", "err", err)
+		}
+	}
 }

@@ -60,6 +60,16 @@ func initJobs() {
 		DayAt:    "",
 	})
 
+	// 清理临时模组
+	Jobs = append(Jobs, JobConfig{
+		Name:     "ModDownloadClean",
+		Func:     ModDownloadClean,
+		Args:     nil,
+		TimeType: "minute",
+		Interval: 1,
+		DayAt:    "",
+	})
+
 	// 房间定时任务
 	roomBasic, err := DBHandler.roomDao.GetRoomBasic()
 	if err != nil {
