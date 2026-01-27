@@ -6,15 +6,26 @@ import (
 )
 
 var (
-	JwtSecret              string
-	CurrentDir             string
-	DstUpdating            bool
-	PlayersStatistic       = make(map[int][]Players)
-	PlayersStatisticMutex  sync.Mutex
-	PlayersOnlineTime      = make(map[int]map[string]int)
+	// JwtSecret jwt密钥
+	JwtSecret string
+	// CurrentDir 当前工作目录
+	CurrentDir string
+	// DstUpdating 饥荒更新中
+	DstUpdating bool
+	// PlayersStatistic 玩家统计
+	PlayersStatistic = make(map[int][]Players)
+	// PlayersStatisticMutex 玩家统计锁
+	PlayersStatisticMutex sync.Mutex
+	// PlayersOnlineTime 玩家在线时长
+	PlayersOnlineTime = make(map[int]map[string]int)
+	// PlayersOnlineTimeMutex 玩家在线时长锁
 	PlayersOnlineTimeMutex sync.Mutex
-	SystemMetrics          []SysMetrics
-	InternetIP             string
+	// SystemMetrics 系统监控数据
+	SystemMetrics []SysMetrics
+	// InternetIP 获取外网IP
+	InternetIP string
+	// ModDownloadExecuting 如果没有模组正在下载(==0)，则执行临时模组文件清理任务 scheduler/global.go ModDownloadClean()
+	ModDownloadExecuting int32
 )
 
 type PlayerInfo struct {
