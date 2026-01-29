@@ -106,7 +106,7 @@ func (h *Handler) loginPost(c *gin.Context) {
 		return
 	}
 
-	token, err := utils.GenerateJWT(*dbUser, []byte(db.JwtSecret), 24)
+	token, err := utils.GenerateJWT(*dbUser, []byte(db.JwtSecret), utils.JwtExpirationHours)
 	if err != nil {
 		logger.Logger.Error("生成jwt失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "login fail"), "data": nil})
