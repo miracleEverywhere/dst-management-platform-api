@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -22,9 +23,26 @@ func TokenCheck() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		c.Set("username", claims.Username)
 		c.Set("nickname", claims.Nickname)
 		c.Set("role", claims.Role)
+
+		// token还有1/4有效期时，刷新token
+		if shouldRefreshToken(claims.ExpiresAt.Time) {
+			user := models.User{
+				Username: claims.Username,
+				Nickname: claims.Nickname,
+				Role:     claims.Role,
+			}
+			token, err = utils.GenerateJWT(user, []byte(db.JwtSecret), utils.JwtExpirationHours)
+			if err != nil {
+				logger.Logger.ErrorF("刷新Token失败：%v", err)
+			} else {
+				c.Header("X-Dmp-New-Token", token)
+			}
+		}
+
 		c.Next()
 	}
 }
@@ -79,4 +97,13 @@ func isStaticAsset(path string) bool {
 		}
 	}
 	return false
+}
+
+// 判断是否刷新token
+func shouldRefreshToken(exp time.Time) bool {
+	remainingTime := time.Until(exp)
+	totalDuration := time.Duration(utils.JwtExpirationHours) * time.Hour
+
+	// 当剩余时间小于总有效期的 1/4 时刷新
+	return remainingTime > 0 && remainingTime < totalDuration/4
 }
