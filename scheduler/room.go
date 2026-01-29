@@ -30,8 +30,8 @@ func BackupClean(roomID int, days int) {
 func Restart(game *dst.Game) {
 	logger.Logger.Info("执行自动重启任务")
 	go func() {
-		_ = game.Announce("自动重启任务触发：将在1分钟后重启服务器，在线玩家请在5分钟后重连")
-		_ = game.Announce("Automatic restart task triggered: The server will restart in 1 minute. Online players, please reconnect after 5 minutes")
+		_ = game.SystemMsg("自动重启任务触发：将在1分钟后重启服务器，在线玩家请在5分钟后重连")
+		_ = game.SystemMsg("Automatic restart task triggered: The server will restart in 1 minute. Online players, please reconnect after 5 minutes")
 		time.Sleep(60 * time.Second)
 		err := game.StopAllWorld()
 		if err != nil {
@@ -59,8 +59,8 @@ func ScheduledStart(game *dst.Game) {
 func ScheduledStop(game *dst.Game) {
 	logger.Logger.Info("执行自动关闭游戏")
 	go func() {
-		_ = game.Announce("自动关机任务触发：将在1分钟后关闭服务器")
-		_ = game.Announce("Automatic shutdown task triggered: The server will restart in 1 minute")
+		_ = game.SystemMsg("自动关机任务触发：将在1分钟后关闭服务器")
+		_ = game.SystemMsg("Automatic shutdown task triggered: The server will restart in 1 minute")
 		time.Sleep(60 * time.Second)
 		err := game.StopAllWorld()
 		if err != nil {
