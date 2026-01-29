@@ -185,6 +185,20 @@ func (g *Game) announce(message string) error {
 	return fmt.Errorf("执行失败")
 }
 
+func (g *Game) systemMsg(message string) error {
+	s := strings.ReplaceAll(message, "'", "")
+	s = strings.ReplaceAll(s, "\"", "")
+	cmd := fmt.Sprintf("TheNet:SystemMessage('%s')", s)
+	for _, world := range g.worldSaveData {
+		err := utils.ScreenCMD(cmd, world.screenName)
+		if err == nil {
+			return err
+		}
+	}
+
+	return fmt.Errorf("执行失败")
+}
+
 func (g *Game) sessionInfo() *RoomSessionInfo {
 	roomSessionInfo := RoomSessionInfo{
 		Season: "error",

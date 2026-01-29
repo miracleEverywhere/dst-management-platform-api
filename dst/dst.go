@@ -67,6 +67,10 @@ func (g *Game) Announce(message string) error {
 	return g.announce(message)
 }
 
+func (g *Game) SystemMsg(message string) error {
+	return g.systemMsg(message)
+}
+
 // ConsoleCmd 指定世界执行命令
 func (g *Game) ConsoleCmd(cmd string, worldID int) error {
 	return g.consoleCmd(cmd, worldID)
