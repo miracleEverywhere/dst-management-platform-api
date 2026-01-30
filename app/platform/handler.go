@@ -324,7 +324,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 		err = scheduler.UpdateJob(&scheduler.JobConfig{
 			Name:     "onlinePlayerGet",
 			Func:     scheduler.OnlinePlayerGet,
-			Args:     []interface{}{reqForm.PlayerGetFrequency, reqForm.UIDMaintainEnable},
+			Args:     []any{reqForm.PlayerGetFrequency, reqForm.UIDMaintainEnable},
 			TimeType: "second",
 			Interval: reqForm.PlayerGetFrequency,
 			DayAt:    "",
@@ -342,7 +342,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			err = scheduler.UpdateJob(&scheduler.JobConfig{
 				Name:     "systemMetricsGet",
 				Func:     scheduler.SystemMetricsGet,
-				Args:     []interface{}{reqForm.SysMetricsSetting},
+				Args:     []any{reqForm.SysMetricsSetting},
 				TimeType: "minute",
 				Interval: 1,
 				DayAt:    "",
@@ -364,7 +364,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			err = scheduler.UpdateJob(&scheduler.JobConfig{
 				Name:     "gameUpdate",
 				Func:     scheduler.GameUpdate,
-				Args:     []interface{}{reqForm.AutoUpdateEnable},
+				Args:     []any{reqForm.AutoUpdateEnable},
 				TimeType: "day",
 				Interval: 0,
 				DayAt:    reqForm.AutoUpdateSetting,

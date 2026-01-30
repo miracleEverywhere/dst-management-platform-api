@@ -396,17 +396,17 @@ func generateItemDetails(i ItemDetails) string {
 // ============== //
 
 type Option struct {
-	Description string      `json:"description"`
-	Data        interface{} `json:"data"`
-	Hover       string      `json:"hover,omitempty"`
+	Description string `json:"description"`
+	Data        any    `json:"data"`
+	Hover       string `json:"hover,omitempty"`
 }
 
 type ConfigurationOption struct {
-	Name    string      `json:"name"`
-	Label   string      `json:"label"`
-	Hover   string      `json:"hover"`
-	Options []Option    `json:"options"`
-	Default interface{} `json:"default"`
+	Name    string   `json:"name"`
+	Label   string   `json:"label"`
+	Hover   string   `json:"hover"`
+	Options []Option `json:"options"`
+	Default any      `json:"default"`
 }
 
 type ModInfoParser struct {
@@ -430,7 +430,7 @@ func NewModInfoParser(luaPath string, modID int) (*ModInfoParser, error) {
 }
 
 // convertLuaValue 将 Lua 值转换为 Go 值
-func convertLuaValue(lv lua.LValue) interface{} {
+func convertLuaValue(lv lua.LValue) any {
 	switch v := lv.(type) {
 	case lua.LBool:
 		return bool(v)
@@ -440,8 +440,8 @@ func convertLuaValue(lv lua.LValue) interface{} {
 		return string(v)
 	case *lua.LTable:
 		// 检查是数组还是字典
-		dict := make(map[string]interface{})
-		array := make([]interface{}, 0)
+		dict := make(map[string]any)
+		array := make([]any, 0)
 
 		isArray := true
 		maxIndex := 0
@@ -473,7 +473,7 @@ func convertLuaValue(lv lua.LValue) interface{} {
 		// 如果是数组且索引连续
 		if isArray && maxIndex == count {
 			// 按索引填充数组
-			array = make([]interface{}, maxIndex)
+			array = make([]any, maxIndex)
 			v.ForEach(func(key lua.LValue, value lua.LValue) {
 				if num, ok := key.(lua.LNumber); ok {
 					index := int(num) - 1 // Lua索引从1开始，Go从0开始
@@ -586,8 +586,8 @@ func (mf *ModInfoParser) Parse(lang string) error {
 
 // ModORConfig 表示单个mod的配置
 type ModORConfig struct {
-	ConfigurationOptions map[string]interface{} `json:"configuration_options"`
-	Enabled              bool                   `json:"enabled"`
+	ConfigurationOptions map[string]any `json:"configuration_options"`
+	Enabled              bool           `json:"enabled"`
 }
 
 // ModORCollection 表示整个mod集合
@@ -651,7 +651,7 @@ func (p *ModORParser) convertLuaTableToGo(lv lua.LValue) (ModORCollection, error
 // parseModConfig 解析单个mod配置
 func (p *ModORParser) parseModConfig(table *lua.LTable) *ModORConfig {
 	config := &ModORConfig{
-		ConfigurationOptions: make(map[string]interface{}),
+		ConfigurationOptions: make(map[string]any),
 	}
 
 	table.ForEach(func(key lua.LValue, value lua.LValue) {
@@ -673,8 +673,8 @@ func (p *ModORParser) parseModConfig(table *lua.LTable) *ModORConfig {
 }
 
 // parseConfigurationOptions 解析配置选项
-func (p *ModORParser) parseConfigurationOptions(table *lua.LTable) map[string]interface{} {
-	options := make(map[string]interface{})
+func (p *ModORParser) parseConfigurationOptions(table *lua.LTable) map[string]any {
+	options := make(map[string]any)
 
 	table.ForEach(func(key lua.LValue, value lua.LValue) {
 		keyStr := key.String()
@@ -685,7 +685,7 @@ func (p *ModORParser) parseConfigurationOptions(table *lua.LTable) map[string]in
 }
 
 // convertLuaValue 转换Lua值到Go值
-func (p *ModORParser) convertLuaValue(lv lua.LValue) interface{} {
+func (p *ModORParser) convertLuaValue(lv lua.LValue) any {
 	switch v := lv.(type) {
 	case lua.LBool:
 		return bool(v)
@@ -746,8 +746,8 @@ func (p *ModORParser) isArray(table *lua.LTable) bool {
 }
 
 // convertLuaArray 转换Lua数组为Go slice
-func (p *ModORParser) convertLuaArray(table *lua.LTable) []interface{} {
-	var arr []interface{}
+func (p *ModORParser) convertLuaArray(table *lua.LTable) []any {
+	var arr []any
 	maxIndex := 0
 
 	// 先找出最大索引
@@ -760,7 +760,7 @@ func (p *ModORParser) convertLuaArray(table *lua.LTable) []interface{} {
 	})
 
 	// 初始化切片
-	arr = make([]interface{}, maxIndex)
+	arr = make([]any, maxIndex)
 
 	// 填充数组
 	table.ForEach(func(key lua.LValue, value lua.LValue) {
@@ -778,8 +778,8 @@ func (p *ModORParser) convertLuaArray(table *lua.LTable) []interface{} {
 }
 
 // convertLuaMap 转换Lua map为Go map
-func (p *ModORParser) convertLuaMap(table *lua.LTable) map[string]interface{} {
-	m := make(map[string]interface{})
+func (p *ModORParser) convertLuaMap(table *lua.LTable) map[string]any {
+	m := make(map[string]any)
 
 	table.ForEach(func(key lua.LValue, value lua.LValue) {
 		keyStr := key.String()
@@ -803,7 +803,7 @@ func (mc ModORCollection) IsModEnabled(workshopID string) bool {
 }
 
 // GetConfigValue 获取指定mod的配置项值
-func (mc ModORCollection) GetConfigValue(workshopID, configKey string) interface{} {
+func (mc ModORCollection) GetConfigValue(workshopID, configKey string) any {
 	if config := mc[workshopID]; config != nil {
 		return config.ConfigurationOptions[configKey]
 	}
@@ -811,9 +811,9 @@ func (mc ModORCollection) GetConfigValue(workshopID, configKey string) interface
 }
 
 // GetNestedConfig 获取嵌套配置项的值
-func (mc ModORCollection) GetNestedConfig(workshopID, parentKey, childKey string) interface{} {
+func (mc ModORCollection) GetNestedConfig(workshopID, parentKey, childKey string) any {
 	if config := mc[workshopID]; config != nil {
-		if parent, ok := config.ConfigurationOptions[parentKey].(map[string]interface{}); ok {
+		if parent, ok := config.ConfigurationOptions[parentKey].(map[string]any); ok {
 			return parent[childKey]
 		}
 	}
@@ -883,7 +883,7 @@ func (mc ModORCollection) ToLuaCode() string {
 }
 
 // formatLuaValue 将Go值格式化为Lua值
-func formatLuaValue(value interface{}) string {
+func formatLuaValue(value any) string {
 	switch v := value.(type) {
 	case bool:
 		return strconv.FormatBool(v)
@@ -895,7 +895,7 @@ func formatLuaValue(value interface{}) string {
 		return strconv.FormatFloat(v, 'g', -1, 64)
 	case string:
 		return fmt.Sprintf("\"%s\"", v)
-	case []interface{}:
+	case []any:
 		// 数组格式
 		var builder strings.Builder
 		builder.WriteString("{")
@@ -907,7 +907,7 @@ func formatLuaValue(value interface{}) string {
 		}
 		builder.WriteString("}")
 		return builder.String()
-	case map[string]interface{}:
+	case map[string]any:
 		// 表格式
 		var builder strings.Builder
 		builder.WriteString("{")

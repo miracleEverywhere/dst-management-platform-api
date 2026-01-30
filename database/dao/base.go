@@ -31,7 +31,7 @@ func (d *BaseDAO[T]) Delete(model *T) error {
 	return d.db.Delete(model).Error
 }
 
-func (d *BaseDAO[T]) Query(page, pageSize int, condition interface{}, args ...interface{}) (*PaginatedResult[T], error) {
+func (d *BaseDAO[T]) Query(page, pageSize int, condition any, args ...any) (*PaginatedResult[T], error) {
 	if page < 1 {
 		page = 1
 	}
@@ -64,7 +64,7 @@ func (d *BaseDAO[T]) Query(page, pageSize int, condition interface{}, args ...in
 	}, err
 }
 
-func (d *BaseDAO[T]) Count(condition interface{}, args ...interface{}) (int64, error) {
+func (d *BaseDAO[T]) Count(condition any, args ...any) (int64, error) {
 	var count int64
 	err := d.db.Model(new(T)).Where(condition, args...).Count(&count).Error
 

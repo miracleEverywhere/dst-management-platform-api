@@ -11,7 +11,7 @@ import (
 )
 
 // StructToFlatString 递归转换结构体为单行字符串 用于日志打印
-func StructToFlatString(obj interface{}) string {
+func StructToFlatString(obj any) string {
 	return convertValue(reflect.ValueOf(obj), "", 0)
 }
 

@@ -29,13 +29,13 @@ func (d *UserDAO) GetUserByUsername(username string) (*models.User, error) {
 func (d *UserDAO) ListUsers(q string, page, pageSize int) (*PaginatedResult[models.User], error) {
 	var (
 		condition string
-		args      []interface{}
+		args      []any
 	)
 	if q != "" {
 		searchUsername := "%" + q + "%"
 		searchNickname := "%" + q + "%"
 		condition = "username LIKE ? OR nickname LIKE ?"
-		args = []interface{}{searchUsername, searchNickname}
+		args = []any{searchUsername, searchNickname}
 	}
 
 	rooms, err := d.Query(page, pageSize, condition, args...)

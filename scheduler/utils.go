@@ -27,8 +27,8 @@ var (
 
 type JobConfig struct {
 	Name     string
-	Func     interface{}
-	Args     []interface{}
+	Func     any
+	Args     []any
 	TimeType string
 	Interval int
 	DayAt    string

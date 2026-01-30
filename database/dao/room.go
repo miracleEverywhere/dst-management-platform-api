@@ -38,7 +38,7 @@ func (d *RoomDAO) GetRoomByID(id int) (*models.Room, error) {
 func (d *RoomDAO) ListRooms(roomIDs []int, gameName string, page, pageSize int) (*PaginatedResult[models.Room], error) {
 	var (
 		condition string
-		args      []interface{}
+		args      []any
 	)
 	switch {
 	case len(roomIDs) == 0 && gameName == "":
@@ -49,18 +49,18 @@ func (d *RoomDAO) ListRooms(roomIDs []int, gameName string, page, pageSize int) 
 		// 仅模糊查询 gameName
 		searchPattern := "%" + gameName + "%"
 		condition = "game_name LIKE ?"
-		args = []interface{}{searchPattern}
+		args = []any{searchPattern}
 
 	case len(roomIDs) != 0 && gameName == "":
 		// 仅查询 name 在 roomNames 列表中的记录
 		condition = "id IN (?)"
-		args = []interface{}{roomIDs}
+		args = []any{roomIDs}
 
 	case len(roomIDs) != 0 && gameName != "":
 		// 查询 name 在 roomNames 列表中，并且 name 或 display_name 匹配模糊搜索
 		searchPattern := "%" + gameName + "%"
 		condition = "id IN (?) AND (game_name LIKE ?)"
-		args = []interface{}{roomIDs, searchPattern}
+		args = []any{roomIDs, searchPattern}
 	}
 
 	rooms, err := d.Query(page, pageSize, condition, args...)

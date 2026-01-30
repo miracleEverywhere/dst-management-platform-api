@@ -796,7 +796,7 @@ func (h *Handler) activatePost(c *gin.Context) {
 			err = scheduler.UpdateJob(&scheduler.JobConfig{
 				Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
 				Func:     scheduler.Announce,
-				Args:     []interface{}{game, announce.Content},
+				Args:     []any{game, announce.Content},
 				TimeType: "second",
 				Interval: announce.Interval,
 				DayAt:    "",

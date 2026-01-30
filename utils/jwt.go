@@ -52,7 +52,7 @@ func GenerateJWT(user models.User, jwtSecret []byte, expirationHours int) (strin
 
 // ValidateJWT 验证 JWT Token
 func ValidateJWT(tokenString string, jwtSecret []byte) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
 		// 验证签名算法
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")

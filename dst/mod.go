@@ -426,7 +426,7 @@ func (g *Game) modEnable(worldID, modID int, ugc bool) error {
 	}
 
 	newModConfig := &ModORConfig{
-		ConfigurationOptions: make(map[string]interface{}),
+		ConfigurationOptions: make(map[string]any),
 		Enabled:              true,
 	}
 	for _, option := range *options {
