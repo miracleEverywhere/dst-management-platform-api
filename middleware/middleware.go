@@ -28,8 +28,9 @@ func TokenCheck() gin.HandlerFunc {
 		c.Set("nickname", claims.Nickname)
 		c.Set("role", claims.Role)
 
-		// token还有1/4有效期时，刷新token
+		// token还有1/2有效期时，刷新token
 		if shouldRefreshToken(claims.ExpiresAt.Time) {
+			logger.Logger.Info("令牌有效期小于1/2，刷新token")
 			user := models.User{
 				Username: claims.Username,
 				Nickname: claims.Nickname,
@@ -39,7 +40,7 @@ func TokenCheck() gin.HandlerFunc {
 			if err != nil {
 				logger.Logger.ErrorF("刷新Token失败：%v", err)
 			} else {
-				c.Header("X-Dmp-New-Token", token)
+				c.Header("X-DMP-NEW-TOKEN", token)
 			}
 		}
 
@@ -104,6 +105,6 @@ func shouldRefreshToken(exp time.Time) bool {
 	remainingTime := time.Until(exp)
 	totalDuration := time.Duration(utils.JwtExpirationHours) * time.Hour
 
-	// 当剩余时间小于总有效期的 1/4 时刷新
-	return remainingTime > 0 && remainingTime < totalDuration/4
+	// 当剩余时间小于总有效期的 1/2 时刷新
+	return remainingTime > 0 && remainingTime < totalDuration/2
 }
