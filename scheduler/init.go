@@ -35,13 +35,13 @@ func UpdateJob(jobConfig *JobConfig) error {
 	var err error
 
 	switch jobConfig.TimeType {
-	case "second":
+	case SecondType:
 		job, err = Scheduler.Every(jobConfig.Interval).Seconds().Do(jobConfig.Func, jobConfig.Args...)
-	case "minute":
+	case MinuteType:
 		job, err = Scheduler.Every(jobConfig.Interval).Minutes().Do(jobConfig.Func, jobConfig.Args...)
-	case "hour":
+	case HourType:
 		job, err = Scheduler.Every(jobConfig.Interval).Hours().Do(jobConfig.Func, jobConfig.Args...)
-	case "day":
+	case DayType:
 		job, err = Scheduler.Every(1).Day().At(jobConfig.DayAt).Do(jobConfig.Func, jobConfig.Args...)
 	default:
 		return fmt.Errorf("未知的时间类型: %s, 任务名: %s", jobConfig.TimeType, jobConfig.Name)

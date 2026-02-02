@@ -325,7 +325,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			Name:     "onlinePlayerGet",
 			Func:     scheduler.OnlinePlayerGet,
 			Args:     []any{reqForm.PlayerGetFrequency, reqForm.UIDMaintainEnable},
-			TimeType: "second",
+			TimeType: scheduler.SecondType,
 			Interval: reqForm.PlayerGetFrequency,
 			DayAt:    "",
 		})
@@ -343,7 +343,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 				Name:     "systemMetricsGet",
 				Func:     scheduler.SystemMetricsGet,
 				Args:     []any{reqForm.SysMetricsSetting},
-				TimeType: "minute",
+				TimeType: scheduler.MinuteType,
 				Interval: 1,
 				DayAt:    "",
 			})
@@ -365,7 +365,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 				Name:     "gameUpdate",
 				Func:     scheduler.GameUpdate,
 				Args:     []any{reqForm.AutoUpdateEnable},
-				TimeType: "day",
+				TimeType: scheduler.DayType,
 				Interval: 0,
 				DayAt:    reqForm.AutoUpdateSetting,
 			})

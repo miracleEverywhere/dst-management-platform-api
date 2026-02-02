@@ -25,7 +25,7 @@ func initJobs() {
 		Name:     "onlinePlayerGet",
 		Func:     OnlinePlayerGet,
 		Args:     []any{globalSetting.PlayerGetFrequency, globalSetting.UIDMaintainEnable},
-		TimeType: "second",
+		TimeType: SecondType,
 		Interval: globalSetting.PlayerGetFrequency,
 		DayAt:    "",
 	})
@@ -35,7 +35,7 @@ func initJobs() {
 		Name:     "systemMetricsGet",
 		Func:     SystemMetricsGet,
 		Args:     []any{globalSetting.SysMetricsSetting},
-		TimeType: "minute",
+		TimeType: MinuteType,
 		Interval: 1,
 		DayAt:    "",
 	})
@@ -45,7 +45,7 @@ func initJobs() {
 		Name:     "gameUpdate",
 		Func:     GameUpdate,
 		Args:     []any{globalSetting.AutoUpdateEnable},
-		TimeType: "day",
+		TimeType: DayType,
 		Interval: 0,
 		DayAt:    globalSetting.AutoUpdateSetting,
 	})
@@ -55,7 +55,7 @@ func initJobs() {
 		Name:     "InternetIPUpdate",
 		Func:     InternetIPUpdate,
 		Args:     nil,
-		TimeType: "hour",
+		TimeType: HourType,
 		Interval: 6,
 		DayAt:    "",
 	})
@@ -65,7 +65,7 @@ func initJobs() {
 		Name:     "ModDownloadClean",
 		Func:     ModDownloadClean,
 		Args:     nil,
-		TimeType: "minute",
+		TimeType: MinuteType,
 		Interval: 1,
 		DayAt:    "",
 	})
@@ -105,7 +105,7 @@ func initJobs() {
 					Name:     fmt.Sprintf("%d-%d-Backup", room.ID, i),
 					Func:     Backup,
 					Args:     []any{game},
-					TimeType: "day",
+					TimeType: DayType,
 					Interval: 0,
 					DayAt:    backupSetting.Time,
 				})
@@ -117,7 +117,7 @@ func initJobs() {
 				Name:     fmt.Sprintf("%d-BackupClean", room.ID),
 				Func:     BackupClean,
 				Args:     []any{room.ID, roomSetting.BackupCleanSetting},
-				TimeType: "day",
+				TimeType: DayType,
 				Interval: 0,
 				DayAt:    "05:16:27",
 			})
@@ -128,7 +128,7 @@ func initJobs() {
 				Name:     fmt.Sprintf("%d-Restart", room.ID),
 				Func:     Restart,
 				Args:     []any{game},
-				TimeType: "day",
+				TimeType: DayType,
 				Interval: 0,
 				DayAt:    roomSetting.RestartSetting,
 			})
@@ -148,7 +148,7 @@ func initJobs() {
 				Name:     fmt.Sprintf("%d-ScheduledStart", room.ID),
 				Func:     ScheduledStart,
 				Args:     []any{game},
-				TimeType: "day",
+				TimeType: DayType,
 				Interval: 0,
 				DayAt:    scheduledStartStopSetting.Start,
 			})
@@ -156,7 +156,7 @@ func initJobs() {
 				Name:     fmt.Sprintf("%d-ScheduledStop", room.ID),
 				Func:     ScheduledStop,
 				Args:     []any{game},
-				TimeType: "day",
+				TimeType: DayType,
 				Interval: 0,
 				DayAt:    scheduledStartStopSetting.Stop,
 			})
@@ -167,7 +167,7 @@ func initJobs() {
 				Name:     fmt.Sprintf("%d-Keepalive", room.ID),
 				Func:     Keepalive,
 				Args:     []any{game, room.ID},
-				TimeType: "minute",
+				TimeType: MinuteType,
 				Interval: roomSetting.KeepaliveSetting,
 				DayAt:    "",
 			})
@@ -185,7 +185,7 @@ func initJobs() {
 					Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
 					Func:     Announce,
 					Args:     []any{game, announce.Content},
-					TimeType: "second",
+					TimeType: SecondType,
 					Interval: announce.Interval,
 					DayAt:    "",
 				})

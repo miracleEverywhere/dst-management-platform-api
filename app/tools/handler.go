@@ -315,7 +315,7 @@ func (h *Handler) announcePut(c *gin.Context) {
 					Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
 					Func:     scheduler.Announce,
 					Args:     []any{game, announce.Content},
-					TimeType: "second",
+					TimeType: scheduler.SecondType,
 					Interval: announce.Interval,
 					DayAt:    "",
 				})

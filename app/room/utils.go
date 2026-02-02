@@ -126,7 +126,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 					Name:     fmt.Sprintf("%d-%d-Backup", roomID, i),
 					Func:     scheduler.Backup,
 					Args:     []any{game},
-					TimeType: "day",
+					TimeType: scheduler.DayType,
 					Interval: 0,
 					DayAt:    s.Time,
 				})
@@ -144,7 +144,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 						Name:     fmt.Sprintf("%d-%d-Backup", roomID, i),
 						Func:     scheduler.Backup,
 						Args:     []any{game},
-						TimeType: "day",
+						TimeType: scheduler.DayType,
 						Interval: 0,
 						DayAt:    backupSettings[i].Time,
 					})
@@ -166,7 +166,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			Name:     fmt.Sprintf("%d-BackupClean", roomID),
 			Func:     scheduler.BackupClean,
 			Args:     []any{roomID, roomSetting.BackupCleanSetting},
-			TimeType: "day",
+			TimeType: scheduler.DayType,
 			Interval: 0,
 			DayAt:    "05:16:27",
 		})
@@ -182,7 +182,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			Name:     fmt.Sprintf("%d-Restart", roomID),
 			Func:     scheduler.Restart,
 			Args:     []any{game},
-			TimeType: "day",
+			TimeType: scheduler.DayType,
 			Interval: 0,
 			DayAt:    roomSetting.RestartSetting,
 		})
@@ -206,7 +206,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			Name:     fmt.Sprintf("%d-ScheduledStart", roomID),
 			Func:     scheduler.ScheduledStart,
 			Args:     []any{game},
-			TimeType: "day",
+			TimeType: scheduler.DayType,
 			Interval: 0,
 			DayAt:    scheduledStartStopSetting.Start,
 		})
@@ -217,7 +217,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			Name:     fmt.Sprintf("%d-ScheduledStop", roomID),
 			Func:     scheduler.ScheduledStop,
 			Args:     []any{game},
-			TimeType: "day",
+			TimeType: scheduler.DayType,
 			Interval: 0,
 			DayAt:    scheduledStartStopSetting.Stop,
 		})
@@ -234,7 +234,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			Name:     fmt.Sprintf("%d-Keepalive", roomID),
 			Func:     scheduler.Keepalive,
 			Args:     []any{game, roomID},
-			TimeType: "minute",
+			TimeType: scheduler.MinuteType,
 			Interval: roomSetting.KeepaliveSetting,
 			DayAt:    "",
 		})

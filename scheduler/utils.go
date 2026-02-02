@@ -34,6 +34,13 @@ type JobConfig struct {
 	DayAt    string
 }
 
+const (
+	SecondType = "second"
+	MinuteType = "minute"
+	HourType   = "hour"
+	DayType    = "day"
+)
+
 type Handler struct {
 	roomDao          *dao.RoomDAO
 	worldDao         *dao.WorldDAO
