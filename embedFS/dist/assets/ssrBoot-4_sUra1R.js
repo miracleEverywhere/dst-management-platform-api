@@ -1,0 +1,1 @@
+import{a5 as t,j as e,a3 as s,a2 as n}from"./index-ClrSl1t3.js";function i(){const o=t(!1);return e(()=>{window.requestAnimationFrame(()=>{o.value=!0})}),{ssrBootStyles:s(()=>o.value?void 0:{transition:"none !important"}),isBooted:n(o)}}export{i as u};
