@@ -44,7 +44,7 @@ func initJobs() {
 	Jobs = append(Jobs, JobConfig{
 		Name:     "gameUpdate",
 		Func:     GameUpdate,
-		Args:     []any{globalSetting.AutoUpdateEnable},
+		Args:     []any{globalSetting.AutoUpdateEnable, globalSetting.AutoUpdateRestart},
 		TimeType: DayType,
 		Interval: 0,
 		DayAt:    globalSetting.AutoUpdateSetting,
