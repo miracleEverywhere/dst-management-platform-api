@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -109,6 +110,38 @@ func (h *Handler) execGamePost(c *gin.Context) {
 			updateCmd := fmt.Sprintf("cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit")
 			_ = utils.BashCMD(updateCmd)
 			db.DstUpdating = false
+
+			// 如果需要重启，则重启激活的房间
+			var globalSettings models.GlobalSetting
+			err = h.globalSettingDao.GetGlobalSetting(&globalSettings)
+			if err != nil {
+				logger.Logger.Error("获取全局设置失败", "err", err)
+				return
+			}
+
+			if !globalSettings.AutoUpdateRestart {
+				return
+			}
+
+			roomBasic, err := h.roomDao.GetRoomBasic()
+			if err != nil {
+				logger.Logger.Error("获取全局房间信息失败", "err", err)
+				return
+			}
+			for _, rb := range *roomBasic {
+				if !rb.Status {
+					continue
+				}
+				room, worlds, roomSetting, err = h.fetchGameInfo(rb.RoomID)
+				if err != nil {
+					logger.Logger.Error("获取基本信息失败", "err", err)
+					continue
+				}
+				game = dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+				_ = game.StopAllWorld()
+				_ = game.StartAllWorld()
+				time.Sleep(5 * time.Second)
+			}
 		}()
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "updating"), "data": nil})
@@ -235,6 +268,8 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 	} else {
 		players = []db.PlayerInfo{}
 	}
+
+	logger.Logger.Debug("here 1")
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
 		Room:        *room,

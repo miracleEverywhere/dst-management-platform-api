@@ -358,13 +358,13 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 		}
 	}
 
-	if dbGlobalSettings.AutoUpdateEnable != reqForm.AutoUpdateEnable || dbGlobalSettings.AutoUpdateSetting != reqForm.AutoUpdateSetting {
+	if dbGlobalSettings.AutoUpdateEnable != reqForm.AutoUpdateEnable || dbGlobalSettings.AutoUpdateSetting != reqForm.AutoUpdateSetting || dbGlobalSettings.AutoUpdateRestart != reqForm.AutoUpdateRestart {
 		needUpdateDB = true
 		if reqForm.AutoUpdateEnable {
 			err = scheduler.UpdateJob(&scheduler.JobConfig{
 				Name:     "gameUpdate",
 				Func:     scheduler.GameUpdate,
-				Args:     []any{reqForm.AutoUpdateEnable},
+				Args:     []any{reqForm.AutoUpdateEnable, reqForm.AutoUpdateRestart},
 				TimeType: scheduler.DayType,
 				Interval: 0,
 				DayAt:    reqForm.AutoUpdateSetting,
