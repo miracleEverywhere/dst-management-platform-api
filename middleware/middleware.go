@@ -30,7 +30,7 @@ func TokenCheck() gin.HandlerFunc {
 
 		// token还有1/2有效期时，刷新token
 		if shouldRefreshToken(claims.ExpiresAt.Time) {
-			logger.Logger.Info("令牌有效期小于1/2，刷新token")
+			logger.Logger.Info("token有效期小于阈值，刷新token")
 			user := models.User{
 				Username: claims.Username,
 				Nickname: claims.Nickname,
