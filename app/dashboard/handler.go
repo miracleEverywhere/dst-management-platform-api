@@ -269,8 +269,6 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 		players = []db.PlayerInfo{}
 	}
 
-	logger.Logger.Debug("here 1")
-
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
 		Room:        *room,
 		Worlds:      gameWorldInfo,
