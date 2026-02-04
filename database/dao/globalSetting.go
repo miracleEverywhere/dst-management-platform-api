@@ -39,6 +39,7 @@ func (d *GlobalSettingDAO) initGlobalSetting() {
 			SysMetricsSetting:  6,
 			AutoUpdateEnable:   true,
 			AutoUpdateSetting:  "06:41:38",
+			AutoUpdateRestart:  false,
 		}
 		err = d.db.Create(&globalSetting).Error
 		if err != nil {
