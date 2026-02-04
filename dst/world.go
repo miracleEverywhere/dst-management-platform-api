@@ -350,6 +350,7 @@ authentication_port = ` + strconv.Itoa(world.AuthenticationPort) + `
 encode_user_path = ` + strconv.FormatBool(world.EncodeUserPath)
 	return contents
 }
+
 func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 	world, err := g.getWorldByID(id)
 	if err != nil {
