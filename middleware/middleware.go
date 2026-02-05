@@ -103,6 +103,9 @@ func isStaticAsset(path string) bool {
 // 判断是否刷新token
 func shouldRefreshToken(exp time.Time) bool {
 	remainingTime := time.Until(exp)
+
+	logger.Logger.DebugF("token剩余有效时间还剩: %.2f小时", remainingTime.Hours())
+
 	totalDuration := time.Duration(utils.JwtExpirationHours) * time.Hour
 
 	// 当剩余时间小于总有效期的 1/2 时刷新

@@ -345,7 +345,7 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 			}
 			db.InternetIP = internetIp
 		} else {
-			logger.Logger.Info("发现缓存的公网IP")
+			logger.Logger.Debug("发现缓存的公网IP")
 			internetIp = db.InternetIP
 		}
 

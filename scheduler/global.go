@@ -118,6 +118,8 @@ func GameUpdate(enable bool, restart bool) {
 		return
 	}
 
+	logger.Logger.Info("[定时任务]：开始检测游戏是否需要更新")
+
 	v := GetDSTVersion()
 	if v.Local < v.Server {
 		logger.Logger.Info("检测到游戏需要更新")
@@ -165,6 +167,8 @@ func GameUpdate(enable bool, restart bool) {
 				time.Sleep(5 * time.Second)
 			}
 		}
+	} else {
+		logger.Logger.Info("[定时任务]：未发现新版本，游戏无需更新，跳过")
 	}
 }
 
