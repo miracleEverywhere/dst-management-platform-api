@@ -32,11 +32,16 @@ jobs:
         with:
           version: latest
 
-      - name: Build dist
-        run: cd dst-management-platform-web && pnpm install && pnpm build
+      - name: Build web dist
+        run: |
+          cd dst-management-platform-web
+          pnpm install
+          pnpm build
 
-      - name: Move build artifacts to embedFS/dist
-        run: mv dist/* embedFS/dist
+      - name: Move build artifacts
+        run: |
+          mkdir -p embedFS/dist
+          cp -r dst-management-platform-web/dist/* embedFS/dist/ || true
 
       - name: Setup Go 1.25.4
         uses: actions/setup-go@v5
@@ -60,6 +65,7 @@ jobs:
             ./*.tgz
 
   build-image:
+    needs: build-binary
     runs-on: ubuntu-latest
     env:
       TAG: ${{ github.sha }}
