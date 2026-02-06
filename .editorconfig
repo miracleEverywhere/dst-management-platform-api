@@ -16,3 +16,11 @@ charset = utf-8 # 设置文件字符集为 utf-8
 end_of_line = lf # 控制换行类型(lf | cr | crlf)
 indent_style = space # 缩进风格[tab | space]
 indent_size = 2 # 缩进大小
+
+[*.yml]
+indent_style = space # 缩进风格[tab | space]
+indent_size = 2 # 缩进大小
+
+[*.yaml]
+indent_style = space # 缩进风格[tab | space]
+indent_size = 2 # 缩进大小
