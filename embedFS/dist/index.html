@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="饥荒管理平台(DMP)，满足一键开服、玩家管理、房间管理、数据统计、定时任务等功能">
+  <title>饥荒管理平台 DMP</title>
+  <link rel="stylesheet" type="text/css" href="/loader.css" />
+  <script type="module" crossorigin src="/assets/index-D0_VvR3J.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-tUYx0UdD.css">
+</head>
+
+<body>
+  <div id="app">
+    <div id="loading-bg">
+      <div class="loading-logo">
+        <!-- SVG Logo -->
+          <img
+            src="/dmp.svg"
+            alt="SVG Image"
+            style="width: 100px; height: auto;"
+          >
+      </div>
+      <div class="loading">
+        <div class="effect-1 effects"></div>
+        <div class="effect-2 effects"></div>
+        <div class="effect-3 effects"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const loaderColor = localStorage.getItem('materio-initial-loader-bg') || '#FFFFFF'
+      const primaryColor = localStorage.getItem('materio-initial-loader-color') || '#9155FD'
+
+      document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
+      document.documentElement.style.setProperty('--initial-loader-color', primaryColor)
+    })()
+  </script>
+</body>
+
+</html>
