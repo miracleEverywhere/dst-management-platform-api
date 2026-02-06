@@ -255,6 +255,20 @@ func (h *Handler) baseDelete(c *gin.Context) {
 
 	logger.Logger.Debug(utils.StructToFlatString(user))
 
+	// 用户数小于等于1时，禁止删除
+	num, err := h.userDao.Count(nil)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	if num <= 1 {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete all users"), "data": nil})
+		return
+	}
+
+	// 查询用户是否存在
 	dbUser, err := h.userDao.GetUserByUsername(user.Username)
 	if err != nil {
 		logger.Logger.Error("查询数据库失败", "err", err)
@@ -266,6 +280,7 @@ func (h *Handler) baseDelete(c *gin.Context) {
 		return
 	}
 
+	// 执行删除
 	err = h.userDao.Delete(dbUser)
 	if err != nil {
 		logger.Logger.Error("更新数据库失败", "err", err)
