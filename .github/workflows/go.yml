@@ -8,8 +8,12 @@ env:
   REGISTRY_SERVER_ADDRESS: ghcr.io/miracleeverywhere/dst-management-platform-api
 
 jobs:
-  build-and-release:
-    runs-on: ubuntu-latest
+  build-binary:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
 
     steps:
       - name: Check out Git repository
@@ -34,55 +38,60 @@ jobs:
           pnpm install
           pnpm build
 
-      - name: Prepare embedFS directory
+      - name: Move build artifacts
         run: |
           mkdir -p embedFS/dist
-          cp -r dst-management-platform-web/dist/* embedFS/dist/
+          cp -r dst-management-platform-web/dist/* embedFS/dist/ || true
 
-      - name: Setup Go
+      - name: Setup Go 1.25.4
         uses: actions/setup-go@v5
         with:
           go-version: 1.25.4
 
-      - name: Build Go binary
+      - name: build-linux
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          go build -o ./dmp
-          tar zcf dmp.tgz dmp
+        if: matrix.os == 'ubuntu-latest'
+        run: go build -o ./dmp && tar zcf dmp.tgz dmp
 
+      - name: release
+        uses: softprops/action-gh-release@v1
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          draft: true
+          token: ${{ secrets.GH_TOKEN }}
+          files: |
+            ./*.tgz
+
+  build-image:
+    needs: build-binary
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
       - name: Login to GitHub Package Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.PACKAGE_TOKEN }}
-
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Extract metadata
+        uses: docker/setup-buildx-action@v1
+      - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
           images: ${{ env.REGISTRY_SERVER_ADDRESS }}
-          tags: |
-            type=ref,event=tag
-            type=sha,prefix=
-
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           file: ./docker/Dockerfile
           context: .
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }},${{ env.REGISTRY_SERVER_ADDRESS }}:${{ env.TAG }}
           labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Create release
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          files: |
-            ./dmp.tgz
