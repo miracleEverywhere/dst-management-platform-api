@@ -19,6 +19,24 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v3
 
+      - name: Clone external web repository
+        run: git clone https://github.com/miracleEverywhere/dst-management-platform-web.git
+
+      - name: Setup Node.js and pnpm
+        uses: actions/setup-node@v3
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies and build
+        run: cd dst-management-platform-web && pnpm install && pnpm build
+
+      - name: Move build artifacts to embedFS/dist
+        run: mv dist/* embedFS/dist
+
       - name: Setup Go 1.25.4
         uses: actions/setup-go@v5
         with:
