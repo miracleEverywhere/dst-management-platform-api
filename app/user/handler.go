@@ -252,9 +252,21 @@ func (h *Handler) baseDelete(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+
 	logger.Logger.Debug(utils.StructToFlatString(user))
 
-	err := h.userDao.Delete(&user)
+	dbUser, err := h.userDao.GetUserByUsername(user.Username)
+	if err != nil {
+		logger.Logger.Error("查询数据库失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if dbUser.Username == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user not exist"), "data": nil})
+		return
+	}
+
+	err = h.userDao.Delete(dbUser)
 	if err != nil {
 		logger.Logger.Error("更新数据库失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "delete fail"), "data": nil})
