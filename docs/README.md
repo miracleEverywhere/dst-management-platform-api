@@ -7,7 +7,7 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/miracleEverywhere/dst-management-platform-api)
 ![GitHub License](https://img.shields.io/github/license/miracleEverywhere/dst-management-platform-api)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/miracleEverywhere/dst-management-platform-api)
-[![CodeWiki](https://img.shields.io/badge/Ask-CodeWiki-orange)](https://codewiki.google/github.com/miracleeverywhere/dst-management-platform-api)
+[![CodeWiki](https://img.shields.io/badge/CodeWiki-Ready-orange)](https://codewiki.google/github.com/miracleeverywhere/dst-management-platform-api)
 <div>
     <img src="images/dmp.svg" height="100" alt="DMP"/>
     <h3>:sparkling_heart: Supports multi-room, multi-user, and multi-permission management :sparkling_heart:</h3>
