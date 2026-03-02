@@ -708,3 +708,18 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 
 	return nil
 }
+
+func (g *Game) deleteAcf() error {
+	for _, world := range g.worldSaveData {
+		gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
+		err := utils.RemoveFile(gameAcfPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	dmpModDownloadAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", utils.DmpFiles, g.clusterName)
+	_ = utils.RemoveFile(dmpModDownloadAcfPath)
+
+	return nil
+}

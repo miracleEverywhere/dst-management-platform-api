@@ -255,3 +255,8 @@ func (g *Game) GetSnapshot() ([]SnapshotFile, error) {
 func (g *Game) DeleteSnapshot(filename string) error {
 	return g.deleteSnapshot(filename)
 }
+
+// DeleteAcf 删除acf文件
+func (g *Game) DeleteAcf() error {
+	return g.deleteAcf()
+}
