@@ -185,6 +185,19 @@ func (h *Handler) execGamePost(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "announce success"), "data": nil})
 		return
+	case "systemMsg":
+		if reqForm.Extra == "" {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "system msg fail"), "data": nil})
+			return
+		}
+		err = game.SystemMsg(reqForm.Extra)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "system msg fail"), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "system msg success"), "data": nil})
+		return
 	case "console":
 		if reqForm.Extra == "" {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "exec fail"), "data": nil})
