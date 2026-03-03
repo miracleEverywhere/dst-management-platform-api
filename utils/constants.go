@@ -1,6 +1,6 @@
 package utils
 
-const Version = "v3.0.9"
+const Version = "v3.1.0"
 
 const ApiVersion = "v3"
 
