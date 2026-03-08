@@ -560,7 +560,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	}
 
 	// 判断是否为统一模组
-	if worlds[0].ModData == worlds[1].ModData {
+	if len(worlds) == 1 || (len(worlds) > 1 && worlds[0].ModData == worlds[1].ModData) {
 		room.ModInOne = true
 		room.ModData = worlds[0].ModData
 		for index := range worlds {
