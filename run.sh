@@ -102,9 +102,12 @@ function prompt_user() {
 	echo_yellow "————————————————————————————————————————————————————————————"
 	echo_green "[7]: 设置虚拟内存"
 	echo_green "[8]: 设置开机自启"
-	echo_green "[9]: 退出脚本"
+	echo_green "[9]: 查看所有用户名"
+	echo_green "[10]: 修改用户密码"
 	echo_yellow "————————————————————————————————————————————————————————————"
-	echo_yellow "请输入要执行的操作 [0-9]: "
+	echo_green "[q]: 退出脚本"
+	echo_yellow "————————————————————————————————————————————————————————————"
+	echo_yellow "请输入要执行的操作 [0-10] 或输入 q 退出脚本: "
 }
 
 # 加速节点选择
@@ -212,6 +215,53 @@ function check_glibc() {
 		echo_red "非Ubuntu系统，如GLIBC小于2.34，请手动升级"
 	fi
 }
+
+# 检查下载 sqlite3
+function check_sqlite3() {
+    if ! command -v sqlite3 &> /dev/null; then
+        echo_yellow "检测到未安装 sqlite3，正在安装..."
+        
+        OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+        
+        case $OS in
+            ubuntu|debian)
+                if apt-get update && apt-get install -y sqlite3; then
+                    echo_green "sqlite3 安装成功"
+                else
+                    echo_red "sqlite3 安装失败，请手动安装"
+                    return 1
+                fi
+                ;;
+            centos|rhel|fedora|rocky|alma)
+                if yum install -y sqlite3; then
+                    echo_green "sqlite3 安装成功"
+                else
+                    echo_red "sqlite3 安装失败，请手动安装"
+                    return 1
+                fi
+                ;;
+            alpine)
+                if apk add sqlite; then
+                    echo_green "sqlite3 安装成功"
+                else
+                    echo_red "sqlite3 安装失败，请手动安装"
+                    return 1
+                fi
+                ;;
+            *)
+                echo_red "不支持的操作系统: $OS，请手动安装 sqlite3"
+                echo_yellow "安装命令参考:"
+                echo_yellow "  Ubuntu/Debian: sudo apt-get install sqlite3"
+                echo_yellow "  CentOS/RHEL: sudo yum install sqlite3"
+                echo_yellow "  Alpine: sudo apk add sqlite"
+                return 1
+                ;;
+        esac
+    fi
+    
+    return 0
+}
+
 
 # 下载函数:下载链接,尝试次数,超时时间(s)
 function download() {
@@ -426,6 +476,67 @@ function auto_start_dmp() {
 	fi
 }
 
+# 查看所有用户名
+function list_users() {
+    if [[ ! -f "${CONFIG_DIR}/dmp.db" ]]; then
+        echo_red "数据库文件 ${CONFIG_DIR}/dmp.db 不存在！"
+        return 1
+    fi
+    
+    echo_cyan "当前平台注册的用户名如下："
+    echo "--------------------------------"
+    sqlite3 "${CONFIG_DIR}/dmp.db" "SELECT username FROM users;" | while read -r user; do
+        echo_green "  - $user"
+    done
+    [[ $? -ne 0 ]] && echo_yellow "（暂无用户或查询失败）"
+    echo "--------------------------------"
+}
+
+# 修改密码（交互式）
+function change_password() {
+    if [[ ! -f "${CONFIG_DIR}/dmp.db" ]]; then
+        echo_red "数据库文件 ${CONFIG_DIR}/dmp.db 不存在！"
+        return 1
+    fi
+
+    echo_yellow "=== 修改用户密码 ==="
+    read -r -p "请输入要修改的用户名: " USERNAME
+    
+    # 检查用户是否存在
+    exists=$(sqlite3 "${CONFIG_DIR}/dmp.db" "SELECT COUNT(*) FROM users WHERE username='$USERNAME';")
+    if [[ "$exists" -eq 0 ]]; then
+        echo_red "用户 '$USERNAME' 不存在！"
+        return 1
+    fi
+
+    read -s -r -p "请输入新密码: " PASSWORD
+    echo
+    read -s -r -p "请再次输入新密码: " PASSWORD2
+    echo
+
+    if [[ "$PASSWORD" != "$PASSWORD2" ]]; then
+        echo_red "两次输入的密码不一致！"
+        return 1
+    fi
+
+    if [[ -z "$PASSWORD" ]]; then
+        echo_red "密码不能为空！"
+        return 1
+    fi
+
+    # 生成 SHA512 加密密码（和平台一致）
+    db_password=$(echo -n "$PASSWORD" | sha512sum | awk '{print $1}')
+
+    # 执行更新
+    sqlite3 "${CONFIG_DIR}/dmp.db" "UPDATE users SET password='$db_password' WHERE username='$USERNAME';"
+    
+    if [[ $? -eq 0 ]]; then
+        echo_green "用户 '$USERNAME' 的密码修改成功！"
+    else
+        echo_red "密码修改失败，请检查数据库权限或SQLite是否正常"
+    fi
+}
+
 # 使用无限循环让用户输入命令
 while true; do
 	# 提示用户输入
@@ -512,7 +623,36 @@ while true; do
 		unset_tty
 		break
 		;;
+
 	9)
+		check_sqlite3
+        list_users
+        echo
+        echo_yellow "按回车返回主菜单..."
+        read -r
+        ;;
+	10)
+		set_tty
+		check_sqlite3
+		change_password
+		change_result=$?  # 获取函数返回值
+		unset_tty
+		
+		# 只有在密码修改成功时才询问是否重启
+		if [[ $change_result -eq 0 ]]; then
+			echo
+			echo_yellow "是否立即重启平台使密码生效？(y/n)"
+			read -r restart_choice
+			if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
+				echo 3 | ./run.sh   # 调用原有重启（选项3）
+			fi
+		fi
+		
+		echo_yellow "按回车返回主菜单..."
+		read -r
+        ;;
+
+	q|Q)
 		exit 0
 		;;
 	*)
