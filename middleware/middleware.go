@@ -18,7 +18,7 @@ func TokenCheck() gin.HandlerFunc {
 		token := c.Request.Header.Get("X-DMP-TOKEN")
 		claims, err := utils.ValidateJWT(token, []byte(db.JwtSecret))
 		if err != nil {
-			logger.Logger.Warn("token验证失败", "ip", c.ClientIP())
+			logger.Logger.WarnF("未授权的访问, DMP已拦截, ip为: %s", c.ClientIP())
 			c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "token fail"), "data": nil})
 			c.Abort()
 			return
