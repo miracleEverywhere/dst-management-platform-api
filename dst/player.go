@@ -122,7 +122,6 @@ type ChatMessage struct {
 	Nickname    string `json:"nickname"`
 	Message     string `json:"message"`
 	Type        string `json:"type"`
-	SkinPic     string `json:"skinPic"`
 }
 
 type ChatLogLine struct {
@@ -270,6 +269,7 @@ func (g *Game) chatMessages(lines int, needTime bool) ([]ChatMessage, error) {
 				}
 			default:
 				chatMessage.Message = parsed.Message
+				chatMessage.Nickname = "DST"
 			}
 
 			chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
@@ -312,6 +312,7 @@ func (g *Game) chatMessages(lines int, needTime bool) ([]ChatMessage, error) {
 				}
 			default:
 				chatMessage.Message = parsed.Message
+				chatMessage.Nickname = "DST"
 			}
 
 			chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
