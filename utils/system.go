@@ -760,14 +760,38 @@ func GetFileLastNLines(filename string, n int) []string {
 	}
 	defer file.Close()
 
-	var lines []string
+	lines := make([]string, 0, n)
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-		if len(lines) > n {
-			lines = lines[1:] // 移除前面的行，保持最后 n 行
+		if len(lines) >= n {
+			lines = lines[1:]
 		}
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return []string{}
+	}
+
+	return lines
+}
+
+// GetFileFirstNLines 获取一个文件的前n行，返回字符串切片
+func GetFileFirstNLines(filename string, n int) []string {
+	file, err := os.Open(filename)
+	if err != nil {
+		return []string{}
+	}
+	defer file.Close()
+
+	lines := make([]string, 0, n)
+	scanner := bufio.NewScanner(file)
+
+	count := 0
+	for scanner.Scan() && count < n {
+		lines = append(lines, scanner.Text())
+		count++
 	}
 
 	if err := scanner.Err(); err != nil {
