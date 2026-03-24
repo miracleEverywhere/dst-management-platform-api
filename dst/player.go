@@ -4,7 +4,9 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
+	"regexp"
 	"strings"
+	"time"
 )
 
 type playerSaveData struct {
@@ -111,4 +113,212 @@ func (g *Game) removePlayerList(uid, listType string) error {
 	}
 
 	return fmt.Errorf("类型错误")
+}
+
+type ChatMessage struct {
+	Time        int64  `json:"time"`
+	TimeSeconds int64  `json:"timeSeconds"`
+	UID         string `json:"uid"`
+	Nickname    string `json:"nickname"`
+	Message     string `json:"message"`
+	Type        string `json:"type"`
+	SkinPic     string `json:"skinPic"`
+}
+
+type ChatLogLine struct {
+	TimeSeconds int64  `json:"timeSeconds"`
+	Type        string `json:"type"`
+	Message     string `json:"message"`
+}
+
+func getDstStartTime(filepath string) (time.Time, error) {
+	lines := utils.GetFileFirstNLines(filepath, 10)
+
+	timeFormat := "Mon Jan 2 15:04:05 2006"
+
+	// 使用正则表达式匹配 Current time: 后面的时间字符串
+	re := regexp.MustCompile(`Current time:\s*(.+)`)
+
+	for _, line := range lines {
+		matches := re.FindStringSubmatch(line)
+		if len(matches) > 1 {
+			timeStr := strings.TrimSpace(matches[1])
+			parsedTime, err := time.ParseInLocation(timeFormat, timeStr, time.Local)
+			if err == nil {
+				logger.Logger.DebugF("解析到的时间为：%s", parsedTime.Format(time.RFC3339))
+				return parsedTime, nil
+			}
+			logger.Logger.Warn("解析时间失败", "line", line, "error", err)
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("未找到有效的时间信息")
+}
+
+func parseChatLogLine(line string) (*ChatLogLine, error) {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return nil, fmt.Errorf("空行")
+	}
+
+	// 正则表达式匹配：[时间]: [类型] 消息
+	// 匹配模式：\[([^\]]+)\]:\s*\[([^\]]+)\]\s*(.*)
+	re := regexp.MustCompile(`\[([^\]]+)\]:\s*\[([^\]]+)\]\s*(.*)`)
+	matches := re.FindStringSubmatch(line)
+
+	if len(matches) != 4 {
+		return nil, fmt.Errorf("无法解析的行：%s", line)
+	}
+
+	timeStr := matches[1] // HH:MM:SS
+	typeStr := matches[2] // Join Announcement, Leave Announcement 等
+	message := matches[3] // 具体的消息内容
+
+	// 将时间转换为秒数
+	timeSeconds, err := timeToSeconds(timeStr)
+	if err != nil {
+		return nil, fmt.Errorf("时间转换失败：%v", err)
+	}
+
+	return &ChatLogLine{
+		TimeSeconds: timeSeconds,
+		Type:        typeStr,
+		Message:     message,
+	}, nil
+}
+
+func timeToSeconds(timeStr string) (int64, error) {
+	parts := strings.Split(timeStr, ":")
+	if len(parts) != 3 {
+		return 0, fmt.Errorf("无效的时间格式：%s", timeStr)
+	}
+
+	var hours, minutes, seconds int
+	_, err := fmt.Sscanf(parts[0], "%d", &hours)
+	if err != nil {
+		return 0, err
+	}
+	_, err = fmt.Sscanf(parts[1], "%d", &minutes)
+	if err != nil {
+		return 0, err
+	}
+	_, err = fmt.Sscanf(parts[2], "%d", &seconds)
+	if err != nil {
+		return 0, err
+	}
+
+	totalSeconds := hours*3600 + minutes*60 + seconds
+
+	return int64(totalSeconds), nil
+}
+
+func (g *Game) chatMessages(lines int, needTime bool) ([]ChatMessage, error) {
+	var chatMessages []ChatMessage
+	rePlayerChat := regexp.MustCompile(`\(([^)]+)\)\s+([^:]+):\s*(.+)`)
+
+	world := g.worldSaveData[0]
+
+	chatLogPath := fmt.Sprintf("%s/server_chat_log.txt", world.worldPath)
+
+	// 聊天信息是否需要添加时间
+	if needTime {
+		day := 0 // 游戏启动的第几天，如果期间聊天日志超过24小时未刷新，则会出现时间异常
+
+		serverLogPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
+
+		serverStartTime, err := getDstStartTime(serverLogPath)
+		if err != nil {
+			return chatMessages, err
+		}
+
+		chatLog, err := utils.ReadLinesToSlice(chatLogPath)
+		if err != nil {
+			return chatMessages, err
+		}
+
+		for _, line := range chatLog {
+			parsed, err := parseChatLogLine(line)
+			if err != nil {
+				continue
+			}
+
+			if len(chatMessages) > 0 {
+				if chatMessages[len(chatMessages)-1].TimeSeconds > parsed.TimeSeconds {
+					day++
+				}
+			}
+
+			chatMessage := ChatMessage{
+				Time:        serverStartTime.Unix() + int64(day*24*3600) + parsed.TimeSeconds,
+				TimeSeconds: parsed.TimeSeconds,
+				Type:        parsed.Type,
+			}
+
+			switch parsed.Type {
+			case "Say":
+				matches := rePlayerChat.FindStringSubmatch(parsed.Message)
+				if matches != nil && len(matches) >= 4 {
+					chatMessage.UID = matches[1]
+					chatMessage.Nickname = matches[2]
+					chatMessage.Message = matches[3]
+				}
+			case "Skin Announcement":
+				parts := strings.Split(parsed.Message, " ")
+				if len(parts) == 2 {
+					chatMessage.Nickname = parts[0]
+					chatMessage.Message = parts[1]
+				}
+			default:
+				chatMessage.Message = parsed.Message
+			}
+
+			chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
+
+			chatMessages = append(chatMessages, chatMessage)
+		}
+
+		chatMessagesLength := len(chatMessages)
+		if chatMessagesLength > lines {
+			return chatMessages[chatMessagesLength-lines:], nil
+		}
+
+		return chatMessages, nil
+	} else {
+		chatLog := utils.GetFileLastNLines(chatLogPath, lines)
+
+		for _, line := range chatLog {
+			parsed, err := parseChatLogLine(line)
+			if err != nil {
+				continue
+			}
+
+			chatMessage := ChatMessage{
+				Type: parsed.Type,
+			}
+
+			switch parsed.Type {
+			case "Say":
+				matches := rePlayerChat.FindStringSubmatch(parsed.Message)
+				if matches != nil && len(matches) >= 4 {
+					chatMessage.UID = matches[1]
+					chatMessage.Nickname = matches[2]
+					chatMessage.Message = matches[3]
+				}
+			case "Skin Announcement":
+				parts := strings.Split(parsed.Message, " ")
+				if len(parts) == 2 {
+					chatMessage.Nickname = parts[0]
+					chatMessage.Message = parts[1]
+				}
+			default:
+				chatMessage.Message = parsed.Message
+			}
+
+			chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
+
+			chatMessages = append(chatMessages, chatMessage)
+		}
+
+		return chatMessages, nil
+	}
 }

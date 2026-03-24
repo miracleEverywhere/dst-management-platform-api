@@ -19,6 +19,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			player.GET("/uidmap", h.uidMapGet)
 			player.GET("/statistics/online_time", h.statisticsOnlineTimeGet)
 			player.GET("/statistics/player_count", h.statisticsPlayerCountGet)
+			player.GET("/chat", h.chatGet)
 		}
 	}
 }

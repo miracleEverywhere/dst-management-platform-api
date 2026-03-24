@@ -221,3 +221,44 @@ func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.PlayersStatistic[reqForm.RoomID]})
 }
+
+func (h *Handler) chatGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID   int  `json:"roomID" form:"roomID"`
+		Lines    int  `json:"lines" form:"lines"`
+		NeedTime bool `json:"needTime" form:"needTime"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	logger.Logger.Debug(utils.StructToFlatString(reqForm))
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Error("获取基本信息失败", "err", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	chat, err := game.ChatMessages(reqForm.Lines, reqForm.NeedTime)
+	if err != nil {
+		logger.Logger.ErrorF("获取玩家聊天信息失败：%s", err.Error())
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "chat message fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": chat})
+}

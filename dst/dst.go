@@ -260,3 +260,7 @@ func (g *Game) DeleteSnapshot(filename string) error {
 func (g *Game) DeleteAcf() error {
 	return g.deleteAcf()
 }
+
+func (g *Game) ChatMessages(lines int, needTime bool) ([]ChatMessage, error) {
+	return g.chatMessages(lines, needTime)
+}

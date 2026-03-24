@@ -24,9 +24,9 @@ func NewExtendedI18n() *ExtendedI18n {
 		i.EN[k] = v
 	}
 
-	i.ZH["downloading"] = "开始下载模组"
+	i.ZH["chat message fail"] = "玩家聊天信息获取失败"
 
-	i.EN["downloading"] = "开始下载模组"
+	i.EN["chat message fail"] = "get chat message fail"
 
 	return i
 }
