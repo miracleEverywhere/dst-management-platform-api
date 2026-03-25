@@ -212,114 +212,81 @@ func timeToSeconds(timeStr string) (int64, error) {
 }
 
 func (g *Game) chatMessages(lines int, needTime bool) ([]ChatMessage, error) {
-	var chatMessages []ChatMessage
+	var (
+		chatMessages    []ChatMessage
+		serverStartTime time.Time
+		err             error
+		day             int64 // 游戏启动的第几天，如果期间聊天日志超过24小时未刷新，则会出现时间异常
+	)
+
 	rePlayerChat := regexp.MustCompile(`\(([^)]+)\)\s+([^:]+):\s*(.+)`)
 
 	world := g.worldSaveData[0]
 
 	chatLogPath := fmt.Sprintf("%s/server_chat_log.txt", world.worldPath)
 
-	// 聊天信息是否需要添加时间
+	serverLogPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
+
 	if needTime {
-		day := 0 // 游戏启动的第几天，如果期间聊天日志超过24小时未刷新，则会出现时间异常
-
-		serverLogPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
-
-		serverStartTime, err := getDstStartTime(serverLogPath)
+		serverStartTime, err = getDstStartTime(serverLogPath)
 		if err != nil {
 			return chatMessages, err
 		}
+	}
 
-		chatLog, err := utils.ReadLinesToSlice(chatLogPath)
+	chatLog, err := utils.ReadLinesToSlice(chatLogPath)
+	if err != nil {
+		return chatMessages, err
+	}
+
+	for _, line := range chatLog {
+		parsed, err := parseChatLogLine(line)
 		if err != nil {
-			return chatMessages, err
+			continue
 		}
 
-		for _, line := range chatLog {
-			parsed, err := parseChatLogLine(line)
-			if err != nil {
-				continue
-			}
-
+		if needTime {
 			if len(chatMessages) > 0 {
 				if chatMessages[len(chatMessages)-1].TimeSeconds > parsed.TimeSeconds {
 					day++
 				}
 			}
-
-			chatMessage := ChatMessage{
-				Time:        serverStartTime.Unix() + int64(day*24*3600) + parsed.TimeSeconds,
-				TimeSeconds: parsed.TimeSeconds,
-				Type:        parsed.Type,
-			}
-
-			switch parsed.Type {
-			case "Say":
-				matches := rePlayerChat.FindStringSubmatch(parsed.Message)
-				if matches != nil && len(matches) >= 4 {
-					chatMessage.UID = matches[1]
-					chatMessage.Nickname = matches[2]
-					chatMessage.Message = matches[3]
-				}
-			case "Skin Announcement":
-				parts := strings.Split(parsed.Message, " ")
-				if len(parts) == 2 {
-					chatMessage.Nickname = parts[0]
-					chatMessage.Message = parts[1]
-				}
-			default:
-				chatMessage.Message = parsed.Message
-				chatMessage.Nickname = "DST"
-			}
-
-			chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
-
-			chatMessages = append(chatMessages, chatMessage)
 		}
 
-		chatMessagesLength := len(chatMessages)
-		if chatMessagesLength > lines {
-			return chatMessages[chatMessagesLength-lines:], nil
+		chatMessage := ChatMessage{
+			Time:        serverStartTime.Unix() + int64(day*24*3600) + parsed.TimeSeconds,
+			TimeSeconds: parsed.TimeSeconds,
+			Type:        parsed.Type,
 		}
 
-		return chatMessages, nil
-	} else {
-		chatLog := utils.GetFileLastNLines(chatLogPath, lines)
-
-		for _, line := range chatLog {
-			parsed, err := parseChatLogLine(line)
-			if err != nil {
-				continue
+		switch parsed.Type {
+		case "Say":
+			matches := rePlayerChat.FindStringSubmatch(parsed.Message)
+			if matches != nil && len(matches) >= 4 {
+				chatMessage.UID = matches[1]
+				chatMessage.Nickname = matches[2]
+				chatMessage.Message = matches[3]
 			}
-
-			chatMessage := ChatMessage{
-				Type: parsed.Type,
+		case "Skin Announcement":
+			parts := strings.Split(parsed.Message, " ")
+			if len(parts) == 2 {
+				chatMessage.Nickname = parts[0]
+				chatMessage.Message = parts[1]
 			}
-
-			switch parsed.Type {
-			case "Say":
-				matches := rePlayerChat.FindStringSubmatch(parsed.Message)
-				if matches != nil && len(matches) >= 4 {
-					chatMessage.UID = matches[1]
-					chatMessage.Nickname = matches[2]
-					chatMessage.Message = matches[3]
-				}
-			case "Skin Announcement":
-				parts := strings.Split(parsed.Message, " ")
-				if len(parts) == 2 {
-					chatMessage.Nickname = parts[0]
-					chatMessage.Message = parts[1]
-				}
-			default:
-				chatMessage.Message = parsed.Message
-				chatMessage.Nickname = "DST"
-			}
-
-			chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
-
-			chatMessages = append(chatMessages, chatMessage)
+		default:
+			chatMessage.Message = parsed.Message
+			chatMessage.Nickname = "DST"
 		}
 
-		return chatMessages, nil
+		chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
+
+		chatMessages = append(chatMessages, chatMessage)
 	}
+
+	chatMessagesLength := len(chatMessages)
+	if chatMessagesLength > lines {
+		return chatMessages[chatMessagesLength-lines:], nil
+	}
+
+	return chatMessages, nil
 }
