@@ -560,14 +560,24 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	}
 
 	// 判断是否为统一模组
-	if worlds[0].ModData == worlds[1].ModData {
-		room.ModInOne = true
-		room.ModData = worlds[0].ModData
-		for index := range worlds {
-			worlds[index].ModData = ""
+	if len(worlds) >= 2 {
+		if worlds[0].ModData == worlds[1].ModData {
+			// 当世界个数大于等于2，并且世界0和世界1的模组配置相同
+			// 则设置ModInOne
+			room.ModInOne = true
+			room.ModData = worlds[0].ModData
+			for index := range worlds {
+				worlds[index].ModData = ""
+			}
+		} else {
+			// 当世界个数大于等于2，并且世界0和世界1的模组配置不同
+			// 则设置Not ModInOne
+			room.ModInOne = false
 		}
 	} else {
-		room.ModInOne = false
+		// 当世界个数小于2，也就是只有一个世界
+		// 则设置ModInOne
+		room.ModInOne = true
 	}
 
 	// 写入数据库
