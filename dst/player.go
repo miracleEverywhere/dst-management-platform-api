@@ -269,10 +269,21 @@ func (g *Game) chatMessages(lines int, needTime bool) ([]ChatMessage, error) {
 			}
 		case "Skin Announcement":
 			parts := strings.Split(parsed.Message, " ")
-			if len(parts) == 2 {
-				chatMessage.Nickname = parts[0]
-				chatMessage.Message = parts[1]
+			if len(parts) > 0 {
+				if len(parts) == 2 {
+					chatMessage.Nickname = parts[0]
+					chatMessage.Message = parts[1]
+				}
+				if len(parts) > 2 {
+					// 处理玩家游戏昵称中含有空格的情况
+					skinName := parts[len(parts)-1]
+					nickname := parts[:len(parts)-1]
+
+					chatMessage.Nickname = strings.Join(nickname, " ")
+					chatMessage.Message = skinName
+				}
 			}
+
 		default:
 			chatMessage.Message = parsed.Message
 			chatMessage.Nickname = "DST"
