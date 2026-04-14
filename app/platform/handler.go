@@ -260,7 +260,8 @@ func osInfoGet(c *gin.Context) {
 	osInfo, err := getOSInfo()
 	if err != nil {
 		logger.Logger.Error("获取系统信息失败", "err", err)
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "get os info fail"), "data": osInfo})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get os info fail"), "data": nil})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": osInfo})
@@ -279,6 +280,9 @@ func metricsGet(c *gin.Context) {
 
 	systemMetricsLength := len(db.SystemMetrics)
 	reqLength := reqForm.TimeRange * 60
+	if reqLength <= 0 {
+		reqLength = 60 // 默认1小时
+	}
 
 	if systemMetricsLength > reqLength {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.SystemMetrics[systemMetricsLength-reqLength:]})
@@ -439,6 +443,15 @@ func screenKillPost(c *gin.Context) {
 		logger.Logger.Info("请求参数错误", "api", c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
+	}
+
+	// 校验 ScreenName 只允许字母、数字、下划线和连字符，防止命令注入
+	for _, ch := range reqForm.ScreenName {
+		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-') {
+			logger.Logger.Info("ScreenName包含非法字符", "api", c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
 	}
 
 	cmd := fmt.Sprintf("screen -X -S %s quit", reqForm.ScreenName)
