@@ -50,7 +50,7 @@ func (h *Handler) registerPost(c *gin.Context) {
 	}
 
 	if num != 0 {
-		logger.Logger.Info("创建用户失败，用户已存在", "err", err)
+		logger.Logger.Info("创建用户失败，用户已存在")
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user exist"), "data": nil})
 		return
 	}
@@ -186,7 +186,7 @@ func (h *Handler) basePost(c *gin.Context) {
 	}
 
 	if dbUser.Username != "" {
-		logger.Logger.Info("创建用户失败，用户已存在", "err", err)
+		logger.Logger.Info("创建用户失败，用户已存在")
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user exist"), "data": nil})
 		return
 	}
@@ -339,6 +339,11 @@ func (h *Handler) myselfPut(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+
+	// 使用 JWT token 中的用户名，防止越权修改
+	username, _ := c.Get("username")
+	user.Username = username.(string)
+
 	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	dbUser, err := h.userDao.GetUserByUsername(user.Username)
