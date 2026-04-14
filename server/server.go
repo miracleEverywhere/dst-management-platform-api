@@ -70,7 +70,7 @@ func Run() {
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao).RegisterRoutes(r)
+	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao, globalSettingDao).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 

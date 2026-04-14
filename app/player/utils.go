@@ -10,20 +10,22 @@ import (
 )
 
 type Handler struct {
-	userDao        *dao.UserDAO
-	roomDao        *dao.RoomDAO
-	worldDao       *dao.WorldDAO
-	roomSettingDao *dao.RoomSettingDAO
-	uidMapDao      *dao.UidMapDAO
+	userDao          *dao.UserDAO
+	roomDao          *dao.RoomDAO
+	worldDao         *dao.WorldDAO
+	roomSettingDao   *dao.RoomSettingDAO
+	uidMapDao        *dao.UidMapDAO
+	globalSettingDao *dao.GlobalSettingDAO
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, uidMapDao *dao.UidMapDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, uidMapDao *dao.UidMapDAO, globalSettingDao *dao.GlobalSettingDAO) *Handler {
 	return &Handler{
-		userDao:        userDao,
-		roomDao:        roomDao,
-		worldDao:       worldDao,
-		roomSettingDao: roomSettingDao,
-		uidMapDao:      uidMapDao,
+		userDao:          userDao,
+		roomDao:          roomDao,
+		worldDao:         worldDao,
+		roomSettingDao:   roomSettingDao,
+		uidMapDao:        uidMapDao,
+		globalSettingDao: globalSettingDao,
 	}
 }
 
