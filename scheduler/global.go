@@ -103,10 +103,9 @@ func SystemMetricsGet(maxHour int) {
 	}
 
 	if len(db.SystemMetrics) > maxHour*60 {
-		db.SystemMetrics = append(db.SystemMetrics[:0], sysMetrics)
-	} else {
-		db.SystemMetrics = append(db.SystemMetrics, sysMetrics)
+		db.SystemMetrics = db.SystemMetrics[1:]
 	}
+	db.SystemMetrics = append(db.SystemMetrics, sysMetrics)
 }
 
 func GameUpdate(enable bool, restart bool) {
