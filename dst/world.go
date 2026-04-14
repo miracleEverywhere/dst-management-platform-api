@@ -72,6 +72,10 @@ func (g *Game) createWorlds() error {
 
 	// 清理删除的世界
 	fileSystemWorlds, err := utils.GetDirs(g.clusterPath, false)
+	if err != nil {
+		logger.Logger.Warn("获取世界目录列表失败", "err", err)
+		return nil
+	}
 	for _, fileSystemWorld := range fileSystemWorlds {
 		if !utils.Contains(worldsName, fileSystemWorld) {
 			// 清理文件
@@ -330,7 +334,7 @@ func (g *Game) getWorldByID(id int) (*worldSaveData, error) {
 		}
 	}
 
-	return &worldSaveData{}, nil
+	return nil, fmt.Errorf("世界不存在: %d", id)
 }
 
 func getServerIni(world *models.World) string {
