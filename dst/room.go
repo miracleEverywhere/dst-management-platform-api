@@ -512,7 +512,7 @@ func findLatestMetaFile(directory string) (string, error) {
 }
 
 func (g *Game) runningScreen() ([]string, error) {
-	cmd := fmt.Sprintf("ps -ef | grep DMP_Cluster_%d | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $14}'", g.room.ID)
+	cmd := fmt.Sprintf("ps -ef | grep 'DMP_Cluster_%d_' | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $14}'", g.room.ID)
 	out, _, _ := utils.BashCMDOutput(cmd)
 	screenNamesStr := strings.TrimSpace(out)
 
