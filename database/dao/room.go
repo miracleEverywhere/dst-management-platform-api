@@ -2,9 +2,6 @@ package dao
 
 import (
 	"dst-management-platform-api/database/models"
-	"fmt"
-	"strconv"
-	"strings"
 
 	"gorm.io/gorm"
 )
@@ -65,58 +62,6 @@ func (d *RoomDAO) ListRooms(roomIDs []int, gameName string, page, pageSize int) 
 
 	rooms, err := d.Query(page, pageSize, condition, args...)
 	return rooms, err
-}
-
-func (d *RoomDAO) updateUserRooms(tx *gorm.DB, id int) error {
-	// 查询所有包含该 roomID 的用户
-	var users []models.User
-	searchPattern := fmt.Sprintf("%%%d%%", id)
-
-	if err := tx.Where("rooms LIKE ?", searchPattern).Find(&users).Error; err != nil {
-		return err
-	}
-
-	for _, user := range users {
-		if user.Rooms == "" {
-			continue
-		}
-
-		// 分割 rooms 字符串
-		rooms := strings.Split(user.Rooms, ",")
-
-		// 过滤掉要删除的 roomName
-		var newRooms []int
-		for _, room := range rooms {
-			dbID, err := strconv.Atoi(strings.TrimSpace(room))
-			if err != nil {
-				return err
-			}
-			if dbID != id {
-				newRooms = append(newRooms, id)
-			}
-		}
-
-		// 重新组合 rooms 字符串
-		var newRoomsIntSlice []string
-		for _, i := range newRooms {
-			newRoomsIntSlice = append(newRoomsIntSlice, strconv.Itoa(i))
-		}
-		newRoomsStr := strings.Join(newRoomsIntSlice, ",")
-
-		// 如果 rooms 字段为空，可以设置为空字符串或 NULL
-		if newRoomsStr == "" {
-			newRoomsStr = ""
-		}
-
-		// 更新用户记录
-		if err := tx.Model(&models.User{}).
-			Where("username = ?", user.Username).
-			Update("rooms", newRoomsStr).Error; err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 type RoomBasic struct {
