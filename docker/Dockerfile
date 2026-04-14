@@ -14,7 +14,7 @@ WORKDIR /app
 # 复制当前目录下的所有文件到容器的/app目录
 COPY . .  
 
-RUN go build -o dmp main.go 
+RUN go build -ldflags '-s -w' -v -o dmp main.go
 
 
 # 第2阶段：运行时环境
