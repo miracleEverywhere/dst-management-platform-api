@@ -493,6 +493,7 @@ func (h *Handler) snapshotGet(c *gin.Context) {
 	if err != nil {
 		logger.Logger.Error("获取游戏存档文件失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "get snapshot fail", "data": snapshot})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": snapshot})
@@ -540,12 +541,13 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 	if err != nil {
 		logger.Logger.Error("删除游戏存档文件失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
+		return
 	}
 
 	// 启动游戏
 	err = game.StartAllWorld()
 	if err != nil {
-		logger.Logger.ErrorF("启动游戏失败：%", err)
+		logger.Logger.ErrorF("启动游戏失败：%v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})

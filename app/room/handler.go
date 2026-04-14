@@ -424,6 +424,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	if err != nil {
 		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
 	}
 
 	currentTS := utils.GetTimestamp()
