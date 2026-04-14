@@ -24,7 +24,7 @@ func initJobs() {
 	Jobs = append(Jobs, JobConfig{
 		Name:     "onlinePlayerGet",
 		Func:     OnlinePlayerGet,
-		Args:     []any{globalSetting.PlayerGetFrequency, globalSetting.UIDMaintainEnable},
+		Args:     []any{globalSetting.PlayerGetFrequency, globalSetting.PlayerInfoSaveTime, globalSetting.UIDMaintainEnable},
 		TimeType: SecondType,
 		Interval: globalSetting.PlayerGetFrequency,
 		DayAt:    "",

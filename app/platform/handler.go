@@ -323,12 +323,12 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 
 	needUpdateDB := false
 
-	if dbGlobalSettings.PlayerGetFrequency != reqForm.PlayerGetFrequency || dbGlobalSettings.UIDMaintainEnable != reqForm.UIDMaintainEnable {
+	if dbGlobalSettings.PlayerGetFrequency != reqForm.PlayerGetFrequency || dbGlobalSettings.PlayerInfoSaveTime != reqForm.PlayerInfoSaveTime || dbGlobalSettings.UIDMaintainEnable != reqForm.UIDMaintainEnable {
 		needUpdateDB = true
 		err = scheduler.UpdateJob(&scheduler.JobConfig{
 			Name:     "onlinePlayerGet",
 			Func:     scheduler.OnlinePlayerGet,
-			Args:     []any{reqForm.PlayerGetFrequency, reqForm.UIDMaintainEnable},
+			Args:     []any{reqForm.PlayerGetFrequency, reqForm.PlayerInfoSaveTime, reqForm.UIDMaintainEnable},
 			TimeType: scheduler.SecondType,
 			Interval: reqForm.PlayerGetFrequency,
 			DayAt:    "",

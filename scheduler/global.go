@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func OnlinePlayerGet(interval int, uidMapEnable bool) {
+func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 	roomsBasic, err := DBHandler.roomDao.GetRoomBasic()
 	if err != nil {
 		logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
@@ -74,9 +74,10 @@ func OnlinePlayerGet(interval int, uidMapEnable bool) {
 
 					db.PlayersStatisticMutex.Lock()
 
-					if len(db.PlayersStatistic[rbs.RoomID]) > (86400 / interval) {
-						// 只保留一天的数据量
-						db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID][:0], db.PlayersStatistic[rbs.RoomID][1:]...)
+					if len(db.PlayersStatistic[rbs.RoomID]) > parsePlayerInfoSaveTime(saveTime) {
+						// db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID][:0], db.PlayersStatistic[rbs.RoomID][1:]...)
+						db.PlayersStatistic[rbs.RoomID] = db.PlayersStatistic[rbs.RoomID][1:]
+
 					}
 					db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID], Players)
 

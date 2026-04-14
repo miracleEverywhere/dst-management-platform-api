@@ -262,3 +262,10 @@ func GetInternetIP2() (string, error) {
 	}
 	return jsonResp.Ip, nil
 }
+
+func parsePlayerInfoSaveTime(saveTime int) int {
+	if saveTime == 0 {
+		saveTime = 1
+	}
+	return saveTime * 24 * 60 * 60
+}

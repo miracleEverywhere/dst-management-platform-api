@@ -34,6 +34,7 @@ func (d *GlobalSettingDAO) initGlobalSetting() {
 	if count == 0 {
 		globalSetting := models.GlobalSetting{
 			PlayerGetFrequency: 60,
+			PlayerInfoSaveTime: 1,
 			UIDMaintainEnable:  true,
 			SysMetricsEnable:   true,
 			SysMetricsSetting:  6,
