@@ -137,7 +137,6 @@ type AppWorkshop struct {
 	TimeLastAppRan         string
 	LastBuildID            string
 	WorkshopItemsInstalled []ItemInstalled
-	WorkshopItemDetails    []ItemDetails
 }
 
 type ItemInstalled struct {
@@ -147,26 +146,14 @@ type ItemInstalled struct {
 	Manifest    string
 }
 
-type ItemDetails struct {
-	ID                string
-	Manifest          string
-	TimeUpdated       string
-	TimeTouched       string
-	LatestTimeUpdated string
-	LatestManifest    string
-}
-
 func (p *AcfParser) parse() {
 	lines := strings.Split(p.content, "\n")
 	appWorkshop := &AppWorkshop{
 		WorkshopItemsInstalled: []ItemInstalled{},
-		WorkshopItemDetails:    []ItemDetails{},
 	}
 	var currentItemID string
 	var currentInstalled ItemInstalled
-	var currentDetail ItemDetails
 	inItemsInstalled := false
-	inItemDetails := false
 
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
@@ -176,15 +163,10 @@ func (p *AcfParser) parse() {
 
 		if strings.HasPrefix(line, "\"WorkshopItemsInstalled\"") {
 			inItemsInstalled = true
-			inItemDetails = false
 			continue
 		}
-		if strings.HasPrefix(line, "\"WorkshopItemDetails\"") {
-			inItemsInstalled = false
-			inItemDetails = true
-			continue
-		}
-		if inItemsInstalled || inItemDetails {
+
+		if inItemsInstalled {
 			line = strings.ReplaceAll(line, "\"", "")
 			line = strings.ReplaceAll(line, "\t", "")
 			if line == "{" {
@@ -212,12 +194,7 @@ func (p *AcfParser) parse() {
 				timeupdatedRe := regexp.MustCompile(`^timeupdated(\d+)$`)
 				timeupdatedReMatches := timeupdatedRe.FindStringSubmatch(line)
 				if timeupdatedReMatches != nil {
-					if inItemsInstalled {
-						currentInstalled.TimeUpdated = timeupdatedReMatches[1]
-					}
-					if inItemDetails {
-						currentDetail.TimeUpdated = timeupdatedReMatches[1]
-					}
+					currentInstalled.TimeUpdated = timeupdatedReMatches[1]
 
 					continue
 				}
@@ -225,48 +202,14 @@ func (p *AcfParser) parse() {
 				manifestRe := regexp.MustCompile(`^manifest(\d+)$`)
 				manifestReMatches := manifestRe.FindStringSubmatch(line)
 				if manifestReMatches != nil {
-					if inItemsInstalled {
-						currentInstalled.Manifest = manifestReMatches[1]
-						currentInstalled.ID = currentItemID
-						appWorkshop.WorkshopItemsInstalled = append(appWorkshop.WorkshopItemsInstalled, currentInstalled)
-						currentInstalled = ItemInstalled{}
-						currentItemID = ""
-					}
-					if inItemDetails {
-						currentDetail.Manifest = manifestReMatches[1]
-					}
-
-					continue
-				}
-
-				timetouchedRe := regexp.MustCompile(`^timetouched(\d+)$`)
-				timetouchedReMatches := timetouchedRe.FindStringSubmatch(line)
-				if timetouchedReMatches != nil {
-					currentDetail.TimeTouched = timetouchedReMatches[1]
-
-					continue
-				}
-
-				latestTimeupdatedRe := regexp.MustCompile(`^latest_timeupdated(\d+)$`)
-				latestTimeupdatedReMatches := latestTimeupdatedRe.FindStringSubmatch(line)
-				if latestTimeupdatedReMatches != nil {
-					currentDetail.LatestTimeUpdated = latestTimeupdatedReMatches[1]
-
-					continue
-				}
-
-				latestManifestRe := regexp.MustCompile(`^latest_manifest(\d+)$`)
-				latestManifestReMatches := latestManifestRe.FindStringSubmatch(line)
-				if latestManifestReMatches != nil {
-					currentDetail.LatestManifest = latestManifestReMatches[1]
-					currentDetail.ID = currentItemID
-					appWorkshop.WorkshopItemDetails = append(appWorkshop.WorkshopItemDetails, currentDetail)
-					currentDetail = ItemDetails{}
+					currentInstalled.Manifest = manifestReMatches[1]
+					currentInstalled.ID = currentItemID
+					appWorkshop.WorkshopItemsInstalled = append(appWorkshop.WorkshopItemsInstalled, currentInstalled)
+					currentInstalled = ItemInstalled{}
 					currentItemID = ""
 
 					continue
 				}
-
 			}
 		} else {
 			line = strings.ReplaceAll(line, "\"", "")
@@ -336,17 +279,35 @@ func (p *AcfParser) parse() {
 func (p *AcfParser) FileContent() string {
 	var (
 		workshopItemsInstalled string
-		workshopItemDetails    string
+		//workshopItemDetails    string
 	)
 
 	for _, itemInstalled := range p.AppWorkshop.WorkshopItemsInstalled {
 		workshopItemsInstalled = workshopItemsInstalled + generateItemInstalled(itemInstalled)
 	}
 
-	for _, itemDetails := range p.AppWorkshop.WorkshopItemDetails {
-		workshopItemDetails = workshopItemDetails + generateItemDetails(itemDetails)
-	}
+	//for _, itemDetails := range p.AppWorkshop.WorkshopItemDetails {
+	//	workshopItemDetails = workshopItemDetails + generateItemDetails(itemDetails)
+	//}
 
+	//	content := `"AppWorkshop"
+	//{
+	//	"appid"		"322330"
+	//	"SizeOnDisk"		"2071004"
+	//	"NeedsUpdate"		"0"
+	//	"NeedsDownload"		"0"
+	//	"TimeLastUpdated"		"0"
+	//	"TimeLastAppRan"		"0"
+	//	"LastBuildID"		"0"
+	//	"WorkshopItemsInstalled"
+	//	{
+	//` + workshopItemsInstalled + `
+	//	}
+	//	"WorkshopItemDetails"
+	//	{
+	//` + workshopItemDetails + `
+	//	}
+	//}`
 	content := `"AppWorkshop"
 {
 	"appid"		"322330"
@@ -360,10 +321,6 @@ func (p *AcfParser) FileContent() string {
 	{
 ` + workshopItemsInstalled + `
 	}
-	"WorkshopItemDetails"
-	{
-` + workshopItemDetails + `
-	}
 }`
 
 	return content
@@ -375,18 +332,6 @@ func generateItemInstalled(i ItemInstalled) string {
 			"size"		"` + i.Size + `"
 			"timeupdated"		"` + i.TimeUpdated + `"
 			"manifest"		"` + i.Manifest + `"
-		}
-`
-}
-
-func generateItemDetails(i ItemDetails) string {
-	return `		"` + i.ID + `"
-		{
-			"manifest"		"` + i.Manifest + `"
-			"timeupdated"		"` + i.TimeUpdated + `"
-			"timetouched"		"` + i.TimeTouched + `"
-			"latest_timeupdated"		"` + i.LatestTimeUpdated + `"
-			"latest_manifest"		"` + i.LatestManifest + `"
 		}
 `
 }
@@ -1017,7 +962,12 @@ func downloadNotUGCMod(url string, id int) (error, int64) {
 		return err, modSize
 	}
 
-	defer utils.RemoveFile(filepath)
+	defer func(filename string) {
+		err := utils.RemoveFile(filename)
+		if err != nil {
+			logger.Logger.WarnF("删除临时文件失败：%s", err.Error())
+		}
+	}(filepath)
 
 	return nil, modSize
 }

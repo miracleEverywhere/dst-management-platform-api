@@ -88,6 +88,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		// 3. 读取游戏acf文件和dmp_files的acf文件，更新当前mod-id所对应的所有字段
 
 		// 1
+		logger.Logger.DebugF("正在下载模组：%d", id)
 		downloadCmd := g.generateModDownloadCmd(id)
 		logger.Logger.Debug(downloadCmd)
 		err = utils.BashCMD(downloadCmd)
@@ -98,6 +99,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		time.Sleep(500 * time.Millisecond)
 
 		// 2
+		logger.Logger.DebugF("正在移动模组：%d", id)
 		err = g.removeGameOldMod(id)
 		if err != nil {
 			logger.Logger.Error("移动模组失败", "err", err)
@@ -114,6 +116,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 
 		// 3
 		gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
+		logger.Logger.DebugF("正在处理acf文件：%s", gameAcfPath)
 		gameAcfContent, err := utils.ReadLinesToSlice(gameAcfPath)
 		if err != nil {
 			gameAcfContent = []string{}
@@ -231,29 +234,26 @@ func (g *Game) processAcf(id int) error {
 			hasMod             bool
 		)
 
-		if len(gameAcfParser.AppWorkshop.WorkshopItemsInstalled) > len(gameAcfParser.AppWorkshop.WorkshopItemDetails) {
-			// 防止index溢出导致接口500
-			return fmt.Errorf("acf文件异常，WorkshopItemsInstalled与WorkshopItemDetails长度不一致")
-		}
-
 		for index, i := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
 			if i.ID == acfID {
 				gameAcfTargetIndex = index
 				hasMod = true
+				break
 			}
 		}
+
 		if hasMod {
 			for index, mod := range dmpAcfParser.AppWorkshop.WorkshopItemsInstalled {
 				if strconv.Itoa(id) == mod.ID {
 					gameAcfParser.AppWorkshop.WorkshopItemsInstalled[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[index]
-					gameAcfParser.AppWorkshop.WorkshopItemDetails[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemDetails[index]
+					break
 				}
 			}
 		} else {
 			for index, mod := range dmpAcfParser.AppWorkshop.WorkshopItemsInstalled {
 				if strconv.Itoa(id) == mod.ID {
 					gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled, dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[index])
-					gameAcfParser.AppWorkshop.WorkshopItemDetails = append(gameAcfParser.AppWorkshop.WorkshopItemDetails, dmpAcfParser.AppWorkshop.WorkshopItemDetails[index])
+					break
 				}
 			}
 
@@ -677,11 +677,6 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 				if mod.ID == acfID {
 					gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled[:index], gameAcfParser.AppWorkshop.WorkshopItemsInstalled[index+1:]...)
 					break
-				}
-			}
-			for index, mod := range gameAcfParser.AppWorkshop.WorkshopItemDetails {
-				if mod.ID == acfID {
-					gameAcfParser.AppWorkshop.WorkshopItemDetails = append(gameAcfParser.AppWorkshop.WorkshopItemDetails[:index], gameAcfParser.AppWorkshop.WorkshopItemDetails[index+1:]...)
 				}
 			}
 
