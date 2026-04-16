@@ -51,7 +51,7 @@ middleware/                 → Gin middleware: TokenCheck (JWT), AdminOnly, Cac
 scheduler/                 → Cron jobs: backup, restart, keepalive, player tracking, game updates
 embedFS/                   → Embedded static assets (frontend dist/, luajit libs, shell scripts)
 utils/                     → Shared utilities: JWT, crypto, i18n, system commands, file ops
-logger/                    → Custom slog logger (runtime.log + access.log)
+logger/                    → Custom zap logger (runtime.log + access.log)
 ```
 
 ## Key Patterns
