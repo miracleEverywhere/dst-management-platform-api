@@ -146,11 +146,11 @@ func GameUpdate(enable bool, restart bool) {
 			for _, rbs := range *roomsBasic {
 				// 2. 如果房间未激活，则跳过重启
 				if !rbs.Status {
-					logger.Logger.DebugF("房间%s(%d)未激活，跳过重启", rbs.RoomName, rbs.RoomID)
+					logger.Logger.Debugf("房间%s(%d)未激活，跳过重启", rbs.RoomName, rbs.RoomID)
 					continue
 				}
 
-				logger.Logger.DebugF("开始重启房间：%s(%d)", rbs.RoomName, rbs.RoomID)
+				logger.Logger.Debugf("开始重启房间：%s(%d)", rbs.RoomName, rbs.RoomID)
 
 				// 3. 重启房间内所有的世界
 				room, worlds, roomSetting, err := fetchGameInfo(rbs.RoomID)
@@ -162,7 +162,7 @@ func GameUpdate(enable bool, restart bool) {
 				_ = game.StopAllWorld()
 				_ = game.StartAllWorld()
 
-				logger.Logger.DebugF("重启房间完成：%s(%d)，休眠5秒", rbs.RoomName, rbs.RoomID)
+				logger.Logger.Debugf("重启房间完成：%s(%d)，休眠5秒", rbs.RoomName, rbs.RoomID)
 
 				time.Sleep(5 * time.Second)
 			}

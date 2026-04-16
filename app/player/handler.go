@@ -277,7 +277,7 @@ func (h *Handler) chatGet(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	chat, err := game.ChatMessages(reqForm.Lines, reqForm.NeedTime)
 	if err != nil {
-		logger.Logger.ErrorF("获取玩家聊天信息失败：%s", err.Error())
+		logger.Logger.Errorf("获取玩家聊天信息失败：%s", err.Error())
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "chat message fail"), "data": nil})
 		return
 	}

@@ -144,7 +144,7 @@ func getDstStartTime(filepath string) (time.Time, error) {
 			timeStr := strings.TrimSpace(matches[1])
 			parsedTime, err := time.ParseInLocation(timeFormat, timeStr, time.Local)
 			if err == nil {
-				logger.Logger.DebugF("解析到的时间为：%s", parsedTime.Format(time.RFC3339))
+				logger.Logger.Debugf("解析到的时间为：%s", parsedTime.Format(time.RFC3339))
 				return parsedTime, nil
 			}
 			logger.Logger.Warn("解析时间失败", "line", line, "error", err)

@@ -88,7 +88,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		// 3. 读取游戏acf文件和dmp_files的acf文件，更新当前mod-id所对应的所有字段
 
 		// 1
-		logger.Logger.DebugF("正在下载模组：%d", id)
+		logger.Logger.Debugf("正在下载模组：%d", id)
 		downloadCmd := g.generateModDownloadCmd(id)
 		logger.Logger.Debug(downloadCmd)
 		err = utils.BashCMD(downloadCmd)
@@ -99,7 +99,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		time.Sleep(500 * time.Millisecond)
 
 		// 2
-		logger.Logger.DebugF("正在移动模组：%d", id)
+		logger.Logger.Debugf("正在移动模组：%d", id)
 		err = g.removeGameOldMod(id)
 		if err != nil {
 			logger.Logger.Error("移动模组失败", "err", err)
@@ -116,7 +116,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 
 		// 3
 		gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
-		logger.Logger.DebugF("正在处理acf文件：%s", gameAcfPath)
+		logger.Logger.Debugf("正在处理acf文件：%s", gameAcfPath)
 		gameAcfContent, err := utils.ReadLinesToSlice(gameAcfPath)
 		if err != nil {
 			gameAcfContent = []string{}
@@ -139,8 +139,8 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		time.Sleep(500 * time.Millisecond)
 
 		modSize, err = utils.GetDirSize(fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
-		logger.Logger.DebugF("模组路径为%s", fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
-		logger.Logger.DebugF("模组大小为%d", modSize)
+		logger.Logger.Debugf("模组路径为%s", fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
+		logger.Logger.Debugf("模组大小为%d", modSize)
 		if err != nil {
 			logger.Logger.Error("获取模组大小失败", "err", err)
 			return err, modSize
@@ -379,7 +379,7 @@ func (g *Game) getModConfigureOptionsValues(worldID, modID int, ugc bool) (*ModO
 	modORParser := NewModORParser()
 	defer modORParser.close()
 
-	logger.Logger.DebugF("ugc is %t", ugc)
+	logger.Logger.Debugf("ugc is %t", ugc)
 
 	var modORContent string
 	if g.room.ModInOne {

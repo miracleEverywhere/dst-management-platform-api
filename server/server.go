@@ -53,16 +53,25 @@ func Run() {
 	// 开启定时任务
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
 
-	// 初始化及注册路由
+	// 设置生产环境
 	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-	r.Use(middleware.CacheControl())
 
-	// bug日志等级下，注册pprof路由
+	r := gin.Default()
+
+	// 静态资源缓存
+	r.Use(middleware.CacheControl())
+	// 请求日志格式
+	r.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		Formatter: logger.AccessFormatter,
+		Output:    logger.AccessWriter,
+	}))
+
+	// debug日志等级下，注册pprof路由
 	if logLevel == "debug" {
 		pprof.Register(r)
 	}
 
+	// 初始化即注册路由
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao).RegisterRoutes(r)

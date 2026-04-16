@@ -18,7 +18,7 @@ func TokenCheck() gin.HandlerFunc {
 		token := c.Request.Header.Get("X-DMP-TOKEN")
 		claims, err := utils.ValidateJWT(token, []byte(db.JwtSecret))
 		if err != nil {
-			logger.Logger.WarnF("未授权的访问, DMP已拦截, ip为: %s", c.ClientIP())
+			logger.Logger.Warnf("未授权的访问, DMP已拦截, ip为: %s", c.ClientIP())
 			c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "token fail"), "data": nil})
 			c.Abort()
 			return
@@ -38,7 +38,7 @@ func TokenCheck() gin.HandlerFunc {
 			}
 			token, err = utils.GenerateJWT(user, []byte(db.JwtSecret), utils.JwtExpirationHours)
 			if err != nil {
-				logger.Logger.ErrorF("刷新Token失败：%v", err)
+				logger.Logger.Errorf("刷新Token失败：%v", err)
 			} else {
 				c.Header("X-DMP-NEW-TOKEN", token)
 			}
@@ -104,7 +104,7 @@ func isStaticAsset(path string) bool {
 func shouldRefreshToken(exp time.Time) bool {
 	remainingTime := time.Until(exp)
 
-	logger.Logger.DebugF("token剩余有效时间还剩: %.2f小时", remainingTime.Hours())
+	logger.Logger.Debugf("token剩余有效时间还剩: %.2f小时", remainingTime.Hours())
 
 	totalDuration := time.Duration(utils.JwtExpirationHours) * time.Hour
 

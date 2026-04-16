@@ -965,7 +965,7 @@ func downloadNotUGCMod(url string, id int) (error, int64) {
 	defer func(filename string) {
 		err := utils.RemoveFile(filename)
 		if err != nil {
-			logger.Logger.WarnF("删除临时文件失败：%s", err.Error())
+			logger.Logger.Warnf("删除临时文件失败：%s", err.Error())
 		}
 	}(filepath)
 
@@ -1022,7 +1022,7 @@ func getSessionID(savePath string) (string, error) {
 	}
 
 	sessionID := string(matchSessionID[1])
-	logger.Logger.DebugF("session_id = %s", sessionID)
+	logger.Logger.Debugf("session_id = %s", sessionID)
 
 	return sessionID, nil
 }
