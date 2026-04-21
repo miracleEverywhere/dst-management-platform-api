@@ -10,7 +10,7 @@ DST Management Platform API — a Go backend for managing Don't Starve Together 
 
 ```bash
 # Build
-go build -ldflags '-s -w' -v -o dst-management-platform-api .
+go build -ldflags '-s -w' -v -o dmp .
 
 # Run (default: port 80, DB in ./data, log level info)
 go run main.go
