@@ -56,15 +56,20 @@ func Run() {
 	// 设置生产环境
 	gin.SetMode(gin.ReleaseMode)
 
-	r := gin.Default()
+	r := gin.New()
 
-	// 静态资源缓存
-	r.Use(middleware.CacheControl())
 	// 请求日志格式
 	r.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		Formatter: logger.AccessFormatter,
 		Output:    logger.AccessWriter,
 	}))
+	// panic恢复，将panic日志写入runtime.log
+	r.Use(gin.CustomRecoveryWithWriter(logger.RuntimeWriter, func(c *gin.Context, recovered interface{}) {
+		logger.Logger.Errorf("panic recovered: %v", recovered)
+		c.AbortWithStatus(500)
+	}))
+	// 静态资源缓存
+	r.Use(middleware.CacheControl())
 
 	// debug日志等级下，注册pprof路由
 	if logLevel == "debug" {

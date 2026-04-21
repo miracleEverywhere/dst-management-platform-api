@@ -15,6 +15,7 @@ import (
 
 var Logger *zap.SugaredLogger
 var AccessWriter *os.File
+var RuntimeWriter *os.File
 var AccessFormatter = func(param gin.LogFormatterParams) string {
 	return fmt.Sprintf(
 		"[DMP] %s | %3d | %13v | %15s | %-7s %s\n",
@@ -28,12 +29,14 @@ var AccessFormatter = func(param gin.LogFormatterParams) string {
 }
 
 func InitLogger(level string) {
+	var err error
 	logDir := "logs"
+
 	if _, err := os.Stat(logDir); os.IsNotExist(err) {
 		_ = os.MkdirAll(logDir, os.ModePerm)
 	}
 
-	runtimeWriter, err := os.OpenFile(
+	RuntimeWriter, err = os.OpenFile(
 		filepath.Join(logDir, "runtime.log"),
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0644,
@@ -90,7 +93,7 @@ func InitLogger(level string) {
 
 	runtimeCore := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(encoderConfig),
-		zapcore.AddSync(runtimeWriter),
+		zapcore.AddSync(RuntimeWriter),
 		zapLevel,
 	)
 
