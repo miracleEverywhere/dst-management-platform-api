@@ -71,6 +71,8 @@ func (g *Game) dsModsSetup() error {
 func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 	atomic.AddInt32(&db.ModDownloadExecuting, 1)
 	defer atomic.AddInt32(&db.ModDownloadExecuting, -1)
+	modAcfMutex.Lock()
+	defer modAcfMutex.Unlock()
 
 	var (
 		err     error
@@ -196,10 +198,7 @@ func (g *Game) generateModCopyCmd(id int) string {
 }
 
 func (g *Game) processAcf(id int) error {
-	g.acfMutex.Lock()
-	defer g.acfMutex.Unlock()
-
-	acfID := strconv.Itoa(id)
+	acfModID := strconv.Itoa(id)
 
 	dmpAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", utils.DmpFiles, g.clusterName)
 	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
@@ -210,56 +209,39 @@ func (g *Game) processAcf(id int) error {
 		return err
 	}
 
-	dmpAcfContent, err := os.ReadFile(dmpAcfPath)
+	dmpAcfParser, err := utils.NewParser(dmpAcfPath)
 	if err != nil {
 		return err
 	}
+
 	gameAcfContent, err := os.ReadFile(gameAcfPath)
 	if err != nil {
 		return err
 	}
 
-	dmpAcfParser := NewAcfParser(string(dmpAcfContent))
-
 	var writtenContent string
 
 	if len(gameAcfContent) == 0 {
 		// 如果游戏mod目录没有acf文件，直接使用dmp下载的acf文件
-		writtenContent = dmpAcfParser.FileContent()
+		writtenContent = strings.Join(dmpAcfParser.Format(), "\n")
 	} else {
 		// 如果游戏mod目录含有acf文件，处理游戏acf文件
-		gameAcfParser := NewAcfParser(string(gameAcfContent))
-		var (
-			gameAcfTargetIndex int
-			hasMod             bool
-		)
-
-		for index, i := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
-			if i.ID == acfID {
-				gameAcfTargetIndex = index
-				hasMod = true
-				break
-			}
+		gameAcfParser, err := utils.NewParser(gameAcfPath)
+		if err != nil {
+			return err
 		}
 
-		if hasMod {
-			for index, mod := range dmpAcfParser.AppWorkshop.WorkshopItemsInstalled {
-				if strconv.Itoa(id) == mod.ID {
-					gameAcfParser.AppWorkshop.WorkshopItemsInstalled[gameAcfTargetIndex] = dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[index]
-					break
-				}
-			}
-		} else {
-			for index, mod := range dmpAcfParser.AppWorkshop.WorkshopItemsInstalled {
-				if strconv.Itoa(id) == mod.ID {
-					gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled, dmpAcfParser.AppWorkshop.WorkshopItemsInstalled[index])
-					break
-				}
-			}
-
+		newMod, err := dmpAcfParser.GetWorkshopItemsInstalled(acfModID)
+		if err != nil {
+			return err
 		}
 
-		writtenContent = gameAcfParser.FileContent()
+		err = gameAcfParser.AddWorkshopItemsInstalled(newMod)
+		if err != nil {
+			return err
+		}
+
+		writtenContent = strings.Join(gameAcfParser.Format(), "\n")
 	}
 
 	for _, world := range g.worldSaveData {
@@ -315,23 +297,23 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 		return &downloadedMods
 	}
 
-	gameAcfContent, err := os.ReadFile(gameAcfPath)
+	gameAcfParser, err := utils.NewParser(gameAcfPath)
 	if err != nil {
+		logger.Logger.Warnf("获取acf文件失败：%v", err)
 		return &downloadedMods
 	}
 
-	if len(gameAcfContent) != 0 {
-		gameAcfParser := NewAcfParser(string(gameAcfContent))
-		for _, mod := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
-			id, err := strconv.Atoi(mod.ID)
-			if err != nil {
-				id = 0
-			}
-			downloadedMods = append(downloadedMods, DownloadedMod{
-				ID:        id,
-				LocalSize: mod.Size,
-			})
+	mods := gameAcfParser.ListWorkshopItemsInstalled()
+	for _, mod := range mods {
+		id, err := strconv.Atoi(mod.Name)
+		if err != nil {
+			id = 0
 		}
+
+		downloadedMods = append(downloadedMods, DownloadedMod{
+			ID:        id,
+			LocalSize: mod.List["size"],
+		})
 	}
 
 	return &downloadedMods
@@ -667,20 +649,18 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 				logger.Logger.Error("acf文件不存在", "path", gameAcfPath)
 				return err
 			}
-			gameAcfContent, err := os.ReadFile(gameAcfPath)
+
+			gameAcfParser, err := utils.NewParser(gameAcfPath)
 			if err != nil {
 				return err
 			}
 
-			gameAcfParser := NewAcfParser(string(gameAcfContent))
-			for index, mod := range gameAcfParser.AppWorkshop.WorkshopItemsInstalled {
-				if mod.ID == acfID {
-					gameAcfParser.AppWorkshop.WorkshopItemsInstalled = append(gameAcfParser.AppWorkshop.WorkshopItemsInstalled[:index], gameAcfParser.AppWorkshop.WorkshopItemsInstalled[index+1:]...)
-					break
-				}
+			err = gameAcfParser.RemoveWorkshopItemsInstalled(acfID)
+			if err != nil {
+				return err
 			}
 
-			writtenContent := gameAcfParser.FileContent()
+			writtenContent := strings.Join(gameAcfParser.Format(), "\n")
 			err = utils.TruncAndWriteFile(gameAcfPath, writtenContent)
 			if err != nil {
 				return err
