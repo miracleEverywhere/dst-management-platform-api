@@ -74,7 +74,7 @@ func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 
 					db.PlayersStatisticMutex.Lock()
 
-					if len(db.PlayersStatistic[rbs.RoomID]) > parsePlayerInfoSaveTime(saveTime) {
+					if len(db.PlayersStatistic[rbs.RoomID])*interval > parsePlayerInfoSaveTime(saveTime) {
 						// db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID][:0], db.PlayersStatistic[rbs.RoomID][1:]...)
 						db.PlayersStatistic[rbs.RoomID] = db.PlayersStatistic[rbs.RoomID][1:]
 
