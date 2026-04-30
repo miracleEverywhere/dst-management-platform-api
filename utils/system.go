@@ -263,22 +263,15 @@ func BashCMDOutput(cmd string) (string, string, error) {
 
 // ScreenCMD 执行饥荒Console命令
 func ScreenCMD(cmd string, screenName string) error {
-	totalCMD := "screen -S \"" + screenName + "\" -p 0 -X stuff \"" + cmd + "\\n\""
-
-	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
-	err := cmdExec.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	cmdExec := exec.Command("screen", "-S", screenName, "-p", "0", "-X", "stuff", cmd+"\\n")
+	return cmdExec.Run()
 }
 
 // ScreenCMDOutput 执行饥荒Console命令，并从日志中获取输出
 // 自动添加print命令，cmdIdentifier是该命令在日志中输出的唯一标识符
 func ScreenCMDOutput(cmd string, cmdIdentifier string, screenName string, logPath string) (string, error) {
-	totalCMD := "screen -S \"" + screenName + "\" -p 0 -X stuff \"print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n\""
-
-	cmdExec := exec.Command("/bin/bash", "-c", totalCMD)
+	stuffArg := "print('" + cmdIdentifier + "' .. 'DMPSCREENCMD' .. tostring(" + cmd + "))\\n"
+	cmdExec := exec.Command("screen", "-S", screenName, "-p", "0", "-X", "stuff", stuffArg)
 	err := cmdExec.Run()
 	if err != nil {
 		return "", err
@@ -287,13 +280,15 @@ func ScreenCMDOutput(cmd string, cmdIdentifier string, screenName string, logPat
 	// 等待日志打印
 	time.Sleep(50 * time.Millisecond)
 
-	logCmd := "tail -1000 " + logPath
-	out, _, err := BashCMDOutput(logCmd)
+	var stdout bytes.Buffer
+	tailCmd := exec.Command("tail", "-1000", logPath)
+	tailCmd.Stdout = &stdout
+	err = tailCmd.Run()
 	if err != nil {
 		return "", err
 	}
 
-	for _, i := range strings.Split(out, "\n") {
+	for _, i := range strings.Split(stdout.String(), "\n") {
 		if strings.Contains(i, cmdIdentifier+"DMPSCREENCMD") {
 			result := strings.Split(i, "DMPSCREENCMD")
 			return strings.TrimSpace(result[1]), nil
