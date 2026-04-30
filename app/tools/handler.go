@@ -146,6 +146,11 @@ func (h *Handler) backupRestorePost(c *gin.Context) {
 		return
 	}
 
+	if !utils.IsSafeString(reqForm.Filename) {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
 	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
@@ -512,6 +517,11 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 	}
 
 	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !utils.IsSafePath(reqForm.Name) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}

@@ -289,6 +289,11 @@ func (h *Handler) roomGet(c *gin.Context) {
 	}
 	logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
+	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
 	var data XRoomTotalInfo
 	room, err := h.roomDao.GetRoomByID(reqForm.RoomID)
 	if err != nil {
@@ -364,6 +369,11 @@ func (h *Handler) roomWorldsGet(c *gin.Context) {
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
 	}
 
