@@ -65,6 +65,10 @@ func (g *Game) initInfo() {
 
 	// worlds
 	for _, world := range *g.worlds {
+		if !utils.IsSafeString(world.WorldName) {
+			logger.Logger.Warnf("世界名 %s 可能存在注入风险，跳过", world.WorldName)
+			continue
+		}
 		worldPath := fmt.Sprintf("%s/%s", g.clusterPath, world.WorldName)
 		serverIniPath := fmt.Sprintf("%s/server.ini", worldPath)
 		savePath := fmt.Sprintf("%s/save", worldPath)
