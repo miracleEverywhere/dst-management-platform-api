@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	dbLogger "gorm.io/gorm/logger"
 )
@@ -32,6 +32,16 @@ func InitDB(dbPath string) {
 		logger.Logger.Error("数据库连接失败", "err", err)
 		panic(fmt.Sprintf("数据库连接失败: %s", err.Error()))
 	}
+
+	// SQLite 内存优化：WAL模式减少内存、NORMAL同步减I/O、限制页缓存、禁用mmap
+	if rawDB, _ := DB.DB(); rawDB != nil {
+		rawDB.SetMaxOpenConns(1)
+		rawDB.SetMaxIdleConns(1)
+	}
+	DB.Exec("PRAGMA journal_mode=WAL")
+	DB.Exec("PRAGMA synchronous=NORMAL")
+	DB.Exec("PRAGMA cache_size=-512")
+	DB.Exec("PRAGMA mmap_size=0")
 
 	logger.Logger.Info("数据库连接成功")
 
