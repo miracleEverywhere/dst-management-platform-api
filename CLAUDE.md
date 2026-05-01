@@ -8,8 +8,10 @@ DST Management Platform API — a Go backend for managing Don't Starve Together 
 
 ## Build & Run Commands
 
+**推荐在 Linux 服务器上执行 `go build`、`go run` 等编译命令。** 已使用纯 Go 实现的 SQLite 驱动（`github.com/glebarez/sqlite`），无需 CGO。本地可编译，但目标平台仍为 Linux 服务器，需交叉编译或部署后测试。
+
 ```bash
-# Build
+# Build (仅在 Linux 服务器上执行)
 go build -ldflags '-s -w' -v -o dmp .
 
 # Run (default: port 80, DB in ./data, log level info)
