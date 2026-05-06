@@ -201,3 +201,23 @@ func RemoveDuplicates[T comparable](slice []T) []T {
 
 	return result
 }
+
+// GetLastNElements 获取切片中的最后n个元素
+func GetLastNElements[T any](slice []T, n int) []T {
+	length := len(slice)
+
+	// 处理边界情况
+	if n <= 0 {
+		return []T{}
+	}
+
+	if n >= length {
+		// 如果n大于等于切片长度，返回整个切片的副本
+		result := make([]T, length)
+		copy(result, slice)
+		return result
+	}
+
+	// 使用切片操作获取最后n个元素
+	return slice[length-n:]
+}
