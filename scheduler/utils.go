@@ -263,8 +263,8 @@ func GetInternetIP2() (string, error) {
 	return jsonResp.Ip, nil
 }
 
-// 天转为秒
-func parsePlayerInfoSaveTime(saveTime int) int {
+// ParsePlayerInfoSaveTime 天转为秒
+func ParsePlayerInfoSaveTime(saveTime int) int {
 	if saveTime == 0 {
 		saveTime = 1
 	}
