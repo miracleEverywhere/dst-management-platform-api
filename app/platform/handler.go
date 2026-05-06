@@ -333,6 +333,16 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			Interval: reqForm.PlayerGetFrequency,
 			DayAt:    "",
 		})
+
+		db.PlayersStatisticMutex.Lock()
+		for roomID := range db.PlayersStatistic {
+			if len(db.PlayersStatistic[roomID])*reqForm.PlayerGetFrequency > scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) {
+				n := int(scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) / reqForm.PlayerGetFrequency)
+				db.PlayersStatistic[roomID] = utils.GetLastNElements(db.PlayersStatistic[roomID], n)
+			}
+		}
+		db.PlayersStatisticMutex.Unlock()
+
 		if err != nil {
 			logger.Logger.Error("定时任务设置失败", "err", err, "name", "onlinePlayerGet")
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
