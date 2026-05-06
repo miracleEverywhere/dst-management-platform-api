@@ -31,6 +31,7 @@ ACCELERATION_SITE=(
 
 USER=$(whoami)
 ExeFile="$HOME/dmp"
+RUN_SH_CMD="$0 $1"
 
 DMP_GITHUB_HOME_URL="https://github.com/miracleEverywhere/dst-management-platform-api"
 DMP_GITHUB_API_URL="https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest"
@@ -61,20 +62,30 @@ function echo_red_blink() {
 	echo -e "\033[5;31m$*\033[0m"
 }
 
-# 检查用户，只能使用root执行
-if [[ "${USER}" != "root" ]]; then
-	echo_red "请使用root用户执行此脚本"
-	exit 1
+# 检查是否以 no-root 模式运行
+if [[ "$1" == "no-root" ]]; then
+	SUDO="sudo"
+	shift
+	echo_yellow "以非root模式运行，需要root权限的操作将使用sudo"
+else
+	SUDO=""
+	# 检查用户，只能使用root执行
+	if [[ "${USER}" != "root" ]]; then
+		echo_red "请使用root用户执行此脚本，或使用 ./run.sh no-root 以非root模式运行"
+		exit 1
+	fi
 fi
 
 # 设置全局stderr为红色并添加固定格式
 function set_tty() {
+	exec 3>&2
 	exec 2> >(while read -r line; do echo_red "[$(date +'%F %T')] [ERROR] ${line}" >&2; done)
 }
 
 # 恢复stderr颜色
 function unset_tty() {
-	exec 2>/dev/tty
+	exec 2>&3
+	exec 3>&-
 }
 
 # 定义一个函数来提示用户输入
@@ -154,64 +165,34 @@ function generate_acceleration() {
 	fi
 }
 
+# 通用包安装函数
+function install_pkg() {
+	local pkg="$1"
+	OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
+	if [[ ${OS} == "ubuntu" ]]; then
+		${SUDO} apt install -y "$pkg"
+	else
+		if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
+			${SUDO} yum install -y "$pkg"
+		fi
+	fi
+}
+
 # 检查jq
 function check_jq() {
 	echo_cyan "正在检查jq命令"
 	if ! jq --version >/dev/null 2>&1; then
-		OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-		if [[ ${OS} == "ubuntu" ]]; then
-			apt install -y jq
-		else
-			if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
-				yum install -y jq
-			fi
-		fi
+		install_pkg jq
 	fi
 }
 
 function check_curl() {
 	echo_cyan "正在检查curl命令"
 	if ! curl --version >/dev/null 2>&1; then
-		OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-		if [[ ${OS} == "ubuntu" ]]; then
-			apt install -y curl
-		else
-			if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
-				yum install -y curl
-			fi
-		fi
+		install_pkg curl
 	fi
 }
 
-function check_strings() {
-	echo_cyan "正在检查strings命令"
-	if ! strings --version >/dev/null 2>&1; then
-		OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-		if [[ ${OS} == "ubuntu" ]]; then
-			apt install -y binutils
-		else
-			if grep -P "^ID_LIKE=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g" | grep rhel; then
-				yum install -y binutils
-			fi
-		fi
-	fi
-
-}
-
-# Ubuntu检查GLIBC, rhel需要下载文件手动安装
-function check_glibc() {
-	check_strings
-	echo_cyan "正在检查GLIBC版本"
-	OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
-	if [[ ${OS} == "ubuntu" ]]; then
-		if ! strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_2.34 >/dev/null 2>&1; then
-			apt update
-			apt install -y libc6
-		fi
-	else
-		echo_red "非Ubuntu系统，如GLIBC小于2.34，请手动升级"
-	fi
-}
 
 # 下载函数:下载链接,尝试次数,超时时间(s)
 function download() {
@@ -237,17 +218,21 @@ function install_dmp() {
 	check_jq
 	check_curl
 
-	# 获取GITHUB最新releases地址
+	# 获取GITHUB最新releases信息（一次请求获取所有数据）
 	echo_cyan "正在获取下载信息"
-	if ! github_url=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url'); then
+	release_json=$(curl -s -L ${DMP_GITHUB_API_URL})
+	if [[ -z "$release_json" ]]; then
 		echo_red "获取最新版本信息失败，请检查网络连接"
 		exit 1
 	fi
-
-	# sha256 digest
-	echo_cyan "正在获取验证信息"
-	if ! github_digest=$(curl -s -L ${DMP_GITHUB_API_URL} | jq -r '.assets[] | select(.name == "dmp.tgz") | .digest' | awk -F':' '{print $2}'); then
-		echo_red "获取最新版本信息失败，请检查网络连接"
+	github_url=$(echo "$release_json" | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
+	if [[ -z "$github_url" ]]; then
+		echo_red "未找到下载文件，请检查网络连接"
+		exit 1
+	fi
+	github_digest=$(echo "$release_json" | jq -r '.assets[] | select(.name == "dmp.tgz") | .digest' | awk -F':' '{print $2}')
+	if [[ -z "$github_digest" ]]; then
+		echo_red "获取安装包校验值失败，请检查网络连接"
 		exit 1
 	fi
 
@@ -289,14 +274,12 @@ function check_dmp() {
 # 启动主程序
 function start_dmp() {
 	# 检查端口是否被占用,如果被占用则退出
-	port=$(ss -ltnp | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
+	port=$(${SUDO} ss -ltnp | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
 
 	if [ -n "$port" ]; then
-		echo_red "端口 $PORT 已被占用: $port", 修改 run.sh 中的 PORT 变量后重新运行
+		echo_red "端口 $PORT 已被占用: $port", 修改 run.sh 中的 PORT 变量后重新运行或检查饥荒管理平台是否正在运行
 		exit 1
 	fi
-
-	check_glibc
 
 	if [ -e "$ExeFile" ]; then
 		nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} >/dev/null 2>&1 &
@@ -308,7 +291,9 @@ function start_dmp() {
 
 # 关闭主程序
 function stop_dmp() {
-	pkill -9 dmp
+	pkill dmp 2>/dev/null
+	sleep 1
+	pkill -9 dmp 2>/dev/null
 	echo_green "关闭成功"
 	sleep 1
 }
@@ -385,33 +370,33 @@ function set_swap() {
 		echo_green "交换文件已存在，跳过创建步骤"
 	else
 		echo_cyan "创建交换文件..."
-		sudo fallocate -l $SWAPSIZE $SWAPFILE
-		sudo chmod 600 $SWAPFILE
-		sudo mkswap $SWAPFILE
-		sudo swapon $SWAPFILE
+		${SUDO} fallocate -l $SWAPSIZE $SWAPFILE
+		${SUDO} chmod 600 $SWAPFILE
+		${SUDO} mkswap $SWAPFILE
+		${SUDO} swapon $SWAPFILE
 		echo_green "交换文件创建并启用成功"
 	fi
 
 	# 添加到 /etc/fstab 以便开机启动
 	if ! grep -q "$SWAPFILE" /etc/fstab; then
 		echo_cyan "将交换文件添加到 /etc/fstab "
-		echo "$SWAPFILE none swap sw 0 0" | sudo tee -a /etc/fstab
+		echo "$SWAPFILE none swap sw 0 0" | ${SUDO} tee -a /etc/fstab > /dev/null
 		echo_green "交换文件已添加到开机启动"
 	else
 		echo_green "交换文件已在 /etc/fstab 中，跳过添加步骤"
 	fi
 
 	# 更改swap配置并持久化
-	sysctl -w vm.swappiness=20
-	sysctl -w vm.min_free_kbytes=100000
-	echo -e 'vm.swappiness = 20\nvm.min_free_kbytes = 100000\n' >/etc/sysctl.d/dmp_swap.conf
+	${SUDO} sysctl -w vm.swappiness=20
+	${SUDO} sysctl -w vm.min_free_kbytes=100000
+	echo -e 'vm.swappiness = 20\nvm.min_free_kbytes = 100000\n' | ${SUDO} tee /etc/sysctl.d/dmp_swap.conf > /dev/null
 
-	echo_green "系统swap设置成功"
+	echo_green "系统虚拟内存设置成功"
 }
 
 # 设置开机自启
 function auto_start_dmp() {
-	CRON_JOB="@reboot /bin/bash -c 'source /etc/profile && cd /root && echo 1 | /root/run.sh'"
+	CRON_JOB="@reboot /bin/bash -c 'source /etc/profile && cd ${HOME} && echo 1 | ${RUN_SH_CMD}'"
 
 	# 检查 crontab 中是否已存在该命令
 	if crontab -l 2>/dev/null | grep -Fq "$CRON_JOB"; then
