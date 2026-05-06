@@ -377,6 +377,11 @@ func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 	return readPlayerListFromEnd(logPath)
 }
 
+var (
+	playerListPattern = regexp.MustCompile(`playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`)
+	hostPattern       = regexp.MustCompile(`\[Host]`)
+)
+
 func readPlayerListFromEnd(logPath string) ([]string, error) {
 	const bufferSize = 1024 * 4 // 4KB buffer
 
@@ -443,17 +448,13 @@ func readPlayerListFromEnd(logPath string) ([]string, error) {
 		return nil, fmt.Errorf("keyword not found in the file")
 	}
 
-	// 正则表达式匹配模式
-	pattern := `playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`
-	re := regexp.MustCompile(pattern)
-
 	var players []string
 
 	// 查找匹配的行并提取所需字段
 	for _, line := range linesAfterKeyword {
-		if matches := re.FindStringSubmatch(line); matches != nil {
+		if matches := playerListPattern.FindStringSubmatch(line); matches != nil {
 			// 检查是否包含 [Host]
-			if !regexp.MustCompile(`\[Host]`).MatchString(line) {
+			if !hostPattern.MatchString(line) {
 				uid := strings.ReplaceAll(matches[1], "\t", "")
 				nickName := strings.ReplaceAll(matches[2], "\t", "")
 				prefab := strings.ReplaceAll(matches[3], "\t", "")
