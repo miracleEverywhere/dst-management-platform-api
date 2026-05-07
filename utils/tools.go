@@ -157,9 +157,6 @@ func Base64Decode(encodedStr string) (string, error) {
 
 // RandomString 生成指定长度的随机字符串
 func RandomString(length int) string {
-	// 初始化随机种子
-	rand.NewSource(time.Now().UnixNano())
-
 	const letters = "abcdefghijklmnopqrstuvwxyz"
 
 	b := make([]byte, length)
