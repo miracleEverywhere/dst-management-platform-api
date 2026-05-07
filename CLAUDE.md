@@ -105,5 +105,5 @@ Docker setup: multi-stage build (Go build → Ubuntu 24.04 runtime with screen +
 - Indentation: tabs (Go), spaces for YAML/markdown — see `.editorconfig`
 - API prefix: `/v3/` (defined in `utils.ApiVersion`)
 - All API responses use `{"code": 200, "message": "...", "data": ...}`; HTTP status is always 200, errors signaled by `code` field
-- Logger is the global `logger.Logger` (zap SugaredLogger); use structured logging: `logger.Logger.Error("msg", "key", val)`
+- Logger is the global `logger.Logger` (zap SugaredLogger); use `*f` formatted methods: `logger.Logger.Errorf("msg, err: %v", err)`
 - DST game state is controlled through the `dst.Game` controller — never manipulate DST files or screen sessions directly from handlers
