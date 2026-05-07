@@ -420,7 +420,7 @@ func (g *Game) getBackups() ([]BackupFile, error) {
 
 		size, err := utils.GetFileSize(fmt.Sprintf("%s/%s", zipPath, filename))
 		if err != nil {
-			logger.Logger.Warn("获取备份文件大小失败", "err", err)
+			logger.Logger.Warnf("获取备份文件大小失败: %v", "err", err)
 		}
 
 		backupFile = append(backupFile, BackupFile{

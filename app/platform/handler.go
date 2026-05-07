@@ -274,7 +274,7 @@ func metricsGet(c *gin.Context) {
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -308,7 +308,7 @@ func (h *Handler) globalSettingsGet(c *gin.Context) {
 func (h *Handler) globalSettingsPost(c *gin.Context) {
 	var reqForm models.GlobalSetting
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -412,7 +412,7 @@ func (h *Handler) screenRunningGet(c *gin.Context) {
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -446,12 +446,12 @@ func screenKillPost(c *gin.Context) {
 
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
 	if reqForm.ScreenName == "" {
-		logger.Logger.Info("请求参数错误", "api", c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -459,7 +459,7 @@ func screenKillPost(c *gin.Context) {
 	// 校验 ScreenName 只允许字母、数字、下划线和连字符，防止命令注入
 	for _, ch := range reqForm.ScreenName {
 		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-') {
-			logger.Logger.Info("ScreenName包含非法字符", "api", c.Request.URL.Path)
+			logger.Logger.Infof("ScreenName包含非法字符, api: %s", c.Request.URL.Path)
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
@@ -468,7 +468,7 @@ func screenKillPost(c *gin.Context) {
 	cmd := fmt.Sprintf("screen -X -S %s quit", reqForm.ScreenName)
 	err := utils.BashCMD(cmd)
 	if err != nil {
-		logger.Logger.Warn("关闭Screen失败", "err", err)
+		logger.Logger.Warnf("关闭Screen失败: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "kill screen fail"), "data": nil})
 		return
 	}

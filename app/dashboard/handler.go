@@ -26,7 +26,7 @@ func (h *Handler) execGamePost(c *gin.Context) {
 
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Infof("请求参数错误：%v，api：%s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -224,7 +224,7 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -241,7 +241,7 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -315,7 +315,7 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 		err     error
 	)
 	if err = c.ShouldBindQuery(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -332,7 +332,7 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -349,10 +349,10 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 		if db.InternetIP == "" {
 			internetIp, err = scheduler.GetInternetIP1()
 			if err != nil {
-				logger.Logger.Warn("调用公网ip接口1失败", "err", err)
+				logger.Logger.Warnf("调用公网ip接口1失败: %v", err)
 				internetIp, err = scheduler.GetInternetIP2()
 				if err != nil {
-					logger.Logger.Warn("调用公网ip接口2失败", "err", err)
+					logger.Logger.Warnf("调用公网ip接口2失败: %v", err)
 					c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "connection code fail"), "data": nil})
 					return
 				}
@@ -397,7 +397,7 @@ func (h *Handler) connectionCodePut(c *gin.Context) {
 
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -409,7 +409,7 @@ func (h *Handler) connectionCodePut(c *gin.Context) {
 
 	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -435,7 +435,7 @@ func checkLobbyPost(c *gin.Context) {
 
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}

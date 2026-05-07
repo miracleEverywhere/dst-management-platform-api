@@ -459,7 +459,7 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 		cmd := fmt.Sprintf("print('==== DMP Start %s [%d] Start DMP ====')", player.UID, ts)
 		err := utils.ScreenCMD(cmd, screenName)
 		if err != nil {
-			logger.Logger.Warn("执行获取玩家坐标失败，跳过", "err", err)
+			logger.Logger.Warnf("执行获取玩家坐标失败，跳过: %v", err)
 			continue
 		}
 
@@ -468,7 +468,7 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 		cmd = fmt.Sprintf("print(UserToPlayer('%s').Transform:GetWorldPosition())", player.UID)
 		err = utils.ScreenCMD(cmd, screenName)
 		if err != nil {
-			logger.Logger.Warn("执行获取玩家坐标失败，跳过", "err", err)
+			logger.Logger.Warnf("执行获取玩家坐标失败，跳过: %v", err)
 			continue
 		}
 
@@ -477,7 +477,7 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 		cmd = fmt.Sprintf("print('==== DMP End %s [%d] End DMP ====')", player.UID, ts)
 		err = utils.ScreenCMD(cmd, screenName)
 		if err != nil {
-			logger.Logger.Warn("执行获取玩家坐标失败，跳过", "err", err)
+			logger.Logger.Warnf("执行获取玩家坐标失败，跳过: %v", err)
 			continue
 		}
 

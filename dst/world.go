@@ -73,7 +73,7 @@ func (g *Game) createWorlds() error {
 	// 清理删除的世界
 	fileSystemWorlds, err := utils.GetDirs(g.clusterPath, false)
 	if err != nil {
-		logger.Logger.Warn("获取世界目录列表失败", "err", err)
+		logger.Logger.Warnf("获取世界目录列表失败: %v", err)
 		return nil
 	}
 	for _, fileSystemWorld := range fileSystemWorlds {
@@ -81,13 +81,13 @@ func (g *Game) createWorlds() error {
 			// 清理文件
 			err = utils.RemoveDir(fmt.Sprintf("%s/%s", g.clusterPath, fileSystemWorld))
 			if err != nil {
-				logger.Logger.Warn("清理世界失败，删除文件失败", "err", err)
+				logger.Logger.Warnf("清理世界失败，删除文件失败: %v", err)
 			}
 			// 清理screen
 			cmd := fmt.Sprintf("screen -X -S DMP_Cluster_%d_%s quit", g.room.ID, fileSystemWorld)
 			err = utils.BashCMD(cmd)
 			if err != nil {
-				logger.Logger.Warn("清理世界失败，清理SCREEN失败", "err", err)
+				logger.Logger.Warnf("清理世界失败，清理SCREEN失败: %v", err)
 			}
 		}
 	}
@@ -135,7 +135,7 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 
 	diskUsed, err := utils.GetDirSize(world.worldPath)
 	if err != nil {
-		logger.Logger.Warn("获取世界磁盘使用量失败", "world", world.ID, "err", err)
+		logger.Logger.Warnf("获取世界磁盘使用量失败: %v, 世界id: %d", err, world.ID)
 		diskUsed = 0
 	}
 
@@ -151,13 +151,13 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 	logger.Logger.Debug(out)
 
 	if len(out) < 2 {
-		logger.Logger.Warn("获取世界PID失败", "world", world.ID)
+		logger.Logger.Warnf("获取世界PID失败, 世界id: %d", world.ID)
 		return performanceStatus
 	}
 
 	pid, err := strconv.Atoi(strings.TrimSpace(out))
 	if err != nil {
-		logger.Logger.Warn("获取世界PID失败", "world", world.ID, "err", err)
+		logger.Logger.Warnf("获取世界PID失败, id: %d, err: %v", world.ID, err)
 		return performanceStatus
 	}
 
@@ -222,7 +222,7 @@ func (g *Game) startWorld(id int) error {
 
 	// 如果正在运行，则跳过
 	if g.worldUpStatus(id) {
-		logger.Logger.Info("当前世界正在运行中，跳过", "世界ID", id)
+		logger.Logger.Infof("当前世界正在运行中，跳过，世界ID：%d", id)
 		return nil
 	}
 
@@ -261,7 +261,7 @@ func (g *Game) startAllWorld() error {
 	for _, world := range g.worldSaveData {
 		// 如果正在运行，则跳过
 		if g.worldUpStatus(world.ID) {
-			logger.Logger.Info("当前世界正在运行中，跳过", "世界ID", world.ID)
+			logger.Logger.Infof("当前世界正在运行中，跳过，世界ID：%d", id)
 			continue
 		}
 
@@ -283,7 +283,7 @@ func (g *Game) stopWorld(id int) error {
 
 	err = utils.ScreenCMD("c_shutdown()", world.screenName)
 	if err != nil {
-		logger.Logger.Info("执行ScreenCMD失败，可能是未运行", "msg", err, "cmd", "c_shutdown()")
+		logger.Logger.Infof("执行ScreenCMD失败，可能是未运行: %v, cmd: c_shutdown()", err)
 	}
 
 	time.Sleep(1 * time.Second)
@@ -291,7 +291,7 @@ func (g *Game) stopWorld(id int) error {
 	killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
 	err = utils.BashCMD(killCMD)
 	if err != nil {
-		logger.Logger.Info("结束进程失败，可能是未运行", "err", err)
+		logger.Logger.Infof("结束进程失败，可能是未运行: %v", err)
 	}
 
 	return nil

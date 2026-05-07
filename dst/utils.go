@@ -743,7 +743,7 @@ func downloadNotUGCMod(url string, id int) (error, int64) {
 	defer func(filename string) {
 		err := utils.RemoveFile(filename)
 		if err != nil {
-			logger.Logger.Warnf("删除临时文件失败：%s", err.Error())
+			logger.Logger.Warnf("删除临时文件失败：%v", err)
 		}
 	}(filepath)
 

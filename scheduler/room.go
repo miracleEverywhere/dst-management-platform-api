@@ -24,7 +24,7 @@ func BackupClean(roomID int, days int) {
 	if err != nil {
 		logger.Logger.Error("清理备份文件失败", "err", err)
 	}
-	logger.Logger.Info(fmt.Sprintf("清理备份文件成功，共计清理备份文件%d个", count))
+	logger.Logger.Infof("清理备份文件成功，共计清理备份文件%d个", count)
 }
 
 func Restart(game *dst.Game) {

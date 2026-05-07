@@ -65,7 +65,7 @@ func registerJobs() {
 			logger.Logger.Error("注册定时任务失败", "err", err)
 			panic("注册定时任务失败")
 		}
-		logger.Logger.Info(fmt.Sprintf("定时任务[%s]注册成功", job.Name))
+		logger.Logger.Infof("定时任务[%s]注册成功", job.Name)
 	}
 }
 
