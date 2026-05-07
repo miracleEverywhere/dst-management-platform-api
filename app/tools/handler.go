@@ -40,7 +40,7 @@ func (h *Handler) backupGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -48,7 +48,7 @@ func (h *Handler) backupGet(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	backups, err := game.GetBackups()
 	if err != nil {
-		logger.Logger.Error("获取备份文件失败", "err", err)
+		logger.Logger.Errorf("获取备份文件失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get backup fail"), "data": nil})
 		return
 	}
@@ -79,7 +79,7 @@ func (h *Handler) backupPost(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -87,7 +87,7 @@ func (h *Handler) backupPost(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	err = game.Backup()
 	if err != nil {
-		logger.Logger.Error("创建备份文件失败", "err", err)
+		logger.Logger.Errorf("创建备份文件失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "create backup fail"), "data": nil})
 		return
 	}
@@ -119,7 +119,7 @@ func (h *Handler) backupDelete(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -159,7 +159,7 @@ func (h *Handler) backupRestorePost(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -167,28 +167,28 @@ func (h *Handler) backupRestorePost(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	saveData, err := game.Restore(reqForm.Filename)
 	if err != nil {
-		logger.Logger.Error("恢复失败", "err", err)
+		logger.Logger.Errorf("恢复失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
 		return
 	}
 
 	err = h.roomDao.UpdateRoom(&saveData.Room)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
 		return
 	}
 
 	err = h.worldDao.UpdateWorlds(&saveData.Worlds)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
 		return
 	}
 
 	err = h.roomSettingDao.UpdateRoomSetting(&saveData.RoomSetting)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
 		return
 	}
@@ -248,7 +248,7 @@ func (h *Handler) announceGet(c *gin.Context) {
 
 	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -280,7 +280,7 @@ func (h *Handler) announcePut(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -291,7 +291,7 @@ func (h *Handler) announcePut(c *gin.Context) {
 
 	err = h.roomSettingDao.UpdateRoomSetting(roomSetting)
 	if err != nil {
-		logger.Logger.Error("更新通知设置失败", "err", err)
+		logger.Logger.Errorf("更新通知设置失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
 		return
 	}
@@ -306,7 +306,7 @@ func (h *Handler) announcePut(c *gin.Context) {
 		}
 		var announces []scheduler.AnnounceSetting
 		if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
-			logger.Logger.Error("获取定时通知设置失败", "err", err)
+			logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
 			return
 		}
@@ -326,7 +326,7 @@ func (h *Handler) announcePut(c *gin.Context) {
 					DayAt:    "",
 				})
 				if err != nil {
-					logger.Logger.Error("定时通知定时任务处理失败", "err", err)
+					logger.Logger.Errorf("定时通知定时任务处理失败, err: %v", err)
 				}
 			}
 		}
@@ -359,7 +359,7 @@ func (h *Handler) mapGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -458,7 +458,7 @@ func tokenPost(c *gin.Context) {
 
 	token, err := utils.GenerateJWT(user, []byte(db.JwtSecret), expiration)
 	if err != nil {
-		logger.Logger.Error("创建token失败", "err", err)
+		logger.Logger.Errorf("创建token失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "create fail"), "data": nil})
 		return
 	}
@@ -489,7 +489,7 @@ func (h *Handler) snapshotGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -497,7 +497,7 @@ func (h *Handler) snapshotGet(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	snapshot, err := game.GetSnapshot()
 	if err != nil {
-		logger.Logger.Error("获取游戏存档文件失败", "err", err)
+		logger.Logger.Errorf("获取游戏存档文件失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "get snapshot fail", "data": snapshot})
 		return
 	}
@@ -534,7 +534,7 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -550,7 +550,7 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 	// 删除存档文件
 	err = game.DeleteSnapshot(reqForm.Name)
 	if err != nil {
-		logger.Logger.Error("删除游戏存档文件失败", "err", err)
+		logger.Logger.Errorf("删除游戏存档文件失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
 		return
 	}

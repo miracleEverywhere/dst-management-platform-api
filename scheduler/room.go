@@ -13,7 +13,7 @@ func Backup(game *dst.Game) {
 	logger.Logger.Info("执行自动备份任务")
 	err := game.Backup()
 	if err != nil {
-		logger.Logger.Error("备份失败", "err", err)
+		logger.Logger.Errorf("备份失败, err: %v", err)
 	}
 	logger.Logger.Info("备份任务执行成功")
 }
@@ -22,7 +22,7 @@ func BackupClean(roomID int, days int) {
 	backupPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, roomID)
 	count, err := utils.RemoveFilesOlderThan(backupPath, days)
 	if err != nil {
-		logger.Logger.Error("清理备份文件失败", "err", err)
+		logger.Logger.Errorf("清理备份文件失败, err: %v", err)
 	}
 	logger.Logger.Infof("清理备份文件成功，共计清理备份文件%d个", count)
 }
@@ -35,11 +35,11 @@ func Restart(game *dst.Game) {
 		time.Sleep(60 * time.Second)
 		err := game.StopAllWorld()
 		if err != nil {
-			logger.Logger.Warn("关闭游戏失败", "err", err)
+			logger.Logger.Warnf("关闭游戏失败, err: %v", err)
 		}
 		err = game.StartAllWorld()
 		if err != nil {
-			logger.Logger.Error("启动游戏失败", "err", err)
+			logger.Logger.Errorf("启动游戏失败, err: %v", err)
 			logger.Logger.Error("自动重启任务执行失败")
 		} else {
 			logger.Logger.Info("自动重启任务执行成功")
@@ -51,7 +51,7 @@ func ScheduledStart(game *dst.Game) {
 	logger.Logger.Info("执行自动开启游戏")
 	err := game.StartAllWorld()
 	if err != nil {
-		logger.Logger.Error("开启游戏失败", "err", err)
+		logger.Logger.Errorf("开启游戏失败, err: %v", err)
 	}
 	logger.Logger.Info("自动开启游戏执行成功")
 }
@@ -64,7 +64,7 @@ func ScheduledStop(game *dst.Game) {
 		time.Sleep(60 * time.Second)
 		err := game.StopAllWorld()
 		if err != nil {
-			logger.Logger.Warn("关闭游戏失败", "err", err)
+			logger.Logger.Warnf("关闭游戏失败, err: %v", err)
 		}
 		logger.Logger.Info("自动关闭游戏执行成功")
 	}()
@@ -73,7 +73,7 @@ func ScheduledStop(game *dst.Game) {
 func Keepalive(game *dst.Game, roomID int) {
 	worlds, err := DBHandler.worldDao.GetWorldsByRoomID(roomID)
 	if err != nil {
-		logger.Logger.Error("获取世界信息失败，自动保活任务终止", "err", err)
+		logger.Logger.Errorf("获取世界信息失败，自动保活任务终止, err: %v", err)
 		return
 	}
 
@@ -85,11 +85,11 @@ func Keepalive(game *dst.Game, roomID int) {
 	for _, world := range *worlds {
 		lastTime, err := game.GetLastAliveTime(world.ID)
 		if err != nil {
-			logger.Logger.Error("获取日志信息失败，无法判断，跳过", "err", err, "world", world.ID)
+			logger.Logger.Errorf("获取日志信息失败，无法判断，跳过, err: %v, world: %v", err, world.ID)
 			continue
 		}
 		if lastTime == world.LastAliveTime {
-			logger.Logger.Error("发现世界运行异常，即将执行重启操作", "world", world.ID)
+			logger.Logger.Errorf("发现世界运行异常，即将执行重启操作, world: %v", world.ID)
 			_ = game.StopWorld(world.ID)
 			_ = game.StartWorld(world.ID)
 		} else {
@@ -102,7 +102,7 @@ func Keepalive(game *dst.Game, roomID int) {
 	if needUpdateDB {
 		err = DBHandler.worldDao.UpdateWorlds(&updatedWorlds)
 		if err != nil {
-			logger.Logger.Error("更新数据失败", "err", err)
+			logger.Logger.Errorf("更新数据失败, err: %v", err)
 		}
 	}
 }
@@ -110,6 +110,6 @@ func Keepalive(game *dst.Game, roomID int) {
 func Announce(game *dst.Game, content string) {
 	err := game.Announce(content)
 	if err != nil {
-		logger.Logger.Error("定时通知失败", "err", err)
+		logger.Logger.Errorf("定时通知失败, err: %v", err)
 	}
 }

@@ -33,7 +33,7 @@ func (h *Handler) contentGet(c *gin.Context) {
 
 		room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 		if err != nil {
-			logger.Logger.Error("获取基本信息失败", "err", err)
+			logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 			return
 		}
@@ -74,7 +74,7 @@ func (h *Handler) historyListGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -101,7 +101,7 @@ func (h *Handler) historyContentGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -125,7 +125,7 @@ func (h *Handler) cleanInfoGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -149,7 +149,7 @@ func (h *Handler) cleanDelete(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -183,7 +183,7 @@ func (h *Handler) downloadGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -204,7 +204,7 @@ func (h *Handler) downloadGet(c *gin.Context) {
 
 	err = utils.EnsureDirExists(zipFilePath)
 	if err != nil {
-		logger.Logger.Error("创建目录失败", "err", err)
+		logger.Logger.Errorf("创建目录失败, err: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": message.Get(c, "download fail"), "data": nil})
 		return
 	}
@@ -212,7 +212,7 @@ func (h *Handler) downloadGet(c *gin.Context) {
 
 	err = utils.ZipFiles(fileList, zipFile)
 	if err != nil {
-		logger.Logger.Error("创建压缩文件失败", "err", err)
+		logger.Logger.Errorf("创建压缩文件失败, err: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": message.Get(c, "download fail"), "data": nil})
 		return
 	}

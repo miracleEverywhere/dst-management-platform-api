@@ -240,7 +240,7 @@ func (mf *ModInfoParser) Parse(lang string) error {
 
 	// 加载并执行 Lua 脚本
 	if err := L.DoString(mf.ModInfoLua); err != nil {
-		logger.Logger.Debug("执行modinfo.lua失败", "err", err)
+		logger.Logger.Debugf("执行modinfo.lua失败, err: %v", err)
 		return err
 	}
 
@@ -338,7 +338,7 @@ func (p *ModORParser) close() {
 // Parse 解析Lua配置文件内容
 func (p *ModORParser) Parse(luaContent, lang string) (ModORCollection, error) {
 	if err := p.L.DoString(luaContent); err != nil {
-		logger.Logger.Debug("这里出问题?", "err", err)
+		logger.Logger.Debugf("这里出问题?, err: %v", err)
 		return nil, err
 	}
 
@@ -769,19 +769,19 @@ func replaceDSTSOFile() {
 	var err error
 	err = utils.BashCMD("mv dst/bin/lib32/steamclient.so dst/bin/lib32/steamclient.so.bak")
 	if err != nil {
-		logger.Logger.Error("替换so文件失败", "err", err)
+		logger.Logger.Errorf("替换so文件失败, err: %v", err)
 	}
 	err = utils.BashCMD("cp steamcmd/linux32/steamclient.so dst/bin/lib32/steamclient.so")
 	if err != nil {
-		logger.Logger.Error("替换so文件失败", "err", err)
+		logger.Logger.Errorf("替换so文件失败, err: %v", err)
 	}
 	err = utils.BashCMD("mv dst/bin64/lib64/steamclient.so dst/bin64/lib64/steamclient.so.bak")
 	if err != nil {
-		logger.Logger.Error("替换so文件失败", "err", err)
+		logger.Logger.Errorf("替换so文件失败, err: %v", err)
 	}
 	err = utils.BashCMD("cp steamcmd/linux64/steamclient.so dst/bin64/lib64/steamclient.so")
 	if err != nil {
-		logger.Logger.Error("替换so文件失败", "err", err)
+		logger.Logger.Errorf("替换so文件失败, err: %v", err)
 	}
 }
 

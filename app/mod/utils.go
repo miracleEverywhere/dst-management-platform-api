@@ -116,7 +116,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logger.Logger.Error("请求关闭失败", "err", err)
+			logger.Logger.Errorf("请求关闭失败, err: %v", err)
 		}
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
@@ -125,7 +125,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		logger.Logger.Error("解析JSON失败", "err", err)
+		logger.Logger.Errorf("解析JSON失败, err: %v", err)
 		return Data{}, err
 	}
 
@@ -181,7 +181,7 @@ func SearchModById(id int, lang string) (Data, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logger.Logger.Error("请求关闭失败", "err", err)
+			logger.Logger.Errorf("请求关闭失败, err: %v", err)
 		}
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
@@ -190,7 +190,7 @@ func SearchModById(id int, lang string) (Data, error) {
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		logger.Logger.Error("解析JSON失败", "err", err)
+		logger.Logger.Errorf("解析JSON失败, err: %v", err)
 		return Data{}, err
 	}
 
@@ -247,7 +247,7 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logger.Logger.Error("请求关闭失败", "err", err)
+			logger.Logger.Errorf("请求关闭失败, err: %v", err)
 		}
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
@@ -256,7 +256,7 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		logger.Logger.Error("解析JSON失败", "err", err)
+		logger.Logger.Errorf("解析JSON失败, err: %v", err)
 		return err
 	}
 

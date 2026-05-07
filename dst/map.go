@@ -108,7 +108,7 @@ func (g *Game) generateBackgroundMap(worldID int) (MapData, error) {
 
 	fileContent, err := os.ReadFile(filepath)
 	if err != nil {
-		logger.Logger.Error("打开存档文件失败", "err", err)
+		logger.Logger.Errorf("打开存档文件失败, err: %v", err)
 		return MapData{}, err
 	}
 
@@ -155,7 +155,7 @@ func (g *Game) generateBackgroundMap(worldID int) (MapData, error) {
 
 	tilesDecoded, err := base64.StdEncoding.DecodeString(string(tiles))
 	if err != nil {
-		logger.Logger.Error("tiles字段解码失败", "err", err)
+		logger.Logger.Errorf("tiles字段解码失败, err: %v", err)
 		return MapData{}, errors.New("tiles字段解码失败")
 	}
 
@@ -192,7 +192,7 @@ func (g *Game) generateBackgroundMap(worldID int) (MapData, error) {
 	// 将图像编码为PNG格式的字节
 	var buf bytes.Buffer
 	if err = png.Encode(&buf, img); err != nil {
-		logger.Logger.Error("图片编码失败", "err", err)
+		logger.Logger.Errorf("图片编码失败, err: %v", err)
 		return MapData{}, err
 	}
 
@@ -327,7 +327,7 @@ func (g *Game) countPrefabs(worldID int) []PrefabItem {
 	cmd1 := "print('=== world prefabs counting start ===')"
 	err = utils.ScreenCMD(cmd1, screenName)
 	if err != nil {
-		logger.Logger.Error("统计世界失败", "err", err)
+		logger.Logger.Errorf("统计世界失败, err: %v", err)
 		return prefabs
 	}
 
@@ -340,21 +340,21 @@ func (g *Game) countPrefabs(worldID int) []PrefabItem {
 	cmd2 := "print('=== world prefabs counting finish ===')"
 	err = utils.ScreenCMD(cmd2, screenName)
 	if err != nil {
-		logger.Logger.Error("统计世界失败", "err", err)
+		logger.Logger.Errorf("统计世界失败, err: %v", err)
 		return prefabs
 	}
 	time.Sleep(100 * time.Millisecond)
 
 	file, err := os.Open(logPath)
 	if err != nil {
-		logger.Logger.Error("统计世界失败", "err", err)
+		logger.Logger.Errorf("统计世界失败, err: %v", err)
 		return prefabs
 	}
 
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			logger.Logger.Error("文件关闭失败", "err", err)
+			logger.Logger.Errorf("文件关闭失败, err: %v", err)
 		}
 	}(file)
 

@@ -22,12 +22,12 @@ func getPlayerList(filepath string) []string {
 	// 预留位 黑名单 管理员
 	err := utils.EnsureFileExists(filepath)
 	if err != nil {
-		logger.Logger.Error("创建文件失败", "err", err, "file", filepath)
+		logger.Logger.Errorf("创建文件失败, err: %v, file: %v", err, filepath)
 		return []string{}
 	}
 	al, err := utils.ReadLinesToSlice(filepath)
 	if err != nil {
-		logger.Logger.Error("读取文件失败", "err", err, "file", filepath)
+		logger.Logger.Errorf("读取文件失败, err: %v, file: %v", err, filepath)
 		return []string{}
 	}
 	var uidList []string

@@ -260,7 +260,7 @@ func websshWS(c *gin.Context) {
 func osInfoGet(c *gin.Context) {
 	osInfo, err := getOSInfo()
 	if err != nil {
-		logger.Logger.Error("获取系统信息失败", "err", err)
+		logger.Logger.Errorf("获取系统信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get os info fail"), "data": nil})
 		return
 	}
@@ -297,7 +297,7 @@ func (h *Handler) globalSettingsGet(c *gin.Context) {
 
 	err := h.globalSettingDao.GetGlobalSetting(&globalSettings)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -317,7 +317,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 
 	err := h.globalSettingDao.GetGlobalSetting(&dbGlobalSettings)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -345,7 +345,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 		db.PlayersStatisticMutex.Unlock()
 
 		if err != nil {
-			logger.Logger.Error("定时任务设置失败", "err", err, "name", "onlinePlayerGet")
+			logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "onlinePlayerGet")
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
 			return
 		}
@@ -363,7 +363,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 				DayAt:    "",
 			})
 			if err != nil {
-				logger.Logger.Error("定时任务设置失败", "err", err, "name", "systemMetricsGet")
+				logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "systemMetricsGet")
 				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
 				return
 			}
@@ -385,7 +385,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 				DayAt:    reqForm.AutoUpdateSetting,
 			})
 			if err != nil {
-				logger.Logger.Error("定时任务设置失败", "err", err, "name", "gameUpdate")
+				logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "gameUpdate")
 				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
 				return
 			}
@@ -397,7 +397,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 	if needUpdateDB {
 		err = h.globalSettingDao.UpdateGlobalSetting(&reqForm)
 		if err != nil {
-			logger.Logger.Error("更新数据库失败", "err", err)
+			logger.Logger.Errorf("更新数据库失败, err: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 			return
 		}
@@ -423,7 +423,7 @@ func (h *Handler) screenRunningGet(c *gin.Context) {
 	}
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -431,7 +431,7 @@ func (h *Handler) screenRunningGet(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	screens, err := game.RunningScreens()
 	if err != nil {
-		logger.Logger.Error("获取正在运行的screen失败", "err", err)
+		logger.Logger.Errorf("获取正在运行的screen失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get screens fail"), "data": []string{}})
 		return
 	}

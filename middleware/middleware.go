@@ -65,7 +65,7 @@ func AdminOnly() gin.HandlerFunc {
 		if !exist {
 			nickname = "获取失败"
 		}
-		logger.Logger.Warn("越权请求", "ip", c.ClientIP(), "user", username, "nickname", nickname)
+		logger.Logger.Warnf("越权请求, ip: %v, user: %v, nickname: %v", c.ClientIP(), username, nickname)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": utils.I18n.Get(c, "permission needed"), "data": nil})
 		c.Abort()
 		return

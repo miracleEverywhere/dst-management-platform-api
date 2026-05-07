@@ -47,7 +47,7 @@ func UpdateJob(jobConfig *JobConfig) error {
 		return fmt.Errorf("未知的时间类型: %s, 任务名: %s", jobConfig.TimeType, jobConfig.Name)
 	}
 
-	logger.Logger.Debug("正在创建定时任务", "name", jobConfig.Name, "type", jobConfig.TimeType)
+	logger.Logger.Debugf("正在创建定时任务, name: %v, type: %v", jobConfig.Name, jobConfig.TimeType)
 
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func GetJobsByType(roomID int, jobType string) []string {
 
 	var n []string
 	for jobName, _ := range currentJobs {
-		logger.Logger.Debug("定时任务名", "jobName", jobName, "jobType", jobType)
+		logger.Logger.Debugf("定时任务名, jobName: %v, jobType: %v", jobName, jobType)
 		if strings.HasSuffix(jobName, jobType) {
 			s := strings.Split(jobName, "-")
 			if s[0] == strconv.Itoa(roomID) {

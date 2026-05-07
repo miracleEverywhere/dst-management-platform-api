@@ -116,7 +116,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	}
 	var backupSettings []BackupSetting
 	if err := json.Unmarshal([]byte(roomSetting.BackupSetting), &backupSettings); err != nil {
-		logger.Logger.Error("获取房间备份设置失败", "err", err)
+		logger.Logger.Errorf("获取房间备份设置失败, err: %v", err)
 	}
 	if roomSetting.BackupEnable {
 		if len(backupSettings) >= len(backupNames) {
@@ -131,7 +131,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 					DayAt:    s.Time,
 				})
 				if err != nil {
-					logger.Logger.Error("备份定时任务处理失败", "err", err)
+					logger.Logger.Errorf("备份定时任务处理失败, err: %v", err)
 				}
 			}
 		} else {
@@ -149,7 +149,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 						DayAt:    backupSettings[i].Time,
 					})
 					if err != nil {
-						logger.Logger.Error("备份定时任务处理失败", "err", err)
+						logger.Logger.Errorf("备份定时任务处理失败, err: %v", err)
 					}
 				}
 			}
@@ -171,7 +171,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			DayAt:    "05:16:27",
 		})
 		if err != nil {
-			logger.Logger.Error("备份清理定时任务处理失败", "err", err)
+			logger.Logger.Errorf("备份清理定时任务处理失败, err: %v", err)
 		}
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-BackupClean", roomID))
@@ -187,7 +187,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			DayAt:    roomSetting.RestartSetting,
 		})
 		if err != nil {
-			logger.Logger.Error("重启定时任务处理失败", "err", err)
+			logger.Logger.Errorf("重启定时任务处理失败, err: %v", err)
 		}
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-Restart", roomID))
@@ -200,7 +200,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 		}
 		var scheduledStartStopSetting ScheduledStartStopSetting
 		if err := json.Unmarshal([]byte(roomSetting.ScheduledStartStopSetting), &scheduledStartStopSetting); err != nil {
-			logger.Logger.Error("获取自动开启关闭游戏设置失败", "err", err)
+			logger.Logger.Errorf("获取自动开启关闭游戏设置失败, err: %v", err)
 		}
 		err := scheduler.UpdateJob(&scheduler.JobConfig{
 			Name:     fmt.Sprintf("%d-ScheduledStart", roomID),
@@ -211,7 +211,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			DayAt:    scheduledStartStopSetting.Start,
 		})
 		if err != nil {
-			logger.Logger.Error("自动开启游戏任务处理失败", "err", err)
+			logger.Logger.Errorf("自动开启游戏任务处理失败, err: %v", err)
 		}
 		err = scheduler.UpdateJob(&scheduler.JobConfig{
 			Name:     fmt.Sprintf("%d-ScheduledStop", roomID),
@@ -222,7 +222,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			DayAt:    scheduledStartStopSetting.Stop,
 		})
 		if err != nil {
-			logger.Logger.Error("自动关闭游戏任务处理失败", "err", err)
+			logger.Logger.Errorf("自动关闭游戏任务处理失败, err: %v", err)
 		}
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-ScheduledStart", roomID))
@@ -239,7 +239,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 			DayAt:    "",
 		})
 		if err != nil {
-			logger.Logger.Error("自动保活定时任务处理失败", "err", err)
+			logger.Logger.Errorf("自动保活定时任务处理失败, err: %v", err)
 		}
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-Keepalive", roomID))

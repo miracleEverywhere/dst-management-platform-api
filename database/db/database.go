@@ -29,7 +29,7 @@ func InitDB(dbPath string) {
 		Logger: dbLogger.Default.LogMode(dbLogger.Silent),
 	})
 	if err != nil {
-		logger.Logger.Error("数据库连接失败", "err", err)
+		logger.Logger.Errorf("数据库连接失败, err: %v", err)
 		panic(fmt.Sprintf("数据库连接失败: %s", err.Error()))
 	}
 
@@ -60,7 +60,7 @@ func CheckTables() {
 		&models.UidMap{},
 	)
 	if err != nil {
-		logger.Logger.Error("数据库表结构检查失败", "err", err)
+		logger.Logger.Errorf("数据库表结构检查失败, err: %v", err)
 		panic(fmt.Sprintf("数据库表结构检查失败: %s", err.Error()))
 	}
 	logger.Logger.Debug("数据库表结构检查完成")

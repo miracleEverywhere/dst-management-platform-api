@@ -62,7 +62,7 @@ func registerJobs() {
 	for _, job := range Jobs {
 		err := UpdateJob(&job)
 		if err != nil {
-			logger.Logger.Error("注册定时任务失败", "err", err)
+			logger.Logger.Errorf("注册定时任务失败, err: %v", err)
 			panic("注册定时任务失败")
 		}
 		logger.Logger.Infof("定时任务[%s]注册成功", job.Name)
@@ -85,13 +85,13 @@ func GetDSTVersion() DSTVersion {
 
 	file, err := os.Open(utils.DSTLocalVersionPath)
 	if err != nil {
-		logger.Logger.Error("获取游戏版本失败", "err", err)
+		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 		return dstVersion
 	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			logger.Logger.Error("关闭文件失败", "err", err)
+			logger.Logger.Errorf("关闭文件失败, err: %v", err)
 		}
 	}(file) // 确保文件在函数结束时关闭
 
@@ -106,7 +106,7 @@ func GetDSTVersion() DSTVersion {
 		// 将字符串转换为整数
 		number, err := strconv.Atoi(line)
 		if err != nil {
-			logger.Logger.Error("获取游戏版本失败", "err", err)
+			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 			return dstVersion
 		}
 		dstVersion.Local = number
@@ -114,33 +114,33 @@ func GetDSTVersion() DSTVersion {
 		// 发送 HTTP GET 请求
 		response, err := client.Get(utils.DSTServerVersionApi)
 		if err != nil {
-			logger.Logger.Error("获取游戏版本失败", "err", err)
+			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 			return dstVersion
 		}
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
 			if err != nil {
-				logger.Logger.Error("关闭文件失败", "err", err)
+				logger.Logger.Errorf("关闭文件失败, err: %v", err)
 			}
 		}(response.Body) // 确保在函数结束时关闭响应体
 
 		// 检查 HTTP 状态码
 		if response.StatusCode != http.StatusOK {
-			logger.Logger.Error("获取游戏版本失败", "err", err)
+			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 			return dstVersion
 		}
 
 		// 读取响应体内容
 		body, err := io.ReadAll(response.Body)
 		if err != nil {
-			logger.Logger.Error("获取游戏版本失败", "err", err)
+			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 			return dstVersion
 		}
 
 		// 将字节数组转换为字符串并返回
 		serverVersion, err := strconv.Atoi(string(body))
 		if err != nil {
-			logger.Logger.Error("获取游戏版本失败", "err", err)
+			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 			return dstVersion
 		}
 
@@ -153,7 +153,7 @@ func GetDSTVersion() DSTVersion {
 	if err := scanner.Err(); err != nil {
 		dstVersion.Server = 0
 		dstVersion.Local = 0
-		logger.Logger.Error("获取游戏版本失败", "err", err)
+		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 
 		return dstVersion
 	}
@@ -199,7 +199,7 @@ func GetInternetIP1() (string, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logger.Logger.Error("请求关闭失败", "err", err)
+			logger.Logger.Errorf("请求关闭失败, err: %v", err)
 		}
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 
@@ -209,7 +209,7 @@ func GetInternetIP1() (string, error) {
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		logger.Logger.Error("解析JSON失败", "err", err)
+		logger.Logger.Errorf("解析JSON失败, err: %v", err)
 		return "", err
 	}
 	return jsonResp.Query, nil
@@ -229,7 +229,7 @@ func GetInternetIP2() (string, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logger.Logger.Error("请求关闭失败", "err", err)
+			logger.Logger.Errorf("请求关闭失败, err: %v", err)
 		}
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 
@@ -239,7 +239,7 @@ func GetInternetIP2() (string, error) {
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		logger.Logger.Error("解析JSON失败", "err", err)
+		logger.Logger.Errorf("解析JSON失败, err: %v", err)
 		return "", err
 	}
 	return jsonResp.Ip, nil

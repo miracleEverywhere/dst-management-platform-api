@@ -418,7 +418,7 @@ func (h *Handler) connectionCodePut(c *gin.Context) {
 
 	err = h.roomSettingDao.UpdateRoomSetting(roomSetting)
 	if err != nil {
-		logger.Logger.Error("修改房间设置失败", "err", err)
+		logger.Logger.Errorf("修改房间设置失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
 		return
 	}

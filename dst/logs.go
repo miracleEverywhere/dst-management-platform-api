@@ -148,7 +148,7 @@ func (g *Game) logsClean(cleanLogs *CleanLogs) bool {
 			err := utils.RemoveDir(fmt.Sprintf("%s/backup/server_log", world.worldPath))
 			if err != nil {
 				allSuccess = false
-				logger.Logger.Error("删除游戏日志失败", "err", err)
+				logger.Logger.Errorf("删除游戏日志失败, err: %v", err)
 			}
 		}
 	}
@@ -157,7 +157,7 @@ func (g *Game) logsClean(cleanLogs *CleanLogs) bool {
 			err := utils.RemoveDir(fmt.Sprintf("%s/backup/server_chat_log", world.worldPath))
 			if err != nil {
 				allSuccess = false
-				logger.Logger.Error("删除聊天日志失败", "err", err)
+				logger.Logger.Errorf("删除聊天日志失败, err: %v", err)
 			}
 		}
 	}
@@ -165,21 +165,21 @@ func (g *Game) logsClean(cleanLogs *CleanLogs) bool {
 		err := utils.TruncAndWriteFile("Steam/logs/bootstrap_log.txt", "")
 		if err != nil {
 			allSuccess = false
-			logger.Logger.Error("删除Steam日志失败", "err", err)
+			logger.Logger.Errorf("删除Steam日志失败, err: %v", err)
 		}
 	}
 	if cleanLogs.Access {
 		err := utils.TruncAndWriteFile("logs/access.log", "")
 		if err != nil {
 			allSuccess = false
-			logger.Logger.Error("删除请求日志失败", "err", err)
+			logger.Logger.Errorf("删除请求日志失败, err: %v", err)
 		}
 	}
 	if cleanLogs.Runtime {
 		err := utils.TruncAndWriteFile("logs/runtime.log", "")
 		if err != nil {
 			allSuccess = false
-			logger.Logger.Error("删除运行日志失败", "err", err)
+			logger.Logger.Errorf("删除运行日志失败, err: %v", err)
 		}
 	}
 

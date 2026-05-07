@@ -41,7 +41,7 @@ func modSearchGet(c *gin.Context) {
 		}
 		data, err := SearchModById(id, langStr)
 		if err != nil {
-			logger.Logger.Error("获取mod信息失败", "err", err)
+			logger.Logger.Errorf("获取mod信息失败, err: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "search fail"), "data": nil})
 			return
 		}
@@ -52,7 +52,7 @@ func modSearchGet(c *gin.Context) {
 	if searchForm.SearchType == "text" {
 		data, err := SearchMod(searchForm.Page, searchForm.PageSize, searchForm.SearchText, langStr)
 		if err != nil {
-			logger.Logger.Error("获取mod信息失败", "err", err)
+			logger.Logger.Errorf("获取mod信息失败, err: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "search fail"), "data": nil})
 			return
 		}
@@ -91,7 +91,7 @@ func (h *Handler) downloadPost(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -129,7 +129,7 @@ func (h *Handler) downloadedModsGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -161,7 +161,7 @@ func (h *Handler) settingModConfigStructGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -193,7 +193,7 @@ func (h *Handler) settingModConfigValueGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -225,7 +225,7 @@ func (h *Handler) settingModConfigValuePut(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -240,14 +240,14 @@ func (h *Handler) settingModConfigValuePut(c *gin.Context) {
 
 	err = h.roomDao.UpdateRoom(room)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
 	err = h.worldDao.UpdateWorlds(worlds)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -271,7 +271,7 @@ func (h *Handler) addEnablePost(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -279,21 +279,21 @@ func (h *Handler) addEnablePost(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	err = game.ModEnable(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
 	if err != nil {
-		logger.Logger.Error("模组启用失败", "err", err)
+		logger.Logger.Errorf("模组启用失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod enable fail"), "data": nil})
 		return
 	}
 
 	err = h.roomDao.UpdateRoom(room)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
 	err = h.worldDao.UpdateWorlds(worlds)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -316,7 +316,7 @@ func (h *Handler) addDisablePost(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -324,21 +324,21 @@ func (h *Handler) addDisablePost(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	err = game.ModDisable(reqForm.ID)
 	if err != nil {
-		logger.Logger.Error("模组禁用失败", "err", err)
+		logger.Logger.Errorf("模组禁用失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod disable fail"), "data": nil})
 		return
 	}
 
 	err = h.roomDao.UpdateRoom(room)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
 
 	err = h.worldDao.UpdateWorlds(worlds)
 	if err != nil {
-		logger.Logger.Error("更新房间失败", "err", err)
+		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -360,7 +360,7 @@ func (h *Handler) getEnabledModsGet(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -396,7 +396,7 @@ func (h *Handler) deletePost(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -404,7 +404,7 @@ func (h *Handler) deletePost(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	err = game.ModDelete(reqForm.ID, reqForm.FileURL)
 	if err != nil {
-		logger.Logger.Error("删除模组失败", "err", err)
+		logger.Logger.Errorf("删除模组失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
 		return
 	}
@@ -425,7 +425,7 @@ func (h *Handler) acfDelete(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -433,7 +433,7 @@ func (h *Handler) acfDelete(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	err = game.DeleteAcf()
 	if err != nil {
-		logger.Logger.Error("删除acf文件失败", "err", err)
+		logger.Logger.Errorf("删除acf文件失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
 		return
 	}

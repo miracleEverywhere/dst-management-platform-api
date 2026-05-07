@@ -95,7 +95,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		logger.Logger.Debug(downloadCmd)
 		err = utils.BashCMD(downloadCmd)
 		if err != nil {
-			logger.Logger.Error("下载模组失败", "err", err)
+			logger.Logger.Errorf("下载模组失败, err: %v", err)
 			return err, modSize
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -104,14 +104,14 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		logger.Logger.Debugf("正在移动模组：%d", id)
 		err = g.removeGameOldMod(id)
 		if err != nil {
-			logger.Logger.Error("移动模组失败", "err", err)
+			logger.Logger.Errorf("移动模组失败, err: %v", err)
 			return err, modSize
 		}
 		copyCmd := g.generateModCopyCmd(id)
 		logger.Logger.Debug(copyCmd)
 		err = utils.BashCMD(copyCmd)
 		if err != nil {
-			logger.Logger.Error("移动模组失败", "err", err)
+			logger.Logger.Errorf("移动模组失败, err: %v", err)
 			return err, modSize
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -125,14 +125,14 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		}
 		err = g.processAcf(id)
 		if err != nil {
-			logger.Logger.Error("修改acf文件失败", "err", err)
+			logger.Logger.Errorf("修改acf文件失败, err: %v", err)
 			// 下载失败就恢复下载前的acf文件
 			logger.Logger.Info("正在恢复旧的acf文件")
 			for _, world := range g.worldSaveData {
 				gameAcfPath = fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
 				writeErr := utils.WriteLinesFromSlice(gameAcfPath, gameAcfContent)
 				if writeErr != nil {
-					logger.Logger.Error("恢复acf文件失败", "err", writeErr)
+					logger.Logger.Errorf("恢复acf文件失败, err: %v", writeErr)
 				}
 			}
 
@@ -144,7 +144,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		logger.Logger.Debugf("模组路径为%s", fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
 		logger.Logger.Debugf("模组大小为%d", modSize)
 		if err != nil {
-			logger.Logger.Error("获取模组大小失败", "err", err)
+			logger.Logger.Errorf("获取模组大小失败, err: %v", err)
 			return err, modSize
 		}
 
@@ -153,7 +153,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		// 2. 解压zip文件至dst/mods/workshop-id
 		err, modSize = downloadNotUGCMod(fileURL, id)
 		if err != nil {
-			logger.Logger.Error("下载mod失败", "err", err)
+			logger.Logger.Errorf("下载mod失败, err: %v", err)
 			return err, modSize
 		}
 	}
@@ -205,7 +205,7 @@ func (g *Game) processAcf(id int) error {
 
 	err := utils.EnsureFileExists(gameAcfPath)
 	if err != nil {
-		logger.Logger.Error("EnsureFileExists失败", "path", gameAcfPath)
+		logger.Logger.Errorf("EnsureFileExists失败, path: %v", gameAcfPath)
 		return err
 	}
 
@@ -293,7 +293,7 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
 	err = utils.EnsureFileExists(gameAcfPath)
 	if err != nil {
-		logger.Logger.Error("EnsureFileExists失败", "path", gameAcfPath)
+		logger.Logger.Errorf("EnsureFileExists失败, path: %v", gameAcfPath)
 		return &downloadedMods
 	}
 
@@ -344,13 +344,13 @@ func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]Configur
 
 	parser, err := NewModInfoParser(modinfoLuaPath, modID)
 	if err != nil {
-		logger.Logger.Error("读取modinfo文件失败", "err", err)
+		logger.Logger.Errorf("读取modinfo文件失败, err: %v", err)
 		return parser.Configuration, err
 	}
 
 	err = parser.Parse(g.lang)
 	if err != nil {
-		logger.Logger.Error("解析modinfo文件失败", "err", err)
+		logger.Logger.Errorf("解析modinfo文件失败, err: %v", err)
 		return parser.Configuration, err
 	}
 
@@ -369,7 +369,7 @@ func (g *Game) getModConfigureOptionsValues(worldID, modID int, ugc bool) (*ModO
 	} else {
 		world, err := g.getWorldByID(worldID)
 		if err != nil {
-			logger.Logger.Debug("这里出问题?", "err", err)
+			logger.Logger.Debugf("这里出问题?, err: %v", err)
 			return &ModORConfig{}, err
 		}
 		modORContent = world.ModData
@@ -377,7 +377,7 @@ func (g *Game) getModConfigureOptionsValues(worldID, modID int, ugc bool) (*ModO
 
 	mods, err := modORParser.Parse(modORContent, g.lang)
 	if err != nil {
-		logger.Logger.Debug("这里出问题?", "err", err)
+		logger.Logger.Debugf("这里出问题?, err: %v", err)
 		return &ModORConfig{}, err
 	}
 
@@ -402,7 +402,7 @@ func (g *Game) modEnable(worldID, modID int, ugc bool) error {
 	} else {
 		options, err = g.getModConfigureOptions(worldID, modID, ugc)
 		if err != nil {
-			logger.Logger.Debug("这里出问题?", "err", err)
+			logger.Logger.Debugf("这里出问题?, err: %v", err)
 			return err
 		}
 	}
@@ -427,7 +427,7 @@ func (g *Game) modEnable(worldID, modID int, ugc bool) error {
 		if modORContent != "" {
 			mods, err = modORParser.Parse(modORContent, g.lang)
 			if err != nil {
-				logger.Logger.Debug("这里出问题?", "err", err)
+				logger.Logger.Debugf("这里出问题?, err: %v", err)
 				return err
 			}
 		}
@@ -448,7 +448,7 @@ func (g *Game) modEnable(worldID, modID int, ugc bool) error {
 			if modORContent != "" {
 				mods, err = modORParser.Parse(modORContent, g.lang)
 				if err != nil {
-					logger.Logger.Debug("这里出问题?", "err", err)
+					logger.Logger.Debugf("这里出问题?, err: %v", err)
 					return err
 				}
 			}
@@ -500,7 +500,7 @@ func (g *Game) modConfigureOptionsValuesChange(worldID, modID int, modConfig *Mo
 	} else {
 		world, err := g.getWorldByID(worldID)
 		if err != nil {
-			logger.Logger.Debug("这里出问题?", "err", err)
+			logger.Logger.Debugf("这里出问题?, err: %v", err)
 			return err
 		}
 		modORContent = world.ModData
@@ -508,7 +508,7 @@ func (g *Game) modConfigureOptionsValuesChange(worldID, modID int, modConfig *Mo
 
 	mods, err := modORParser.Parse(modORContent, g.lang)
 	if err != nil {
-		logger.Logger.Debug("这里出问题?", "err", err)
+		logger.Logger.Debugf("这里出问题?, err: %v", err)
 		return err
 	}
 
@@ -542,7 +542,7 @@ func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
 	} else {
 		world, err := g.getWorldByID(worldID)
 		if err != nil {
-			logger.Logger.Debug("这里出问题?", "err", err)
+			logger.Logger.Debugf("这里出问题?, err: %v", err)
 			return []DownloadedMod{}, err
 		}
 		modORContent = world.ModData
@@ -554,7 +554,7 @@ func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
 
 	mods, err := modORParser.Parse(modORContent, g.lang)
 	if err != nil {
-		logger.Logger.Debug("这里出问题?", "err", err)
+		logger.Logger.Debugf("这里出问题?, err: %v", err)
 		return []DownloadedMod{}, err
 	}
 
@@ -588,7 +588,7 @@ func (g *Game) modDisable(modID int) error {
 		modORContent = g.room.ModData
 		mods, err := modORParser.Parse(modORContent, g.lang)
 		if err != nil {
-			logger.Logger.Debug("这里出问题?", "err", err)
+			logger.Logger.Debugf("这里出问题?, err: %v", err)
 			return err
 		}
 		// 区分是否为禁本地配置
@@ -608,7 +608,7 @@ func (g *Game) modDisable(modID int) error {
 			modORContent = world.ModData
 			mods, err := modORParser.Parse(modORContent, g.lang)
 			if err != nil {
-				logger.Logger.Debug("这里出问题?", "err", err)
+				logger.Logger.Debugf("这里出问题?, err: %v", err)
 				return err
 			}
 
@@ -646,7 +646,7 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 
 			err := utils.EnsureFileExists(gameAcfPath)
 			if err != nil {
-				logger.Logger.Error("acf文件不存在", "path", gameAcfPath)
+				logger.Logger.Errorf("acf文件不存在, path: %v", gameAcfPath)
 				return err
 			}
 
@@ -669,14 +669,14 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 			modPath := fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, world.WorldName, modID)
 			err = utils.RemoveDir(modPath)
 			if err != nil {
-				logger.Logger.Error("删除模组失败", "err", err)
+				logger.Logger.Errorf("删除模组失败, err: %v", err)
 				return err
 			}
 		}
 	} else {
 		err := utils.RemoveDir(fmt.Sprintf("dst/mods/workshop-%d", modID))
 		if err != nil {
-			logger.Logger.Error("删除模组失败", "err", err)
+			logger.Logger.Errorf("删除模组失败, err: %v", err)
 			return err
 		}
 	}

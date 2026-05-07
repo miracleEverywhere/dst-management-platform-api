@@ -53,38 +53,38 @@ func GenerateDefaultFile() {
 	// luajit
 	err = utils.EnsureDirExists(fmt.Sprintf("%s/luajit", utils.DmpFiles))
 	if err != nil {
-		logger.Logger.Error("创建dmp_files/luajit失败", "err", err)
+		logger.Logger.Errorf("创建dmp_files/luajit失败, err: %v", err)
 		return
 	}
 	err = CopyEmbeddedFiles(LuaJit, "luajit", fmt.Sprintf("%s/luajit/", utils.DmpFiles), "liblua.so", "libluajit.so", "libpreload.so")
 	if err != nil {
-		logger.Logger.Error("生成luajit依赖失败", "err", err)
+		logger.Logger.Errorf("生成luajit依赖失败, err: %v", err)
 		return
 	}
 
 	// install 脚本
 	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_install.sh")
 	if err != nil {
-		logger.Logger.Error("生成手动安装脚本失败", "err", err)
+		logger.Logger.Errorf("生成手动安装脚本失败, err: %v", err)
 		return
 	}
 
 	err = utils.ChangeFileMode("./manual_install.sh", 0755)
 	if err != nil {
-		logger.Logger.Error("手动安装脚本添加权限失败", "err", err)
+		logger.Logger.Errorf("手动安装脚本添加权限失败, err: %v", err)
 		return
 	}
 
 	// update 脚本
 	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_update.sh")
 	if err != nil {
-		logger.Logger.Error("生成手动更新脚本失败", "err", err)
+		logger.Logger.Errorf("生成手动更新脚本失败, err: %v", err)
 		return
 	}
 
 	err = utils.ChangeFileMode("./manual_update.sh", 0755)
 	if err != nil {
-		logger.Logger.Error("手动更新脚本添加权限失败", "err", err)
+		logger.Logger.Errorf("手动更新脚本添加权限失败, err: %v", err)
 		return
 	}
 

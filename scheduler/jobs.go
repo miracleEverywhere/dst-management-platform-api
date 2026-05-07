@@ -16,7 +16,7 @@ func initJobs() {
 	var globalSetting models.GlobalSetting
 	err := DBHandler.globalSettingDao.GetGlobalSetting(&globalSetting)
 	if err != nil {
-		logger.Logger.Error("初始化定时任务失败", "err", err)
+		logger.Logger.Errorf("初始化定时任务失败, err: %v", err)
 		panic("初始化定时任务失败")
 	}
 
@@ -74,7 +74,7 @@ func initJobs() {
 	// 房间定时任务
 	roomBasic, err := DBHandler.roomDao.GetRoomBasic()
 	if err != nil {
-		logger.Logger.Error("获取房间失败", "err", err)
+		logger.Logger.Errorf("获取房间失败, err: %v", err)
 		return
 	}
 	for _, r := range *roomBasic {
@@ -85,7 +85,7 @@ func initJobs() {
 
 		room, worlds, roomSetting, err := dao.FetchGameInfo(r.RoomID)
 		if err != nil {
-			logger.Logger.Error("获取房间设置失败", "err", err)
+			logger.Logger.Errorf("获取房间设置失败, err: %v", err)
 			continue
 		}
 		game := dst.NewGameController(room, worlds, roomSetting, "zh")
@@ -97,7 +97,7 @@ func initJobs() {
 		if roomSetting.BackupEnable {
 			var backupSettings []BackupSetting
 			if err := json.Unmarshal([]byte(roomSetting.BackupSetting), &backupSettings); err != nil {
-				logger.Logger.Error("获取房间备份设置失败", "err", err)
+				logger.Logger.Errorf("获取房间备份设置失败, err: %v", err)
 				continue
 			}
 			for i, backupSetting := range backupSettings {
@@ -142,7 +142,7 @@ func initJobs() {
 			}
 			var scheduledStartStopSetting ScheduledStartStopSetting
 			if err := json.Unmarshal([]byte(roomSetting.ScheduledStartStopSetting), &scheduledStartStopSetting); err != nil {
-				logger.Logger.Error("获取自动开启关闭游戏设置失败", "err", err)
+				logger.Logger.Errorf("获取自动开启关闭游戏设置失败, err: %v", err)
 				continue
 			}
 			Jobs = append(Jobs, JobConfig{
@@ -176,7 +176,7 @@ func initJobs() {
 		// 定时通知 [{id: '', content: '', interval: 0, status: false}]
 		var announces []AnnounceSetting
 		if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
-			logger.Logger.Error("获取定时通知设置失败", "err", err)
+			logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
 			continue
 		}
 		for _, announce := range announces {

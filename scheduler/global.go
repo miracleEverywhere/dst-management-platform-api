@@ -16,7 +16,7 @@ import (
 func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 	roomsBasic, err := DBHandler.roomDao.GetRoomBasic()
 	if err != nil {
-		logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
+		logger.Logger.Errorf("查询数据库失败，添加定时任务失败, err: %v", err)
 		return
 	}
 
@@ -28,7 +28,7 @@ func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 
 		room, worlds, roomSetting, err := dao.FetchGameInfo(rbs.RoomID)
 		if err != nil {
-			logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
+			logger.Logger.Errorf("查询数据库失败，添加定时任务失败, err: %v", err)
 			return
 		}
 		game := dst.NewGameController(room, worlds, roomSetting, "zh")
@@ -63,7 +63,7 @@ func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 							}
 							err = DBHandler.uidMapDao.UpdateUidMap(&uidMap)
 							if err != nil {
-								logger.Logger.Error("更新UID MAP失败", "err", err)
+								logger.Logger.Errorf("更新UID MAP失败, err: %v", err)
 							}
 						}
 					}
@@ -140,7 +140,7 @@ func GameUpdate(enable bool, restart bool) {
 			// 1. 获取所有的房间
 			roomsBasic, err := DBHandler.roomDao.GetRoomBasic()
 			if err != nil {
-				logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
+				logger.Logger.Errorf("查询数据库失败，添加定时任务失败, err: %v", err)
 				return
 			}
 
@@ -156,7 +156,7 @@ func GameUpdate(enable bool, restart bool) {
 				// 3. 重启房间内所有的世界
 				room, worlds, roomSetting, err := dao.FetchGameInfo(rbs.RoomID)
 				if err != nil {
-					logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
+					logger.Logger.Errorf("查询数据库失败，添加定时任务失败, err: %v", err)
 					return
 				}
 				game := dst.NewGameController(room, worlds, roomSetting, "zh")
@@ -180,10 +180,10 @@ func InternetIPUpdate() {
 	)
 	internetIp, err = GetInternetIP1()
 	if err != nil {
-		logger.Logger.Warn("调用公网ip接口1失败", "err", err)
+		logger.Logger.Warnf("调用公网ip接口1失败, err: %v", err)
 		internetIp, err = GetInternetIP2()
 		if err != nil {
-			logger.Logger.Warn("调用公网ip接口2失败", "err", err)
+			logger.Logger.Warnf("调用公网ip接口2失败, err: %v", err)
 			return
 		}
 	}
@@ -195,7 +195,7 @@ func ModDownloadClean() {
 	if atomic.LoadInt32(&db.ModDownloadExecuting) == 0 {
 		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc", utils.DmpFiles))
 		if err != nil {
-			logger.Logger.Warn("删除临时模组失败", "err", err)
+			logger.Logger.Warnf("删除临时模组失败, err: %v", err)
 		}
 	}
 }

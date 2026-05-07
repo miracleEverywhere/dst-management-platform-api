@@ -75,7 +75,7 @@ func (h *Handler) listPost(c *gin.Context) {
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -127,7 +127,7 @@ func (h *Handler) listGet(c *gin.Context) {
 	}
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -162,7 +162,7 @@ func (h *Handler) uidMapGet(c *gin.Context) {
 
 	uidMap, err := h.uidMapDao.GetUidMapByRoomID(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取uidmap失败", "err", err)
+		logger.Logger.Errorf("获取uidmap失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -226,7 +226,7 @@ func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
 
 	err := h.globalSettingDao.GetGlobalSetting(&globalSettings)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -270,7 +270,7 @@ func (h *Handler) chatGet(c *gin.Context) {
 	}
 	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}

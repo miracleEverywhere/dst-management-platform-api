@@ -155,7 +155,7 @@ func (g *Game) reset(force bool) error {
 			err = utils.RemoveDir(world.savePath)
 			if err != nil {
 				allSuccess = false
-				logger.Logger.Error("删除存档文件失败", "err", err)
+				logger.Logger.Errorf("删除存档文件失败, err: %v", err)
 			}
 		}
 
@@ -420,7 +420,7 @@ func (g *Game) getBackups() ([]BackupFile, error) {
 
 		size, err := utils.GetFileSize(fmt.Sprintf("%s/%s", zipPath, filename))
 		if err != nil {
-			logger.Logger.Warnf("获取备份文件大小失败: %v", "err", err)
+			logger.Logger.Warnf("获取备份文件大小失败, err: %v", err)
 		}
 
 		backupFile = append(backupFile, BackupFile{
@@ -445,7 +445,7 @@ func (g *Game) deleteBackups(filenames []string) int {
 		filePath := fmt.Sprintf("%s/backup/%d/%s", utils.DmpFiles, g.room.ID, filename)
 		err := utils.RemoveFile(filePath)
 		if err != nil {
-			logger.Logger.Error("删除备份文件失败", "err", err)
+			logger.Logger.Errorf("删除备份文件失败, err: %v", err)
 		}
 		s++
 	}

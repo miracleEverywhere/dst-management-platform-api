@@ -163,13 +163,13 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 
 	p, err := process.NewProcess(int32(pid))
 	if err != nil {
-		logger.Logger.Warn("获取世界进程失败", "world", world.ID, "err", err)
+		logger.Logger.Warnf("获取世界进程失败, world: %v, err: %v", world.ID, err)
 		return performanceStatus
 	}
 
 	cpu, err := p.Percent(time.Millisecond * 100)
 	if err != nil {
-		logger.Logger.Warn("获取世界CPU失败", "world", world.ID, "err", err)
+		logger.Logger.Warnf("获取世界CPU失败, world: %v, err: %v", world.ID, err)
 		return performanceStatus
 	}
 
@@ -177,7 +177,7 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 
 	mem, err := p.MemoryPercent()
 	if err != nil {
-		logger.Logger.Warn("获取世界内存使用率失败", "world", world.ID, "err", err)
+		logger.Logger.Warnf("获取世界内存使用率失败, world: %v, err: %v", world.ID, err)
 		return performanceStatus
 	}
 
@@ -185,7 +185,7 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 
 	memSize, err := p.MemoryInfo()
 	if err != nil {
-		logger.Logger.Warn("获取世界内存使用量失败", "world", world.ID, "err", err)
+		logger.Logger.Warnf("获取世界内存使用量失败, world: %v, err: %v", world.ID, err)
 		return performanceStatus
 	}
 
@@ -205,7 +205,7 @@ func (g *Game) startWorld(id int) error {
 	defer func() {
 		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc/%s", utils.DmpFiles, g.clusterName))
 		if err != nil {
-			logger.Logger.Warn("删除临时模组失败", "err", err)
+			logger.Logger.Warnf("删除临时模组失败, err: %v", err)
 		}
 	}()
 
@@ -261,7 +261,7 @@ func (g *Game) startAllWorld() error {
 	for _, world := range g.worldSaveData {
 		// 如果正在运行，则跳过
 		if g.worldUpStatus(world.ID) {
-			logger.Logger.Infof("当前世界正在运行中，跳过，世界ID：%d", id)
+			logger.Logger.Infof("当前世界正在运行中，跳过，世界ID：%d", world.ID)
 			continue
 		}
 
@@ -393,7 +393,7 @@ func readPlayerListFromEnd(logPath string) ([]string, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			logger.Logger.Error("文件关闭失败", "err", err)
+			logger.Logger.Errorf("文件关闭失败, err: %v", err)
 		}
 	}(file)
 
@@ -485,13 +485,13 @@ func getWorldLastTime(logfile string) (string, error) {
 	// 获取日志文件中的list
 	file, err := os.Open(logfile)
 	if err != nil {
-		logger.Logger.Error("打开文件失败", "err", err, "file", logfile)
+		logger.Logger.Errorf("打开文件失败, err: %v, file: %v", err, logfile)
 		return "", err
 	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			logger.Logger.Error("关闭文件失败", "err", err, "file", logfile)
+			logger.Logger.Errorf("关闭文件失败, err: %v, file: %v", err, logfile)
 		}
 	}(file)
 
@@ -504,7 +504,7 @@ func getWorldLastTime(logfile string) (string, error) {
 		lines = append(lines, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		logger.Logger.Error("文件scan失败", "err", err)
+		logger.Logger.Errorf("文件scan失败, err: %v", err)
 		return "", err
 	}
 	// 反向遍历行
