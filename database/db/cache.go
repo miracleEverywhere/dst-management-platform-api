@@ -22,6 +22,8 @@ var (
 	PlayersOnlineTimeMutex sync.Mutex
 	// SystemMetrics 系统监控数据
 	SystemMetrics []SysMetrics
+	// SystemMetricsMutex 系统监控数据锁
+	SystemMetricsMutex sync.RWMutex
 	// InternetIP 获取外网IP
 	InternetIP string
 	// ModDownloadExecuting 如果没有模组正在下载(==0)，则执行临时模组文件清理任务 scheduler/global.go ModDownloadClean()

@@ -65,6 +65,7 @@ func (h *Handler) overviewGet(c *gin.Context) {
 		uidCount = 0
 	}
 	// 1小时cpu内存网络最大值
+	db.SystemMetricsMutex.RLock()
 	systemMetricsLength := len(db.SystemMetrics)
 	reqLength := 60
 	var systemMetricsData []db.SysMetrics
@@ -73,6 +74,7 @@ func (h *Handler) overviewGet(c *gin.Context) {
 	} else {
 		systemMetricsData = db.SystemMetrics
 	}
+	db.SystemMetricsMutex.RUnlock()
 	var maxCpu, maxMemory, maxNetUp, maxNetDown float64
 	for _, m := range systemMetricsData {
 		if m.Cpu > maxCpu {
@@ -279,6 +281,7 @@ func metricsGet(c *gin.Context) {
 		return
 	}
 
+	db.SystemMetricsMutex.RLock()
 	systemMetricsLength := len(db.SystemMetrics)
 	reqLength := reqForm.TimeRange * 60
 	if reqLength <= 0 {
@@ -290,6 +293,7 @@ func metricsGet(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.SystemMetrics})
 	}
+	db.SystemMetricsMutex.RUnlock()
 }
 
 func (h *Handler) globalSettingsGet(c *gin.Context) {
@@ -369,7 +373,9 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			}
 		} else {
 			scheduler.DeleteJob("systemMetricsGet")
+			db.SystemMetricsMutex.Lock()
 			db.SystemMetrics = []db.SysMetrics{}
+			db.SystemMetricsMutex.Unlock()
 		}
 	}
 

@@ -104,10 +104,14 @@ func SystemMetricsGet(maxHour int) {
 		Disk:        utils.DiskUsage(),
 	}
 
+	db.SystemMetricsMutex.Lock()
+
 	if len(db.SystemMetrics) > maxHour*60 {
 		db.SystemMetrics = db.SystemMetrics[1:]
 	}
 	db.SystemMetrics = append(db.SystemMetrics, sysMetrics)
+
+	db.SystemMetricsMutex.Unlock()
 }
 
 func GameUpdate(enable bool, restart bool) {
