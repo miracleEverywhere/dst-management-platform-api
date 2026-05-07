@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -77,30 +76,27 @@ func Keepalive(game *dst.Game, roomID int) {
 		return
 	}
 
-	var (
-		updatedWorlds []models.World
-		needUpdateDB  bool
-	)
+	allWorlds := *worlds
+	needUpdateDB := false
 
-	for _, world := range *worlds {
-		lastTime, err := game.GetLastAliveTime(world.ID)
+	for i := range allWorlds {
+		lastTime, err := game.GetLastAliveTime(allWorlds[i].ID)
 		if err != nil {
-			logger.Logger.Errorf("获取日志信息失败，无法判断，跳过, err: %v, world: %v", err, world.ID)
+			logger.Logger.Errorf("获取日志信息失败，无法判断，跳过, err: %v, world: %v", err, allWorlds[i].ID)
 			continue
 		}
-		if lastTime == world.LastAliveTime {
-			logger.Logger.Errorf("发现世界运行异常，即将执行重启操作, world: %v", world.ID)
-			_ = game.StopWorld(world.ID)
-			_ = game.StartWorld(world.ID)
+		if lastTime == allWorlds[i].LastAliveTime {
+			logger.Logger.Errorf("发现世界运行异常，即将执行重启操作, world: %v", allWorlds[i].ID)
+			_ = game.StopWorld(allWorlds[i].ID)
+			_ = game.StartWorld(allWorlds[i].ID)
 		} else {
-			world.LastAliveTime = lastTime
-			updatedWorlds = append(updatedWorlds, world)
+			allWorlds[i].LastAliveTime = lastTime
 			needUpdateDB = true
 		}
 	}
 
 	if needUpdateDB {
-		err = DBHandler.worldDao.UpdateWorlds(&updatedWorlds)
+		err = DBHandler.worldDao.UpdateWorlds(&allWorlds)
 		if err != nil {
 			logger.Logger.Errorf("更新数据失败, err: %v", err)
 		}
