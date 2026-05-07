@@ -3,7 +3,6 @@ package scheduler
 import (
 	"bufio"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"encoding/json"
@@ -68,23 +67,6 @@ func registerJobs() {
 		}
 		logger.Logger.Info(fmt.Sprintf("定时任务[%s]注册成功", job.Name))
 	}
-}
-
-func fetchGameInfo(roomID int) (*models.Room, *[]models.World, *models.RoomSetting, error) {
-	room, err := DBHandler.roomDao.GetRoomByID(roomID)
-	if err != nil {
-		return &models.Room{}, &[]models.World{}, &models.RoomSetting{}, err
-	}
-	worlds, err := DBHandler.worldDao.GetWorldsByRoomID(roomID)
-	if err != nil {
-		return &models.Room{}, &[]models.World{}, &models.RoomSetting{}, err
-	}
-	roomSetting, err := DBHandler.roomSettingDao.GetRoomSettingsByRoomID(roomID)
-	if err != nil {
-		return &models.Room{}, &[]models.World{}, &models.RoomSetting{}, err
-	}
-
-	return room, worlds, roomSetting, nil
 }
 
 type DSTVersion struct {

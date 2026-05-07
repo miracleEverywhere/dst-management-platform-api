@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -98,6 +99,37 @@ func isStaticAsset(path string) bool {
 		}
 	}
 	return false
+}
+
+var loginRateLimiter = &loginRateLimitCache{}
+
+type loginRateLimitCache struct {
+	mu    sync.Mutex
+	items map[string]time.Time
+}
+
+// LoginRateLimit 登录接口限速，同一IP 1秒内只能请求一次
+func LoginRateLimit() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+
+		loginRateLimiter.mu.Lock()
+		lastTime, exists := loginRateLimiter.items[ip]
+		if exists && time.Since(lastTime) < time.Second {
+			loginRateLimiter.mu.Unlock()
+			logger.Logger.Warnf("登录频率过高, IP: %s", ip)
+			c.JSON(http.StatusOK, gin.H{"code": 429, "message": utils.I18n.Get(c, "too many requests"), "data": nil})
+			c.Abort()
+			return
+		}
+		if loginRateLimiter.items == nil {
+			loginRateLimiter.items = make(map[string]time.Time)
+		}
+		loginRateLimiter.items[ip] = time.Now()
+		loginRateLimiter.mu.Unlock()
+
+		c.Next()
+	}
 }
 
 // 判断是否刷新token

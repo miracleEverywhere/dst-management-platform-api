@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
@@ -25,7 +26,7 @@ func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 			continue
 		}
 
-		room, worlds, roomSetting, err := fetchGameInfo(rbs.RoomID)
+		room, worlds, roomSetting, err := dao.FetchGameInfo(rbs.RoomID)
 		if err != nil {
 			logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
 			return
@@ -153,7 +154,7 @@ func GameUpdate(enable bool, restart bool) {
 				logger.Logger.Debugf("开始重启房间：%s(%d)", rbs.RoomName, rbs.RoomID)
 
 				// 3. 重启房间内所有的世界
-				room, worlds, roomSetting, err := fetchGameInfo(rbs.RoomID)
+				room, worlds, roomSetting, err := dao.FetchGameInfo(rbs.RoomID)
 				if err != nil {
 					logger.Logger.Error("查询数据库失败，添加定时任务失败", "err", err)
 					return

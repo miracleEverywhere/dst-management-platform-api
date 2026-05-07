@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -82,7 +83,7 @@ func initJobs() {
 			continue
 		}
 
-		room, worlds, roomSetting, err := fetchGameInfo(r.RoomID)
+		room, worlds, roomSetting, err := dao.FetchGameInfo(r.RoomID)
 		if err != nil {
 			logger.Logger.Error("获取房间设置失败", "err", err)
 			continue

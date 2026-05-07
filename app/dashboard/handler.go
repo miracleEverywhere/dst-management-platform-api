@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
@@ -25,14 +26,14 @@ func (h *Handler) execGamePost(c *gin.Context) {
 
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误：%v，api：%s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
 
-	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
-		logger.Logger.Error("获取基本信息失败", "err", err)
+		logger.Logger.Errorf("获取基本信息失败：%v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -50,14 +51,14 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		if reqForm.Extra == "all" {
 			err = game.StartAllWorld()
 			if err != nil {
-				logger.Logger.Error("启动失败", "err", err)
+				logger.Logger.Errorf("启动失败：%v", err)
 				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "startup game fail"), "data": nil})
 				return
 			}
 		} else {
 			err = game.StartWorld(reqForm.WorldID)
 			if err != nil {
-				logger.Logger.Error("启动失败", "err", err)
+				logger.Logger.Errorf("启动失败: %v", err)
 				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "startup game fail"), "data": nil})
 				return
 			}
@@ -70,14 +71,14 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		if reqForm.Extra == "all" {
 			err = game.StopAllWorld()
 			if err != nil {
-				logger.Logger.Error("关闭失败", "err", err)
+				logger.Logger.Errorf("关闭失败: %v", err)
 				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "shutdown game fail"), "data": nil})
 				return
 			}
 		} else {
 			err = game.StopWorld(reqForm.WorldID)
 			if err != nil {
-				logger.Logger.Error("关闭失败", "err", err)
+				logger.Logger.Errorf("关闭失败: %v", err)
 				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "shutdown game fail"), "data": nil})
 				return
 			}
@@ -90,7 +91,7 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		_ = game.StopAllWorld()
 		err = game.StartAllWorld()
 		if err != nil {
-			logger.Logger.Error("启动失败", "err", err)
+			logger.Logger.Errorf("启动失败: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restart game fail"), "data": nil})
 			return
 		}
@@ -115,7 +116,7 @@ func (h *Handler) execGamePost(c *gin.Context) {
 			var globalSettings models.GlobalSetting
 			err = h.globalSettingDao.GetGlobalSetting(&globalSettings)
 			if err != nil {
-				logger.Logger.Error("获取全局设置失败", "err", err)
+				logger.Logger.Errorf("获取全局设置失败: %v", err)
 				return
 			}
 
@@ -125,16 +126,16 @@ func (h *Handler) execGamePost(c *gin.Context) {
 
 			roomBasic, err := h.roomDao.GetRoomBasic()
 			if err != nil {
-				logger.Logger.Error("获取全局房间信息失败", "err", err)
+				logger.Logger.Errorf("获取全局房间信息失败: %v", err)
 				return
 			}
 			for _, rb := range *roomBasic {
 				if !rb.Status {
 					continue
 				}
-				room, worlds, roomSetting, err = h.fetchGameInfo(rb.RoomID)
+				room, worlds, roomSetting, err = dao.FetchGameInfo(rb.RoomID)
 				if err != nil {
-					logger.Logger.Error("获取基本信息失败", "err", err)
+					logger.Logger.Errorf("获取基本信息失败: %v", err)
 					continue
 				}
 				game = dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
@@ -223,7 +224,7 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -238,7 +239,7 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 		return
 	}
 
-	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
 		logger.Logger.Error("获取基本信息失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -314,7 +315,7 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 		err     error
 	)
 	if err = c.ShouldBindQuery(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -329,7 +330,7 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 		return
 	}
 
-	room, worlds, roomSetting, err := h.fetchGameInfo(reqForm.RoomID)
+	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
 	if err != nil {
 		logger.Logger.Error("获取基本信息失败", "err", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -396,7 +397,7 @@ func (h *Handler) connectionCodePut(c *gin.Context) {
 
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -434,7 +435,7 @@ func checkLobbyPost(c *gin.Context) {
 
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
-		logger.Logger.Info("请求参数错误", "err", err, "api", c.Request.URL.Path)
+		logger.Logger.Info("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}

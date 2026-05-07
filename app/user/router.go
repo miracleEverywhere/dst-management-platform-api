@@ -14,7 +14,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		{
 			user.GET("/register", h.registerGet)
 			user.POST("/register", h.registerPost)
-			user.POST("/login", h.loginPost)
+			user.POST("/login", middleware.LoginRateLimit(), h.loginPost)
 			user.GET("/base", middleware.TokenCheck(), h.baseGet)
 			user.POST("/base", middleware.TokenCheck(), middleware.AdminOnly(), h.basePost)
 			user.PUT("/base", middleware.TokenCheck(), middleware.AdminOnly(), h.basePut)

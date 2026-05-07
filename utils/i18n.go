@@ -42,6 +42,7 @@ var I18n = BaseI18n{
 		"delete fail":       "删除失败",
 		"permission needed": "权限不足",
 		"token fail":        "Token认证失败",
+		"too many requests": "请求过于频繁，请稍后再试",
 	},
 	EN: map[string]string{
 		"bad request":       "Bad Request",
@@ -58,5 +59,6 @@ var I18n = BaseI18n{
 		"delete fail":       "Delete Fail",
 		"permission needed": "Insufficient Permissions",
 		"token fail":        "Token Auth Fail",
+		"too many requests": "Too Many Requests",
 	},
 }
