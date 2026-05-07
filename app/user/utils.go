@@ -3,8 +3,7 @@ package user
 import "dst-management-platform-api/database/dao"
 
 type Handler struct {
-	userDao   *dao.UserDAO
-	systemDao *dao.SystemDAO
+	userDao *dao.UserDAO
 }
 
 func NewHandler(userDao *dao.UserDAO) *Handler {
