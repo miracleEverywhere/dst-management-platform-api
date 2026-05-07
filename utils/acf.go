@@ -41,11 +41,10 @@ type Parser struct {
 
 func NewParser(path string) (*Parser, error) {
 	f, err := os.Open(path)
-	defer f.Close()
-
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	var lines []string
 	scanner := bufio.NewScanner(f)
