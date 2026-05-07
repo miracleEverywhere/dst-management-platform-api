@@ -104,18 +104,31 @@ func isStaticAsset(path string) bool {
 var loginRateLimiter = &loginRateLimitCache{}
 
 type loginRateLimitCache struct {
-	mu    sync.Mutex
-	items map[string]time.Time
+	mu          sync.Mutex
+	items       map[string]time.Time
+	lastCleanup time.Time
 }
 
 // LoginRateLimit 登录接口限速，同一IP 1秒内只能请求一次
 func LoginRateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
+		now := time.Now()
 
 		loginRateLimiter.mu.Lock()
+
+		// 定期清理过期条目，防止内存泄漏
+		if loginRateLimiter.lastCleanup.Add(5 * time.Minute).Before(now) {
+			for k, v := range loginRateLimiter.items {
+				if now.Sub(v) > time.Second {
+					delete(loginRateLimiter.items, k)
+				}
+			}
+			loginRateLimiter.lastCleanup = now
+		}
+
 		lastTime, exists := loginRateLimiter.items[ip]
-		if exists && time.Since(lastTime) < time.Second {
+		if exists && now.Sub(lastTime) < time.Second {
 			loginRateLimiter.mu.Unlock()
 			logger.Logger.Warnf("登录频率过高, IP: %s", ip)
 			c.JSON(http.StatusOK, gin.H{"code": 429, "message": utils.I18n.Get(c, "too many requests"), "data": nil})
@@ -125,7 +138,7 @@ func LoginRateLimit() gin.HandlerFunc {
 		if loginRateLimiter.items == nil {
 			loginRateLimiter.items = make(map[string]time.Time)
 		}
-		loginRateLimiter.items[ip] = time.Now()
+		loginRateLimiter.items[ip] = now
 		loginRateLimiter.mu.Unlock()
 
 		c.Next()
