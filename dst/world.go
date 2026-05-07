@@ -328,9 +328,9 @@ func (g *Game) consoleCmd(cmd string, id int) error {
 }
 
 func (g *Game) getWorldByID(id int) (*worldSaveData, error) {
-	for _, world := range g.worldSaveData {
-		if world.ID == id {
-			return &world, nil
+	for i := range g.worldSaveData {
+		if g.worldSaveData[i].ID == id {
+			return &g.worldSaveData[i], nil
 		}
 	}
 
