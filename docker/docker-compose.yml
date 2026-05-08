@@ -20,6 +20,8 @@ services:
       - ./logs:/root/logs
       - ./dmp_files:/root/dmp_files
       - ./steamcmd:/root/steamcmd
+      # HTTPS 证书挂载（启用 TLS=true 时需要）
+      # - ./ssl:/etc/ssl/dmp:ro
       # 同步宿主机时间(linux内核)
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
@@ -33,6 +35,10 @@ services:
       - DMP_PORT=80
 #      - 日志打印级别
       - LEVEL=info
+      # 启用 HTTPS，需同时挂载证书目录
+      # - TLS=true
+      # - TLS_CERT=/etc/ssl/dmp/fullchain.pem
+      # - TLS_KEY=/etc/ssl/dmp/privkey.pem
     # 修改 dns 降低steam连接失败概率
 #    dns:
 #        - 144.144.144.144

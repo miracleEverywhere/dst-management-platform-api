@@ -89,7 +89,14 @@ func Run() {
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 
 	// 启动服务器
-	err := r.Run(fmt.Sprintf(":%d", bindPort))
+	var err error
+	if cert != "" && key != "" {
+		// 证书文件和私钥文件都不为空，则启动https
+		err = r.RunTLS(fmt.Sprintf(":%d", bindPort), cert, key)
+	} else {
+		// 否则启动http
+		err = r.Run(fmt.Sprintf(":%d", bindPort))
+	}
 	if err != nil {
 		panic(fmt.Sprintf("启动服务器失败: %s", err.Error()))
 	}

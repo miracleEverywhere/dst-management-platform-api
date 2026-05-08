@@ -17,6 +17,12 @@ SWAPSIZE=2G
 # 日志等级，例如：debug info warn error
 LEVEL="info"
 
+# 证书文件，如果为空则启动http服务 例如：./fullchain.pem
+CERT_FILE=""
+
+# 私钥文件，如果为空则启动http服务 例如：./privkey.pem
+KEY_FILE=""
+
 # 加速节点
 ACCELERATION_SITE=(
 	"gh.llkk.cc"
@@ -282,10 +288,10 @@ function start_dmp() {
 	fi
 
 	if [ -e "$ExeFile" ]; then
-		nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} >/dev/null 2>&1 &
+		nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} -cert "${CERT_FILE}" -key "${KEY_FILE}" >/dev/null 2>&1 &
 	else
 		install_dmp
-		nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} >/dev/null 2>&1 &
+		nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} -cert "${CERT_FILE}" -key "${KEY_FILE}" >/dev/null 2>&1 &
 	fi
 }
 
@@ -353,6 +359,8 @@ function update_script() {
 	sed -i "s/^SWAPSIZE=.*/SWAPSIZE=${SWAPSIZE}/" $TEMP_FILE
 	sed -i "s#^CONFIG_DIR=.*#CONFIG_DIR=${CONFIG_DIR}#" $TEMP_FILE
 	sed -i "s#^LEVEL=.*#LEVEL=${LEVEL}#" $TEMP_FILE
+	sed -i "s#^CERT_FILE=.*#CERT_FILE=${CERT_FILE}#" $TEMP_FILE
+	sed -i "s#^KEY_FILE=.*#KEY_FILE=${KEY_FILE}#" $TEMP_FILE
 
 	# 替换当前脚本
 	mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
