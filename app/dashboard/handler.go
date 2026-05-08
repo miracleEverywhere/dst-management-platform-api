@@ -165,6 +165,20 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "reset game success"), "data": nil})
 		return
 	case "delete":
+		defer func(game *dst.Game, id int) {
+			// 清空世界中的存档数据后，启动该世界
+			err = game.StartWorld(id)
+			if err != nil {
+				logger.Logger.Errorf("启动世界失败: %v", err)
+			}
+		}(game, reqForm.WorldID)
+
+		// 先关闭世界
+		err = game.StopWorld(reqForm.WorldID)
+		if err != nil {
+			logger.Logger.Warnf("关闭世界失败，可能是该世界已被关闭: %v", err)
+		}
+
 		err = game.DeleteWorld(reqForm.WorldID)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete game fail"), "data": nil})
