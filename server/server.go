@@ -34,6 +34,12 @@ func Run() {
 		return
 	}
 
+	// 控制台命令
+	if consoleCmd != "" {
+		runConsole(consoleCmd, dbPath)
+		return
+	}
+
 	// 初始化日志
 	logger.InitLogger(logLevel)
 
