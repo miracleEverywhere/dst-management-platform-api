@@ -133,7 +133,7 @@ master_ip = ` + g.room.MasterIP + `
 master_port = ` + strconv.Itoa(g.room.MasterPort) + `
 cluster_key = ` + g.room.ClusterKey + steamGroupSetting
 
-	logger.Logger.Debug(contents)
+	//logger.Logger.Debug(contents)
 
 	return contents
 }

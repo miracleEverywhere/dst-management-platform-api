@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -44,6 +45,38 @@ func Restart(game *dst.Game) {
 			logger.Logger.Info("自动重启任务执行成功")
 		}
 	}()
+}
+
+func Reset(game *dst.Game, roomID int, force bool, days int) {
+	reset := func() {
+		logger.Logger.Info("正在执行自动重置任务")
+		err := game.Reset(false)
+		if err != nil {
+			logger.Logger.Warnf("游戏内重置失败，尝试执行强制重置, err: %v", err)
+			err = game.Reset(true)
+			if err != nil {
+				logger.Logger.Errorf("重置失败, err: %v", err)
+			} else {
+				logger.Logger.Info("自动重置(强制重置)任务执行成功")
+			}
+		} else {
+			logger.Logger.Info("自动重置(游戏内重置)任务执行成功")
+		}
+	}
+
+	if force {
+		// 直接进行重置
+		go reset()
+	} else {
+		// 空闲重置
+		secs := days * 24 * 60 * 60
+		db.RoomNoPlayersSecondsMutex.Lock()
+		if db.RoomNoPlayersSeconds[roomID] > secs {
+			go reset()
+			db.RoomNoPlayersSeconds[roomID] = 0
+		}
+		db.RoomNoPlayersSecondsMutex.Unlock()
+	}
 }
 
 func ScheduledStart(game *dst.Game) {

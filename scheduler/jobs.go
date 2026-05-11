@@ -134,6 +134,26 @@ func initJobs() {
 				DayAt:    roomSetting.RestartSetting,
 			})
 		}
+		// 重置 {"force": false, "time": "06:10:00", "days": 3}
+		if roomSetting.ResetEnable {
+			var resetSetting struct {
+				Force bool   `json:"force"`
+				Time  string `json:"time"`
+				Days  int    `json:"days"`
+			}
+			if err := json.Unmarshal([]byte(roomSetting.ResetSetting), &resetSetting); err != nil {
+				logger.Logger.Errorf("获取自动重置设置失败, err: %v", err)
+				continue
+			}
+			Jobs = append(Jobs, JobConfig{
+				Name:     fmt.Sprintf("%d-Reset", room.ID),
+				Func:     Reset,
+				Args:     []any{game, room.ID, resetSetting.Force, resetSetting.Days},
+				TimeType: DayType,
+				Interval: 0,
+				DayAt:    resetSetting.Time,
+			})
+		}
 		// 自动开启关闭游戏 {"start":"07:00:00","stop":"01:00:00"}
 		if roomSetting.ScheduledStartStopEnable {
 			type ScheduledStartStopSetting struct {

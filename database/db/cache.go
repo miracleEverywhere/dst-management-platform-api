@@ -28,6 +28,10 @@ var (
 	InternetIP string
 	// ModDownloadExecuting 如果没有模组正在下载(==0)，则执行临时模组文件清理任务 scheduler/global.go ModDownloadClean()
 	ModDownloadExecuting int32
+	// RoomNoPlayersSeconds 房间中没有玩家的秒数，用于自动重置
+	RoomNoPlayersSeconds = make(map[int]int)
+	// RoomNoPlayersSecondsMutex RoomNoPlayersSeconds锁
+	RoomNoPlayersSecondsMutex sync.Mutex
 )
 
 type PlayerInfo struct {

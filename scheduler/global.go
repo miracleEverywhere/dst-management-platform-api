@@ -74,15 +74,23 @@ func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 					Players.Timestamp = utils.GetTimestamp()
 
 					db.PlayersStatisticMutex.Lock()
-
 					if len(db.PlayersStatistic[rbs.RoomID])*interval > ParsePlayerInfoSaveTime(saveTime) {
 						// db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID][:0], db.PlayersStatistic[rbs.RoomID][1:]...)
 						db.PlayersStatistic[rbs.RoomID] = db.PlayersStatistic[rbs.RoomID][1:]
 
 					}
 					db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID], Players)
-
 					db.PlayersStatisticMutex.Unlock()
+
+					db.RoomNoPlayersSecondsMutex.Lock()
+					if len(ps) == 0 {
+						// 房间中没有玩家，加对应秒数
+						db.RoomNoPlayersSeconds[rbs.RoomID] = db.RoomNoPlayersSeconds[rbs.RoomID] + interval
+					} else {
+						// 房间中有玩家，重置为0
+						db.RoomNoPlayersSeconds[rbs.RoomID] = 0
+					}
+					db.RoomNoPlayersSecondsMutex.Unlock()
 
 					// 获取到数据就执行下一个房间
 					goto LOOP

@@ -8,6 +8,8 @@ type RoomSetting struct {
 	BackupCleanSetting        int    `gorm:"column:backup_clean_setting" json:"backupCleanSetting"`
 	RestartEnable             bool   `gorm:"column:restart_enable" json:"restartEnable"`
 	RestartSetting            string `gorm:"column:restart_setting" json:"restartSetting"`
+	ResetEnable               bool   `gorm:"column:reset_enable" json:"resetEnable"`
+	ResetSetting              string `gorm:"column:reset_setting" json:"resetSetting"`
 	AnnounceSetting           string `gorm:"column:announce_setting" json:"announceSetting"`
 	KeepaliveEnable           bool   `gorm:"column:keepalive_enable" json:"keepaliveEnable"`
 	KeepaliveSetting          int    `gorm:"column:keepalive_setting" json:"keepaliveSetting"`
