@@ -10,12 +10,12 @@ import (
 )
 
 func Backup(game *dst.Game) {
-	logger.Logger.Info("执行自动备份任务")
+	logger.Logger.Info("[定时任务]：执行自动备份任务")
 	err := game.Backup()
 	if err != nil {
 		logger.Logger.Errorf("备份失败, err: %v", err)
 	}
-	logger.Logger.Info("备份任务执行成功")
+	logger.Logger.Info("[定时任务]：备份任务执行成功")
 }
 
 func BackupClean(roomID int, days int) {
@@ -24,11 +24,11 @@ func BackupClean(roomID int, days int) {
 	if err != nil {
 		logger.Logger.Errorf("清理备份文件失败, err: %v", err)
 	}
-	logger.Logger.Infof("清理备份文件成功，共计清理备份文件%d个", count)
+	logger.Logger.Infof("[定时任务]：清理备份文件成功，共计清理备份文件%d个", count)
 }
 
 func Restart(game *dst.Game) {
-	logger.Logger.Info("执行自动重启任务")
+	logger.Logger.Info("[定时任务]：执行自动重启任务")
 	go func() {
 		_ = game.SystemMsg("自动重启任务触发：将在1分钟后重启服务器，在线玩家请在5分钟后重连")
 		_ = game.SystemMsg("Automatic restart task triggered: The server will restart in 1 minute. Online players, please reconnect after 5 minutes")
@@ -42,14 +42,14 @@ func Restart(game *dst.Game) {
 			logger.Logger.Errorf("启动游戏失败, err: %v", err)
 			logger.Logger.Error("自动重启任务执行失败")
 		} else {
-			logger.Logger.Info("自动重启任务执行成功")
+			logger.Logger.Info("[定时任务]：自动重启任务执行成功")
 		}
 	}()
 }
 
 func Reset(game *dst.Game, roomID int, force bool, days int) {
 	reset := func() {
-		logger.Logger.Info("正在执行自动重置任务")
+		logger.Logger.Info("[定时任务]：正在执行自动重置任务")
 		err := game.Reset(false)
 		if err != nil {
 			logger.Logger.Warnf("游戏内重置失败，尝试执行强制重置, err: %v", err)
@@ -57,10 +57,10 @@ func Reset(game *dst.Game, roomID int, force bool, days int) {
 			if err != nil {
 				logger.Logger.Errorf("重置失败, err: %v", err)
 			} else {
-				logger.Logger.Info("自动重置(强制重置)任务执行成功")
+				logger.Logger.Info("[定时任务]：自动重置(强制重置)任务执行成功")
 			}
 		} else {
-			logger.Logger.Info("自动重置(游戏内重置)任务执行成功")
+			logger.Logger.Info("[定时任务]：自动重置(游戏内重置)任务执行成功")
 		}
 	}
 
@@ -80,16 +80,16 @@ func Reset(game *dst.Game, roomID int, force bool, days int) {
 }
 
 func ScheduledStart(game *dst.Game) {
-	logger.Logger.Info("执行自动开启游戏")
+	logger.Logger.Info("[定时任务]：执行自动开启游戏")
 	err := game.StartAllWorld()
 	if err != nil {
 		logger.Logger.Errorf("开启游戏失败, err: %v", err)
 	}
-	logger.Logger.Info("自动开启游戏执行成功")
+	logger.Logger.Info("[定时任务]：自动开启游戏执行成功")
 }
 
 func ScheduledStop(game *dst.Game) {
-	logger.Logger.Info("执行自动关闭游戏")
+	logger.Logger.Info("[定时任务]：执行自动关闭游戏")
 	go func() {
 		_ = game.SystemMsg("自动关机任务触发：将在1分钟后关闭服务器")
 		_ = game.SystemMsg("Automatic shutdown task triggered: The server will restart in 1 minute")
@@ -98,7 +98,7 @@ func ScheduledStop(game *dst.Game) {
 		if err != nil {
 			logger.Logger.Warnf("关闭游戏失败, err: %v", err)
 		}
-		logger.Logger.Info("自动关闭游戏执行成功")
+		logger.Logger.Info("[定时任务]：自动关闭游戏执行成功")
 	}()
 }
 

@@ -135,15 +135,15 @@ func GameUpdate(enable bool, restart bool) {
 
 	v := GetDSTVersion()
 	if v.Local < v.Server {
-		logger.Logger.Info("检测到游戏需要更新")
-		logger.Logger.Info("开始执行游戏更新")
+		logger.Logger.Info("[定时任务]：检测到游戏需要更新")
+		logger.Logger.Info("[定时任务]：开始执行游戏更新")
 
 		db.DstUpdating = true
 
 		updateCmd := fmt.Sprintf("cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit")
 		_ = utils.BashCMD(updateCmd)
 
-		logger.Logger.Info("游戏更新结束")
+		logger.Logger.Info("[定时任务]：游戏更新结束")
 
 		db.DstUpdating = false
 
