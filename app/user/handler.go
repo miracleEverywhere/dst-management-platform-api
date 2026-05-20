@@ -353,9 +353,15 @@ func (h *Handler) myselfPut(c *gin.Context) {
 		return
 	}
 
-	dbUser.Password = user.Password
-	dbUser.Nickname = user.Nickname
-	dbUser.Avatar = user.Avatar
+	if user.Password != "" {
+		dbUser.Password = user.Password
+	}
+	if user.Nickname != "" {
+		dbUser.Nickname = user.Nickname
+	}
+	if user.Avatar != "" {
+		dbUser.Avatar = user.Avatar
+	}
 
 	err = h.userDao.UpdateUser(dbUser)
 	if err != nil {

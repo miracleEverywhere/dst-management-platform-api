@@ -10,20 +10,25 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	roomDao        *dao.RoomDAO
 	worldDao       *dao.WorldDAO
 	roomSettingDao *dao.RoomSettingDAO
+	userDao        *dao.UserDAO
 }
 
-func NewHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
+func NewHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, userDao *dao.UserDAO) *Handler {
 	return &Handler{
 		roomDao:        roomDao,
 		worldDao:       worldDao,
 		roomSettingDao: roomSettingDao,
+		userDao:        userDao,
 	}
 }
 
@@ -273,4 +278,28 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 	}
 
 	return nil
+}
+
+func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
+	role, _ := c.Get("role")
+	username, _ := c.Get("username")
+
+	// 管理员直接返回true
+	if role.(string) == "admin" {
+		return true
+	} else {
+		dbUser, err := h.userDao.GetUserByUsername(username.(string))
+		if err != nil {
+			logger.Logger.Error("查询数据库失败")
+			return false
+		}
+		roomIDs := strings.Split(dbUser.Rooms, ",")
+		for _, id := range roomIDs {
+			if id == roomID {
+				return true
+			}
+		}
+	}
+
+	return false
 }
