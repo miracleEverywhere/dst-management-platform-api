@@ -59,9 +59,6 @@ func Run() {
 	// 开启定时任务
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
 
-	// 设置生产环境
-	gin.SetMode(gin.ReleaseMode)
-
 	r := gin.New()
 
 	// 请求日志格式
@@ -79,7 +76,12 @@ func Run() {
 
 	// debug日志等级下，注册pprof路由
 	if logLevel == "debug" {
+		logger.Logger.Debug("debug模式已开启")
+		logger.Logger.Warn("debug模式会无条件暴露各种运行数据，请勿在生产环境开启debug")
 		pprof.Register(r)
+	} else {
+		// 设置生产环境
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	// 初始化即注册路由
