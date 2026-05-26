@@ -92,24 +92,29 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	} else {
 		language = 0
 	}
-	url = fmt.Sprintf("%s?appid=322330&return_vote_data=true&return_children=true&", utils.SteamApiModSearch)
-	url = url + "requiredtags[0]=server_only_mod&requiredtags[1]=all_clients_require_mod&match_all_tags=false&"
-	if searchText == "" {
-		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d",
-			language,
-			utils.GetSteamApiKey(),
-			page,
-			pageSize,
-		)
-	} else {
-		url = url + fmt.Sprintf("language=%d&key=%s&page=%d&numperpage=%d&search_text=%s",
-			language,
-			utils.GetSteamApiKey(),
-			page,
-			pageSize,
-			searchText,
-		)
+
+	params := map[string]string{
+		"appid":            "322330",
+		"return_vote_data": "true",
+		"return_children":  "true",
+		"requiredtags[0]":  "server_only_mod",
+		"requiredtags[1]":  "all_clients_require_mod",
+		"match_all_tags":   "false",
+		"language":         strconv.Itoa(language),
+		"key":              utils.GetSteamApiKey(),
+		"page":             strconv.Itoa(page),
+		"numperpage":       strconv.Itoa(pageSize),
 	}
+	if searchText != "" {
+		params["search_text"] = searchText
+	}
+
+	parts := make([]string, 0, len(params))
+	for k, v := range params {
+		parts = append(parts, k+"="+v)
+	}
+
+	url = utils.SteamApiModSearch + "?" + strings.Join(parts, "&")
 
 	client := &http.Client{
 		Timeout: utils.HttpTimeout * time.Second,
@@ -173,8 +178,7 @@ func SearchModById(id int, lang string) (Data, error) {
 		language = 0
 	}
 
-	url = fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
-	url = url + fmt.Sprintf("&publishedfileids[0]=%d", id)
+	url = fmt.Sprintf("%s?language=%d&key=%s&publishedfileids[0]=%d", utils.SteamApiModDetail, language, utils.GetSteamApiKey(), id)
 
 	client := &http.Client{
 		Timeout: utils.HttpTimeout * time.Second,
