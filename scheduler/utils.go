@@ -237,13 +237,10 @@ func GetInternetIP1() (string, error) {
 }
 
 func GetInternetIP2() (string, error) {
-	type JSONResponse struct {
-		Ip string `json:"ip"`
-	}
 	client := &http.Client{
 		Timeout: 10 * time.Second, // 设置超时时间为 10 秒
 	}
-	httpResponse, err := client.Get(utils.InternetIPApi2)
+	response, err := client.Get(utils.InternetIPApi2)
 	if err != nil {
 		return "", err
 	}
@@ -252,18 +249,25 @@ func GetInternetIP2() (string, error) {
 		if err != nil {
 			logger.Logger.Errorf("请求关闭失败, err: %v", err)
 		}
-	}(httpResponse.Body) // 确保在函数结束时关闭响应体
+	}(response.Body) // 确保在函数结束时关闭响应体
 
 	// 检查 HTTP 状态码
-	if httpResponse.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP 请求失败，状态码: %d", httpResponse.StatusCode)
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP 请求失败，状态码: %d", response.StatusCode)
 	}
-	var jsonResp JSONResponse
-	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
-		logger.Logger.Errorf("解析JSON失败, err: %v", err)
-		return "", err
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		logger.Logger.Errorf("读取响应失败, err: %v", err)
+		return "", fmt.Errorf("读取响应失败")
 	}
-	return jsonResp.Ip, nil
+
+	re := regexp.MustCompile(`IP\s+:\s+(\d+\.\d+\.\d+\.\d+)`)
+	matches := re.FindStringSubmatch(string(body))
+	if len(matches) >= 2 {
+		return matches[1], nil
+	}
+
+	return "", fmt.Errorf("查询公网ip失败")
 }
 
 // ParsePlayerInfoSaveTime 天转为秒
