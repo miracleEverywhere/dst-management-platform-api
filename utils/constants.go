@@ -1,6 +1,6 @@
 package utils
 
-const Version = "v3.1.4"
+const Version = "v3.1.5"
 
 const ApiVersion = "v3"
 
@@ -16,7 +16,7 @@ const DSTServerVersionApi = "https://forums.kleientertainment.com/game-updates/d
 
 const InternetIPApi1 = "http://ip-api.com/json/?lang=zh-CN"
 
-const InternetIPApi2 = "https://qifu-api.baidubce.com/ip/local/geo/v1/district"
+const InternetIPApi2 = "http://cip.cc"
 
 const SteamApiModDetail = "http://api.steampowered.com/IPublishedFileService/GetDetails/v1/"
 
