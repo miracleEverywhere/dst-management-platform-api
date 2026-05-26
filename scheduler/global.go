@@ -200,6 +200,7 @@ func InternetIPUpdate() {
 		}
 	}
 
+	logger.Logger.Info("正在更新公网ip")
 	db.InternetIP = internetIp
 }
 
