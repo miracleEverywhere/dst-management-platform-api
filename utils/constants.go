@@ -12,7 +12,7 @@ const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
 const DSTLocalVersionPath = "dst/version.txt"
 
-const DSTServerVersionApi = "http://ver.tugos.cn/getLocalVersion"
+const DSTServerVersionApi = "https://forums.kleientertainment.com/game-updates/dst"
 
 const InternetIPApi1 = "http://ip-api.com/json/?lang=zh-CN"
 

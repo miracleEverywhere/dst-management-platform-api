@@ -10,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -126,7 +128,7 @@ func GetDSTVersion() DSTVersion {
 
 		// 检查 HTTP 状态码
 		if response.StatusCode != http.StatusOK {
-			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
+			logger.Logger.Errorf("获取游戏版本失败, statusCode: %d", response.StatusCode)
 			return dstVersion
 		}
 
@@ -137,14 +139,29 @@ func GetDSTVersion() DSTVersion {
 			return dstVersion
 		}
 
-		// 将字节数组转换为字符串并返回
-		serverVersion, err := strconv.Atoi(string(body))
-		if err != nil {
-			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
+		// 找到所有带 data-currentRelease 的 <a> 标签，从 href URL 中提取帖子 ID
+		// 例如 href='.../dst/728321-r2733/' 提取 728321
+		tagRe := regexp.MustCompile(`<a[^>]*data-currentRelease[^>]*>`)
+		tags := tagRe.FindAllString(string(body), -1)
+
+		idRe := regexp.MustCompile(`/dst/(\d+)-`)
+		var versions []int
+		for _, tag := range tags {
+			match := idRe.FindStringSubmatch(tag)
+			if match != nil {
+				if num, err := strconv.Atoi(match[1]); err == nil {
+					versions = append(versions, num)
+				}
+			}
+		}
+
+		if len(versions) == 0 {
+			logger.Logger.Errorf("获取游戏版本失败, 未从页面中提取到版本号")
 			return dstVersion
 		}
 
-		dstVersion.Server = serverVersion
+		sort.Ints(versions)
+		dstVersion.Server = versions[len(versions)-1]
 
 		return dstVersion
 	}
