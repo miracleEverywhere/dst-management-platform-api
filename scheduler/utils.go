@@ -3,6 +3,7 @@ package scheduler
 import (
 	"bufio"
 	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"encoding/json"
@@ -81,10 +82,6 @@ func GetDSTVersion() DSTVersion {
 	dstVersion.Server = 0
 	dstVersion.Local = 0
 
-	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
-	}
-
 	file, err := os.Open(utils.DSTLocalVersionPath)
 	if err != nil {
 		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
@@ -112,74 +109,81 @@ func GetDSTVersion() DSTVersion {
 			return dstVersion
 		}
 		dstVersion.Local = number
+
 		// 获取服务端版本
-		// 发送 HTTP GET 请求
-		response, err := client.Get(utils.DSTServerVersionApi)
-		if err != nil {
-			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
-			return dstVersion
+		if db.GameServerVersion != 0 {
+			dstVersion.Server = db.GameServerVersion
+		} else {
+			dstVersion.Server = getGameServerVersion()
 		}
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				logger.Logger.Errorf("关闭文件失败, err: %v", err)
-			}
-		}(response.Body) // 确保在函数结束时关闭响应体
-
-		// 检查 HTTP 状态码
-		if response.StatusCode != http.StatusOK {
-			logger.Logger.Errorf("获取游戏版本失败, statusCode: %d", response.StatusCode)
-			return dstVersion
-		}
-
-		// 读取响应体内容
-		body, err := io.ReadAll(response.Body)
-		if err != nil {
-			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
-			return dstVersion
-		}
-
-		// 找到所有带 data-currentRelease 的 <a> 标签，从 href URL 中提取帖子 ID
-		// 例如 href='.../dst/728321-r2733/' 提取 728321
-		tagRe := regexp.MustCompile(`<a[^>]*data-currentRelease[^>]*>`)
-		tags := tagRe.FindAllString(string(body), -1)
-
-		idRe := regexp.MustCompile(`/dst/(\d+)-`)
-		var versions []int
-		for _, tag := range tags {
-			match := idRe.FindStringSubmatch(tag)
-			if match != nil {
-				if num, err := strconv.Atoi(match[1]); err == nil {
-					versions = append(versions, num)
-				}
-			}
-		}
-
-		if len(versions) == 0 {
-			logger.Logger.Errorf("获取游戏版本失败, 未从页面中提取到版本号")
-			return dstVersion
-		}
-
-		sort.Ints(versions)
-		dstVersion.Server = versions[len(versions)-1]
 
 		return dstVersion
 	}
 
 	// 如果扫描器遇到错误，返回错误
 	if err := scanner.Err(); err != nil {
-		dstVersion.Server = 0
-		dstVersion.Local = 0
 		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 
 		return dstVersion
 	}
 
-	// 如果文件为空，返回错误
-	dstVersion.Server = 0
-	dstVersion.Local = 0
-
 	return dstVersion
+}
+
+func getGameServerVersion() int {
+	// 发送 HTTP GET 请求
+	client := &http.Client{
+		Timeout: utils.HttpTimeout * time.Second,
+	}
+	response, err := client.Get(utils.DSTServerVersionApi)
+	if err != nil {
+		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
+		return 0
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Logger.Errorf("关闭响应体失败, err: %v", err)
+		}
+	}(response.Body) // 确保在函数结束时关闭响应体
+
+	// 检查 HTTP 状态码
+	if response.StatusCode != http.StatusOK {
+		logger.Logger.Errorf("获取游戏版本失败, statusCode: %d", response.StatusCode)
+		return 0
+	}
+
+	// 读取响应体内容
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
+		return 0
+	}
+
+	// 找到所有带 data-currentRelease 的 <a> 标签，从 href URL 中提取帖子 ID
+	// 例如 href='.../dst/728321-r2733/' 提取 728321
+	tagRe := regexp.MustCompile(`<a[^>]*data-currentRelease[^>]*>`)
+	tags := tagRe.FindAllString(string(body), -1)
+
+	idRe := regexp.MustCompile(`/dst/(\d+)-`)
+	var versions []int
+	for _, tag := range tags {
+		match := idRe.FindStringSubmatch(tag)
+		if match != nil {
+			if num, err := strconv.Atoi(match[1]); err == nil {
+				versions = append(versions, num)
+			}
+		}
+	}
+
+	if len(versions) == 0 {
+		logger.Logger.Errorf("获取游戏版本失败, 未从页面中提取到版本号")
+		return 0
+	}
+
+	sort.Ints(versions)
+
+	return versions[len(versions)-1]
 }
 
 type AnnounceSetting struct {

@@ -71,6 +71,16 @@ func initJobs() {
 		DayAt:    "",
 	})
 
+	// 游戏版本获取
+	Jobs = append(Jobs, JobConfig{
+		Name:     "GameServerVersionUpdate",
+		Func:     ServerVersionGet,
+		Args:     nil,
+		TimeType: HourType,
+		Interval: 1,
+		DayAt:    "",
+	})
+
 	// 房间定时任务
 	roomBasic, err := DBHandler.roomDao.GetRoomBasic()
 	if err != nil {

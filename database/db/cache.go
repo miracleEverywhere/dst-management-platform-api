@@ -32,6 +32,8 @@ var (
 	RoomNoPlayersSeconds = make(map[int]int)
 	// RoomNoPlayersSecondsMutex RoomNoPlayersSeconds锁
 	RoomNoPlayersSecondsMutex sync.Mutex
+	// GameServerVersion 饥荒的版本号
+	GameServerVersion int
 )
 
 type PlayerInfo struct {

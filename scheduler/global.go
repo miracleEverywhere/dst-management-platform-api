@@ -211,3 +211,10 @@ func ModDownloadClean() {
 		}
 	}
 }
+
+func ServerVersionGet() {
+	version := getGameServerVersion()
+	if version != 0 {
+		db.GameServerVersion = version
+	}
+}
