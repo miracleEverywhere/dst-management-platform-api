@@ -1,0 +1,1 @@
+function e(e,t){return new Promise(n=>setTimeout(async()=>{await t?.(),n()},e))}export{e as t};

@@ -1,0 +1,1 @@
+var e={events:{},on(e,t){this.events[e]||(this.events[e]=[]),this.events[e].push(t)},emit(e,t){this.events[e]&&this.events[e].forEach(e=>e(t))},off(e,t){this.events[e]&&(this.events[e]=this.events[e].filter(e=>e!==t))}};export{e as t};
