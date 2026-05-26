@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DMP (Don't Starve Together Management Platform) is a Go web server that manages DST game servers. It provides a web UI for multi-room, multi-user game server administration — room creation, mod management, backup/restore, player tracking, and scheduled tasks (restart, keepalive, announcements).
 
+The frontend SPA lives in a separate repo: `miracleEverywhere/dst-management-platform-web` (Vue/Vuetify). Its production build is embedded in `embedFS/dist/`.
+
 ## Build and run
 
 ```bash
@@ -16,10 +18,19 @@ CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
 ./dmp -bind 80 -dbpath ./data -level info
 
 # CLI flags
-#   -bind    HTTP port (default: 80)
-#   -dbpath  SQLite database directory (default: ./data)
-#   -level   Log level: debug, info, warn, error (default: info)
-#   -v       Print version and exit
+#   -bind     HTTP port (default: 80)
+#   -dbpath   SQLite database directory (default: ./data)
+#   -level    Log level: debug, info, warn, error (default: info)
+#   -cert     TLS certificate path (enables HTTPS when set with -key)
+#   -key      TLS private key path (enables HTTPS when set with -cert)
+#   -console  Run a console command instead of starting the server
+#   -v        Print version and exit
+
+# Console commands (run with -console flag):
+#   reset_password     Reset a user password interactively
+#   list_user          List all users
+#   db_stats           Show database file size and table row counts
+./dmp -console reset_password -dbpath ./data
 ```
 
 There are no tests in this repository.
@@ -35,6 +46,8 @@ There are no tests in this repository.
 5. Start the gocron scheduler with global + per-room jobs
 6. Register Gin routes for all `app/` modules, serve embedded SPA frontend as static files
 7. `gin.Run()`
+
+When `-level debug` is set, pprof endpoints are registered at `/debug/pprof/`. Production mode (`gin.ReleaseMode`) is used otherwise.
 
 ### App layer (`app/`)
 
@@ -62,6 +75,8 @@ The `Game` struct wraps a room + worlds + settings and operates on the DST serve
 - **ORM**: GORM with `glebarez/sqlite` driver, SQLite in WAL mode, single-connection (SetMaxOpenConns=1)
 - **Models** (`database/models/`): User, Room, World, RoomSetting, GlobalSetting, System, UidMap
 - **DAO** (`database/dao/`): Generic `BaseDAO[T]` provides CRUD + paginated query; typed DAOs (UserDAO, RoomDAO, etc.) embed BaseDAO and add domain-specific queries
+- **`dao.FetchGameInfo(roomID)`** (`database/dao/composite.go`): convenience function that fetches Room + Worlds + RoomSetting in one call — used widely across handlers and scheduler jobs
+- **Password hashing**: SHA512 (hex-encoded), no salt
 - **In-memory cache** (`database/db/cache.go`): JWT secret, players statistics (per-room player snapshots), players online time, system metrics (CPU/memory/disk/network), internet IP, mod download state
 
 ### Scheduler (`scheduler/`)
@@ -75,13 +90,18 @@ Uses `go-co-op/gocron`. Jobs are defined in `initJobs()` and managed dynamically
 
 ### Middleware (`middleware/`)
 
-- `TokenCheck()` — validates `X-DMP-TOKEN` JWT, sets username/nickname/role in Gin context, auto-refreshes token when >50% expired
+- `TokenCheck()` — validates `X-DMP-TOKEN` JWT, sets username/nickname/role in Gin context, auto-refreshes token (returns new token in `X-DMP-NEW-TOKEN` header) when >50% expired
 - `AdminOnly()` — rejects non-admin users (role != "admin")
+- `LoginRateLimit()` — rate-limits login endpoint to 1 request/second per IP
 - `CacheControl()` — sets 48-hour cache headers on static asset extensions
 
 ### EmbedFS (`embedFS/`)
 
-Embeds the frontend SPA (`dist/`), LuaJIT shared libraries (`luajit/`), and shell scripts (`shell/`). The SPA is served via `gin-static` as the catch-all route; LuaJIT libs and scripts are extracted to disk at startup.
+Embeds the frontend SPA (`dist/`), LuaJIT shared libraries (`luajit/`), and shell scripts (`shell/`). The SPA is served via `gin-static` as the catch-all route; LuaJIT libs (`liblua.so`, `libluajit.so`, `libpreload.so`) and shell scripts (`manual_install.sh`, `manual_update.sh`) are extracted to disk at startup under `dmp_files/`.
+
+### WebSSH (`app/platform/`)
+
+The platform module provides a WebSocket-based terminal (WebSSH) using the `olahol/melody` library. The terminal runs via `creack/pty` and streams I/O over a WebSocket connection. Messages are capped at 1MB.
 
 ### Utils (`utils/`)
 
