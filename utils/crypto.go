@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // CompareFileSHA256 比较两个文件的SHA256哈希值
@@ -52,4 +54,19 @@ func calculateSHA256(filename string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+func GenerateBcryptPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	return string(hashed), err
+}
+
+func ValidatePassword(formPassword, dbPassword string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(formPassword))
+	if err != nil {
+		return false
+	}
+
+	return true
 }

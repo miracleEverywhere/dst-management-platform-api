@@ -76,7 +76,7 @@ The `Game` struct wraps a room + worlds + settings and operates on the DST serve
 - **Models** (`database/models/`): User, Room, World, RoomSetting, GlobalSetting, System, UidMap
 - **DAO** (`database/dao/`): Generic `BaseDAO[T]` provides CRUD + paginated query; typed DAOs (UserDAO, RoomDAO, etc.) embed BaseDAO and add domain-specific queries
 - **`dao.FetchGameInfo(roomID)`** (`database/dao/composite.go`): convenience function that fetches Room + Worlds + RoomSetting in one call — used widely across handlers and scheduler jobs
-- **Password hashing**: SHA512 (hex-encoded), no salt
+- **Password hashing**: bcrypt (via `golang.org/x/crypto/bcrypt`, default cost). User model has `PasswordVersion` field (`"bcrypt"` / `"sha512"` / `""`) for backward compatibility — SHA512 passwords are upgraded to bcrypt on next successful login. `utils.GenerateBcryptPassword` / `utils.ValidatePassword` in `utils/crypto.go`.
 - **In-memory cache** (`database/db/cache.go`): JWT secret, players statistics (per-room player snapshots), players online time, system metrics (CPU/memory/disk/network), internet IP, mod download state
 
 ### Scheduler (`scheduler/`)

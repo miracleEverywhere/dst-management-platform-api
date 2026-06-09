@@ -2,11 +2,11 @@ package server
 
 import (
 	"bufio"
-	"crypto/sha512"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,8 +114,14 @@ func resetPassword(dbPath string) {
 		os.Exit(1)
 	}
 
-	hash := sha512.Sum512([]byte(password))
-	dbUser.Password = fmt.Sprintf("%x", hash)
+	hashedPassword, err := utils.GenerateBcryptPassword(password)
+	if err != nil {
+		logger.Logger.Errorf("创建bcrypt密码失败：%v", err)
+		return
+	}
+	dbUser.Password = hashedPassword
+	dbUser.PasswordVersion = models.PasswordVersionBcrypt
+
 	err = userDao.UpdateUser(dbUser)
 	if err != nil {
 		fmt.Printf("更新密码失败: %v\n", err)

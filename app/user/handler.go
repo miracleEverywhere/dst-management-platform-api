@@ -1,11 +1,13 @@
 package user
 
 import (
+	"crypto/sha512"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -40,7 +42,6 @@ func (h *Handler) registerPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
-	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	num, err := h.userDao.Count(nil)
 	if err != nil {
@@ -59,6 +60,16 @@ func (h *Handler) registerPost(c *gin.Context) {
 	user.Disabled = false
 	user.Role = "admin"
 
+	// 设置密码
+	password, err := utils.GenerateBcryptPassword(user.Password)
+	if err != nil {
+		logger.Logger.Errorf("创建bcrypt密码失败：%v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "create fail"), "data": nil})
+		return
+	}
+	user.Password = password
+	user.PasswordVersion = models.PasswordVersionBcrypt
+
 	if errCreate := h.userDao.Create(&user); errCreate != nil {
 		logger.Logger.Errorf("创建用户失败, err: %v", errCreate)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -76,7 +87,6 @@ func (h *Handler) loginPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
-	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	if user.Username == "" || user.Password == "" {
 		logger.Logger.Infof("请求参数缺失, api: %s", c.Request.URL.Path)
@@ -101,7 +111,52 @@ func (h *Handler) loginPost(c *gin.Context) {
 		return
 	}
 
-	if dbUser.Password != user.Password {
+	var (
+		validated          bool
+		needUpdatePassword bool
+	)
+
+	switch dbUser.PasswordVersion {
+	case models.PasswordVersionBcrypt:
+		validated = utils.ValidatePassword(user.Password, dbUser.Password)
+	case models.PasswordVersionSha512:
+		hash := sha512.Sum512([]byte(user.Password))
+		password := hex.EncodeToString(hash[:])
+
+		validated = dbUser.Password == password
+		if validated {
+			needUpdatePassword = true
+		}
+	default:
+		hash := sha512.Sum512([]byte(user.Password))
+		password := hex.EncodeToString(hash[:])
+
+		validated = dbUser.Password == password
+		if validated {
+			needUpdatePassword = true
+		}
+	}
+
+	defer func() {
+		if needUpdatePassword {
+			password, err := utils.GenerateBcryptPassword(user.Password)
+			if err != nil {
+				logger.Logger.Errorf("创建bcrypt密码失败：%v", err)
+				return
+			}
+			dbUser.Password = password
+			dbUser.PasswordVersion = models.PasswordVersionBcrypt
+
+			err = h.userDao.UpdateUser(dbUser)
+			if err != nil {
+				logger.Logger.Errorf("更新数据库失败, err: %v", err)
+			} else {
+				logger.Logger.Info("密码已升级至bcrypt")
+			}
+		}
+	}()
+
+	if !validated {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "wrong password"), "data": nil})
 		return
 	}
@@ -176,7 +231,6 @@ func (h *Handler) basePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
-	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	dbUser, err := h.userDao.GetUserByUsername(user.Username)
 	if err != nil {
@@ -191,9 +245,19 @@ func (h *Handler) basePost(c *gin.Context) {
 		return
 	}
 
+	// 设置密码
+	password, err := utils.GenerateBcryptPassword(user.Password)
+	if err != nil {
+		logger.Logger.Errorf("创建bcrypt密码失败：%v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "create fail"), "data": nil})
+		return
+	}
+	user.Password = password
+	user.PasswordVersion = models.PasswordVersionBcrypt
+
 	if errCreate := h.userDao.Create(&user); errCreate != nil {
 		logger.Logger.Errorf("创建用户失败, err: %v", errCreate)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "create fail"), "data": nil})
 		return
 	}
 
@@ -210,6 +274,7 @@ func (h *Handler) baseGet(c *gin.Context) {
 		return
 	}
 	dbUser.Password = ""
+	dbUser.PasswordVersion = ""
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": dbUser})
 }
@@ -221,7 +286,6 @@ func (h *Handler) basePut(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
-	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	dbUser, err := h.userDao.GetUserByUsername(user.Username)
 	if err != nil {
@@ -234,7 +298,10 @@ func (h *Handler) basePut(c *gin.Context) {
 		return
 	}
 
+	// basePut不涉及密码修改
 	user.Password = dbUser.Password
+	user.PasswordVersion = dbUser.PasswordVersion
+
 	err = h.userDao.UpdateUser(&user)
 	if err != nil {
 		logger.Logger.Errorf("更新数据库失败, err: %v", err)
@@ -252,8 +319,6 @@ func (h *Handler) baseDelete(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
-
-	logger.Logger.Debug(utils.StructToFlatString(user))
 
 	// 用户数小于等于1时，禁止删除
 	num, err := h.userDao.Count(nil)
@@ -322,6 +387,7 @@ func (h *Handler) userListGet(c *gin.Context) {
 	data.Data = []models.User{} // 防止Data为nil
 	for _, user := range users.Data {
 		user.Password = ""
+		user.PasswordVersion = ""
 		data.Data = append(data.Data, user)
 	}
 
@@ -344,8 +410,6 @@ func (h *Handler) myselfPut(c *gin.Context) {
 	username, _ := c.Get("username")
 	user.Username = username.(string)
 
-	logger.Logger.Debug(utils.StructToFlatString(user))
-
 	dbUser, err := h.userDao.GetUserByUsername(user.Username)
 	if err != nil {
 		logger.Logger.Errorf("查询数据库失败, err: %v", err)
@@ -354,7 +418,13 @@ func (h *Handler) myselfPut(c *gin.Context) {
 	}
 
 	if user.Password != "" {
-		dbUser.Password = user.Password
+		password, err := utils.GenerateBcryptPassword(user.Password)
+		if err != nil {
+			logger.Logger.Errorf("创建bcrypt密码失败：%v", err)
+		} else {
+			dbUser.Password = password
+			dbUser.PasswordVersion = models.PasswordVersionBcrypt
+		}
 	}
 	if user.Nickname != "" {
 		dbUser.Nickname = user.Nickname
