@@ -245,6 +245,71 @@ func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
 	}
 }
 
+func (h *Handler) statisticsPlayerCountV2Get(c *gin.Context) {
+	type ReqForm struct {
+		RoomID    int `json:"roomID" form:"roomID"`
+		TimeRange int `json:"timeRange" form:"timeRange"` // 前端传回来需要多少秒的数据
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	db.PlayersStatisticMutex.Lock()
+	defer db.PlayersStatisticMutex.Unlock()
+
+	var globalSettings models.GlobalSetting
+
+	err := h.globalSettingDao.GetGlobalSetting(&globalSettings)
+	if err != nil {
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	if reqForm.TimeRange == 0 {
+		reqForm.TimeRange = 24 * 60 * 60
+	}
+
+	dataCount := int(reqForm.TimeRange / globalSettings.PlayerGetFrequency) // 返回多少个数据
+	dataLength := len(db.PlayersStatistic[reqForm.RoomID])                  // 当前房间统计数据的个数
+
+	var neededStatistics []db.Players
+
+	if dataLength > dataCount {
+		neededStatistics = db.PlayersStatistic[reqForm.RoomID][dataLength-dataCount:]
+	} else {
+		neededStatistics = db.PlayersStatistic[reqForm.RoomID]
+	}
+
+	type dataItem struct {
+		Count     int   `json:"count"`
+		Timestamp int64 `json:"timestamp"`
+	}
+	var data []dataItem
+
+	for _, players := range neededStatistics {
+		data = append(data, dataItem{
+			Count:     len(players.PlayerInfo),
+			Timestamp: players.Timestamp,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
 func (h *Handler) chatGet(c *gin.Context) {
 	type ReqForm struct {
 		RoomID   int  `json:"roomID" form:"roomID"`

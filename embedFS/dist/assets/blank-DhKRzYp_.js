@@ -1,1 +1,0 @@
-import{Ar as e,Pr as t,T as n,gr as r,vr as i}from"./index-DX6aT22F.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(n,a){let s=t(`router-view`);return e(),r(`div`,o,[i(s)])}var c=n(a,[[`render`,s]]);export{c as default};
