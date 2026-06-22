@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,12 @@ func (b *BaseI18n) Get(c *gin.Context, message string) string {
 	default:
 		return b.ZH[message]
 	}
+}
+
+// GetF 类似 Get，但支持格式化参数，内部调用 fmt.Sprintf
+func (b *BaseI18n) GetF(c *gin.Context, message string, args ...interface{}) string {
+	msg := b.Get(c, message)
+	return fmt.Sprintf(msg, args...)
 }
 
 // I18n 全局的message，由各个app中的子i18n调用
