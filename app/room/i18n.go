@@ -46,6 +46,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["deactivate success"] = "关闭成功"
 	i.ZH["activate fail"] = "激活成功"
 	i.ZH["activate success"] = "激活成功"
+	i.ZH["port conflict"] = "端口 [%d] 冲突"
 
 	i.EN["room name exist"] = "Room Name Already Existed"
 	i.EN["upload save fail"] = "file save fail"
@@ -69,6 +70,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["deactivate success"] = "Deactivate Success"
 	i.EN["activate fail"] = "Activate Fail"
 	i.EN["activate success"] = "Activate Success"
+	i.EN["port conflict"] = "Port [%d] Conflict"
 
 	return i
 }

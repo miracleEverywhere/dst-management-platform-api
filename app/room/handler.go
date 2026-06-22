@@ -35,6 +35,17 @@ func (h *Handler) roomPost(c *gin.Context) {
 		}
 		//logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
+		// 端口冲突检测
+		var ports []int
+		ports = append(ports, reqForm.RoomData.MasterPort)
+		for _, world := range reqForm.WorldData {
+			ports = append(ports, world.ServerPort, world.MasterServerPort, world.AuthenticationPort)
+		}
+		if conflictPort := h.checkGamePort(ports, 0); conflictPort != 0 {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "port conflict", conflictPort), "data": nil})
+			return
+		}
+
 		reqForm.RoomData.ID = 0
 		reqForm.RoomData.Status = true
 
@@ -120,6 +131,17 @@ func (h *Handler) roomPut(c *gin.Context) {
 	permission := h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomData.ID))
 	if !permission {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	// 端口冲突检测
+	var ports []int
+	ports = append(ports, reqForm.RoomData.MasterPort)
+	for _, world := range reqForm.WorldData {
+		ports = append(ports, world.ServerPort, world.MasterServerPort, world.AuthenticationPort)
+	}
+	if conflictPort := h.checkGamePort(ports, reqForm.RoomData.ID); conflictPort != 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "port conflict", conflictPort), "data": nil})
 		return
 	}
 
