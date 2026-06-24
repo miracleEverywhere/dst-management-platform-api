@@ -27,9 +27,9 @@ COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
 RUN dpkg --add-architecture i386 && \
-	apt-get update && \
-    apt-get install -y libcurl4-gnutls-dev:i386 && \
-    apt-get install -y screen wget libcurl4-gnutls-dev && \
+    apt-get update && \
+    apt-get install -y libcurl4-gnutls-dev:i386 libcurl4-gnutls-dev && \
+    apt-get install -y screen wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN chmod +x /root/dmp /root/entry-point.sh
