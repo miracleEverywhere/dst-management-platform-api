@@ -12,9 +12,9 @@ WORKDIR /app
 # ENV GO111MODULE=on  
 
 # 复制当前目录下的所有文件到容器的/app目录
-COPY . .  
+COPY . .
 
-RUN CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp main.go
+RUN GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp main.go
 
 
 # 第2阶段：运行时环境
@@ -26,11 +26,14 @@ WORKDIR /root
 COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
-RUN apt-get update && apt-get install -y screen wget \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && chmod +x /root/dmp /root/entry-point.sh \
-    && mkdir -p /root/data /root/.klei
+RUN apt-get update
+RUN apt-get install -y screen wget libcurl4-gnutls-dev
+RUN dpkg --add-architecture i386
+RUN apt-get install -y libcurl4-gnutls-dev:i386
+RUN apt-get clean
+RUN rm -rf /var/lib/apt/lists/*
+RUN chmod +x /root/dmp /root/entry-point.sh
+RUN mkdir -p /root/data /root/.klei
 
 # 环境变量
 # - 平台暴露端口，默认为80
