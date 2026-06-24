@@ -608,6 +608,7 @@ func (mc ModORCollection) ToLuaCode() string {
 // escapeLuaString 转义字符串中的特殊字符，防止Lua注入
 func escapeLuaString(s string) string {
 	var builder strings.Builder
+
 	for _, r := range s {
 		switch r {
 		case '\\':
