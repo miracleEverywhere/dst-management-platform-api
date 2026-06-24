@@ -26,12 +26,13 @@ WORKDIR /root
 COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
-RUN apt-get update
-RUN apt-get install -y screen wget libcurl4-gnutls-dev
-RUN dpkg --add-architecture i386
-RUN apt-get install -y libcurl4-gnutls-dev:i386
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y screen wget libcurl4-gnutls-dev && \
+    dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y libcurl4-gnutls-dev:i386 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 RUN chmod +x /root/dmp /root/entry-point.sh
 RUN mkdir -p /root/data /root/.klei
 
