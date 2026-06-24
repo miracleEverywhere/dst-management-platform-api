@@ -35,6 +35,12 @@ func (h *Handler) roomPost(c *gin.Context) {
 		}
 		//logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
+		// 验证游戏模式，防止XSS注入
+		if !utils.IsValidGameMode(reqForm.RoomData.GameMode) {
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+
 		// 端口冲突检测
 		var ports []int
 		ports = append(ports, reqForm.RoomData.MasterPort)
@@ -128,6 +134,11 @@ func (h *Handler) roomPut(c *gin.Context) {
 		return
 	}
 	// logger.Logger.Debug(utils.StructToFlatString(reqForm))
+	// 验证游戏模式，防止XSS注入
+	if !utils.IsValidGameMode(reqForm.RoomData.GameMode) {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
 	permission := h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomData.ID))
 	if !permission {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
