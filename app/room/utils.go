@@ -338,6 +338,9 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 	if clusterIni["game_mode"] == "" {
 		return "cluster.ini game_mode not found", fmt.Errorf("未发现游戏模式")
 	}
+	if !utils.IsValidGameMode(clusterIni["game_mode"]) {
+		return "cluster.ini game_mode invalid", fmt.Errorf("无效的游戏模式: %s", clusterIni["game_mode"])
+	}
 	room.GameMode = clusterIni["game_mode"]
 	maxPlayer, err := strconv.Atoi(clusterIni["max_players"])
 	if err != nil {

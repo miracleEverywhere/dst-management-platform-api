@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
+	"path/filepath"
 )
 
 func (g *Game) getLogContent(logType string, id, lines int) []string {
@@ -69,18 +70,21 @@ func (g *Game) historyFileList(logType string, id int) []string {
 func (g *Game) historyFileContent(logType, logfileName string, id int) string {
 	var logPath string
 
+	// 防止路径穿越攻击：仅使用文件名部分，去除任何目录组件
+	safeFileName := filepath.Base(logfileName)
+
 	switch logType {
 	case "game":
 		world, err := g.getWorldByID(id)
 		if err != nil {
 			return ""
 		}
-		logPath = fmt.Sprintf("%s/backup/server_log/%s", world.worldPath, logfileName)
+		logPath = fmt.Sprintf("%s/backup/server_log/%s", world.worldPath, safeFileName)
 		logger.Logger.Debug(logPath)
 	case "chat":
 		for _, world := range g.worldSaveData {
 			if g.worldUpStatus(world.ID) {
-				logPath = fmt.Sprintf("%s/backup/server_chat_log/%s", world.worldPath, logfileName)
+				logPath = fmt.Sprintf("%s/backup/server_chat_log/%s", world.worldPath, safeFileName)
 				break
 			}
 		}

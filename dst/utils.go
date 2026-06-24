@@ -605,6 +605,37 @@ func (mc ModORCollection) ToLuaCode() string {
 	return builder.String()
 }
 
+// escapeLuaString 转义字符串中的特殊字符，防止Lua注入
+func escapeLuaString(s string) string {
+	var builder strings.Builder
+
+	for _, r := range s {
+		switch r {
+		case '\\':
+			builder.WriteString("\\\\")
+		case '"':
+			builder.WriteString("\\\"")
+		case '\n':
+			builder.WriteString("\\n")
+		case '\r':
+			builder.WriteString("\\r")
+		case '\t':
+			builder.WriteString("\\t")
+		case '\a':
+			builder.WriteString("\\a")
+		case '\b':
+			builder.WriteString("\\b")
+		case '\f':
+			builder.WriteString("\\f")
+		case '\v':
+			builder.WriteString("\\v")
+		default:
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
+}
+
 // formatLuaValue 将Go值格式化为Lua值
 func formatLuaValue(value any) string {
 	switch v := value.(type) {
@@ -617,7 +648,7 @@ func formatLuaValue(value any) string {
 		}
 		return strconv.FormatFloat(v, 'g', -1, 64)
 	case string:
-		return fmt.Sprintf("\"%s\"", v)
+		return fmt.Sprintf("\"%s\"", escapeLuaString(v))
 	case []any:
 		// 数组格式
 		var builder strings.Builder
@@ -643,14 +674,14 @@ func formatLuaValue(value any) string {
 			if isValidLuaIdentifier(key) {
 				builder.WriteString(fmt.Sprintf("%s=%s", key, formatLuaValue(item)))
 			} else {
-				builder.WriteString(fmt.Sprintf("[\"%s\"]=%s", key, formatLuaValue(item)))
+				builder.WriteString(fmt.Sprintf("[\"%s\"]=%s", escapeLuaString(key), formatLuaValue(item)))
 			}
 			first = false
 		}
 		builder.WriteString("}")
 		return builder.String()
 	default:
-		return fmt.Sprintf("\"%v\"", v)
+		return fmt.Sprintf("\"%s\"", escapeLuaString(fmt.Sprintf("%v", v)))
 	}
 }
 
