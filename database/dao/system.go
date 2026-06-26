@@ -7,6 +7,7 @@ import (
 	"dst-management-platform-api/utils"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type SystemDAO struct {
@@ -24,13 +25,15 @@ func NewSystemDAO(db *gorm.DB) *SystemDAO {
 
 func (d *SystemDAO) Get(key string) (*models.System, error) {
 	var system models.System
-	err := d.db.First(&system).Error
+	err := d.db.Where("key = ?", key).First(&system).Error
 	return &system, err
 }
 
-func (d *SystemDAO) Set(systems []models.System) error {
-	err := d.db.Save(&systems).Error
-	return err
+func (d *SystemDAO) Set(key, value string) error {
+	return d.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		DoUpdates: clause.AssignmentColumns([]string{"value"}),
+	}).Create(&models.System{Key: key, Value: value}).Error
 }
 
 func (d *SystemDAO) initSystem() {
@@ -39,14 +42,13 @@ func (d *SystemDAO) initSystem() {
 	if err != nil {
 		logger.Logger.Debug("没有发现jwt秘钥，创建中")
 		secret := utils.GenerateJWTSecret()
-		system := []models.System{
-			{Key: "jwt_secret", Value: secret},
-		}
-		err = d.Set(system)
+		err = d.Set("jwt_secret", secret)
 		if err != nil {
 			panic("数据库初始化失败: " + err.Error())
 		}
+		db.JwtSecret = secret
 		logger.Logger.Debug("jwt秘钥创建完成")
+
 		return
 	}
 
