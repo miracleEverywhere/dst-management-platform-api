@@ -112,6 +112,14 @@ func (h *Handler) backupDelete(c *gin.Context) {
 		return
 	}
 
+	for _, filename := range reqForm.Filenames {
+		if !utils.IsSafePath(filename) {
+			logger.Logger.Warnf("检测到穿越攻击: %s, api: %s", filename, c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+	}
+
 	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
