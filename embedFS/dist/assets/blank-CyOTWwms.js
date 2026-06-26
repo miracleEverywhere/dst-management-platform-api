@@ -1,1 +1,0 @@
-import{Nr as e,T as t,_r as n,hr as r,kr as i}from"./index-BI1_IBHB.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(t,a){let s=e(`router-view`);return i(),r(`div`,o,[n(s)])}var c=t(a,[[`render`,s]]);export{c as default};

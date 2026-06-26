@@ -1,1 +1,0 @@
-import{kr as e,pr as t}from"./index-BI1_IBHB.js";import n from"./singleLog-DnecVsX3.js";var r={__name:`access`,setup(r){return(r,i)=>(e(),t(n,{type:`access`}))}};export{r as default};
