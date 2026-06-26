@@ -2,3 +2,6 @@
 .claude/*
 !.claude/skills/
 deliverables
+dmp
+data
+logs
