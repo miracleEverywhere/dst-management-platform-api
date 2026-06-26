@@ -25,6 +25,14 @@ func TokenCheck() gin.HandlerFunc {
 			return
 		}
 
+		// 校验 token 版本号，检查是否已被撤销
+		if !db.ValidateTokenVersion(claims.Username, claims.TokenVersion) {
+			logger.Logger.Warnf("token已被撤销, username: %s, ip: %s", claims.Username, c.ClientIP())
+			c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "token revoked"), "data": nil})
+			c.Abort()
+			return
+		}
+
 		c.Set("username", claims.Username)
 		c.Set("nickname", claims.Nickname)
 		c.Set("role", claims.Role)
@@ -33,9 +41,10 @@ func TokenCheck() gin.HandlerFunc {
 		if shouldRefreshToken(claims.ExpiresAt.Time) {
 			logger.Logger.Info("token有效期小于阈值，刷新token")
 			user := models.User{
-				Username: claims.Username,
-				Nickname: claims.Nickname,
-				Role:     claims.Role,
+				Username:     claims.Username,
+				Nickname:     claims.Nickname,
+				Role:         claims.Role,
+				TokenVersion: claims.TokenVersion,
 			}
 			token, err = utils.GenerateJWT(user, []byte(db.JwtSecret), utils.JwtExpirationHours)
 			if err != nil {

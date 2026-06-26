@@ -8,6 +8,9 @@ import (
 var (
 	// JwtSecret jwt密钥
 	JwtSecret string
+	// TokenVersionCache token 版本号缓存，username -> tokenVersion
+	TokenVersionCache     = make(map[string]int)
+	TokenVersionCacheLock sync.RWMutex
 	// CurrentDir 当前工作目录
 	CurrentDir string
 	// DstUpdating 饥荒更新中

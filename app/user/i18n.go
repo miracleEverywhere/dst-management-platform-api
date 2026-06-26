@@ -36,6 +36,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["disabled"] = "用户已被禁用"
 	i.ZH["myself update success"] = "修改成功，请重新登录"
 	i.ZH["delete all users"] = "禁止删除所有用户"
+	i.ZH["revoke success"] = "Token撤销成功"
+	i.ZH["revoke fail"] = "Token撤销失败"
 
 	i.EN["register success"] = "Register Success"
 	i.EN["register fail"] = "Register Fail"
@@ -47,6 +49,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["disabled"] = "User is Disabled"
 	i.EN["myself update success"] = "Update success, please re-login"
 	i.EN["delete all users"] = "Prohibit deletion of all users"
+	i.EN["revoke success"] = "Token Revoked Successfully"
+	i.EN["revoke fail"] = "Token Revocation Failed"
 
 	return i
 }

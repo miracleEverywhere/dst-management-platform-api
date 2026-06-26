@@ -22,6 +22,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			user.GET("/menu", middleware.TokenCheck(), h.menuGet)
 			user.GET("/list", middleware.TokenCheck(), middleware.AdminOnly(), h.userListGet)
 			user.PUT("/myself", middleware.TokenCheck(), h.myselfPut)
+			user.POST("/revoke", middleware.TokenCheck(), middleware.AdminOnly(), h.revokePost)
 		}
 	}
 }

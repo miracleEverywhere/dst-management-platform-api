@@ -168,6 +168,9 @@ func (h *Handler) loginPost(c *gin.Context) {
 		return
 	}
 
+	// 登录成功后缓存 token 版本号
+	db.SetTokenVersion(dbUser.Username, dbUser.TokenVersion)
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "login success"), "data": token})
 }
 
@@ -298,9 +301,15 @@ func (h *Handler) basePut(c *gin.Context) {
 		return
 	}
 
+	// 如果管理员禁用了用户或修改了角色，撤销其所有 token
+	if (!dbUser.Disabled && user.Disabled) || dbUser.Role != user.Role {
+		dbUser.TokenVersion = db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
+	}
+
 	// basePut不涉及密码修改
 	user.Password = dbUser.Password
 	user.PasswordVersion = dbUser.PasswordVersion
+	user.TokenVersion = dbUser.TokenVersion
 
 	err = h.userDao.UpdateUser(&user)
 	if err != nil {
@@ -344,6 +353,9 @@ func (h *Handler) baseDelete(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user not exist"), "data": nil})
 		return
 	}
+
+	// 撤销被删除用户的所有 token
+	db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
 
 	// 执行删除
 	err = h.userDao.Delete(dbUser)
@@ -424,6 +436,8 @@ func (h *Handler) myselfPut(c *gin.Context) {
 		} else {
 			dbUser.Password = password
 			dbUser.PasswordVersion = models.PasswordVersionBcrypt
+			// 修改密码后撤销所有旧 token
+			dbUser.TokenVersion = db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
 		}
 	}
 	if user.Nickname != "" {
@@ -441,4 +455,39 @@ func (h *Handler) myselfPut(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "myself update success"), "data": nil})
+}
+
+// revokePost 管理员撤销指定用户的所有 token
+func (h *Handler) revokePost(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	dbUser, err := h.userDao.GetUserByUsername(req.Username)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if dbUser.Username == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "user not exist"), "data": nil})
+		return
+	}
+
+	// 递增 token 版本号，使所有旧 token 失效
+	dbUser.TokenVersion = db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
+	err = h.userDao.UpdateUser(dbUser)
+	if err != nil {
+		logger.Logger.Errorf("更新数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "revoke fail"), "data": nil})
+		return
+	}
+
+	logger.Logger.Infof("管理员已撤销用户 %s 的所有 token", req.Username)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "revoke success"), "data": nil})
 }

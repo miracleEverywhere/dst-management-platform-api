@@ -441,10 +441,16 @@ func tokenPost(c *gin.Context) {
 	username, _ := c.Get("username")
 	nickname, _ := c.Get("nickname")
 
+	cachedVersion, exists := db.TokenVersionCache[username.(string)]
+	if !exists {
+		cachedVersion = 0
+	}
+
 	user := models.User{
-		Username: username.(string),
-		Nickname: nickname.(string),
-		Role:     "admin",
+		Username:     username.(string),
+		Nickname:     nickname.(string),
+		Role:         "admin",
+		TokenVersion: cachedVersion,
 	}
 
 	var expiration int

@@ -13,6 +13,7 @@ type User struct {
 	MaxPlayers      int    `gorm:"column:max_players" json:"maxPlayers"`
 	CustomSetting   string `gorm:"column:custom_setting" json:"customSetting,omitempty"`
 	PasswordVersion string `gorm:"not null;default:'';column:password_version" json:"passwordVersion,omitempty"`
+	TokenVersion    int    `gorm:"not null;default:0;column:token_version" json:"-"`
 }
 
 func (User) TableName() string {

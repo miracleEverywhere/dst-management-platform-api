@@ -10,9 +10,10 @@ import (
 )
 
 type Claims struct {
-	Username string `json:"username"`
-	Nickname string `json:"nickname"`
-	Role     string `json:"role"`
+	Username     string `json:"username"`
+	Nickname     string `json:"nickname"`
+	Role         string `json:"role"`
+	TokenVersion int    `json:"tokenVersion"`
 	jwt.RegisteredClaims
 }
 
@@ -34,9 +35,10 @@ func GenerateJWTSecret() string {
 // GenerateJWT 生成 JWT Token
 func GenerateJWT(user models.User, jwtSecret []byte, expirationHours int) (string, error) {
 	claims := Claims{
-		Username: user.Username,
-		Nickname: user.Nickname,
-		Role:     user.Role,
+		Username:     user.Username,
+		Nickname:     user.Nickname,
+		Role:         user.Role,
+		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirationHours) * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
