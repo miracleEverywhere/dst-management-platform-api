@@ -307,3 +307,16 @@ func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
 
 	return false
 }
+
+func checkNotUgcUrl(url string) bool {
+	urlParts := strings.Split(url, "/")
+	if len(urlParts) != 7 {
+		return false
+	}
+
+	if urlParts[2] != "cdn.steamusercontent.com" {
+		return false
+	}
+
+	return true
+}

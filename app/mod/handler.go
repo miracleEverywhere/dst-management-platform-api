@@ -80,6 +80,14 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		return
 	}
 
+	// url https://cdn.steamusercontent.com/ugc/1466437966115152320/8A3E11F0B32FCBFBF308DEB0B5C98A702215374B/
+	if ok := checkNotUgcUrl(reqForm.FileURL); !ok {
+		logger.Logger.Warnf("异常模组下载请求已拦截: %s, api: %s", reqForm.FileURL, c.Request.URL.Path)
+		logger.Logger.Warn("疑似攻击请求，请立即修改用户名密码及重置jwt-secret")
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
 	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
