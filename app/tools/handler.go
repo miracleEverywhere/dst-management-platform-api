@@ -223,7 +223,7 @@ func (h *Handler) backupDownloadGet(c *gin.Context) {
 		return
 	}
 	// 3. 安全验证（防止路径遍历）
-	if strings.Contains(reqForm.Filename, "..") {
+	if !utils.IsSafePath(reqForm.Filename) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
