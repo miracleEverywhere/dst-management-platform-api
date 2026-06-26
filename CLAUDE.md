@@ -11,7 +11,13 @@ The frontend SPA lives in a separate repo: `miracleEverywhere/dst-management-pla
 ## Build and run
 
 ```bash
-# Build (static binary, no CGO)
+# Full build: frontend + backend (frontend repo expected at ~/WebstormProjects/dst-management-platform-web)
+make
+
+# Backend only (static binary, no CGO)
+make backend-only
+
+# Or manually:
 CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
 
 # Run
@@ -77,7 +83,8 @@ The `Game` struct wraps a room + worlds + settings and operates on the DST serve
 - **DAO** (`database/dao/`): Generic `BaseDAO[T]` provides CRUD + paginated query; typed DAOs (UserDAO, RoomDAO, etc.) embed BaseDAO and add domain-specific queries
 - **`dao.FetchGameInfo(roomID)`** (`database/dao/composite.go`): convenience function that fetches Room + Worlds + RoomSetting in one call — used widely across handlers and scheduler jobs
 - **Password hashing**: bcrypt (via `golang.org/x/crypto/bcrypt`, default cost). User model has `PasswordVersion` field (`"bcrypt"` / `"sha512"` / `""`) for backward compatibility — SHA512 passwords are upgraded to bcrypt on next successful login. `utils.GenerateBcryptPassword` / `utils.ValidatePassword` in `utils/crypto.go`.
-- **In-memory cache** (`database/db/cache.go`): JWT secret, players statistics (per-room player snapshots), players online time, system metrics (CPU/memory/disk/network), internet IP, mod download state
+- **In-memory cache** (`database/db/cache.go`): JWT secret, token version cache (username → version for revocation), players statistics (per-room player snapshots), players online time, system metrics (CPU/memory/disk/network), internet IP, mod download state
+- **SystemDAO** (`database/dao/system.go`): key-value config store backed by the `system` table. `Get(key)` queries by key, `Set(key, value)` does an atomic upsert via `clause.OnConflict`. JWT secret is stored here (key `jwt_secret`), generated once on first startup.
 
 ### Scheduler (`scheduler/`)
 
@@ -90,10 +97,30 @@ Uses `go-co-op/gocron`. Jobs are defined in `initJobs()` and managed dynamically
 
 ### Middleware (`middleware/`)
 
-- `TokenCheck()` — validates `X-DMP-TOKEN` JWT, sets username/nickname/role in Gin context, auto-refreshes token (returns new token in `X-DMP-NEW-TOKEN` header) when >50% expired
-- `AdminOnly()` — rejects non-admin users (role != "admin")
-- `LoginRateLimit()` — rate-limits login endpoint to 1 request/second per IP
-- `CacheControl()` — sets 48-hour cache headers on static asset extensions
+- `TokenCheck()` — validates `X-DMP-TOKEN` JWT, checks token version against in-memory cache for revocation, sets username/nickname/role in Gin context, auto-refreshes token (returns new token in `X-DMP-NEW-TOKEN` header) when >50% expired. Returns code 420 on failure.
+- `AdminOnly()` — rejects non-admin users (role != "admin"), returns code 201
+- `LoginRateLimit()` — rate-limits login endpoint to 1 request/second per IP, returns code 429
+- `CacheControl()` — sets cache headers on static asset extensions (duration: `utils.StaticCacheHours`, default 7 days)
+
+### Token revocation
+
+JWT tokens can be revoked without restarting the server via a **token version** mechanism:
+
+- **User model** has a `TokenVersion` column (default 0, persisted in DB). Each JWT claim carries `TokenVersion`.
+- **In-memory cache** (`db.TokenVersionCache` in `database/db/cache.go`) maps username → current valid version. Populated on login, checked on every authenticated request.
+- **`db.ValidateTokenVersion()`** (`database/db/token_version.go`) — called by TokenCheck middleware. If cache miss → first request this session, auto-caches and allows. If version mismatch → token revoked (code 420).
+- **`db.RevokeTokenVersion()`** — increments version in cache, returns new version. Caller must persist to DB.
+
+Revocation triggers:
+| Scenario | Location |
+|---|---|
+| User changes own password | `myselfPut` |
+| Admin disables a user | `basePut` |
+| Admin changes a user's role | `basePut` |
+| Admin deletes a user | `baseDelete` |
+| Admin explicitly revokes | `POST /v3/user/revoke` (new endpoint) |
+
+JWT secret is persisted in the `system` DB table (key `jwt_secret`), generated once on first startup. Restarts do NOT invalidate tokens — only explicit revocation does.
 
 ### EmbedFS (`embedFS/`)
 
@@ -105,8 +132,8 @@ The platform module provides a WebSocket-based terminal (WebSSH) using the `olah
 
 ### Utils (`utils/`)
 
-- `constants.go` — version, API prefix, paths, external API URLs
-- `jwt.go` — JWT generation/validation with HS256
+- `constants.go` — version, API prefix, JWT expiration (72h), static cache duration (7d), paths, external API URLs
+- `jwt.go` — JWT generation/validation with HS256, Claims carries Username/Nickname/Role/TokenVersion
 - `i18n.go` — request-scoped i18n via `X-I18n-Lang` header (zh/en), each app module registers its own messages
 - `security.go` — `IsSafeString` (prevents command injection in world/screen names), `IsSafePath` (prevents path traversal)
 - `getter.go` — obfuscated Steam API key and DST token retrieval
