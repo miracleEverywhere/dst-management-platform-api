@@ -9,6 +9,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -128,6 +129,10 @@ func websshWS(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "权限不足"})
 		return
 	}
+
+	webhook.Snd.Send(webhook.EventWebsocketConnected, 0, map[string]interface{}{
+		"username": claims.Username,
+	})
 
 	// 创建PTY进程 - 使用login shell确保正确的环境
 	cmd := exec.Command("bash", "-l")
@@ -400,6 +405,10 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 		}
 	}
 
+	if dbGlobalSettings.WebhookSetting != reqForm.WebhookSetting {
+		needUpdateDB = true
+	}
+
 	if needUpdateDB {
 		err = h.globalSettingDao.UpdateGlobalSetting(&reqForm)
 		if err != nil {
@@ -408,6 +417,10 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			return
 		}
 	}
+
+	webhook.Snd.Send(webhook.EventGameUpdate, 0, map[string]interface{}{
+		"dbUpdated": needUpdateDB,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
@@ -480,4 +493,29 @@ func screenKillPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "kill screen success"), "data": nil})
+}
+
+func webhookTestPost(c *gin.Context) {
+	var reqForm struct {
+		URL    string `json:"url" binding:"required"`
+		Secret string `json:"secret"`
+	}
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	err := webhook.Snd.SendTest(reqForm.URL, reqForm.Secret)
+	if err != nil {
+		logger.Logger.Warnf("webhook 测试失败, url: %s, err: %v", reqForm.URL, err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "webhook test fail", err.Error()), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "webhook test success"), "data": nil})
+}
+
+func webhookEventsGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": webhook.AllEventTypes})
 }

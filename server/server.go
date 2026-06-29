@@ -16,6 +16,7 @@ import (
 	"dst-management-platform-api/middleware"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"fmt"
 	"runtime"
 
@@ -55,6 +56,9 @@ func Run() {
 	worldDao := dao.NewWorldDAO(db.DB)
 	globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
 	uidMapDao := dao.NewUidMapDAO(db.DB)
+
+	// 初始化 webhook sender
+	webhook.Snd = webhook.NewSender(globalSettingDao, roomSettingDao, roomDao)
 
 	// 开启定时任务
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)

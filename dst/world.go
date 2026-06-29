@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"fmt"
 	"io"
 	"os"
@@ -272,6 +273,11 @@ func (g *Game) startAllWorld() error {
 		}
 	}
 
+	webhook.Snd.Send(webhook.EventGameStart, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+	})
+
 	return nil
 }
 
@@ -304,6 +310,11 @@ func (g *Game) stopAllWorld() error {
 			return err
 		}
 	}
+
+	webhook.Snd.Send(webhook.EventGameStop, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+	})
 
 	return nil
 }

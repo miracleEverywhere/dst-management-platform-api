@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -139,6 +140,10 @@ cluster_key = ` + g.room.ClusterKey + steamGroupSetting
 }
 
 func (g *Game) reset(force bool) error {
+	defer webhook.Snd.Send(webhook.EventGameReset, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+	})
 	if force {
 		defer func() {
 			_ = g.startAllWorld()
@@ -335,6 +340,12 @@ func (g *Game) backup() error {
 		return err
 	}
 
+	webhook.Snd.Send(webhook.EventGameBackup, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+		"action":   "执行备份",
+	})
+
 	return nil
 }
 
@@ -372,6 +383,12 @@ func (g *Game) restore(filename string) (*SaveJson, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	webhook.Snd.Send(webhook.EventGameBackup, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+		"action":   "备份恢复",
+	})
 
 	return &saveJson, nil
 }
@@ -449,6 +466,12 @@ func (g *Game) deleteBackups(filenames []string) int {
 		}
 		s++
 	}
+
+	webhook.Snd.Send(webhook.EventGameBackup, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+		"action":   "删除备份",
+	})
 
 	return s
 }
@@ -571,6 +594,12 @@ func (g *Game) deleteSnapshot(filename string) error {
 			return err
 		}
 	}
+
+	webhook.Snd.Send(webhook.EventGameBackup, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+		"action":   "删除快照",
+	})
 
 	return nil
 }

@@ -24,6 +24,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.POST("/activate", h.activatePost)
 			room.POST("/deactivate", h.deactivatePost)
 			room.DELETE("", middleware.AdminOnly(), h.roomDelete)
+			room.POST("/webhook/test", middleware.TokenCheck(), webhookTestPost)
+			room.GET("/webhook/events", middleware.TokenCheck(), webhookEventsGet)
 		}
 	}
 }

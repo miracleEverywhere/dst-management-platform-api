@@ -3,6 +3,7 @@ package dst
 import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"fmt"
 	"regexp"
 	"strings"
@@ -67,6 +68,14 @@ func (g *Game) savePlayerList() error {
 }
 
 func (g *Game) addPlayerList(uids []string, listType string) error {
+	defer webhook.Snd.Send(webhook.EventPlayerManage, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+		"action":   "add",
+		"type":     listType,
+		"uids":     strings.Join(uids, ", "),
+	})
+
 	switch listType {
 	case "adminlist":
 		g.playerSaveData.adminlist = append(g.playerSaveData.adminlist, uids...)
@@ -87,6 +96,14 @@ func (g *Game) addPlayerList(uids []string, listType string) error {
 }
 
 func (g *Game) removePlayerList(uid, listType string) error {
+	defer webhook.Snd.Send(webhook.EventPlayerManage, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+		"action":   "remove",
+		"type":     listType,
+		"uid":      uid,
+	})
+
 	switch listType {
 	case "adminlist":
 		if !utils.Contains(g.playerSaveData.adminlist, uid) {

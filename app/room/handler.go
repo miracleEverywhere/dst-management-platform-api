@@ -8,6 +8,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -117,6 +118,8 @@ func (h *Handler) roomPost(c *gin.Context) {
 			}
 		}
 
+		webhook.Snd.Send(webhook.EventRoomCreated, room.ID, reqForm)
+
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "create success"), "data": room})
 		return
 	}
@@ -198,6 +201,8 @@ func (h *Handler) roomPut(c *gin.Context) {
 			scheduler.DeleteJob(jobName)
 		}
 	}
+
+	webhook.Snd.Send(webhook.EventRoomSettingsUpdated, reqForm.RoomData.ID, reqForm)
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": reqForm.RoomData})
 }
@@ -773,6 +778,11 @@ func (h *Handler) deactivatePost(c *gin.Context) {
 		return
 	}
 
+	webhook.Snd.Send(webhook.EventRoomDeactivated, reqForm.RoomID, map[string]interface{}{
+		"gameID":   room.ID,
+		"gameName": room.GameName,
+	})
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "deactivate success"), "data": nil})
 }
 
@@ -860,6 +870,11 @@ func (h *Handler) activatePost(c *gin.Context) {
 			}
 		}
 	}
+
+	webhook.Snd.Send(webhook.EventRoomActivated, reqForm.RoomID, map[string]interface{}{
+		"gameID":   room.ID,
+		"gameName": room.GameName,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "activate success"), "data": nil})
 }
@@ -955,6 +970,12 @@ func (h *Handler) roomDelete(c *gin.Context) {
 		}
 
 	}
+	// webhook 通知
+	webhook.Snd.Send(webhook.EventRoomDeleted, reqForm.RoomID, map[string]interface{}{
+		"gameID":   room.ID,
+		"gameName": room.GameName,
+	})
+
 	// 更新数据库
 	err = h.roomDao.Delete(room)
 	if err != nil {
@@ -983,5 +1004,63 @@ func (h *Handler) roomDelete(c *gin.Context) {
 		return
 	}
 
+	// 更新webhook全局通知房间
+	var globalSetting models.GlobalSetting
+	if err := h.globalSettingDao.GetGlobalSetting(&globalSetting); err == nil && globalSetting.WebhookSetting != "" {
+		var (
+			items        []webhook.GlobalWebhookItem
+			needUpdateDb = false
+		)
+		if json.Unmarshal([]byte(globalSetting.WebhookSetting), &items) == nil {
+			for i, item := range items {
+				if len(item.RoomIDs) == 0 {
+					continue
+				}
+				if utils.Contains(item.RoomIDs, room.ID) {
+					needUpdateDb = true
+					items[i].RoomIDs = utils.RemoveItem(item.RoomIDs, room.ID)
+				}
+			}
+		}
+
+		if needUpdateDb {
+			jsonData, err := json.Marshal(items)
+			if err != nil {
+				logger.Logger.Errorf("更新webhook房间ID失败: %v", err)
+			} else {
+				globalSetting.WebhookSetting = string(jsonData)
+				err = h.globalSettingDao.UpdateGlobalSetting(&globalSetting)
+				if err != nil {
+					logger.Logger.Errorf("更新webhook房间ID失败: %v", err)
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+}
+
+func webhookTestPost(c *gin.Context) {
+	var reqForm struct {
+		URL    string `json:"url" binding:"required"`
+		Secret string `json:"secret"`
+	}
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	err := webhook.Snd.SendTest(reqForm.URL, reqForm.Secret)
+	if err != nil {
+		logger.Logger.Warnf("webhook 测试失败, url: %s, err: %v", reqForm.URL, err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "webhook test fail", err.Error()), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "webhook test success"), "data": nil})
+}
+
+func webhookEventsGet(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": webhook.AllEventTypes})
 }

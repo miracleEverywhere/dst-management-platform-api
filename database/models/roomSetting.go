@@ -19,6 +19,7 @@ type RoomSetting struct {
 	StartType                 string `gorm:"column:start_type" json:"startType"`
 	CustomIP                  string `gorm:"column:custom_ip" json:"customIP"`
 	CustomPort                int    `gorm:"column:custom_port" json:"customPort"`
+	WebhookSetting            string `gorm:"column:webhook_setting" json:"webhookSetting"`
 }
 
 func (RoomSetting) TableName() string {

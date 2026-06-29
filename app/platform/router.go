@@ -21,6 +21,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			platform.POST("/global_settings", middleware.TokenCheck(), middleware.AdminOnly(), h.globalSettingsPost)
 			platform.GET("/screen/running", middleware.TokenCheck(), middleware.AdminOnly(), h.screenRunningGet)
 			platform.POST("/screen/kill", middleware.TokenCheck(), middleware.AdminOnly(), screenKillPost)
+			platform.POST("/webhook/test", middleware.TokenCheck(), middleware.AdminOnly(), webhookTestPost)
+			platform.GET("/webhook/events", middleware.TokenCheck(), webhookEventsGet)
 		}
 	}
 }

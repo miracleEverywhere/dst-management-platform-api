@@ -47,6 +47,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["activate fail"] = "激活成功"
 	i.ZH["activate success"] = "激活成功"
 	i.ZH["port conflict"] = "端口 [%d] 冲突"
+	i.ZH["webhook test fail"] = "Webhook 测试失败: %s"
+	i.ZH["webhook test success"] = "Webhook 测试成功"
 
 	i.EN["room name exist"] = "Room Name Already Existed"
 	i.EN["upload save fail"] = "file save fail"
@@ -71,6 +73,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["activate fail"] = "Activate Fail"
 	i.EN["activate success"] = "Activate Success"
 	i.EN["port conflict"] = "Port [%d] Conflict"
+	i.EN["webhook test fail"] = "Webhook Test Failed: %s"
+	i.EN["webhook test success"] = "Webhook Test Success"
 
 	return i
 }

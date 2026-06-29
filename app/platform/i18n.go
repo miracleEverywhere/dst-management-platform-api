@@ -30,11 +30,15 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["get screens fail"] = "获取Screens失败"
 	i.ZH["kill screen fail"] = "关闭Screens失败"
 	i.ZH["kill screen success"] = "关闭Screens成功"
+	i.ZH["webhook test fail"] = "Webhook 测试失败: %s"
+	i.ZH["webhook test success"] = "Webhook 测试成功"
 
 	i.EN["get os info fail"] = "Get OS Info Fail"
 	i.EN["get screens fail"] = "Get Screens Fail"
 	i.EN["kill screen fail"] = "Kill Screens Fail"
 	i.EN["kill screen success"] = "Kill Screens Success"
+	i.EN["webhook test fail"] = "Webhook Test Failed: %s"
+	i.EN["webhook test success"] = "Webhook Test Success"
 
 	return i
 }

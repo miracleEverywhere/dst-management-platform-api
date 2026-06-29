@@ -7,6 +7,7 @@ import (
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -80,6 +81,49 @@ func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 
 					}
 					db.PlayersStatistic[rbs.RoomID] = append(db.PlayersStatistic[rbs.RoomID], Players)
+					// webhook 通知 数据点≥2时执行
+					if len(db.PlayersStatistic[rbs.RoomID]) >= 2 {
+						currentPlayers := db.PlayersStatistic[rbs.RoomID][len(db.PlayersStatistic[rbs.RoomID])-1].PlayerInfo
+						lastPlayers := db.PlayersStatistic[rbs.RoomID][len(db.PlayersStatistic[rbs.RoomID])-2].PlayerInfo
+
+						var joinedPlayers, exitedPlayers []db.PlayerInfo
+
+						// 构建 currentPlayers 的 UID 集合
+						currentUIDMap := make(map[string]bool)
+						for _, cp := range currentPlayers {
+							currentUIDMap[cp.UID] = true
+						}
+
+						// 构建 lastPlayers 的 UID 集合
+						lastUIDMap := make(map[string]bool)
+						for _, lp := range lastPlayers {
+							lastUIDMap[lp.UID] = true
+						}
+
+						// 退出玩家：在 last 中但不在 current 中
+						for _, lp := range lastPlayers {
+							if !currentUIDMap[lp.UID] {
+								exitedPlayers = append(exitedPlayers, lp)
+							}
+						}
+
+						// 加入玩家：在 current 中但不在 last 中
+						for _, cp := range currentPlayers {
+							if !lastUIDMap[cp.UID] {
+								joinedPlayers = append(joinedPlayers, cp)
+							}
+						}
+
+						if len(joinedPlayers) > 0 || len(exitedPlayers) > 0 {
+							webhook.Snd.Send(webhook.EventOnlinePlayerUpdated, rbs.RoomID, map[string]interface{}{
+								"gameID":   rbs.RoomID,
+								"gameName": rbs.RoomName,
+								"joined":   joinedPlayers,
+								"exited":   exitedPlayers,
+								"current":  currentPlayers,
+							})
+						}
+					}
 					db.PlayersStatisticMutex.Unlock()
 
 					db.RoomNoPlayersSecondsMutex.Lock()
@@ -144,6 +188,8 @@ func GameUpdate(enable bool, restart bool) {
 		_ = utils.BashCMD(updateCmd)
 
 		logger.Logger.Info("[定时任务]：游戏更新结束")
+
+		webhook.Snd.Send(webhook.EventGameUpdate, 0, "[定时任务]：游戏更新结束")
 
 		db.DstUpdating = false
 

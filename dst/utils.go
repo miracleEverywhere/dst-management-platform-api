@@ -56,6 +56,11 @@ func NewGameController(room *models.Room, worlds *[]models.World, setting *model
 	return game
 }
 
+// RoomID 返回房间 ID
+func (g *Game) RoomID() int {
+	return g.room.ID
+}
+
 func (g *Game) initInfo() {
 	// room
 	g.clusterName = fmt.Sprintf("Cluster_%d", g.room.ID)
