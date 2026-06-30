@@ -7,7 +7,6 @@ const (
 	EventRoomSettingsUpdated  = "room_settings_updated"
 	EventRoomActivated        = "room_activated"
 	EventRoomDeactivated      = "room_deactivated"
-	EventGameRestart          = "game_restart"
 	EventGameBackup           = "game_backup"
 	EventGameReset            = "game_reset"
 	EventGameStart            = "game_start"
@@ -24,16 +23,15 @@ const (
 var AllEventTypes = []EventInfo{
 	{Type: EventRoomCreated, ZH: "房间创建", EN: "Room Created"},
 	{Type: EventRoomDeleted, ZH: "房间删除", EN: "Room Deleted"},
-	{Type: EventRoomSettingsUpdated, ZH: "房间设置修改", EN: "Room Settings Updated"},
+	{Type: EventRoomSettingsUpdated, ZH: "房间修改", EN: "Room Settings Updated"},
 	{Type: EventRoomActivated, ZH: "房间激活", EN: "Room Activated"},
 	{Type: EventRoomDeactivated, ZH: "房间关闭", EN: "Room Deactivated"},
-	{Type: EventGameRestart, ZH: "游戏重启", EN: "Room Restart"},
 	{Type: EventGameBackup, ZH: "游戏备份", EN: "Room Backup"},
 	{Type: EventGameReset, ZH: "游戏重置", EN: "Room Reset"},
 	{Type: EventGameStart, ZH: "游戏启动", EN: "Room Start"},
 	{Type: EventGameStop, ZH: "游戏关闭", EN: "Room Stop"},
 	{Type: EventGameUpdate, ZH: "游戏更新", EN: "Game Update"},
-	{Type: EventKeepaliveTriggered, ZH: "自动保活触发", EN: "Keepalive Triggered"},
+	{Type: EventKeepaliveTriggered, ZH: "自动保活", EN: "Keepalive Triggered"},
 	{Type: EventPlayerManage, ZH: "玩家管理", EN: "Player Manage"},
 	{Type: EventGlobalSettingUpdated, ZH: "平台设置修改", EN: "Platform Settings Updated"},
 	{Type: EventWebsocketConnected, ZH: "虚拟终端连接", EN: "Websocket Connected"},

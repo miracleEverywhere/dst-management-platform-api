@@ -406,7 +406,20 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 	}
 
 	if dbGlobalSettings.WebhookSetting != reqForm.WebhookSetting {
-		needUpdateDB = true
+		var webhooks []webhook.GlobalWebhookItem
+		if json.Unmarshal([]byte(reqForm.WebhookSetting), &webhooks) == nil {
+			for _, w := range webhooks {
+				if !utils.IsValidWebhookURL(w.URL) {
+					logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
+					c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
+					return
+				}
+			}
+			needUpdateDB = true
+		} else {
+			// 无法解析json，说明配置异常，丢弃所有数据，不写入数据库
+			needUpdateDB = false
+		}
 	}
 
 	if needUpdateDB {
@@ -416,13 +429,16 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 			return
 		}
+
+		webhook.Snd.Send(webhook.EventGlobalSettingUpdated, 0, map[string]interface{}{
+			"dbUpdated": needUpdateDB,
+		})
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+		return
 	}
 
-	webhook.Snd.Send(webhook.EventGameUpdate, 0, map[string]interface{}{
-		"dbUpdated": needUpdateDB,
-	})
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 }
 
 func (h *Handler) screenRunningGet(c *gin.Context) {
@@ -503,6 +519,13 @@ func webhookTestPost(c *gin.Context) {
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	// webhook url 安全检测
+	if !utils.IsValidWebhookURL(reqForm.URL) {
+		logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
 		return
 	}
 

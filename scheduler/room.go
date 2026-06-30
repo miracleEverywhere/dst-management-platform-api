@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"fmt"
 	"time"
 )
@@ -119,7 +120,9 @@ func Keepalive(game *dst.Game, roomID int) {
 			continue
 		}
 		if lastTime == allWorlds[i].LastAliveTime {
-			logger.Logger.Errorf("发现世界运行异常，即将执行重启操作, world: %v", allWorlds[i].ID)
+			errMsg := fmt.Sprintf("发现世界运行异常，即将执行重启操作, world: %v", allWorlds[i].ID)
+			logger.Logger.Error(errMsg)
+			webhook.Snd.Send(webhook.EventKeepaliveTriggered, roomID, errMsg)
 			_ = game.StopWorld(allWorlds[i].ID)
 			_ = game.StartWorld(allWorlds[i].ID)
 		} else {

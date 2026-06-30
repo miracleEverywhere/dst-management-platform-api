@@ -39,6 +39,12 @@ func NewSender(globalSettingDao *dao.GlobalSettingDAO, roomSettingDao *dao.RoomS
 // roomID 为 0 表示全局事件（如游戏更新），此时只匹配全局 webhook 且不检查 roomIds 过滤
 func (s *Sender) Send(eventType string, roomID int, data interface{}) {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Logger.Errorf("webhook 发送 panic, event: %s, roomID: %d, panic: %v", eventType, roomID, r)
+			}
+		}()
+
 		event, err := getEventInfoByType(eventType)
 		if err != nil {
 			logger.Logger.Warnf("未识别的Event: %s", eventType)
