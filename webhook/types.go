@@ -71,5 +71,6 @@ type Payload struct {
 	Timestamp int64       `json:"timestamp"`
 	RoomID    int         `json:"roomId,omitempty"`
 	RoomName  string      `json:"roomName,omitempty"`
+	Name      string      `json:"name,omitempty"`
 	Data      interface{} `json:"data,omitempty"`
 }

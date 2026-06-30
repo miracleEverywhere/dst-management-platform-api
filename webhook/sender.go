@@ -57,10 +57,11 @@ func (s *Sender) Send(eventType string, roomID int, data interface{}) {
 			Data:      data,
 		}
 
-		// 收集所有匹配的 webhook（url + secret）
+		// 收集所有匹配的 webhook（url + secret + name）
 		type target struct {
 			url    string
 			secret string
+			name   string
 		}
 		var targets []target
 
@@ -72,7 +73,7 @@ func (s *Sender) Send(eventType string, roomID int, data interface{}) {
 				if json.Unmarshal([]byte(roomSetting.WebhookSetting), &items) == nil {
 					for _, item := range items {
 						if item.Enabled && containsEvent(item.Events, eventType) {
-							targets = append(targets, target{url: item.URL, secret: item.Secret})
+							targets = append(targets, target{url: item.URL, secret: item.Secret, name: item.Name})
 						}
 					}
 				}
@@ -93,7 +94,7 @@ func (s *Sender) Send(eventType string, roomID int, data interface{}) {
 					if roomID > 0 && len(item.RoomIDs) > 0 && !containsRoom(item.RoomIDs, roomID) {
 						continue
 					}
-					targets = append(targets, target{url: item.URL, secret: item.Secret})
+					targets = append(targets, target{url: item.URL, secret: item.Secret, name: item.Name})
 				}
 			}
 		}
@@ -102,13 +103,13 @@ func (s *Sender) Send(eventType string, roomID int, data interface{}) {
 			return
 		}
 
-		body, err := json.Marshal(payload)
-		if err != nil {
-			logger.Logger.Errorf("序列化 webhook payload 失败, event: %s, err: %v", event, err)
-			return
-		}
-
 		for _, t := range targets {
+			payload.Name = t.name
+			body, err := json.Marshal(payload)
+			if err != nil {
+				logger.Logger.Errorf("序列化 webhook payload 失败, event: %s, err: %v", event, err)
+				continue
+			}
 			s.sendOne(t.url, t.secret, body)
 		}
 	}()
