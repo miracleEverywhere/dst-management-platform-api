@@ -438,7 +438,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "bad request"), "data": nil})
 }
 
 func (h *Handler) screenRunningGet(c *gin.Context) {
