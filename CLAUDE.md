@@ -2,155 +2,146 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project overview
+## 项目概述
 
-DMP (Don't Starve Together Management Platform) is a Go web server that manages DST game servers. It provides a web UI for multi-room, multi-user game server administration — room creation, mod management, backup/restore, player tracking, and scheduled tasks (restart, keepalive, announcements).
+DMP (Don't Starve Together Management Platform) 是一个饥荒联机版服务器管理平台，提供 Web UI 进行多房间、多世界、模组、玩家、备份等管理。Go 后端 + 嵌入式前端单二进制部署。
 
-The frontend SPA lives in a separate repo: `miracleEverywhere/dst-management-platform-web` (Vue/Vuetify). Its production build is embedded in `embedFS/dist/`.
-
-## Build and run
+## 构建和运行
 
 ```bash
-# Full build: frontend + backend (frontend repo expected at ~/WebstormProjects/dst-management-platform-web)
-make
-
-# Backend only (static binary, no CGO)
-make backend-only
-
-# Or manually:
+# 构建后端（单二进制，含嵌入式前端）
 CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
 
-# Run
+# 全量构建（先构建前端，复制产物到 embedFS/dist，再构建后端）
+# 前端项目需位于 $HOME/WebstormProjects/dst-management-platform-web
+make all
+
+# 仅复制前端产物到 embedFS（不重新构建前端）
+make copy-frontend
+
+# 运行
 ./dmp -bind 80 -dbpath ./data -level info
 
-# CLI flags
-#   -bind     HTTP port (default: 80)
-#   -dbpath   SQLite database directory (default: ./data)
-#   -level    Log level: debug, info, warn, error (default: info)
-#   -cert     TLS certificate path (enables HTTPS when set with -key)
-#   -key      TLS private key path (enables HTTPS when set with -cert)
-#   -console  Run a console command instead of starting the server
-#   -v        Print version and exit
+# TLS 运行
+./dmp -bind 443 -cert /path/to/fullchain.pem -key /path/to/privkey.pem
 
-# Console commands (run with -console flag):
-#   reset_password     Reset a user password interactively
-#   list_user          List all users
-#   db_stats           Show database file size and table row counts
-./dmp -console reset_password -dbpath ./data
+# 查看版本
+./dmp -v
+
+# 控制台命令
+./dmp -console reset_password -dbpath ./data   # 重置用户密码
+./dmp -console list_user -dbpath ./data        # 列出所有用户
+./dmp -console db_stats -dbpath ./data         # 查看数据库统计
 ```
 
-There are no tests in this repository.
+启动参数：`-bind`（端口，默认 80）、`-dbpath`（数据库目录，默认 `./data`）、`-level`（日志等级：debug/info/warn/error，默认 info）、`-cert`/`-key`（TLS 证书/私钥，不填则 HTTP）。
 
-## Architecture
+`run.sh` 是一键部署脚本，提供下载、启动、更新、虚拟内存设置、开机自启等功能，面向最终用户而非开发。
 
-### Startup flow (`server/server.go`)
+## 技术栈
 
-1. Parse CLI flags
-2. Initialize zap logger (writes to `logs/access.log` and `logs/runtime.log`)
-3. Extract embedded files (LuaJIT libs, shell scripts) from `embedFS/` to disk
-4. Open SQLite database via GORM + glebarez/sqlite driver, auto-migrate all models
-5. Start the gocron scheduler with global + per-room jobs
-6. Register Gin routes for all `app/` modules, serve embedded SPA frontend as static files
-7. `gin.Run()`
+- **Go 1.25** + **Gin** HTTP 框架
+- **GORM** + **SQLite** (github.com/glebarez/sqlite, WAL 模式)
+- **gocron** 定时任务调度
+- **Zap** (go.uber.org/zap) 结构化日志
+- **JWT** (golang-jwt/jwt/v5) 认证，HS256 签名
+- **gopher-lua** 解析 DST 存档元数据
+- **melody** WebSocket 支持
+- 前端为独立的 Vue/Vuetify 项目，构建产物复制到 `embedFS/dist/` 由 Go embed 嵌入
 
-When `-level debug` is set, pprof endpoints are registered at `/debug/pprof/`. Production mode (`gin.ReleaseMode`) is used otherwise.
+## 项目结构
 
-### App layer (`app/`)
+```
+main.go              → 入口，调用 server.Run()
+server/
+  server.go          → 核心启动流程：解析参数 → 初始化日志/数据库/DAO → 启动调度器 → 注册路由 → 启动 HTTP(S)
+  flags.go           → CLI 参数定义（-bind, -dbpath, -level, -cert, -key, -v, -console）
+  console.go         → 控制台命令（reset_password, list_user, db_stats）
+app/                 → 业务模块，每模块包含 handler.go + router.go + i18n.go + utils.go (Handler 结构体模式)
+  user/              → 用户管理
+  room/              → 房间/WORLD管理（创建、修改、启停、删除、上传存档）
+  dashboard/         → 控制面板（房间状态、系统监控）
+  platform/          → 平台管理（全局设置、系统信息）
+  mod/               → 模组管理（下载、启用、配置）
+  player/            → 玩家管理（名单、在线统计、UidMap）
+  tools/             → 工具（WebSocket 终端等）
+  logs/              → 日志查看
+database/
+  models/            → GORM 模型：User, Room, World, RoomSetting, GlobalSetting, System, UidMap
+  dao/               → 泛型 BaseDAO[T] + 各模型专用 DAO（含复合查询、关联检索）
+  db/
+    database.go      → SQLite 初始化、AutoMigrate、WAL 配置
+    cache.go         → 全局内存缓存：JWT 密钥、token 版本号、玩家统计、系统指标等
+    token_version.go → Token 版本号缓存管理（用于 token 撤销）
+dst/                 → 游戏控制器（Game struct），管理 DST 进程、配置文件、模组、世界、备份等
+  dst.go             → 公开方法（SaveAll, StartWorld, Backup, ConsoleCmd 等）
+  room.go            → 房间级配置读写（cluster.ini）、存档备份/恢复
+  world.go           → 世界启停（screen 进程管理）
+  mod.go             → 模组下载/启用/禁用/配置
+  player.go          → 在线玩家列表（screen 命令交互）、名单管理
+  map.go             → 地图生成
+  logs.go            → 游戏日志读取
+  utils.go           → 路径构建、screen 名称规范
+scheduler/           → 基于 gocron 的定时任务系统
+  init.go            → Start() 入口、UpdateJob/DeleteJob、按房间ID/类型查询任务
+  jobs.go            → initJobs()：读取全局设置和房间设置，生成所有 JobConfig
+  global.go           → 全局任务具体实现（在线玩家统计、系统指标、游戏更新检测、公网IP、模组清理）
+  room.go            → 房间任务实现（备份/清理/重启/重置/定时启停/保活/通知）
+  utils.go           → DST 版本检测、公网IP 获取
+middleware/           → TokenCheck (JWT验证+自动刷新)、AdminOnly、CacheControl (静态资源缓存)、LoginRateLimit
+webhook/              → 异步 webhook 通知：Events 常量、Sender.Send() fire-and-forget、HMAC-SHA256 签名
+utils/                → 工具函数：JWT、bcrypt/SHA512 密码、i18n 基类、安全校验（webhook URL、路径穿越、XSS）
+logger/               → Zap 日志初始化，输出到 logs/access.log 和 logs/runtime.log
+embedFS/              → 嵌入前端静态资源（go:embed dist/）
+```
 
-Each subdirectory is a feature module following the same pattern:
+## 核心架构设计
 
-- `handler.go` — HTTP handler struct and methods. The `Handler` struct holds the DAOs it needs.
-- `router.go` — `RegisterRoutes(r *gin.Engine)` attaches endpoints under `/v3/<module>/...`
-- `utils.go` — Request/response types and helper logic specific to the module
-- `i18n.go` — Module-specific i18n messages merged into the global `utils.I18n`
+### 路由注册模式
+每个 app 模块定义 `Handler` 结构体，持有所需 DAO 的引用。`RegisterRoutes(*gin.Engine)` 方法将路由挂载到 `/v3/<module>` 路径组下。路由组的中间件为 `TokenCheck()`，管理员专属接口额外使用 `AdminOnly()`。
 
-Routes use `middleware.TokenCheck()` for authenticated endpoints and `middleware.AdminOnly()` for admin-only endpoints. Token is passed via `X-DMP-TOKEN` header.
+### 认证体系
+- JWT token 通过 `X-DMP-TOKEN` 请求头传递
+- Token 包含 username、nickname、role、tokenVersion
+- Token 版本号机制支持撤销：RevokeTokenVersion 递增版本号 → 持久化到 DB → 旧 token 在 `ValidateTokenVersion` 缓存比对时失效
+- 登录成功返回 token 的同时，SetTokenVersion 写入内存缓存
+- Token 剩余有效期 < 总有效期一半时自动刷新，通过 `X-DMP-NEW-TOKEN` 响应头返回
 
-### DST game controller (`dst/`)
+### 国际化 (i18n)
+通过请求头 `X-I18n-Lang`（zh/en）选择语言。每个 app 模块有自己的 i18n 字典（message 变量，由 `utils.BaseI18n.Get(c, key)` 驱动），全局公共消息在 `utils/i18n.go` 的 `I18n` 变量中。
 
-The `Game` struct wraps a room + worlds + settings and operates on the DST server via:
-- **File I/O**: reads/writes cluster.ini, server.ini, modoverrides.lua, adminlist.txt, etc. under `~/.klei/DoNotStarveTogether/Cluster_<id>/`
-- **Screen commands**: starts/stops worlds using `screen` sessions, sends Lua console commands via `screen -X stuff`
-- **Lua parsing**: uses `yuin/gopher-lua` to parse `modinfo.lua` (mod configuration forms) and `modoverrides.lua` (mod enabled state and options)
-- **Session reading**: reads DST binary session files through Lua VM to extract game stats (cycles, season, phase)
+### 数据库层
+- `database/db/cache.go` 持有全局状态（JWT 密钥、玩家统计、系统指标）。JWT 密钥在首次初始化时随机生成并持久化到 `system` 表
+- DAO 使用泛型 `BaseDAO[T]` 提供通用 CRUD 和分页查询，各模型专用 DAO 通过嵌入 BaseDAO 扩展特定查询方法
 
-`NewGameController(room, worlds, setting, lang)` creates a ready-to-use controller. It initializes paths, world configs, player lists, and mod directories.
+### 游戏管理
+`dst.Game` 结构体是核心游戏控制器，封装了对 DST 服务器进程的所有操作：
+- 通过 Linux `screen` 命令管理进程生命周期（启动/停止/检测状态）
+- 配置以 INI 格式写入 `~/.klei/DoNotStarveTogether/Cluster_{roomID}/` 目录
+- 世界操作通过向 screen session 发送 Lua 命令实现
+- 模组管理涉及 Steam Workshop API、文件下载、配置解析
 
-### Database
+### 定时任务
+- 全局任务：在线玩家统计、系统监控、游戏更新检测、公网IP
+- 房间级任务：备份、备份清理、重启、重置、定时启停、保活、公告
+- 任务名格式：`{roomID}-{suffix}`，通过前缀匹配按房间批量管理
+- 房间启停会动态添加/移除对应的定时任务
 
-- **ORM**: GORM with `glebarez/sqlite` driver, SQLite in WAL mode, single-connection (SetMaxOpenConns=1)
-- **Models** (`database/models/`): User, Room, World, RoomSetting, GlobalSetting, System, UidMap
-- **DAO** (`database/dao/`): Generic `BaseDAO[T]` provides CRUD + paginated query; typed DAOs (UserDAO, RoomDAO, etc.) embed BaseDAO and add domain-specific queries
-- **`dao.FetchGameInfo(roomID)`** (`database/dao/composite.go`): convenience function that fetches Room + Worlds + RoomSetting in one call — used widely across handlers and scheduler jobs
-- **Password hashing**: bcrypt (via `golang.org/x/crypto/bcrypt`, default cost). User model has `PasswordVersion` field (`"bcrypt"` / `"sha512"` / `""`) for backward compatibility — SHA512 passwords are upgraded to bcrypt on next successful login. `utils.GenerateBcryptPassword` / `utils.ValidatePassword` in `utils/crypto.go`.
-- **In-memory cache** (`database/db/cache.go`): JWT secret, token version cache (username → version for revocation), players statistics (per-room player snapshots), players online time, system metrics (CPU/memory/disk/network), internet IP, mod download state
-- **SystemDAO** (`database/dao/system.go`): key-value config store backed by the `system` table. `Get(key)` queries by key, `Set(key, value)` does an atomic upsert via `clause.OnConflict`. JWT secret is stored here (key `jwt_secret`), generated once on first startup.
+### Webhook 系统
+- 支持房间级和全局级 webhook，可配置多个 URL + 事件订阅 + 密钥签名
+- `sender.Send()` 异步 fire-and-forget，签名使用 HMAC-SHA256 → `X-DMP-Signature` 请求头
+- 全局 webhook 支持按 roomIds 过滤
 
-### Scheduler (`scheduler/`)
+### 安全措施
+- Webhook URL：仅允许 http/https，禁止 query/fragment，防 SSRF
+- 游戏模式：正则校验字符集防 XSS（自定义模式支持 eval 值）
+- 路径操作：禁止 `..` 和 `~` 防目录穿越
+- 登录接口：IP 级别 1 秒限流
+- 密码支持 bcrypt 和 SHA-512 双版本兼容
 
-Uses `go-co-op/gocron`. Jobs are defined in `initJobs()` and managed dynamically:
+### 代码规范
+- 缩进使用 Tab（见 `.editorconfig`），Go 源码文件字符集 UTF-8，换行 LF
+- 所有 API 响应格式：`{"code": 200, "message": "...", "data": ...}`，HTTP 状态码统一返回 200，业务状态通过 `code` 字段区分
 
-- **Global jobs**: online player polling, system metrics collection, game update check, internet IP refresh, temp mod cleanup
-- **Per-room jobs**: backup (multiple times/day), backup cleanup, scheduled restart, scheduled start/stop, keepalive (world crash detection via log timestamps), announcements
-
-`UpdateJob()` and `DeleteJob()` allow dynamic job management at runtime when room settings change.
-
-### Middleware (`middleware/`)
-
-- `TokenCheck()` — validates `X-DMP-TOKEN` JWT, checks token version against in-memory cache for revocation, sets username/nickname/role in Gin context, auto-refreshes token (returns new token in `X-DMP-NEW-TOKEN` header) when >50% expired. Returns code 420 on failure.
-- `AdminOnly()` — rejects non-admin users (role != "admin"), returns code 201
-- `LoginRateLimit()` — rate-limits login endpoint to 1 request/second per IP, returns code 429
-- `CacheControl()` — sets cache headers on static asset extensions (duration: `utils.StaticCacheHours`, default 7 days)
-
-### Token revocation
-
-JWT tokens can be revoked without restarting the server via a **token version** mechanism:
-
-- **User model** has a `TokenVersion` column (default 0, persisted in DB). Each JWT claim carries `TokenVersion`.
-- **In-memory cache** (`db.TokenVersionCache` in `database/db/cache.go`) maps username → current valid version. Populated on login, checked on every authenticated request.
-- **`db.ValidateTokenVersion()`** (`database/db/token_version.go`) — called by TokenCheck middleware. If cache miss → first request this session, auto-caches and allows. If version mismatch → token revoked (code 420).
-- **`db.RevokeTokenVersion()`** — increments version in cache, returns new version. Caller must persist to DB.
-
-Revocation triggers:
-| Scenario | Location |
-|---|---|
-| User changes own password | `myselfPut` |
-| Admin disables a user | `basePut` |
-| Admin changes a user's role | `basePut` |
-| Admin deletes a user | `baseDelete` |
-| Admin explicitly revokes | `POST /v3/user/revoke` (new endpoint) |
-
-JWT secret is persisted in the `system` DB table (key `jwt_secret`), generated once on first startup. Restarts do NOT invalidate tokens — only explicit revocation does.
-
-### EmbedFS (`embedFS/`)
-
-Embeds the frontend SPA (`dist/`), LuaJIT shared libraries (`luajit/`), and shell scripts (`shell/`). The SPA is served via `gin-static` as the catch-all route; LuaJIT libs (`liblua.so`, `libluajit.so`, `libpreload.so`) and shell scripts (`manual_install.sh`, `manual_update.sh`) are extracted to disk at startup under `dmp_files/`.
-
-### WebSSH (`app/platform/`)
-
-The platform module provides a WebSocket-based terminal (WebSSH) using the `olahol/melody` library. The terminal runs via `creack/pty` and streams I/O over a WebSocket connection. Messages are capped at 1MB.
-
-### Utils (`utils/`)
-
-- `constants.go` — version, API prefix, JWT expiration (72h), static cache duration (7d), paths, external API URLs
-- `jwt.go` — JWT generation/validation with HS256, Claims carries Username/Nickname/Role/TokenVersion
-- `i18n.go` — request-scoped i18n via `X-I18n-Lang` header (zh/en), each app module registers its own messages
-- `security.go` — `IsSafeString` (prevents command injection in world/screen names), `IsSafePath` (prevents path traversal)
-- `getter.go` — obfuscated Steam API key and DST token retrieval
-- Various helpers for file I/O, zip/unzip, bash command execution, system metrics (CPU/memory/disk/network)
-
-## CI/CD
-
-GitHub Actions in `.github/workflows/go.yml` triggers on `v*` tags:
-- Builds static binary with `CGO_ENABLED=0`, creates `.tgz` and draft GitHub release
-- Builds and pushes Docker image to `ghcr.io/miracleeverywhere/dst-management-platform-api`
-
-Docker setup: multi-stage build (Go build → Ubuntu 24.04 runtime with screen + wget), entry point in `docker/entry-point.sh`.
-
-## Key conventions
-
-- Indentation: tabs (Go), spaces for YAML/markdown — see `.editorconfig`
-- API prefix: `/v3/` (defined in `utils.ApiVersion`)
-- All API responses use `{"code": 200, "message": "...", "data": ...}`; HTTP status is always 200, errors signaled by `code` field
-- Logger is the global `logger.Logger` (zap SugaredLogger); use `*f` formatted methods: `logger.Logger.Errorf("msg, err: %v", err)`
-- DST game state is controlled through the `dst.Game` controller — never manipulate DST files or screen sessions directly from handlers
+### API 版本
+当前 `utils.ApiVersion = "v3"`，所有 API 路径前缀为 `/v3/`。`utils.Version = "v3.1.5"`。
