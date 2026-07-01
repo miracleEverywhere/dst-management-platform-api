@@ -309,6 +309,10 @@ func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
 }
 
 func checkNotUgcUrl(url string) bool {
+	if url == "" {
+		return true
+	}
+
 	urlParts := strings.Split(url, "/")
 	if len(urlParts) != 7 {
 		return false
