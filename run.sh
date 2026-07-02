@@ -189,6 +189,11 @@ function check_jq() {
 	echo_cyan "正在检查jq命令"
 	if ! jq --version >/dev/null 2>&1; then
 		install_pkg jq
+		# 再次检查是否安装成功
+		if ! jq --version >/dev/null 2>&1; then
+			echo_red "jq 安装失败，请手动安装 jq 后重试"
+			exit 1
+		fi
 	fi
 }
 
@@ -196,6 +201,11 @@ function check_curl() {
 	echo_cyan "正在检查curl命令"
 	if ! curl --version >/dev/null 2>&1; then
 		install_pkg curl
+		# 再次检查是否安装成功
+		if ! curl --version >/dev/null 2>&1; then
+			echo_red "curl 安装失败，请手动安装 curl 后重试"
+			exit 1
+		fi
 	fi
 }
 
