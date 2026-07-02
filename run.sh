@@ -317,6 +317,7 @@ function stop_dmp() {
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
 function clear_dmp() {
 	echo_cyan "正在执行清理"
+	pkill -9 dmp 2>/dev/null
 	rm -f dmp dmp.tgz logs/*
 }
 
