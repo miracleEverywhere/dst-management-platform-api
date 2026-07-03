@@ -23,6 +23,7 @@ func (d *UserDAO) GetUserByUsername(username string) (*models.User, error) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &user, nil
 	}
+
 	return &user, err
 }
 
@@ -38,12 +39,14 @@ func (d *UserDAO) ListUsers(q string, page, pageSize int) (*PaginatedResult[mode
 		args = []any{searchUsername, searchNickname}
 	}
 
-	rooms, err := d.Query(page, pageSize, condition, args...)
-	return rooms, err
+	users, err := d.Query(page, pageSize, condition, args...)
+
+	return users, err
 }
 
 func (d *UserDAO) UpdateUser(user *models.User) error {
 	err := d.db.Save(user).Error
+
 	return err
 }
 
