@@ -19,16 +19,6 @@ type tableNamer interface {
 	TableName() string
 }
 
-var statModels = []any{
-	&models.User{},
-	&models.Room{},
-	&models.World{},
-	&models.RoomSetting{},
-	&models.GlobalSetting{},
-	&models.System{},
-	&models.UidMap{},
-}
-
 func runConsole(cmd, dbPath string) {
 	fmt.Println("====== 饥荒管理平台 Console ======")
 	fmt.Println()
@@ -171,7 +161,7 @@ func dbStats(dbPath string) {
 	totalRows := int64(0)
 	fmt.Printf("%-25s %10s\n", "表名", "行数")
 	fmt.Println(strings.Repeat("-", 40))
-	for _, m := range statModels {
+	for _, m := range db.AllTables {
 		var count int64
 		db.DB.Model(m).Count(&count)
 		tableName := m.(tableNamer).TableName()
