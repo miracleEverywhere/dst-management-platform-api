@@ -9,8 +9,11 @@ import "fmt"
 //   - uid:    目标玩家的 Ku ID（UserToPlayer 所需的字符串标识）
 //   - prefab: 通用参数，根据命令类型含义不同（物品名/季节名/皮肤名/坐标值等）
 //   - num:    通用数量参数，根据命令类型含义不同（个数/百分比/等级/天数等）
-func generateTmiCmd(t, uid, prefab string, num int) string {
-	var cmd string
+func generateTmiCmd(t, uid, prefab string, num int) (string, string) {
+	var (
+		cmd  string
+		cmd2 string
+	)
 
 	switch t {
 
@@ -80,6 +83,61 @@ func generateTmiCmd(t, uid, prefab string, num int) string {
 		//           "monkeybarrel"                 - 猴桶
 		//           "rocky"                        - 石虾
 		// num:    未使用
+		if prefab == "multiplayer_portal" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "multiplayer_portal_moonrock",
+			)
+		}
+		if prefab == "cave_entrance_open" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "cave_entrance",
+			)
+		}
+		if prefab == "beequeenhive" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "beequeenhivegrown",
+			)
+		}
+		if prefab == "mooseegg" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "moose_nesting_ground",
+			)
+		}
+		if prefab == "dragonfly" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "dragonfly_spawner",
+			)
+		}
+		if prefab == "antlion" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "antlion_spawner",
+			)
+		}
+		if prefab == "tentacle_pillar" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "tentacle_pillar_hole",
+			)
+		}
+		if prefab == "ancient_altar" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "ancient_altar_broken",
+			)
+		}
+		if prefab == "minotaur" {
+			cmd2 = fmt.Sprintf(
+				"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
+				uid, "minotaurchest",
+			)
+		}
+
 		cmd = fmt.Sprintf(
 			"local uid='%s';local player=UserToPlayer(uid);if player~=nil then local function tmi_goto(prefab) if player.Physics~=nil then player.Physics:Teleport(prefab.Transform:GetWorldPosition()) else player.Transform:SetPosition(prefab.Transform:GetWorldPosition()) end end;local target=c_findnext('%s');if target~=nil then tmi_goto(target) end end",
 			uid, prefab,
@@ -199,7 +257,7 @@ func generateTmiCmd(t, uid, prefab string, num int) string {
 		// prefab: 未使用
 		// num:    未使用
 		cmd = fmt.Sprintf(
-			"local uid='%s';local player=UserToPlayer(uid);if player~=nil then if player:HasTag('playerghost') then player:PushEvent('respawnfromghost');player.rezsource='TMIP' else if player.components.health~=nil then local godmode=player.components.health.invincible;player.components.health:SetInvincible(not godmode) end end end",
+			"local uid='%s';local player=UserToPlayer(uid);if player~=nil then if player:HasTag('playerghost') then player:PushEvent('respawnfromghost');player.rezsource='饥荒管理平台(DMP)' else if player.components.health~=nil then local godmode=player.components.health.invincible;player.components.health:SetInvincible(not godmode) end end end",
 			uid,
 		)
 
@@ -387,7 +445,7 @@ func generateTmiCmd(t, uid, prefab string, num int) string {
 		// prefab: 未使用
 		// num:    未使用
 		cmd = fmt.Sprintf(
-			"local uid='%s';local player=UserToPlayer(uid);if player~=nil then player:PushEvent('death');player.deathpkname='TMIP' end",
+			"local uid='%s';local player=UserToPlayer(uid);if player~=nil then player:PushEvent('death');player.deathpkname='饥荒管理平台(DMP)' end",
 			uid,
 		)
 
@@ -397,7 +455,7 @@ func generateTmiCmd(t, uid, prefab string, num int) string {
 		// prefab: 未使用
 		// num:    未使用
 		cmd = fmt.Sprintf(
-			"local uid='%s';local player=UserToPlayer(uid);if player~=nil then player:PushEvent('respawnfromghost');player.rezsource='TMIP' end",
+			"local uid='%s';local player=UserToPlayer(uid);if player~=nil then player:PushEvent('respawnfromghost');player.rezsource='饥荒管理平台(DMP)' end",
 			uid,
 		)
 
@@ -650,7 +708,7 @@ func generateTmiCmd(t, uid, prefab string, num int) string {
 		cmd = "TheWorld.minimap.MiniMap:ClearRevealedAreas()"
 	}
 
-	return cmd
+	return cmd, cmd2
 }
 
 // formatFloat 将 int 类型的百分比值转为 Lua 可用的浮点数字符串。
@@ -663,7 +721,10 @@ func formatFloat(num int, defaultVal float64) string {
 }
 
 func (g *Game) tmiConsoleCmd(t, uid, prefab string, num, worldID int) error {
-	cmd := generateTmiCmd(t, uid, prefab, num)
+	cmd, cmd2 := generateTmiCmd(t, uid, prefab, num)
+	if cmd2 != "" {
+		_ = g.consoleCmd(cmd2, worldID)
+	}
 
 	return g.consoleCmd(cmd, worldID)
 }
