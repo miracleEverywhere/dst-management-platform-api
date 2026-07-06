@@ -8,3 +8,6 @@ type System struct {
 func (System) TableName() string {
 	return "system"
 }
+
+var JwtSecret = "jwt_secret"
+var TmiStep = "tmi_step"
