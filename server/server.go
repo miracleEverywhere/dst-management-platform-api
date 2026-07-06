@@ -56,6 +56,8 @@ func Run() {
 	worldDao := dao.NewWorldDAO(db.DB)
 	globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
 	uidMapDao := dao.NewUidMapDAO(db.DB)
+	pluginDao := dao.NewPluginDAO(db.DB)
+	dstImageDao := dao.NewDstImageDAO(db.DB)
 
 	// 初始化 webhook sender
 	webhook.Snd = webhook.NewSender(globalSettingDao, roomSettingDao, roomDao)
@@ -89,13 +91,13 @@ func Run() {
 	}
 
 	// 初始化即注册路由
-	user.NewHandler(userDao).RegisterRoutes(r)
+	user.NewHandler(userDao, pluginDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao, userDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
-	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao).RegisterRoutes(r)
+	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
+	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao, dstImageDao).RegisterRoutes(r)
 	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao, globalSettingDao).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
