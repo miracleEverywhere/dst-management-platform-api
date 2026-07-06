@@ -29,6 +29,10 @@ func (g *Game) dsModsSetup() error {
 	} else {
 		modData = g.worldSaveData[0].ModData
 	}
+	modData = normalizeModOverridesContent(modData)
+	if err := g.saveMods(); err != nil {
+		return err
+	}
 
 	L := lua.NewState()
 	defer L.Close()
@@ -479,13 +483,20 @@ func (g *Game) saveMods() error {
 		} else {
 			modContent = world.ModData
 		}
-		err := utils.TruncAndWriteFile(g.worldSaveData[idx].modOverridesPath, modContent)
+		err := utils.TruncAndWriteFile(g.worldSaveData[idx].modOverridesPath, normalizeModOverridesContent(modContent))
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func normalizeModOverridesContent(content string) string {
+	if strings.TrimSpace(content) == "" {
+		return "return {}\n"
+	}
+	return content
 }
 
 func (g *Game) modConfigureOptionsValuesChange(worldID, modID int, modConfig *ModORConfig) error {

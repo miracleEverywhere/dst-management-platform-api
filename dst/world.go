@@ -54,16 +54,13 @@ func (g *Game) createWorlds() error {
 			return err
 		}
 
+		modData := world.ModData
 		if g.room.ModInOne {
-			err = utils.TruncAndWriteFile(world.modOverridesPath, g.room.ModData)
-			if err != nil {
-				return err
-			}
-		} else {
-			err = utils.TruncAndWriteFile(world.modOverridesPath, world.ModData)
-			if err != nil {
-				return err
-			}
+			modData = g.room.ModData
+		}
+		err = utils.TruncAndWriteFile(world.modOverridesPath, normalizeModOverridesContent(modData))
+		if err != nil {
+			return err
 		}
 
 		worldsName = append(worldsName, world.WorldName)

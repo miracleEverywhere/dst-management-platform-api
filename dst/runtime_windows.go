@@ -21,7 +21,20 @@ type windowsWorldProcess struct {
 	stdin io.WriteCloser
 }
 
+type windowsProcessSnapshot struct {
+	proc    *process.Process
+	cmdline string
+}
+
 var windowsProcesses sync.Map
+
+var windowsProcessCache = struct {
+	mu    sync.Mutex
+	at    time.Time
+	items []windowsProcessSnapshot
+}{}
+
+const windowsProcessCacheTTL = 2 * time.Second
 
 func KillRuntimeName(name string) error {
 	if value, ok := windowsProcesses.Load(name); ok {
@@ -33,6 +46,7 @@ func KillRuntimeName(name string) error {
 			_ = proc.cmd.Process.Kill()
 		}
 		windowsProcesses.Delete(name)
+		invalidateWindowsProcessCache()
 		return nil
 	}
 
@@ -50,7 +64,15 @@ func KillRuntimeName(name string) error {
 			_ = p.Kill()
 		}
 	}
+	invalidateWindowsProcessCache()
 	return nil
+}
+
+func invalidateWindowsProcessCache() {
+	windowsProcessCache.mu.Lock()
+	defer windowsProcessCache.mu.Unlock()
+	windowsProcessCache.at = time.Time{}
+	windowsProcessCache.items = nil
 }
 
 func parseRuntimeName(name string) (string, string, bool) {
@@ -108,10 +130,12 @@ func (g *Game) startWorldProcess(world *worldSaveData) error {
 		cmd:   cmd,
 		stdin: stdin,
 	})
+	invalidateWindowsProcessCache()
 
 	go func() {
 		_ = cmd.Wait()
 		windowsProcesses.Delete(world.screenName)
+		invalidateWindowsProcessCache()
 	}()
 
 	return nil
@@ -164,6 +188,7 @@ func (g *Game) stopWorldProcess(world *worldSaveData) error {
 			retErr = err
 		}
 	}
+	invalidateWindowsProcessCache()
 
 	return retErr
 }
@@ -217,12 +242,35 @@ func (g *Game) worldProcess(world *worldSaveData) (*process.Process, error) {
 }
 
 func (g *Game) findWorldProcesses(world *worldSaveData) ([]*process.Process, error) {
-	processes, err := process.Processes()
+	snapshots, err := cachedWindowsProcessSnapshots()
 	if err != nil {
 		return nil, err
 	}
 
 	var matched []*process.Process
+	for _, snapshot := range snapshots {
+		if strings.Contains(snapshot.cmdline, g.clusterName) && strings.Contains(snapshot.cmdline, world.WorldName) {
+			matched = append(matched, snapshot.proc)
+		}
+	}
+	return matched, nil
+}
+
+func cachedWindowsProcessSnapshots() ([]windowsProcessSnapshot, error) {
+	windowsProcessCache.mu.Lock()
+	if windowsProcessCache.items != nil && time.Since(windowsProcessCache.at) < windowsProcessCacheTTL {
+		items := append([]windowsProcessSnapshot(nil), windowsProcessCache.items...)
+		windowsProcessCache.mu.Unlock()
+		return items, nil
+	}
+	windowsProcessCache.mu.Unlock()
+
+	processes, err := process.Processes()
+	if err != nil {
+		return nil, err
+	}
+
+	snapshots := make([]windowsProcessSnapshot, 0)
 	for _, p := range processes {
 		name, _ := p.Name()
 		if !strings.Contains(strings.ToLower(name), "dontstarve_dedicated_server") {
@@ -233,9 +281,14 @@ func (g *Game) findWorldProcesses(world *worldSaveData) ([]*process.Process, err
 		if err != nil {
 			continue
 		}
-		if strings.Contains(cmdline, g.clusterName) && strings.Contains(cmdline, world.WorldName) {
-			matched = append(matched, p)
-		}
+		snapshots = append(snapshots, windowsProcessSnapshot{proc: p, cmdline: cmdline})
 	}
-	return matched, nil
+
+	windowsProcessCache.mu.Lock()
+	windowsProcessCache.at = time.Now()
+	windowsProcessCache.items = snapshots
+	items := append([]windowsProcessSnapshot(nil), windowsProcessCache.items...)
+	windowsProcessCache.mu.Unlock()
+
+	return items, nil
 }

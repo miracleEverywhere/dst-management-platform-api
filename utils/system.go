@@ -42,6 +42,12 @@ func EnsureFileExists(filePath string) error {
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		// 文件不存在，创建一个空文件
+		dirPath := filepath.Dir(filePath)
+		if dirPath != "." && dirPath != "" {
+			if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
+				return err
+			}
+		}
 		file, err := os.Create(filePath)
 		if err != nil {
 			return err
