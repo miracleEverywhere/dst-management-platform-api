@@ -761,12 +761,12 @@ func downloadNotUGCMod(url string, id int) (error, int64) {
 
 	// 检查HTTP响应状态码
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("下载mod失败，HTTP代码：" + resp.Status), modSize
+		return fmt.Errorf("下载mod失败，HTTP代码：%s", resp.Status), modSize
 	}
 	// 将响应体写入文件
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		return fmt.Errorf("下载mod失败，HTTP代码：" + err.Error()), modSize
+		return fmt.Errorf("下载mod失败：%w", err), modSize
 	}
 
 	modSize, err = utils.GetFileSize(filepath)

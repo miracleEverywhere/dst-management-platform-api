@@ -120,7 +120,8 @@ func (g *Game) logsInfo() LogInfo {
 			logInfo.Chat = logInfo.Chat + size
 		}
 	}
-	steamSize, err := utils.GetFileSize("Steam/logs/bootstrap_log.txt")
+	steamLogPath := filepath.Join("steamcmd", "logs", "bootstrap_log.txt")
+	steamSize, err := utils.GetFileSize(steamLogPath)
 	if err == nil {
 		logInfo.Steam = logInfo.Steam + steamSize
 	}
@@ -166,7 +167,7 @@ func (g *Game) logsClean(cleanLogs *CleanLogs) bool {
 		}
 	}
 	if cleanLogs.Steam {
-		err := utils.TruncAndWriteFile("Steam/logs/bootstrap_log.txt", "")
+		err := utils.TruncAndWriteFile(filepath.Join("steamcmd", "logs", "bootstrap_log.txt"), "")
 		if err != nil {
 			allSuccess = false
 			logger.Logger.Errorf("删除Steam日志失败, err: %v", err)

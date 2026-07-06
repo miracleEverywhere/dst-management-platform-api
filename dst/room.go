@@ -172,7 +172,7 @@ func (g *Game) reset(force bool) error {
 
 	} else {
 		resetCmd := fmt.Sprintf("c_regenerateworld()")
-		return utils.ScreenCMD(resetCmd, g.worldSaveData[0].screenName)
+		return g.sendConsoleCommand(&g.worldSaveData[0], resetCmd)
 	}
 }
 
@@ -181,7 +181,7 @@ func (g *Game) announce(message string) error {
 	s = strings.ReplaceAll(s, "\"", "")
 	cmd := fmt.Sprintf("c_announce('%s')", s)
 	for _, world := range g.worldSaveData {
-		err := utils.ScreenCMD(cmd, world.screenName)
+		err := g.sendConsoleCommand(&world, cmd)
 		if err == nil {
 			return err
 		}
@@ -195,7 +195,7 @@ func (g *Game) systemMsg(message string) error {
 	s = strings.ReplaceAll(s, "\"", "")
 	cmd := fmt.Sprintf("TheNet:SystemMessage('%s')", s)
 	for _, world := range g.worldSaveData {
-		err := utils.ScreenCMD(cmd, world.screenName)
+		err := g.sendConsoleCommand(&world, cmd)
 		if err == nil {
 			return err
 		}
@@ -372,9 +372,15 @@ func (g *Game) restore(filename string) (*SaveJson, error) {
 
 	_ = g.stopAllWorld()
 
-	cmd := fmt.Sprintf("rm -rf %s && cp -r %s/Cluster_%d %s", g.clusterPath, zipPath, g.room.ID, utils.ClusterPath)
-	logger.Logger.Debug(cmd)
-	err = utils.BashCMD(cmd)
+	err = utils.RemoveDir(g.clusterPath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	err = utils.EnsureDirExists(utils.ClusterPath)
+	if err != nil {
+		return nil, err
+	}
+	err = utils.CopyDir(fmt.Sprintf("%s/Cluster_%d", zipPath, g.room.ID), g.clusterPath)
 	if err != nil {
 		return nil, err
 	}
@@ -535,11 +541,7 @@ func findLatestMetaFile(directory string) (string, error) {
 }
 
 func (g *Game) runningScreen() ([]string, error) {
-	cmd := fmt.Sprintf("ps -ef | grep 'DMP_Cluster_%d_' | grep dontstarve_dedicated_server_nullrenderer | grep -v grep | awk '{print $14}'", g.room.ID)
-	out, _, _ := utils.BashCMDOutput(cmd)
-	screenNamesStr := strings.TrimSpace(out)
-
-	return strings.Split(screenNamesStr, "\n"), nil
+	return g.runningWorldNames()
 }
 
 func (g *Game) deleteRoom() error {

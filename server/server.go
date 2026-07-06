@@ -29,6 +29,11 @@ func Run() {
 	// 绑定启动参数
 	bindFlags()
 
+	if err := utils.InitWorkDir(workDir); err != nil {
+		panic(fmt.Sprintf("初始化工作目录失败: %s", err.Error()))
+	}
+	db.CurrentDir = utils.WorkDir
+
 	// 打印版本
 	if versionShow {
 		fmt.Println(utils.Version + "\n" + runtime.Version())

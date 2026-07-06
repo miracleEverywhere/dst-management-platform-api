@@ -219,7 +219,7 @@ func (g *Game) getCoordinate(cmd string, worldID int) (int, int, error) {
 		return 0, 0, err
 	}
 
-	err = utils.ScreenCMD(cmd, world.screenName)
+	err = g.sendConsoleCommand(world, cmd)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -306,7 +306,6 @@ func (g *Game) countPrefabs(worldID int) []PrefabItem {
 		return []PrefabItem{}
 	}
 
-	screenName := world.screenName
 	logPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
 
 	prefabs := []PrefabItem{
@@ -325,7 +324,7 @@ func (g *Game) countPrefabs(worldID int) []PrefabItem {
 	}
 
 	cmd1 := "print('=== world prefabs counting start ===')"
-	err = utils.ScreenCMD(cmd1, screenName)
+	err = g.sendConsoleCommand(world, cmd1)
 	if err != nil {
 		logger.Logger.Errorf("统计世界失败, err: %v", err)
 		return prefabs
@@ -333,12 +332,12 @@ func (g *Game) countPrefabs(worldID int) []PrefabItem {
 
 	for _, prefab := range prefabs {
 		cmd := fmt.Sprintf("c_countprefabs('%s')", prefab.Code)
-		_ = utils.ScreenCMD(cmd, screenName)
+		_ = g.sendConsoleCommand(world, cmd)
 		time.Sleep(50 * time.Millisecond)
 	}
 
 	cmd2 := "print('=== world prefabs counting finish ===')"
-	err = utils.ScreenCMD(cmd2, screenName)
+	err = g.sendConsoleCommand(world, cmd2)
 	if err != nil {
 		logger.Logger.Errorf("统计世界失败, err: %v", err)
 		return prefabs
@@ -432,7 +431,6 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 		return []PlayerPosition{}
 	}
 
-	screenName := world.screenName
 	logPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
 
 	db.PlayersStatisticMutex.Lock()
@@ -457,7 +455,7 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 		ts := time.Now().UnixNano()
 
 		cmd := fmt.Sprintf("print('==== DMP Start %s [%d] Start DMP ====')", player.UID, ts)
-		err := utils.ScreenCMD(cmd, screenName)
+		err := g.sendConsoleCommand(world, cmd)
 		if err != nil {
 			logger.Logger.Warnf("执行获取玩家坐标失败，跳过: %v", err)
 			continue
@@ -466,7 +464,7 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 		time.Sleep(50 * time.Millisecond)
 
 		cmd = fmt.Sprintf("print(UserToPlayer('%s').Transform:GetWorldPosition())", player.UID)
-		err = utils.ScreenCMD(cmd, screenName)
+		err = g.sendConsoleCommand(world, cmd)
 		if err != nil {
 			logger.Logger.Warnf("执行获取玩家坐标失败，跳过: %v", err)
 			continue
@@ -475,7 +473,7 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 		time.Sleep(50 * time.Millisecond)
 
 		cmd = fmt.Sprintf("print('==== DMP End %s [%d] End DMP ====')", player.UID, ts)
-		err = utils.ScreenCMD(cmd, screenName)
+		err = g.sendConsoleCommand(world, cmd)
 		if err != nil {
 			logger.Logger.Warnf("执行获取玩家坐标失败，跳过: %v", err)
 			continue

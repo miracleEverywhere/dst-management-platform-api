@@ -12,6 +12,7 @@ var (
 	consoleCmd  string
 	cert        string
 	key         string
+	workDir     string
 )
 
 func bindFlags() {
@@ -20,6 +21,7 @@ func bindFlags() {
 	flag.StringVar(&logLevel, "level", "info", "日志等级, 如: -level debug")
 	flag.StringVar(&cert, "cert", "", "证书文件路径, 不填则启动http, 例如: /path/to/fullchain.pem")
 	flag.StringVar(&key, "key", "", "私钥文件路径, 不填则启动http, 例如: /path/to/privkey.pem")
+	flag.StringVar(&workDir, "workdir", "", "DMP工作目录, Windows默认使用dmp.exe所在目录")
 	flag.BoolVar(&versionShow, "v", false, "查看版本, 如: -v")
 	flag.StringVar(&consoleCmd, "console", "", "控制台命令, 如: -console reset_password, -console list_user")
 	flag.Parse()

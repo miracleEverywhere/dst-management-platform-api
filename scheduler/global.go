@@ -184,8 +184,9 @@ func GameUpdate(enable bool, restart bool) {
 
 		db.DstUpdating = true
 
-		updateCmd := fmt.Sprintf("cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit")
-		_ = utils.BashCMD(updateCmd)
+		if err := utils.RunDSTUpdate(); err != nil {
+			logger.Logger.Errorf("[定时任务]：游戏更新失败: %v", err)
+		}
 
 		logger.Logger.Info("[定时任务]：游戏更新结束")
 
