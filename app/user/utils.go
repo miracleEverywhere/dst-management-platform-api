@@ -3,12 +3,14 @@ package user
 import "dst-management-platform-api/database/dao"
 
 type Handler struct {
-	userDao *dao.UserDAO
+	userDao   *dao.UserDAO
+	pluginDao *dao.PluginDAO
 }
 
-func NewHandler(userDao *dao.UserDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, pluginDao *dao.PluginDAO) *Handler {
 	return &Handler{
-		userDao: userDao,
+		userDao:   userDao,
+		pluginDao: pluginDao,
 	}
 }
 
@@ -166,6 +168,16 @@ var tools = menuItem{
 			To:        "/tools/snapshot",
 			Component: "tools/snapshot",
 			Icon:      "ri-flip-horizontal-line",
+			Links:     nil,
+		},
+		{
+			ID:        606,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsTmi",
+			To:        "/tools/tmi",
+			Component: "tools/tmi",
+			Icon:      "ri-ghost-4-line",
 			Links:     nil,
 		},
 	},
