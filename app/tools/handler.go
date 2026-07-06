@@ -577,3 +577,99 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
 }
+
+func (h *Handler) categoryGet(c *gin.Context) {
+	categories, err := h.dstImageDao.Categories()
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": categories})
+}
+
+func (h *Handler) categoryItemsGet(c *gin.Context) {
+	var reqForm struct {
+		Category string `json:"category" form:"category"`
+		Page     int    `json:"page" form:"page"`
+		PageSize int    `json:"pageSize" form:"pageSize"`
+	}
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	images, err := h.dstImageDao.List(reqForm.Category, reqForm.Page, reqForm.PageSize)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	var needParse []string
+
+	for _, image := range images.Data {
+		if image.Image == "" {
+			needParse = append(needParse, image.Prefab)
+		}
+	}
+
+	if len(needParse) > 0 {
+		b64Map := pngsToBase64(needParse, reqForm.Page)
+		for k, v := range b64Map {
+			if v == "" {
+				continue
+			}
+			for index, img := range images.Data {
+				if img.Prefab == k {
+					images.Data[index].Image = v
+					err = h.dstImageDao.UpdateImage(&img)
+					if err != nil {
+						logger.Logger.Errorf("更新图片失败: %v, 跳过", err)
+					}
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": images})
+}
+
+func (h *Handler) consolePost(c *gin.Context) {
+	var reqForm struct {
+		RoomID  int    `json:"roomID" binding:"required"`
+		WorldID int    `json:"worldID" binding:"required"`
+		Type    string `json:"type" binding:"required"`
+		Uid     string `json:"uid"`
+		Prefab  string `json:"prefab"`
+		Num     int    `json:"num"`
+	}
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	err = game.TmiConsoleCmd(reqForm.Type, reqForm.Uid, reqForm.Prefab, reqForm.Num, reqForm.WorldID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "exec fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "exec success"), "data": nil})
+}

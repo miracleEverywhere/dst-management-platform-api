@@ -24,6 +24,9 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			tools.POST("/token", middleware.AdminOnly(), tokenPost)
 			tools.GET("/snapshot", h.snapshotGet)
 			tools.DELETE("/snapshot", h.snapshotDelete)
+			tools.GET("/tmi/category", h.categoryGet)
+			tools.GET("/tmi/category/items", h.categoryItemsGet)
+			tools.POST("/tmi/console", h.consolePost)
 		}
 	}
 }
