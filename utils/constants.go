@@ -1,7 +1,7 @@
 package utils
 
 // Version 平台版本号
-const Version = "v3.1.5"
+const Version = "v3.1.6"
 
 // ApiVersion 接口版本号
 const ApiVersion = "v3" //
@@ -41,3 +41,9 @@ const ClusterPath = ".klei/DoNotStarveTogether"
 
 // DmpFiles 平台文件根目录
 const DmpFiles = "dmp_files"
+
+const PluginPath = DmpFiles + "/plugins"
+
+const PluginTmiPath = PluginPath + "/tmi"
+
+const TmirID = 3638290455
