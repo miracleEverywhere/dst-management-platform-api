@@ -33,6 +33,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["webhook test fail"] = "Webhook 测试失败: %s"
 	i.ZH["webhook test success"] = "Webhook 测试成功"
 	i.ZH["setting no change"] = "配置未修改"
+	i.ZH["install fail"] = "安装失败: %s"
+	i.ZH["install success"] = "安装成功"
 
 	i.EN["get os info fail"] = "Get OS Info Fail"
 	i.EN["get screens fail"] = "Get Screens Fail"
@@ -41,6 +43,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["webhook test fail"] = "Webhook Test Failed: %s"
 	i.EN["webhook test success"] = "Webhook Test Success"
 	i.EN["setting no change"] = "Setting no change"
+	i.EN["install fail"] = "Install Failed: %s"
+	i.EN["install success"] = "Install Success"
 
 	return i
 }

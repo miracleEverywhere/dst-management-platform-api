@@ -23,6 +23,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			platform.POST("/screen/kill", middleware.TokenCheck(), middleware.AdminOnly(), screenKillPost)
 			platform.POST("/webhook/test", middleware.TokenCheck(), middleware.AdminOnly(), webhookTestPost)
 			platform.GET("/webhook/events", middleware.TokenCheck(), webhookEventsGet)
+			platform.GET("/plugin/list", middleware.TokenCheck(), middleware.AdminOnly(), h.pluginListGet)
+			platform.POST("/plugin/install", middleware.TokenCheck(), middleware.AdminOnly(), h.pluginInstallPost)
+			platform.POST("/plugin/action", middleware.TokenCheck(), middleware.AdminOnly(), h.pluginActionPost)
+			platform.GET("/plugin/status", middleware.TokenCheck(), h.pluginStatusGet)
 		}
 	}
 }

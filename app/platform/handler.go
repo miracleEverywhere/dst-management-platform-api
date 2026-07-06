@@ -409,7 +409,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 		var webhooks []webhook.GlobalWebhookItem
 		if json.Unmarshal([]byte(reqForm.WebhookSetting), &webhooks) == nil {
 			for _, w := range webhooks {
-				if !utils.IsValidWebhookURL(w.URL) {
+				if !utils.IsValidURL(w.URL) {
 					logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
 					c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
 					return
@@ -523,7 +523,7 @@ func webhookTestPost(c *gin.Context) {
 	}
 
 	// webhook url 安全检测
-	if !utils.IsValidWebhookURL(reqForm.URL) {
+	if !utils.IsValidURL(reqForm.URL) {
 		logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
 		return
@@ -541,4 +541,197 @@ func webhookTestPost(c *gin.Context) {
 
 func webhookEventsGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": webhook.AllEventTypes})
+}
+
+func (h *Handler) pluginListGet(c *gin.Context) {
+	type ReqForm struct {
+		Partition
+		Q string `json:"q" form:"q"`
+	}
+	var (
+		reqForm ReqForm
+		data    dao.PaginatedResult[models.Plugin]
+	)
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	plugins, err := h.pluginDao.ListPlugins(reqForm.Q, reqForm.Page, reqForm.PageSize)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	data = *plugins
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+func (h *Handler) pluginInstallPost(c *gin.Context) {
+	var reqForm struct {
+		Name  string `json:"name" binding:"required"`
+		Proxy string `json:"proxy"`
+	}
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.Name == models.PluginTmi {
+		if !utils.IsValidURL(reqForm.Proxy) && reqForm.Proxy != "" {
+			logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, reqForm.Proxy)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+		plugin, err := h.pluginDao.GetPluginByPluginName(reqForm.Name)
+		if err != nil {
+			logger.Logger.Errorf("查询数据库失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		if plugin.Step == 100 {
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
+			return
+		}
+
+		step := plugin.Step
+		updateDb := func(plugin *models.Plugin) {
+			err = h.pluginDao.UpdatePlugin(plugin)
+			if err != nil {
+				logger.Logger.Errorf("查询数据库失败, err: %v", err)
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+				return
+			}
+		}
+		var images []models.DstImage
+
+		step, images, err = initTmi(reqForm.Proxy, step)
+		plugin.Step = step
+		if err != nil {
+			updateDb(plugin)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
+			return
+		}
+
+		err = h.dstImageDao.InitImages(images)
+		if err != nil {
+			logger.Logger.Errorf("更新数据库失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+
+		plugin.Status = true
+		updateDb(plugin)
+
+		err = h.dstImageDao.DeleteNoName()
+		if err != nil {
+			logger.Logger.Warnf("清理异常图片失败: %v", err)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
+		return
+	}
+
+	logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
+	c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+	return
+}
+
+func (h *Handler) pluginActionPost(c *gin.Context) {
+	var reqForm struct {
+		Name string `json:"name" binding:"required"`
+		Type string `json:"type"`
+	}
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	plugin, err := h.pluginDao.GetPluginByPluginName(reqForm.Name)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	var pluginDir string
+
+	switch reqForm.Type {
+	case "enable":
+		plugin.Status = true
+	case "disable":
+		plugin.Status = false
+	case "update":
+		if reqForm.Name == models.PluginTmi {
+			var images []models.DstImage
+			images, err = installTMIR("")
+			if err != nil {
+				logger.Logger.Errorf("更新插件失败: %v", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+				return
+			}
+			err = h.dstImageDao.InitImages(images)
+			if err != nil {
+				logger.Logger.Errorf("更新数据库失败, err: %v", err)
+				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+				return
+			}
+			err = h.dstImageDao.DeleteNoName()
+			if err != nil {
+				logger.Logger.Warnf("清理异常图片失败: %v", err)
+			}
+			plugin.Status = true
+		}
+	case "uninstall":
+		if reqForm.Name == models.PluginTmi {
+			pluginDir = utils.PluginTmiPath
+		}
+		err = utils.RemoveDir(pluginDir)
+		if err != nil {
+			logger.Logger.Errorf("卸载插件失败: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+			return
+		}
+		plugin.Step = 0
+		plugin.Status = false
+	default:
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	err = h.pluginDao.UpdatePlugin(plugin)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}
+
+func (h *Handler) pluginStatusGet(c *gin.Context) {
+	var reqForm struct {
+		Name string `json:"name" form:"name" binding:"required"`
+	}
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	plugin, err := h.pluginDao.GetPluginByPluginName(reqForm.Name)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": plugin.Status})
 }
