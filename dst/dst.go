@@ -261,6 +261,12 @@ func (g *Game) DeleteAcf() error {
 	return g.deleteAcf()
 }
 
+// ChatMessages 玩家聊天列表
 func (g *Game) ChatMessages(lines int, needTime bool) ([]ChatMessage, error) {
 	return g.chatMessages(lines, needTime)
+}
+
+// TmiConsoleCmd Tmi插件执行命令
+func (g *Game) TmiConsoleCmd(t, uid, prefab string, num, worldID int) error {
+	return g.tmiConsoleCmd(t, uid, prefab, num, worldID)
 }
