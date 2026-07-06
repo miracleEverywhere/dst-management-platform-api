@@ -38,11 +38,11 @@ func (d *SystemDAO) Set(key, value string) error {
 
 func (d *SystemDAO) initSystem() {
 	logger.Logger.Debug("正在检查jwt秘钥")
-	jwtSecret, err := d.Get("jwt_secret")
+	jwtSecret, err := d.Get(models.JwtSecret)
 	if err != nil {
 		logger.Logger.Debug("没有发现jwt秘钥，创建中")
 		secret := utils.GenerateJWTSecret()
-		err = d.Set("jwt_secret", secret)
+		err = d.Set(models.JwtSecret, secret)
 		if err != nil {
 			panic("数据库初始化失败: " + err.Error())
 		}
