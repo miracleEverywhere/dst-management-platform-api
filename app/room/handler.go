@@ -57,7 +57,7 @@ func (h *Handler) roomPost(c *gin.Context) {
 		var webhooks []webhook.WebhookItem
 		if json.Unmarshal([]byte(reqForm.RoomSettingData.WebhookSetting), &webhooks) == nil {
 			for _, w := range webhooks {
-				if !utils.IsValidWebhookURL(w.URL) {
+				if !utils.IsValidURL(w.URL) {
 					logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
 					c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
 					return
@@ -179,7 +179,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 	var webhooks []webhook.WebhookItem
 	if json.Unmarshal([]byte(reqForm.RoomSettingData.WebhookSetting), &webhooks) == nil {
 		for _, w := range webhooks {
-			if !utils.IsValidWebhookURL(w.URL) {
+			if !utils.IsValidURL(w.URL) {
 				logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
 				c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
 				return
@@ -1084,7 +1084,7 @@ func webhookTestPost(c *gin.Context) {
 	}
 
 	// webhook url 安全检测
-	if !utils.IsValidWebhookURL(reqForm.URL) {
+	if !utils.IsValidURL(reqForm.URL) {
 		logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
 		return
