@@ -48,17 +48,21 @@ func InitDB(dbPath string) {
 	CheckTables()
 }
 
+var AllTables = []any{
+	&models.User{},
+	&models.System{},
+	&models.Room{},
+	&models.World{},
+	&models.RoomSetting{},
+	&models.GlobalSetting{},
+	&models.UidMap{},
+	&models.Plugin{},
+	&models.DstImage{},
+}
+
 func CheckTables() {
 	logger.Logger.Debug("正在检查数据库表结构")
-	err := DB.AutoMigrate(
-		&models.User{},
-		&models.System{},
-		&models.Room{},
-		&models.World{},
-		&models.RoomSetting{},
-		&models.GlobalSetting{},
-		&models.UidMap{},
-	)
+	err := DB.AutoMigrate(AllTables...)
 	if err != nil {
 		logger.Logger.Errorf("数据库表结构检查失败, err: %v", err)
 		panic(fmt.Sprintf("数据库表结构检查失败: %s", err.Error()))
