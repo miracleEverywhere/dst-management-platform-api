@@ -10,4 +10,3 @@ func (System) TableName() string {
 }
 
 var JwtSecret = "jwt_secret"
-var TmiStep = "tmi_step"
