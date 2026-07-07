@@ -3,6 +3,11 @@
 # 设置错误处理
 set -e
 
+# 定义变量
+WORK_DIR=$(pwd)
+STEAM_DIR="$WORK_DIR/steamcmd"
+DST_DIR="$WORK_DIR/dst"
+
 # 错误处理函数
 function error_exit() {
     echo -e "==>dmp@@ 更新失败 @@dmp<=="
@@ -12,8 +17,8 @@ function error_exit() {
 # 设置trap捕获所有错误
 trap error_exit ERR
 
-cd steamcmd || error_exit
-./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit || error_exit
+cd "${STEAM_DIR}" || error_exit
+./steamcmd.sh +login anonymous +force_install_dir "${DST_DIR}" +app_update 343050 validate +quit || error_exit
 
 cd || true
 

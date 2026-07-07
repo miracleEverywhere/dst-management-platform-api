@@ -4,8 +4,9 @@
 set -e
 
 # 定义变量
-STEAM_DIR="$HOME/steamcmd"
-DST_DIR="$HOME/dst"
+WORK_DIR=$(pwd)
+STEAM_DIR="$WORK_DIR/steamcmd"
+DST_DIR="$WORK_DIR/dst"
 
 # 错误处理函数
 function error_exit() {
@@ -69,7 +70,7 @@ check_screen
 check_wget
 
 # 下载安装包
-cd "$HOME" || error_exit
+cd "$WORK_DIR" || error_exit
 rm -f steamcmd_linux.tar.gz
 wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
 
@@ -92,7 +93,7 @@ cd "$STEAM_DIR" || error_exit
 rm -rf "$DST_DIR/steamapps/appmanifest_343050.acf"
 
 # 一些必要的so文件
-cd "$HOME" || error_exit
+cd "$WORK_DIR" || error_exit
 cp steamcmd/linux32/libstdc++.so.6 dst/bin/lib32/
 if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
 	[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -s /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
@@ -103,7 +104,7 @@ else
 fi
 
 # luajit
-cd "$HOME" || error_exit
+cd "$WORK_DIR" || error_exit
 cp dmp_files/luajit/* dst/bin64/
 cat >dst/bin64/dontstarve_dedicated_server_nullrenderer_x64_luajit <<-"EOF"
 export LD_PRELOAD=./libpreload.so
@@ -113,7 +114,7 @@ EOF
 chmod --reference=dst/bin64/dontstarve_dedicated_server_nullrenderer_x64 dst/bin64/dontstarve_dedicated_server_nullrenderer_x64_luajit
 
 # 清理
-cd "$HOME" || error_exit
+cd "$WORK_DIR" || error_exit
 rm -f steamcmd_linux.tar.gz
 
 # 安装完成
