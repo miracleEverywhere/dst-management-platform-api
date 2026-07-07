@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/creack/pty"
@@ -582,11 +583,25 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 	}
 
 	if reqForm.Name == models.PluginTmi {
-		if !utils.IsValidURL(reqForm.Proxy) && reqForm.Proxy != "" {
-			logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, reqForm.Proxy)
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		osInfo, err := getOSInfo()
+		if err != nil {
+			logger.Logger.Errorf("获取系统信息失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get os info fail"), "data": nil})
 			return
 		}
+
+		var imageParse bool
+
+		platform := osInfo.Platform
+		version := strings.Split(osInfo.PlatformVersion, ".")[0]
+
+		if platform != "ubuntu" || version != "24" {
+			logger.Logger.Warn("系统不是ubuntu 24, 跳过图片转换")
+			imageParse = false
+		} else {
+			imageParse = true
+		}
+
 		plugin, err := h.pluginDao.GetPluginByPluginName(reqForm.Name)
 		if err != nil {
 			logger.Logger.Errorf("查询数据库失败, err: %v", err)
@@ -599,7 +614,6 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 			return
 		}
 
-		step := plugin.Step
 		updateDb := func(plugin *models.Plugin) {
 			err = h.pluginDao.UpdatePlugin(plugin)
 			if err != nil {
@@ -608,14 +622,37 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 				return
 			}
 		}
+
+		var step int
 		var images []models.DstImage
 
-		step, images, err = initTmi(reqForm.Proxy, step)
-		plugin.Step = step
-		if err != nil {
-			updateDb(plugin)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
-			return
+		if imageParse {
+			if !utils.IsValidURL(reqForm.Proxy) && reqForm.Proxy != "" {
+				logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, reqForm.Proxy)
+				c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+				return
+			}
+
+			step = plugin.Step
+
+			step, images, err = initTmi(reqForm.Proxy, step)
+			plugin.Step = step
+			if err != nil {
+				updateDb(plugin)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
+				return
+			}
+		} else {
+			step = 100
+
+			images, err = installTMIR("")
+			if err != nil {
+				plugin.Step = 5
+				updateDb(plugin)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
+				return
+			}
+			plugin.Step = step
 		}
 
 		err = h.dstImageDao.InitImages(images)
@@ -713,7 +750,7 @@ func (h *Handler) pluginActionPost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "exec success"), "data": nil})
 }
 
 func (h *Handler) pluginStatusGet(c *gin.Context) {

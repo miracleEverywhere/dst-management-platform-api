@@ -167,38 +167,49 @@ func initTmi(proxy string, step int) (int, []models.DstImage, error) {
 }
 
 // 安装依赖
-func installDependency(string) ([]models.DstImage, error) {
-	var images []models.DstImage
+func installDependency(less string) ([]models.DstImage, error) {
+	var (
+		images  []models.DstImage
+		cmdArgs []string
+	)
 
-	cmdArgs := []string{
-		"install",
-		"-y",
-		"libxcb-glx0",
-		"libx11-xcb1",
-		"libxkbcommon-x11-0",
-		"libxcb-cursor0",
-		"libxcb-icccm4",
-		"libxcb-image0",
-		"libxcb-keysyms1",
-		"libxcb-randr0",
-		"libxcb-render-util0",
-		"libxcb-shm0",
-		"libxcb-sync1",
-		"libxcb-xfixes0",
-		"libxcb-render0",
-		"libxcb-shape0",
-		"libxcb-xkb1",
-		"libsm6",
-		"libice6",
-		"libwayland-egl1",
-		"libwayland-client0",
-		"libwayland-cursor0",
-		"libglx0",
-		"libopengl0",
-		"libegl1",
-		"libharfbuzz0b",
-		"libpcre2-16-0",
-		"unzip",
+	if less == "1" {
+		cmdArgs = []string{
+			"install",
+			"-y",
+			"unzip",
+		}
+	} else {
+		cmdArgs = []string{
+			"install",
+			"-y",
+			"libxcb-glx0",
+			"libx11-xcb1",
+			"libxkbcommon-x11-0",
+			"libxcb-cursor0",
+			"libxcb-icccm4",
+			"libxcb-image0",
+			"libxcb-keysyms1",
+			"libxcb-randr0",
+			"libxcb-render-util0",
+			"libxcb-shm0",
+			"libxcb-sync1",
+			"libxcb-xfixes0",
+			"libxcb-render0",
+			"libxcb-shape0",
+			"libxcb-xkb1",
+			"libsm6",
+			"libice6",
+			"libwayland-egl1",
+			"libwayland-client0",
+			"libwayland-cursor0",
+			"libglx0",
+			"libopengl0",
+			"libegl1",
+			"libharfbuzz0b",
+			"libpcre2-16-0",
+			"unzip",
+		}
 	}
 	cmd := exec.Command("apt", cmdArgs...)
 	if _, err := cmd.CombinedOutput(); err != nil {
@@ -212,6 +223,9 @@ func installDependency(string) ([]models.DstImage, error) {
 // 安装stex
 func installStex(proxy string) ([]models.DstImage, error) {
 	var images []models.DstImage
+
+	// 幂等
+	_ = utils.RemoveDir(stexDir)
 
 	_ = utils.EnsureDirExists(stexDir)
 	filename := "Stex_v0.6_Linux_Static_x64.24.04.g++-14.zip"
@@ -279,6 +293,9 @@ func installStex(proxy string) ([]models.DstImage, error) {
 // 解压游戏tex文件
 func unzipDstImages(string) ([]models.DstImage, error) {
 	var images []models.DstImage
+
+	// 幂等
+	_ = utils.RemoveDir(gameImagesPath)
 
 	_ = utils.EnsureDirExists(gameImagesPath)
 	cmdArgs := []string{
