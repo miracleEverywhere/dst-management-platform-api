@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -27,6 +28,10 @@ func (g *Game) dsModsSetup() error {
 		modData = g.room.ModData
 	} else {
 		modData = g.worldSaveData[0].ModData
+	}
+	modData = normalizeModOverridesContent(modData)
+	if err := g.saveMods(); err != nil {
+		return err
 	}
 
 	L := lua.NewState()
@@ -91,9 +96,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 
 		// 1
 		logger.Logger.Debugf("正在下载模组：%d", id)
-		downloadCmd := g.generateModDownloadCmd(id)
-		logger.Logger.Debug(downloadCmd)
-		err = utils.BashCMD(downloadCmd)
+		err = g.downloadUGCMod(id)
 		if err != nil {
 			logger.Logger.Errorf("下载模组失败, err: %v", err)
 			return err, modSize
@@ -107,9 +110,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 			logger.Logger.Errorf("移动模组失败, err: %v", err)
 			return err, modSize
 		}
-		copyCmd := g.generateModCopyCmd(id)
-		logger.Logger.Debug(copyCmd)
-		err = utils.BashCMD(copyCmd)
+		err = g.copyDownloadedUGCMod(id)
 		if err != nil {
 			logger.Logger.Errorf("移动模组失败, err: %v", err)
 			return err, modSize
@@ -161,8 +162,13 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 	return nil, modSize
 }
 
-func (g *Game) generateModDownloadCmd(id int) string {
-	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/%s/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", db.CurrentDir, utils.DmpFiles, g.clusterName, id)
+func (g *Game) downloadUGCMod(id int) error {
+	return utils.RunSteamCMD(
+		"+force_install_dir", filepath.Join(db.CurrentDir, utils.DmpFiles, "mods", "ugc", g.clusterName),
+		"+login", "anonymous",
+		"+workshop_download_item", "322330", strconv.Itoa(id),
+		"+quit",
+	)
 }
 
 func (g *Game) removeGameOldMod(id int) error {
@@ -176,25 +182,24 @@ func (g *Game) removeGameOldMod(id int) error {
 	return nil
 }
 
-func (g *Game) generateModCopyCmd(id int) string {
-	if len(g.worldSaveData) == 0 {
-		return ""
-	}
+func (g *Game) copyDownloadedUGCMod(id int) error {
+	dmpPath := filepath.Join(utils.DmpFiles, "mods", "ugc", g.clusterName, "steamapps", "workshop", "content", "322330", strconv.Itoa(id))
 
-	dmpPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/content/322330/%d", utils.DmpFiles, g.clusterName, id)
-
-	var cmds []string
-
-	// 生成 复制 命令
 	for _, world := range g.worldSaveData {
-		gamePath := fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, world.WorldName, id)
-		cmd := fmt.Sprintf("mkdir -p dst/ugc_mods/%s/%s/content/322330", g.clusterName, world.WorldName)
-		cmds = append(cmds, cmd)
-		cmd = fmt.Sprintf("cp -r %s %s", dmpPath, gamePath)
-		cmds = append(cmds, cmd)
+		gameBasePath := filepath.Join("dst", "ugc_mods", g.clusterName, world.WorldName, "content", "322330")
+		gamePath := filepath.Join(gameBasePath, strconv.Itoa(id))
+		if err := utils.EnsureDirExists(gameBasePath); err != nil {
+			return err
+		}
+		if err := utils.RemoveDir(gamePath); err != nil {
+			return err
+		}
+		if err := utils.CopyDir(dmpPath, gamePath); err != nil {
+			return err
+		}
 	}
 
-	return strings.Join(cmds, " && ")
+	return nil
 }
 
 func (g *Game) processAcf(id int) error {
@@ -478,13 +483,20 @@ func (g *Game) saveMods() error {
 		} else {
 			modContent = world.ModData
 		}
-		err := utils.TruncAndWriteFile(g.worldSaveData[idx].modOverridesPath, modContent)
+		err := utils.TruncAndWriteFile(g.worldSaveData[idx].modOverridesPath, normalizeModOverridesContent(modContent))
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func normalizeModOverridesContent(content string) string {
+	if strings.TrimSpace(content) == "" {
+		return "return {}\n"
+	}
+	return content
 }
 
 func (g *Game) modConfigureOptionsValuesChange(worldID, modID int, modConfig *ModORConfig) error {

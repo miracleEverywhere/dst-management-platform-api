@@ -42,6 +42,12 @@ func EnsureFileExists(filePath string) error {
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		// 文件不存在，创建一个空文件
+		dirPath := filepath.Dir(filePath)
+		if dirPath != "." && dirPath != "" {
+			if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
+				return err
+			}
+		}
 		file, err := os.Create(filePath)
 		if err != nil {
 			return err
@@ -105,6 +111,59 @@ func RemoveFile(filename string) error {
 		return fmt.Errorf("删除文件失败: %v", err)
 	}
 	return nil
+}
+
+func CopyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), os.ModePerm); err != nil {
+		return err
+	}
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode())
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Sync()
+}
+
+func CopyDir(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !srcInfo.IsDir() {
+		return fmt.Errorf("%s 不是目录", src)
+	}
+
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(target, info.Mode())
+		}
+		return CopyFile(path, target)
+	})
 }
 
 // RemoveFilesOlderThan 删除指定目录下，修改时间大于days的文件
@@ -259,6 +318,30 @@ func BashCMDOutput(cmd string) (string, string, error) {
 	}
 
 	return stdout.String(), "", nil
+}
+
+func RunSteamCMD(args ...string) error {
+	cmdExec := exec.Command(SteamCMDExecutable(), args...)
+	cmdExec.Dir = WorkDir
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmdExec.Stdout = &stdout
+	cmdExec.Stderr = &stderr
+
+	if err := cmdExec.Run(); err != nil {
+		return fmt.Errorf("steamcmd执行失败: %w, stdout: %s, stderr: %s", err, stdout.String(), stderr.String())
+	}
+	return nil
+}
+
+func RunDSTUpdate() error {
+	return RunSteamCMD(
+		"+login", "anonymous",
+		"+force_install_dir", DSTInstallDir(),
+		"+app_update", "343050", "validate",
+		"+quit",
+	)
 }
 
 // ScreenCMD 执行饥荒Console命令

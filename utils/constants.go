@@ -16,10 +16,10 @@ const JwtExpirationHours = 24 * 3
 const StaticCacheHours = 24 * 7
 
 // GameModSettingPath 自动下载mod配置文件
-const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
+var GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 
 // DSTLocalVersionPath 饥荒版本文件
-const DSTLocalVersionPath = "dst/version.txt"
+var DSTLocalVersionPath = "dst/version.txt"
 
 // DSTServerVersionApi 饥荒版本查询页面
 const DSTServerVersionApi = "https://forums.kleientertainment.com/game-updates/dst"
@@ -37,7 +37,7 @@ const SteamApiModDetail = "http://api.steampowered.com/IPublishedFileService/Get
 const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/QueryFiles/v1/"
 
 // ClusterPath 饥荒存档根目录
-const ClusterPath = ".klei/DoNotStarveTogether"
+var ClusterPath = ".klei/DoNotStarveTogether"
 
 // DmpFiles 平台文件根目录
 const DmpFiles = "dmp_files"

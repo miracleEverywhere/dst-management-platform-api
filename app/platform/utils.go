@@ -233,7 +233,7 @@ func installStex(proxy string) ([]models.DstImage, error) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		logger.Logger.Errorf("下载Stex失败，HTTP代码: %d", resp.Status)
-		return images, fmt.Errorf("下载Stex失败，HTTP代码: " + resp.Status)
+		return images, fmt.Errorf("下载Stex失败，HTTP代码: %s", resp.Status)
 	}
 	filePath := filepath.Join(stexDir, filename)
 	out, err := os.Create(filePath)

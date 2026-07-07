@@ -6,7 +6,9 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 )
 
 //go:embed dist/*
@@ -23,7 +25,7 @@ var Shell embed.FS
 func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir string, includeFiles ...string) error {
 	// 直接构建完整的源文件路径
 	for _, filename := range includeFiles {
-		sourcePath := filepath.Join(sourceRoot, filename)
+		sourcePath := path.Join(sourceRoot, filename)
 
 		// 读取嵌入文件
 		data, err := sourceFS.ReadFile(sourcePath)
@@ -63,32 +65,38 @@ func GenerateDefaultFile() {
 	}
 
 	// install 脚本
-	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_install.sh")
+	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_install.sh", "manual_install.ps1")
 	if err != nil {
 		logger.Logger.Errorf("生成手动安装脚本失败, err: %v", err)
 		return
 	}
 
-	err = utils.ChangeFileMode("./manual_install.sh", 0755)
-	if err != nil {
-		logger.Logger.Errorf("手动安装脚本添加权限失败, err: %v", err)
-		return
+	if runtime.GOOS != "windows" {
+		err = utils.ChangeFileMode("./manual_install.sh", 0755)
+		if err != nil {
+			logger.Logger.Errorf("手动安装脚本添加权限失败, err: %v", err)
+			return
+		}
 	}
 
 	// update 脚本
-	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_update.sh")
+	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_update.sh", "manual_update.ps1")
 	if err != nil {
 		logger.Logger.Errorf("生成手动更新脚本失败, err: %v", err)
 		return
 	}
 
-	err = utils.ChangeFileMode("./manual_update.sh", 0755)
-	if err != nil {
-		logger.Logger.Errorf("手动更新脚本添加权限失败, err: %v", err)
-		return
+	if runtime.GOOS != "windows" {
+		err = utils.ChangeFileMode("./manual_update.sh", 0755)
+		if err != nil {
+			logger.Logger.Errorf("手动更新脚本添加权限失败, err: %v", err)
+			return
+		}
 	}
 
 	// 删除Windows的换行符
-	_ = utils.BashCMD("sed -i 's/\\r$//' manual_install.sh")
-	_ = utils.BashCMD("sed -i 's/\\r$//' manual_update.sh")
+	if runtime.GOOS != "windows" {
+		_ = utils.BashCMD("sed -i 's/\\r$//' manual_install.sh")
+		_ = utils.BashCMD("sed -i 's/\\r$//' manual_update.sh")
+	}
 }

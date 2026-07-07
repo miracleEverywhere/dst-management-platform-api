@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/shirou/gopsutil/v3/process"
 )
 
 type worldSaveData struct {
@@ -56,16 +54,13 @@ func (g *Game) createWorlds() error {
 			return err
 		}
 
+		modData := world.ModData
 		if g.room.ModInOne {
-			err = utils.TruncAndWriteFile(world.modOverridesPath, g.room.ModData)
-			if err != nil {
-				return err
-			}
-		} else {
-			err = utils.TruncAndWriteFile(world.modOverridesPath, world.ModData)
-			if err != nil {
-				return err
-			}
+			modData = g.room.ModData
+		}
+		err = utils.TruncAndWriteFile(world.modOverridesPath, normalizeModOverridesContent(modData))
+		if err != nil {
+			return err
 		}
 
 		worldsName = append(worldsName, world.WorldName)
@@ -84,11 +79,10 @@ func (g *Game) createWorlds() error {
 			if err != nil {
 				logger.Logger.Warnf("清理世界失败，删除文件失败: %v", err)
 			}
-			// 清理screen
-			cmd := fmt.Sprintf("screen -X -S DMP_Cluster_%d_%s quit", g.room.ID, fileSystemWorld)
-			err = utils.BashCMD(cmd)
+			// 清理运行中的旧世界
+			err = g.cleanupRuntimeName(fmt.Sprintf("DMP_Cluster_%d_%s", g.room.ID, fileSystemWorld))
 			if err != nil {
-				logger.Logger.Warnf("清理世界失败，清理SCREEN失败: %v", err)
+				logger.Logger.Warnf("清理世界失败，清理运行时失败: %v", err)
 			}
 		}
 	}
@@ -108,13 +102,7 @@ func (g *Game) worldUpStatus(id int) bool {
 		return false
 	}
 
-	cmd := fmt.Sprintf("ps -ef | grep %s | grep -v grep", world.screenName)
-	err = utils.BashCMD(cmd)
-	if err != nil {
-		stat = false
-	} else {
-		stat = true
-	}
+	stat = g.isWorldRunning(world)
 
 	return stat
 }
@@ -146,23 +134,7 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 		return performanceStatus
 	}
 
-	cmd := fmt.Sprintf("ps -ef | grep dontstarve_dedicated_server_nullrenderer | grep Cluster_%d | grep %s | grep -v luajit | grep -vi screen | awk '{print $2}'", g.room.ID, world.WorldName)
-	logger.Logger.Debug(cmd)
-	out, _, _ := utils.BashCMDOutput(cmd)
-	logger.Logger.Debug(out)
-
-	if len(out) < 2 {
-		logger.Logger.Warnf("获取世界PID失败, 世界id: %d", world.ID)
-		return performanceStatus
-	}
-
-	pid, err := strconv.Atoi(strings.TrimSpace(out))
-	if err != nil {
-		logger.Logger.Warnf("获取世界PID失败, id: %d, err: %v", world.ID, err)
-		return performanceStatus
-	}
-
-	p, err := process.NewProcess(int32(pid))
+	p, err := g.worldProcess(world)
 	if err != nil {
 		logger.Logger.Warnf("获取世界进程失败, world: %v, err: %v", world.ID, err)
 		return performanceStatus
@@ -198,7 +170,7 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 }
 
 func (g *Game) startWorld(id int) error {
-	_ = utils.BashCMD("screen -wipe")
+	g.cleanupRuntime()
 
 	// 启动游戏后，删除mod临时下载目录
 	g.acfMutex.Lock()
@@ -210,11 +182,7 @@ func (g *Game) startWorld(id int) error {
 		}
 	}()
 
-	// 给klei擦钩子，检查so文件
-	if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
-		logger.Logger.Debug("发现so文件异常，开始替换")
-		replaceDSTSOFile()
-	}
+	g.prepareRuntimeFiles()
 
 	var (
 		err   error
@@ -238,21 +206,17 @@ func (g *Game) startWorld(id int) error {
 	}
 
 	logger.Logger.Debug(world.startCmd)
-	err = utils.BashCMD(world.startCmd)
+	err = g.startWorldProcess(world)
 
 	return err
 }
 
 func (g *Game) startAllWorld() error {
-	_ = utils.BashCMD("screen -wipe")
+	g.cleanupRuntime()
 
 	var err error
 
-	// 给klei擦钩子，检查so文件
-	if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
-		logger.Logger.Debug("发现so文件异常，开始替换")
-		replaceDSTSOFile()
-	}
+	g.prepareRuntimeFiles()
 
 	err = g.dsModsSetup()
 	if err != nil {
@@ -267,7 +231,7 @@ func (g *Game) startAllWorld() error {
 		}
 
 		logger.Logger.Debug(world.startCmd)
-		err = utils.BashCMD(world.startCmd)
+		err = g.startWorldProcess(&world)
 		if err != nil {
 			return err
 		}
@@ -287,15 +251,7 @@ func (g *Game) stopWorld(id int) error {
 		return err
 	}
 
-	err = utils.ScreenCMD("c_shutdown()", world.screenName)
-	if err != nil {
-		logger.Logger.Infof("执行ScreenCMD失败，可能是未运行: %v, cmd: c_shutdown()", err)
-	}
-
-	time.Sleep(1 * time.Second)
-
-	killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
-	err = utils.BashCMD(killCMD)
+	err = g.stopWorldProcess(world)
 	if err != nil {
 		logger.Logger.Infof("结束进程失败，可能是未运行: %v", err)
 	}
@@ -335,7 +291,7 @@ func (g *Game) consoleCmd(cmd string, id int) error {
 	}
 	s := strings.ReplaceAll(cmd, "\"", "'")
 
-	return utils.ScreenCMD(s, world.screenName)
+	return g.sendConsoleCommand(world, s)
 }
 
 func (g *Game) getWorldByID(id int) (*worldSaveData, error) {
@@ -372,8 +328,8 @@ func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 		return []string{}, err
 	}
 
-	listScreenCmd := fmt.Sprintf("screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n", world.screenName)
-	err = utils.BashCMD(listScreenCmd)
+	listCmd := `for i, v in ipairs(TheNet:GetClientTable()) do print(string.format("playerlist %s [%d] %s <-@dmp@-> %s <-@dmp@-> %s", 99999999, i-1, v.userid, v.name, v.prefab )) end`
+	err = g.sendConsoleCommand(world, listCmd)
 	if err != nil {
 		return []string{}, err
 	}
@@ -486,7 +442,7 @@ func (g *Game) getLastAliveTime(id int) (string, error) {
 		return "", err
 	}
 
-	_ = utils.ScreenCMD("print('DMP Keepalive')", world.screenName)
+	_ = g.sendConsoleCommand(world, "print('DMP Keepalive')")
 	time.Sleep(1 * time.Second)
 
 	return getWorldLastTime(fmt.Sprintf("%s/server_log.txt", world.worldPath))

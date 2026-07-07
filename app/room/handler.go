@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -737,9 +738,9 @@ func (h *Handler) uploadPost(c *gin.Context) {
 			logger.Logger.Errorf("删除旧存档数据失败, err: %v", err)
 			continue
 		}
-		cmd := fmt.Sprintf("cp -r %s/save %s", world.path, fmt.Sprintf("%s/%s/", clusterPath, world.name))
-		logger.Logger.Debug(cmd)
-		err = utils.BashCMD(cmd)
+		srcPath := filepath.Join(world.path, "save")
+		dstPath := filepath.Join(clusterPath, world.name, "save")
+		err = utils.CopyDir(srcPath, dstPath)
 		if err != nil {
 			logger.Logger.Errorf("复制存档数据失败, err: %v", err)
 		}
