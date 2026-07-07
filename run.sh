@@ -9,7 +9,7 @@
 PORT=80
 
 # 数据库文件所在目录，例如：./config
-CONFIG_DIR="./data"
+CONFIG_DIR="data"
 
 # 虚拟内存大小，例如 1G 4G等
 SWAPSIZE=2G
@@ -36,8 +36,8 @@ ACCELERATION_SITE=(
 ###########################################
 
 USER=$(whoami)
-ExeFile="$HOME/dmp"
-RUN_SH_CMD="$0 $1"
+WORK_DIR=$(pwd)
+ExeFile="${WORK_DIR}/dmp"
 
 DMP_GITHUB_HOME_URL="https://github.com/miracleEverywhere/dst-management-platform-api"
 DMP_GITHUB_API_URL="https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest"
@@ -45,8 +45,6 @@ SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-managemen
 DMP_HOME="https://miraclesses.top/"
 
 ACCELERATED_URL=""
-
-cd "$HOME" || exit
 
 function echo_red() {
 	echo -e "\033[0;31m$*\033[0m"
@@ -67,6 +65,10 @@ function echo_cyan() {
 function echo_red_blink() {
 	echo -e "\033[5;31m$*\033[0m"
 }
+
+# 保存原始参数，供 update_script 和 auto_start_dmp 使用
+ORIGINAL_ARGS=("$@")
+RUN_SH_CMD="$0 ${ORIGINAL_ARGS[*]}"
 
 # 检查是否以 no-root 模式运行
 if [[ "$1" == "no-root" ]]; then
@@ -289,8 +291,10 @@ function check_dmp() {
 
 # 启动主程序
 function start_dmp() {
+	stop_dmp
+
 	# 检查端口是否被占用,如果被占用则退出
-	port=$(${SUDO} ss -ltnp | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
+	port=$(ss -ltn | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
 
 	if [ -n "$port" ]; then
 		echo_red "端口 $PORT 已被占用: $port", 修改 run.sh 中的 PORT 变量后重新运行或检查饥荒管理平台是否正在运行
@@ -310,7 +314,6 @@ function stop_dmp() {
 	pkill dmp 2>/dev/null
 	sleep 1
 	pkill -9 dmp 2>/dev/null
-	echo_green "关闭成功"
 	sleep 1
 }
 
@@ -377,7 +380,7 @@ function update_script() {
 	mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
 	echo_green "脚本更新完成，3 秒后重新启动..."
 	sleep 3
-	exec "$0"
+	exec "$0" "${ORIGINAL_ARGS[@]}"
 }
 
 # 设置虚拟内存
@@ -415,7 +418,7 @@ function set_swap() {
 
 # 设置开机自启
 function auto_start_dmp() {
-	CRON_JOB="@reboot /bin/bash -c 'source /etc/profile && cd ${HOME} && echo 1 | ${RUN_SH_CMD}'"
+	CRON_JOB="@reboot /bin/bash -c 'source /etc/profile && cd ${WORK_DIR} && echo 1 | ${RUN_SH_CMD}'"
 
 	# 检查 crontab 中是否已存在该命令
 	if crontab -l 2>/dev/null | grep -Fq "$CRON_JOB"; then
@@ -462,7 +465,6 @@ while true; do
 		;;
 	3)
 		set_tty
-		stop_dmp
 		start_dmp
 		check_dmp
 		echo_green "重启成功"
@@ -475,7 +477,6 @@ while true; do
 		get_latest_version
 		if [[ "$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | head -n1)" == "$CURRENT_VERSION" && "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
 			echo_yellow "当前版本 ($CURRENT_VERSION) 小于最新版本 ($LATEST_VERSION)，即将更新"
-			stop_dmp
 			clear_dmp
 			install_dmp
 			start_dmp
@@ -489,7 +490,6 @@ while true; do
 		;;
 	5)
 		set_tty
-		stop_dmp
 		clear_dmp
 		install_dmp
 		start_dmp
