@@ -3,14 +3,12 @@ package user
 import "dst-management-platform-api/database/dao"
 
 type Handler struct {
-	userDao   *dao.UserDAO
-	pluginDao *dao.PluginDAO
+	userDao *dao.UserDAO
 }
 
-func NewHandler(userDao *dao.UserDAO, pluginDao *dao.PluginDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO) *Handler {
 	return &Handler{
-		userDao:   userDao,
-		pluginDao: pluginDao,
+		userDao: userDao,
 	}
 }
 
