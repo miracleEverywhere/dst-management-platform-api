@@ -43,6 +43,10 @@ const (
 	DayType    = "day"
 )
 
+var client *http.Client = &http.Client{
+	Timeout: utils.HttpTimeout * time.Second,
+}
+
 type Handler struct {
 	roomDao          *dao.RoomDAO
 	worldDao         *dao.WorldDAO
@@ -132,9 +136,6 @@ func GetDSTVersion() DSTVersion {
 
 func getGameServerVersion() int {
 	// 发送 HTTP GET 请求
-	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
-	}
 	response, err := client.Get(utils.DSTServerVersionApi)
 	if err != nil {
 		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
@@ -210,9 +211,6 @@ func GetInternetIP1() (string, error) {
 		As          string  `json:"as"`
 		Query       string  `json:"query"`
 	}
-	client := &http.Client{
-		Timeout: 5 * time.Second, // 设置超时时间为 5 秒
-	}
 	httpResponse, err := client.Get(utils.InternetIPApi1)
 	if err != nil {
 		return "", err
@@ -237,9 +235,6 @@ func GetInternetIP1() (string, error) {
 }
 
 func GetInternetIP2() (string, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second, // 设置超时时间为 10 秒
-	}
 	response, err := client.Get(utils.InternetIPApi2)
 	if err != nil {
 		return "", err

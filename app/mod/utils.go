@@ -82,44 +82,41 @@ type VoteData struct {
 	VotesDown int     `json:"votes_down"`
 }
 
+var client *http.Client = &http.Client{
+	Timeout: utils.HttpTimeout * time.Second,
+}
+
 func SearchMod(page int, pageSize int, searchText string, lang string) (Data, error) {
-	var (
-		language int
-		url      string
-	)
+	var language int
+
 	if lang == "zh" {
 		language = 6
 	} else {
 		language = 0
 	}
 
-	params := map[string]string{
-		"appid":            "322330",
-		"return_vote_data": "true",
-		"return_children":  "true",
-		"requiredtags[0]":  "server_only_mod",
-		"requiredtags[1]":  "all_clients_require_mod",
-		"match_all_tags":   "false",
-		"language":         strconv.Itoa(language),
-		"key":              utils.GetSteamApiKey(),
-		"page":             strconv.Itoa(page),
-		"numperpage":       strconv.Itoa(pageSize),
+	req, err := http.NewRequest("GET", utils.SteamApiModSearch, nil)
+	if err != nil {
+		return Data{}, err
 	}
+
+	q := req.URL.Query()
+	q.Add("appid", "322330")
+	q.Add("return_vote_data", "true")
+	q.Add("return_children", "true")
+	q.Add("requiredtags[0]", "server_only_mod")
+	q.Add("requiredtags[1]", "all_clients_require_mod")
+	q.Add("match_all_tags", "false")
+	q.Add("language", strconv.Itoa(language))
+	q.Add("key", utils.GetSteamApiKey())
+	q.Add("page", strconv.Itoa(page))
+	q.Add("numperpage", strconv.Itoa(pageSize))
 	if searchText != "" {
-		params["search_text"] = searchText
+		q.Add("search_text", searchText)
 	}
+	req.URL.RawQuery = q.Encode()
 
-	parts := make([]string, 0, len(params))
-	for k, v := range params {
-		parts = append(parts, k+"="+v)
-	}
-
-	url = utils.SteamApiModSearch + "?" + strings.Join(parts, "&")
-
-	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
-	}
-	httpResponse, err := client.Get(url)
+	httpResponse, err := client.Do(req)
 	if err != nil {
 		return Data{}, err
 	}
@@ -131,7 +128,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
 	if httpResponse.StatusCode != http.StatusOK {
-		return Data{}, err
+		return Data{}, fmt.Errorf("steam api returned status %d", httpResponse.StatusCode)
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
@@ -168,22 +165,25 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 }
 
 func SearchModById(id int, lang string) (Data, error) {
-	var (
-		language int
-		url      string
-	)
+	var language int
 	if lang == "zh" {
 		language = 6
 	} else {
 		language = 0
 	}
 
-	url = fmt.Sprintf("%s?language=%d&key=%s&publishedfileids[0]=%d", utils.SteamApiModDetail, language, utils.GetSteamApiKey(), id)
-
-	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
+	req, err := http.NewRequest("GET", utils.SteamApiModDetail, nil)
+	if err != nil {
+		return Data{}, err
 	}
-	httpResponse, err := client.Get(url)
+
+	q := req.URL.Query()
+	q.Add("language", strconv.Itoa(language))
+	q.Add("key", utils.GetSteamApiKey())
+	q.Add("publishedfileids[0]", strconv.Itoa(id))
+	req.URL.RawQuery = q.Encode()
+
+	httpResponse, err := client.Do(req)
 	if err != nil {
 		return Data{}, err
 	}
@@ -195,7 +195,7 @@ func SearchModById(id int, lang string) (Data, error) {
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
 	if httpResponse.StatusCode != http.StatusOK {
-		return Data{}, err
+		return Data{}, fmt.Errorf("steam api returned status %d", httpResponse.StatusCode)
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
@@ -240,16 +240,20 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 		language = 0
 	}
 
-	url := fmt.Sprintf("%s?language=%d&key=%s", utils.SteamApiModDetail, language, utils.GetSteamApiKey())
-	for index, mod := range *mods {
-		logger.Logger.Debug(fmt.Sprintf("mod id %d", mod.ID))
-		url = url + fmt.Sprintf("&publishedfileids[%d]=%d", index, mod.ID)
+	req, err := http.NewRequest("GET", utils.SteamApiModDetail, nil)
+	if err != nil {
+		return err
 	}
 
-	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
+	q := req.URL.Query()
+	q.Add("language", strconv.Itoa(language))
+	q.Add("key", utils.GetSteamApiKey())
+	for index, mod := range *mods {
+		q.Add(fmt.Sprintf("publishedfileids[%d]", index), strconv.Itoa(mod.ID))
 	}
-	httpResponse, err := client.Get(url)
+	req.URL.RawQuery = q.Encode()
+
+	httpResponse, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -261,7 +265,7 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 	}(httpResponse.Body) // 确保在函数结束时关闭响应体
 	// 检查 HTTP 状态码
 	if httpResponse.StatusCode != http.StatusOK {
-		return err
+		return fmt.Errorf("steam api returned status %d", httpResponse.StatusCode)
 	}
 	var jsonResp JSONResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&jsonResp); err != nil {
