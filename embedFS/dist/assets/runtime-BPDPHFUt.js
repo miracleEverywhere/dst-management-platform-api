@@ -1,0 +1,1 @@
+import{Ar as e,mr as t}from"./index-CdlOcUgl.js";import n from"./singleLog--v1WLhOn.js";var r={__name:`runtime`,setup(r){return(r,i)=>(e(),t(n,{type:`runtime`}))}};export{r as default};
