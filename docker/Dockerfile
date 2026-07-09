@@ -30,7 +30,6 @@ RUN dpkg --add-architecture i386 && \
     apt update && \
     apt install -y lib32gcc-s1 && \
     apt install -y libcurl4-gnutls-dev:i386 && \
-    apt install -y libcurl4-gnutls-dev && \
     apt install -y screen wget && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
