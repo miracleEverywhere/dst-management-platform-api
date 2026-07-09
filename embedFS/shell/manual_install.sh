@@ -22,7 +22,7 @@ function install_ubuntu() {
     dpkg --add-architecture i386
     apt update -y
     apt install -y screen wget
-    apt install -y lib32gcc1 || true
+    apt install -y lib32gcc1 || true	# ubuntu ≤ 22
     apt install -y lib32gcc-s1 || true
     apt install -y libcurl4-gnutls-dev:i386 || error_exit
     apt install -y libcurl4-gnutls-dev || true
