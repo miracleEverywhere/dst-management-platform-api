@@ -233,8 +233,8 @@ func (g *Game) sessionInfo() *RoomSessionInfo {
 		return &roomSessionInfo
 	}
 
-	// 创建 Lua 虚拟机
-	L := lua.NewState()
+	// 创建 Lua 虚拟机（沙箱化）
+	L := utils.NewSafeLuaState()
 	defer L.Close()
 
 	// 将文件内容作为 Lua 代码执行
@@ -243,6 +243,7 @@ func (g *Game) sessionInfo() *RoomSessionInfo {
 
 	err = L.DoString(content)
 	if err != nil {
+		logger.Logger.Warnf("解析模组配置失败，可能含有lua注入，终止：%v", err)
 		return &roomSessionInfo
 	}
 	// 获取 Lua 脚本的返回值

@@ -540,7 +540,7 @@ func tmiItemLists() ([]itemCategory, error) {
 
 // parseLuaItemList 解析单个 Lua 物品列表文件，格式为 return{"item1","item2",...}
 func parseLuaItemList(filePath string) ([]string, error) {
-	L := lua.NewState()
+	L := utils.NewSafeLuaState()
 	defer L.Close()
 
 	if err := L.DoFile(filePath); err != nil {

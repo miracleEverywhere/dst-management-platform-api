@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -226,7 +225,7 @@ func convertLuaValue(lv lua.LValue) any {
 func (mf *ModInfoParser) Parse(lang string) error {
 	var options []ConfigurationOption
 
-	L := lua.NewState()
+	L := utils.NewSafeLuaState()
 	defer L.Close()
 
 	L.SetGlobal("locale", lua.LString(lang))                                      // 设置语言
@@ -245,7 +244,7 @@ func (mf *ModInfoParser) Parse(lang string) error {
 
 	// 加载并执行 Lua 脚本
 	if err := L.DoString(mf.ModInfoLua); err != nil {
-		logger.Logger.Debugf("执行modinfo.lua失败, err: %v", err)
+		logger.Logger.Debugf("执行modinfo.lua失败, 可能含有lua注入, err: %v", err)
 		return err
 	}
 
@@ -326,10 +325,10 @@ type ModORParser struct {
 	L *lua.LState
 }
 
-// NewModORParser 创建新的解析器
+// NewModORParser 创建新的解析器，使用沙箱化 Lua 状态
 func NewModORParser() *ModORParser {
 	return &ModORParser{
-		L: lua.NewState(),
+		L: utils.NewSafeLuaState(),
 	}
 }
 
@@ -343,7 +342,7 @@ func (p *ModORParser) close() {
 // Parse 解析Lua配置文件内容
 func (p *ModORParser) Parse(luaContent, lang string) (ModORCollection, error) {
 	if err := p.L.DoString(luaContent); err != nil {
-		logger.Logger.Debugf("这里出问题?, err: %v", err)
+		logger.Logger.Warnf("解析模组配置失败，可能含有lua注入，终止：%v", err)
 		return nil, err
 	}
 
@@ -690,21 +689,22 @@ func formatLuaValue(value any) string {
 	}
 }
 
-// isValidLuaIdentifier 检查字符串是否为有效的Lua标识符
+// isValidLuaIdentifier 检查字符串是否为有效的 Lua 标识符（仅 ASCII）
 func isValidLuaIdentifier(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
 
-	// 第一个字符必须是字母或下划线
-	firstChar := rune(s[0])
-	if !unicode.IsLetter(firstChar) && firstChar != '_' {
+	// 第一个字符必须是 ASCII 字母或下划线
+	firstChar := s[0]
+	if !((firstChar >= 'a' && firstChar <= 'z') || (firstChar >= 'A' && firstChar <= 'Z') || firstChar == '_') {
 		return false
 	}
 
-	// 后续字符可以是字母、数字或下划线
-	for _, char := range s[1:] {
-		if !unicode.IsLetter(char) && !unicode.IsDigit(char) && char != '_' {
+	// 后续字符可以是 ASCII 字母、数字或下划线
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
 			return false
 		}
 	}
@@ -718,15 +718,15 @@ func formatLuaKey(s string) string {
 	}
 
 	// 数字开头
-	numRe := regexp.MustCompile(`^\d`)
-	if numRe.MatchString(s) {
-		return fmt.Sprintf("[\"%s\"]", s)
+	if s[0] >= '0' && s[0] <= '9' {
+		return fmt.Sprintf("[\"%s\"]", escapeLuaString(s))
 	}
 
-	// 正常变量
-	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
-	if re.MatchString(s) {
-		return fmt.Sprintf("[\"%s\"]", s)
+	// 检查是否包含非法标识符字符（Lua 标识符仅支持 ASCII）
+	for _, c := range s {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+			return fmt.Sprintf("[\"%s\"]", escapeLuaString(s))
+		}
 	}
 
 	return s

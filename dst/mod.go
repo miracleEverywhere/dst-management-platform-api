@@ -29,10 +29,11 @@ func (g *Game) dsModsSetup() error {
 		modData = g.worldSaveData[0].ModData
 	}
 
-	L := lua.NewState()
+	L := utils.NewSafeLuaState()
 	defer L.Close()
 	if err := L.DoString(modData); err != nil {
-		return err
+		logger.Logger.Warnf("解析模组配置失败，可能含有lua注入，终止：%v", err)
+		return fmt.Errorf("解析模组配置失败，可能含有lua注入，终止：%v", err)
 	}
 	modsTable := L.Get(-1)
 	fileContent := ""
@@ -554,7 +555,7 @@ func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
 
 	mods, err := modORParser.Parse(modORContent, g.lang)
 	if err != nil {
-		logger.Logger.Debugf("这里出问题?, err: %v", err)
+		logger.Logger.Warnf("可能存在模组配置注入，已拦截: %v", err)
 		return []DownloadedMod{}, err
 	}
 
