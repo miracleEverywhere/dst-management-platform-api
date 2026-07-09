@@ -27,10 +27,12 @@ COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 
 RUN dpkg --add-architecture i386 && \
-    apt-get update && \
-    apt-get install -y libcurl4-gnutls-dev:i386 && \
-    apt-get install -y screen wget && \
-    apt-get clean && \
+    apt update && \
+    apt install -y lib32gcc1 && \
+    apt install -y libcurl4-gnutls-dev:i386 && \
+    apt install -y libcurl4-gnutls-dev && \
+    apt install -y screen wget && \
+    apt clean && \
     rm -rf /var/lib/apt/lists/*
 RUN chmod +x /root/dmp /root/entry-point.sh
 RUN mkdir -p /root/data /root/.klei

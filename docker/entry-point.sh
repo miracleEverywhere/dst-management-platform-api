@@ -2,6 +2,7 @@
 
 # 定义变量
 DMP_HOME="/root"
+STEAM_DIR="$DMP_HOME/steamcmd"
 
 cd $DMP_HOME || exit
 
@@ -16,8 +17,22 @@ cleanup() {
     exit 0
 }
 
+install_steamcmd() {
+    wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
+	mkdir -p "$STEAM_DIR"
+	tar -zxvf steamcmd_linux.tar.gz -C "$STEAM_DIR"
+}
+
+link_so() {
+	[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -s /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
+	[ ! -L "dst/bin/lib32/libcurl-gnutls.so.4" ] && ln -s /usr/lib/i386-linux-gnu/libcurl-gnutls.so.4 dst/bin/lib32/libcurl-gnutls.so.4
+}
+
 # 捕获 SIGTERM 信号
 trap cleanup SIGTERM
+
+install_steamcmd
+link_so
 
 # 构建启动命令
 DMP_CMD="./dmp -bind $DMP_PORT -dbpath ./data -level ${LEVEL:-info}"

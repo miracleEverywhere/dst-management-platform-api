@@ -69,19 +69,16 @@ check_screen
 # 检查wget命令
 check_wget
 
-# 下载安装包
-cd "$WORK_DIR" || error_exit
-rm -f steamcmd_linux.tar.gz
-wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
-
-# 清理，容器中不删除steamcmd
+# 清理并安装steamcmd
+# 容器中不安装steamcmd
 if [[ "${DMP_IN_CONTAINER}" != "1" ]] ;then
+	cd "$WORK_DIR" || error_exit
+    rm -f steamcmd_linux.tar.gz
+    wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
 	rm -rf "$STEAM_DIR"
+	mkdir -p "$STEAM_DIR"
+	tar -zxvf steamcmd_linux.tar.gz -C "$STEAM_DIR"
 fi
-mkdir -p "$STEAM_DIR"
-
-# 解压安装包
-tar -zxvf steamcmd_linux.tar.gz -C "$STEAM_DIR"
 
 # 安装DST
 cd "$STEAM_DIR" || error_exit

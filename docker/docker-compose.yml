@@ -2,8 +2,8 @@ services:
 
   dmp:
     # image: ghcr.io/harelive/dst-management-platform-api:latest # 测试用
-    # image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest #原地址
-    image: ghcr.nju.edu.cn/miracleeverywhere/dst-management-platform-api:latest #加速地址
+    # image: ghcr.nju.edu.cn/miracleeverywhere/dst-management-platform-api:latest # 加速地址
+    image: ghcr.io/miracleeverywhere/dst-management-platform-api:latest # 原地址
     
     container_name: dmp
 
