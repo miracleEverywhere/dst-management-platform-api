@@ -19,7 +19,6 @@ services:
       - ./dst:/root/dst
       - ./logs:/root/logs
       - ./dmp_files:/root/dmp_files
-      - ./steamcmd:/root/steamcmd
       # HTTPS 证书挂载（启用 TLS=true 时需要）
       # - ./ssl:/etc/ssl/dmp:ro
       # 同步宿主机时间(linux内核)
