@@ -29,14 +29,10 @@ func runConsole(cmd, dbPath string) {
 		listUser(dbPath)
 	case "db_stats":
 		dbStats(dbPath)
+	case "help":
+		consoleInfo(cmd)
 	default:
-		fmt.Printf("未知命令: %s\n\n", cmd)
-		fmt.Println("可用命令:")
-		fmt.Println("  reset_password    重置用户密码")
-		fmt.Println("  list_user         列出所有用户")
-		fmt.Println("  db_stats          查看数据库统计")
-		fmt.Println()
-		os.Exit(1)
+		consoleInfo(cmd)
 	}
 }
 
@@ -183,4 +179,17 @@ func formatSize(size int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
+}
+
+func consoleInfo(cmd string) {
+	if cmd != "help" {
+		fmt.Printf("未知命令: %s\n\n", cmd)
+		fmt.Println("可用命令:")
+	}
+	fmt.Println("  reset_password    重置用户密码")
+	fmt.Println("  list_user         列出所有用户")
+	fmt.Println("  db_stats          查看数据库统计")
+	fmt.Println("  help              显示本信息")
+	fmt.Println()
+	os.Exit(1)
 }

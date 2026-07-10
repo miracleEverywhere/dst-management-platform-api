@@ -21,6 +21,6 @@ func bindFlags() {
 	flag.StringVar(&cert, "cert", "", "证书文件路径, 不填则启动http, 例如: /path/to/fullchain.pem")
 	flag.StringVar(&key, "key", "", "私钥文件路径, 不填则启动http, 例如: /path/to/privkey.pem")
 	flag.BoolVar(&versionShow, "v", false, "查看版本, 如: -v")
-	flag.StringVar(&consoleCmd, "console", "", "控制台命令, 如: -console reset_password, -console list_user")
+	flag.StringVar(&consoleCmd, "console", "", "控制台命令, 如: -console help")
 	flag.Parse()
 }
