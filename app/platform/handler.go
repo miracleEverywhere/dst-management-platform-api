@@ -750,6 +750,13 @@ func (h *Handler) pluginActionPost(c *gin.Context) {
 		return
 	}
 
+	// webhook 通知
+	webhook.Snd.Send(webhook.EventPluginUpdated, 0, map[string]interface{}{
+		"username":    c.GetString("username"),
+		"plugin_name": reqForm.Name,
+		"action":      reqForm.Type,
+	})
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "exec success"), "data": nil})
 }
 

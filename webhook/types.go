@@ -17,6 +17,7 @@ const (
 	EventGlobalSettingUpdated = "global_setting_updated"
 	EventWebsocketConnected   = "websocket_connected"
 	EventOnlinePlayerUpdated  = "online_player_updated"
+	EventPluginUpdated        = "plugin_updated"
 )
 
 // AllEventTypes 可选事件类型列表，供前端渲染 webhook 配置表单
@@ -36,6 +37,7 @@ var AllEventTypes = []EventInfo{
 	{Type: EventGlobalSettingUpdated, ZH: "平台设置修改", EN: "Platform Settings Updated"},
 	{Type: EventWebsocketConnected, ZH: "虚拟终端连接", EN: "Websocket Connected"},
 	{Type: EventOnlinePlayerUpdated, ZH: "在线玩家变化", EN: "Online Player Updated"},
+	{Type: EventPluginUpdated, ZH: "插件配置修改", EN: "Plugin Updated"},
 }
 
 type EventInfo struct {
