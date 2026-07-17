@@ -18,7 +18,7 @@
 
 ## :strawberry: Documents
 
-**[https://miraclesses.top](https://miraclesses.top)**
+**[https://dmp.miraclesses.top](https://dmp.miraclesses.top)**
 
 ---
 
@@ -56,7 +56,5 @@ Thanks to the acceleration site:
 - [gh.llkk.cc](https://gh.llkk.cc/)
 - [github.dpik.top](https://github.dpik.top/)
 - [ghfast.top](https://ghfast.top/)
-
-Thanks to [饥荒百科](https://dontstarve.huijiwiki.com/wiki/饥荒)
 
 Thanks to [长鸽门徒](https://www.bilibili.com/opus/814456568458248259) for providing the DST emoji font

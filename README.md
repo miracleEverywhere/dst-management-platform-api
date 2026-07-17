@@ -20,11 +20,9 @@
 
 ## :strawberry: 详细文档
 
-**项目主页请前往** [https://miraclesses.top](https://miraclesses.top)  
-主页包含作者和用户制作的视频教程、在线预览等
+**项目主页请前往** [https://dmp.miraclesses.top](https://dmp.miraclesses.top)
 
-**项目文档请前往** [https://docs.miraclesses.top](https://miraclesses.top)  
-文档包含快速开始、详细文档等，萌新大佬均可无痛阅读
+**项目文档请前往** [https://docs.miraclesses.top](https://miraclesses.top)
 
 ---
 
@@ -77,9 +75,7 @@ v1与v2版本基于[koi-ui](https://github.com/KoiKite/koi-ui)二次开发，感
 - [github.akams.cn](https://github.akams.cn/) 
 - [gh.llkk.cc](https://gh.llkk.cc/) 
 - [github.dpik.top](https://github.dpik.top/) 
-- [ghfast.top](https://ghfast.top/) 
-
-感谢[饥荒百科](https://dontstarve.huijiwiki.com/wiki/饥荒)  
+- [ghfast.top](https://ghfast.top/)
 
 感谢[长鸽门徒](https://www.bilibili.com/opus/814456568458248259)提供的饥荒emoji字体
 
