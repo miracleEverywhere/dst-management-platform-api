@@ -82,7 +82,8 @@ func (h *Handler) listPost(c *gin.Context) {
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 
-	if reqForm.ActionType == "add" {
+	switch reqForm.ActionType {
+	case "add":
 		err = game.AddPlayerList(reqForm.UIDS, reqForm.ListType)
 		if err != nil {
 			logger.Logger.Infof("修改player list失败: %v", err)
@@ -91,7 +92,7 @@ func (h *Handler) listPost(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "add success"), "data": nil})
-	} else {
+	case "delete":
 		err = game.RemovePlayerList(reqForm.UIDS[0], reqForm.ListType)
 		if err != nil {
 			logger.Logger.Infof("修改player list失败: %v", err)
@@ -100,6 +101,35 @@ func (h *Handler) listPost(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+	case "deleteAll":
+		err = game.RemovePlayerListAll(reqForm.ListType)
+		if err != nil {
+			logger.Logger.Infof("删除player list失败: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+	case "import":
+		var uids []string
+
+		uids, err = getPublicBlockList()
+		if err != nil {
+			logger.Logger.Error(err.Error())
+		}
+
+		err = game.AddPlayerList(uids, reqForm.ListType)
+		if err != nil {
+			logger.Logger.Infof("修改player list失败: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "add fail"), "data": nil})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "add success"), "data": nil})
+	default:
+		logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
 	}
 }
 
