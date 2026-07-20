@@ -36,6 +36,8 @@ const SteamApiModDetail = "http://api.steampowered.com/IPublishedFileService/Get
 // SteamApiModSearch 模组查询接口
 const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/QueryFiles/v1/"
 
+const DstBlockList = "https://dst-block.miraclesses.top/api/blacklist/public"
+
 // ClusterPath 饥荒存档根目录
 const ClusterPath = ".klei/DoNotStarveTogether"
 
