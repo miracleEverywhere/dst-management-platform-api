@@ -127,9 +127,35 @@ func (g *Game) removePlayerList(uid, listType string) error {
 			return err
 		}
 		return g.createRoom() // 不统一处理，提升性能
+	default:
+		return fmt.Errorf("类型错误")
 	}
+}
 
-	return fmt.Errorf("类型错误")
+func (g *Game) removePlayerListAll(listType string) error {
+	defer webhook.Snd.Send(webhook.EventPlayerManage, g.room.ID, map[string]interface{}{
+		"gameID":   g.room.ID,
+		"gameName": g.room.GameName,
+		"action":   "remove",
+		"type":     "remove all",
+	})
+	switch listType {
+	case "adminlist":
+		g.adminlist = []string{}
+		return g.savePlayerList()
+	case "blocklist":
+		g.blocklist = []string{}
+		return g.savePlayerList()
+	case "whitelist":
+		g.whitelist = []string{}
+		err := g.savePlayerList()
+		if err != nil {
+			return err
+		}
+		return g.createRoom()
+	default:
+		return fmt.Errorf("类型错误")
+	}
 }
 
 type ChatMessage struct {

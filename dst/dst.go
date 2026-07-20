@@ -206,6 +206,11 @@ func (g *Game) RemovePlayerList(uid, listType string) error {
 	return g.removePlayerList(uid, listType)
 }
 
+// RemovePlayerListAll 清空三个名单
+func (g *Game) RemovePlayerListAll(listType string) error {
+	return g.removePlayerListAll(listType)
+}
+
 // GetPlayerList 获取三个名单
 func (g *Game) GetPlayerList(listType string) []string {
 	switch listType {
