@@ -33,7 +33,7 @@ function install_rhel() {
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686
     yum -y install glibc libstdc++ libcurl
     yum -y install screen wget
-    ln -s /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
+    ln -sf /usr/lib/libcurl.so.4 /usr/lib/libcurl-gnutls.so.4
 }
 
 function check_screen() {
@@ -93,11 +93,11 @@ rm -rf "$DST_DIR/steamapps/appmanifest_343050.acf"
 cd "$WORK_DIR" || error_exit
 cp steamcmd/linux32/libstdc++.so.6 dst/bin/lib32/
 if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
-	[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -s /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
-	[ ! -L "dst/bin/lib32/libcurl-gnutls.so.4" ] && ln -s /usr/lib/i386-linux-gnu/libcurl-gnutls.so.4 dst/bin/lib32/libcurl-gnutls.so.4
+	[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -sf /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
+	[ ! -L "dst/bin/lib32/libcurl-gnutls.so.4" ] && ln -sf /usr/lib/i386-linux-gnu/libcurl-gnutls.so.4 dst/bin/lib32/libcurl-gnutls.so.4
 else
-	[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -s /usr/lib64/libcurl.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
-	[ ! -L "dst/bin/lib32/libcurl-gnutls.so.4" ] && ln -s /usr/lib/libcurl.so.4 dst/bin/lib32/libcurl-gnutls.so.4
+	[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -sf /usr/lib64/libcurl.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
+	[ ! -L "dst/bin/lib32/libcurl-gnutls.so.4" ] && ln -sf /usr/lib/libcurl.so.4 dst/bin/lib32/libcurl-gnutls.so.4
 fi
 
 # luajit
