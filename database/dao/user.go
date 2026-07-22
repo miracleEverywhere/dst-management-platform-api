@@ -50,6 +50,23 @@ func (d *UserDAO) UpdateUser(user *models.User) error {
 	return err
 }
 
+func (d *UserDAO) UpdatePassword(username, password, passwordVersion string) error {
+	result := d.db.Model(&models.User{}).
+		Where("username = ?", username).
+		Updates(map[string]any{
+			"password":         password,
+			"password_version": passwordVersion,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
 func (d *UserDAO) GetNonAdminUsers() (*[]models.User, error) {
 	var users []models.User
 	err := d.db.Where("role != 'admin'").Find(&users).Error
