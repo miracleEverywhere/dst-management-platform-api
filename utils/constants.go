@@ -21,8 +21,12 @@ const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 // DSTLocalVersionPath 饥荒版本文件
 const DSTLocalVersionPath = "dst/version.txt"
 
-// DSTServerVersionApi 饥荒版本查询页面
-const DSTServerVersionApi = "https://forums.kleientertainment.com/game-updates/dst"
+// DSTServerVersionKlei 饥荒版本查询页面
+const DSTServerVersionKlei = "https://forums.kleientertainment.com/game-updates/dst"
+
+// DSTServerVersionApi1 DSTServerVersionApi2 饥荒版本api
+const DSTServerVersionApi1 = "http://ver.tugos.cn/getLocalVersion"
+const DSTServerVersionApi2 = "https://dstv.3moredays.com/version.txt"
 
 // InternetIPApi1 公网IP查询接口
 const InternetIPApi1 = "http://ip-api.com/json/?lang=zh-CN"

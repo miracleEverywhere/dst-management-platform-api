@@ -43,7 +43,7 @@ const (
 	DayType    = "day"
 )
 
-var client *http.Client = &http.Client{
+var client = &http.Client{
 	Timeout: utils.HttpTimeout * time.Second,
 }
 
@@ -83,19 +83,31 @@ type DSTVersion struct {
 
 func GetDSTVersion() DSTVersion {
 	var dstVersion DSTVersion
-	dstVersion.Server = 0
-	dstVersion.Local = 0
 
+	dstVersion.Local = getLocalGameVersion()
+
+	if db.GameServerVersion != 0 {
+		dstVersion.Server = db.GameServerVersion
+	} else {
+		var err error
+		dstVersion.Server, err = getServerGameVersion()
+		if err != nil {
+			logger.Logger.Error(err)
+		}
+	}
+
+	return dstVersion
+}
+
+func getLocalGameVersion() int {
+	version := 0
 	file, err := os.Open(utils.DSTLocalVersionPath)
 	if err != nil {
 		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
-		return dstVersion
+		return version
 	}
 	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			logger.Logger.Errorf("关闭文件失败, err: %v", err)
-		}
+		_ = file.Close()
 	}(file) // 确保文件在函数结束时关闭
 
 	// 创建一个扫描器来读取文件内容
@@ -110,39 +122,61 @@ func GetDSTVersion() DSTVersion {
 		number, err := strconv.Atoi(line)
 		if err != nil {
 			logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
-			return dstVersion
-		}
-		dstVersion.Local = number
 
-		// 获取服务端版本
-		if db.GameServerVersion != 0 {
-			dstVersion.Server = db.GameServerVersion
-		} else {
-			dstVersion.Server = getGameServerVersion()
+			return version
 		}
+		version = number
 
-		return dstVersion
+		return version
 	}
 
 	// 如果扫描器遇到错误，返回错误
-	if err := scanner.Err(); err != nil {
+	if err = scanner.Err(); err != nil {
 		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 
-		return dstVersion
+		return version
 	}
 
-	return dstVersion
+	return version
 }
 
-func getGameServerVersion() int {
-	// 发送 HTTP GET 请求
-	response, err := client.Get(utils.DSTServerVersionApi)
+func getServerGameVersion() (int, error) {
+	version, err := getServerGameVersionFromKlei()
+	logger.Logger.Debug("尝试从饥荒论坛中获取游戏版本")
 	if err != nil {
-		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
-		return 0
+		logger.Logger.Warnf("从饥荒论坛中获取游戏版本失败: %v, 尝试从api获取", err)
+	} else {
+		logger.Logger.Debug("从饥荒论坛中获取游戏版本成功")
+		return version, nil
+	}
+
+	apis := []string{
+		utils.DSTServerVersionApi1,
+		utils.DSTServerVersionApi2,
+	}
+
+	for _, api := range apis {
+		logger.Logger.Debugf("尝试从api: %s 获取游戏版本", api)
+		version, err = getServerGameVersionFromDstVersion(api)
+		if err != nil {
+			logger.Logger.Warnf("从api中获取游戏版本失败: %v, 尝试下一个api", err)
+		} else {
+			logger.Logger.Debugf("从api: %s 获取游戏版本成功", api)
+			return version, nil
+		}
+	}
+
+	return 0, fmt.Errorf("获取游戏版本失败，%d种方法均失败", 1+len(apis))
+}
+
+func getServerGameVersionFromKlei() (int, error) {
+	// 发送 HTTP GET 请求
+	response, err := client.Get(utils.DSTServerVersionKlei)
+	if err != nil {
+		return 0, err
 	}
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+		err = Body.Close()
 		if err != nil {
 			logger.Logger.Errorf("关闭响应体失败, err: %v", err)
 		}
@@ -150,15 +184,14 @@ func getGameServerVersion() int {
 
 	// 检查 HTTP 状态码
 	if response.StatusCode != http.StatusOK {
-		logger.Logger.Errorf("获取游戏版本失败, statusCode: %d", response.StatusCode)
-		return 0
+		err = fmt.Errorf("HTTP statusCode: %d", response.StatusCode)
+		return 0, err
 	}
 
 	// 读取响应体内容
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
-		return 0
+		return 0, err
 	}
 
 	// 找到所有带 data-currentRelease 的 <a> 标签，从 href URL 中提取帖子 ID
@@ -178,13 +211,43 @@ func getGameServerVersion() int {
 	}
 
 	if len(versions) == 0 {
-		logger.Logger.Errorf("获取游戏版本失败, 未从页面中提取到版本号")
-		return 0
+		err = fmt.Errorf("获取游戏版本失败, 未从页面中提取到版本号")
+		return 0, err
 	}
 
 	sort.Ints(versions)
 
-	return versions[len(versions)-1]
+	return versions[len(versions)-1], nil
+}
+
+func getServerGameVersionFromDstVersion(api string) (int, error) {
+	response, err := client.Get(api)
+	if err != nil {
+		return 0, err
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(response.Body) // 确保在函数结束时关闭响应体
+
+	// 检查 HTTP 状态码
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf("HTTP statusCode: %d", response.StatusCode)
+		return 0, err
+	}
+
+	// 读取响应体内容
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	// 将字节数组转换为字符串并返回
+	number, err := strconv.Atoi(string(body))
+	if err != nil {
+		return 0, err
+	}
+
+	return number, nil
 }
 
 type AnnounceSetting struct {

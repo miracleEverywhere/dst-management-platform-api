@@ -260,8 +260,10 @@ func ModDownloadClean() {
 }
 
 func ServerVersionGet() {
-	version := getGameServerVersion()
-	if version != 0 {
+	logger.Logger.Info("正在获取游戏版本")
+	version, err := getServerGameVersion()
+	if err == nil {
+		logger.Logger.Info("游戏版本获取成功")
 		db.GameServerVersion = version
 	}
 }
