@@ -36,6 +36,11 @@ RUN dpkg --add-architecture i386 && \
 RUN chmod +x /root/dmp /root/entry-point.sh
 RUN mkdir -p /root/data /root/.klei
 
+# 安装steamcmd
+RUN wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
+RUN tar -zxvf steamcmd_linux.tar.gz
+RUN rm -f steamcmd_linux.tar.gz
+
 # 环境变量
 # - 平台暴露端口，默认为80
 ENV DMP_PORT=80
