@@ -105,10 +105,8 @@ func resetPassword(dbPath string) {
 		logger.Logger.Errorf("创建bcrypt密码失败：%v", err)
 		return
 	}
-	dbUser.Password = hashedPassword
-	dbUser.PasswordVersion = models.PasswordVersionBcrypt
 
-	err = userDao.UpdateUser(dbUser)
+	err = userDao.UpdatePassword(username, hashedPassword, models.PasswordVersionBcrypt)
 	if err != nil {
 		fmt.Printf("更新密码失败: %v\n", err)
 		os.Exit(1)

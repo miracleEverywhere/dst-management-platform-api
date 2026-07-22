@@ -49,6 +49,7 @@ func Run() {
 
 	// 初始化数据库
 	db.InitDB(dbPath)
+	db.AutoMigrate()
 	userDao := dao.NewUserDAO(db.DB)
 	systemDao := dao.NewSystemDAO(db.DB)
 	roomDao := dao.NewRoomDAO(db.DB)
