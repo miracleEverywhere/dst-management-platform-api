@@ -22,7 +22,7 @@ func InitDB(dbPath string) {
 	}
 
 	var err error
-	dsn := fmt.Sprintf("%s/dmp.db?cache=shared", dbPath)
+	dsn := fmt.Sprintf("%s/dmp.db?cache=shared&_pragma=busy_timeout(5000)", dbPath)
 	logger.Logger.Debug(fmt.Sprintf("数据库连接为%s", dsn))
 
 	DB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{
@@ -44,8 +44,6 @@ func InitDB(dbPath string) {
 	DB.Exec("PRAGMA mmap_size=0")
 
 	logger.Logger.Info("数据库连接成功")
-
-	CheckTables()
 }
 
 var AllTables = []any{
@@ -60,7 +58,7 @@ var AllTables = []any{
 	&models.DstImage{},
 }
 
-func CheckTables() {
+func AutoMigrate() {
 	logger.Logger.Debug("正在检查数据库表结构")
 	err := DB.AutoMigrate(AllTables...)
 	if err != nil {
