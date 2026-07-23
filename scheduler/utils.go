@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"bufio"
+	"crypto/tls"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/logger"
@@ -12,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -146,6 +146,15 @@ func getServerGameVersion() (int, error) {
 		err     error
 	)
 
+	version, err = getServerGameVersionFromKlei()
+	logger.Logger.Debug("尝试从饥荒论坛中获取游戏版本")
+	if err != nil {
+		logger.Logger.Warnf("从饥荒论坛中获取游戏版本失败: %v, 尝试从api获取", err)
+	} else {
+		logger.Logger.Debug("从饥荒论坛中获取游戏版本成功")
+		return version, nil
+	}
+
 	apis := []string{
 		utils.DSTServerVersionApi1,
 		utils.DSTServerVersionApi2,
@@ -161,67 +170,115 @@ func getServerGameVersion() (int, error) {
 		}
 	}
 
-	version, err = getServerGameVersionFromKlei()
-	logger.Logger.Debug("尝试从饥荒论坛中获取游戏版本")
-	if err != nil {
-		logger.Logger.Warnf("从饥荒论坛中获取游戏版本失败: %v, 尝试从api获取", err)
-	} else {
-		logger.Logger.Debug("从饥荒论坛中获取游戏版本成功")
-		return version, nil
-	}
-
 	return 0, fmt.Errorf("获取游戏版本失败，%d种方法均失败", 1+len(apis))
 }
 
 func getServerGameVersionFromKlei() (int, error) {
-	// 发送 HTTP GET 请求
-	response, err := client.Get(utils.DSTServerVersionKlei)
-	if err != nil {
-		return 0, err
+	const (
+		versionPageURL     = utils.DSTServerVersionKlei
+		maxVersionPageSize = 8 << 20
+		userAgent          = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+	)
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy:             http.ProxyFromEnvironment,
+			ForceAttemptHTTP2: false,
+			TLSNextProto:      make(map[string]func(string, *tls.Conn) http.RoundTripper),
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+				NextProtos: []string{"http/1.1"},
+			},
+		},
+		Timeout: utils.HttpTimeout * time.Second,
 	}
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-			logger.Logger.Errorf("关闭响应体失败, err: %v", err)
-		}
-	}(response.Body) // 确保在函数结束时关闭响应体
-
-	// 检查 HTTP 状态码
-	if response.StatusCode != http.StatusOK {
-		err = fmt.Errorf("HTTP statusCode: %d", response.StatusCode)
-		return 0, err
+	versionPageURLs := []string{
+		versionPageURL,
+		versionPageURL + "?rss=1",
+		versionPageURL + "?sortby=newest&sortdirection=desc",
 	}
+	currentReleaseTagRE := regexp.MustCompile(`(?is)<a\b[^>]*\bdata-currentrelease(?:\s|=)[^>]*>`)
+	versionLinkRE := regexp.MustCompile(`(?i)/dst/([0-9]+)-`)
+	var lastErr error
 
-	// 读取响应体内容
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return 0, err
-	}
-
-	// 找到所有带 data-currentRelease 的 <a> 标签，从 href URL 中提取帖子 ID
-	// 例如 href='.../dst/728321-r2733/' 提取 728321
-	tagRe := regexp.MustCompile(`<a[^>]*data-currentRelease[^>]*>`)
-	tags := tagRe.FindAllString(string(body), -1)
-
-	idRe := regexp.MustCompile(`/dst/(\d+)-`)
-	var versions []int
-	for _, tag := range tags {
-		match := idRe.FindStringSubmatch(tag)
-		if match != nil {
-			if num, err := strconv.Atoi(match[1]); err == nil {
-				versions = append(versions, num)
+	for _, url := range versionPageURLs {
+		for attempt := 0; attempt < 2; attempt++ {
+			request, err := http.NewRequest(http.MethodGet, url, nil)
+			if err != nil {
+				return 0, err
 			}
+			request.Header.Set("User-Agent", userAgent)
+			request.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+			request.Header.Set("Accept-Language", "en-US,en;q=0.9")
+			request.Header.Set("Cache-Control", "no-cache")
+			request.Header.Set("Pragma", "no-cache")
+			request.Header.Set("Sec-Fetch-Dest", "document")
+			request.Header.Set("Sec-Fetch-Mode", "navigate")
+			request.Header.Set("Sec-Fetch-Site", "none")
+			request.Header.Set("Sec-Fetch-User", "?1")
+			request.Header.Set("Upgrade-Insecure-Requests", "1")
+
+			response, err := client.Do(request)
+			if err != nil {
+				lastErr = err
+				if attempt == 0 {
+					time.Sleep(250 * time.Millisecond)
+					continue
+				}
+				break
+			}
+
+			body, readErr := io.ReadAll(io.LimitReader(response.Body, maxVersionPageSize+1))
+			response.Body.Close()
+			if readErr != nil {
+				lastErr = readErr
+				break
+			}
+			if len(body) > maxVersionPageSize {
+				lastErr = fmt.Errorf("version page exceeds %d bytes", maxVersionPageSize)
+				break
+			}
+			if response.StatusCode < 200 || response.StatusCode >= 300 {
+				if response.StatusCode == http.StatusForbidden {
+					lastErr = fmt.Errorf("Klei returned HTTP 403 (Cloudflare or site access rule)")
+				} else {
+					lastErr = fmt.Errorf("HTTP statusCode: %d", response.StatusCode)
+				}
+				if attempt == 0 && (response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= http.StatusInternalServerError) {
+					time.Sleep(500 * time.Millisecond)
+					continue
+				}
+				break
+			}
+
+			html := string(body)
+			tags := currentReleaseTagRE.FindAllString(html, -1)
+			if len(tags) == 0 {
+				tags = []string{html}
+			}
+
+			latestVersion := 0
+			for _, tag := range tags {
+				matches := versionLinkRE.FindAllStringSubmatch(tag, -1)
+				for _, match := range matches {
+					version, convertErr := strconv.Atoi(match[1])
+					if convertErr == nil && version > latestVersion {
+						latestVersion = version
+					}
+				}
+			}
+			if latestVersion > 0 {
+				return latestVersion, nil
+			}
+
+			lastErr = fmt.Errorf("no version number found on the Klei version page")
+			break
 		}
 	}
 
-	if len(versions) == 0 {
-		err = fmt.Errorf("获取游戏版本失败, 未从页面中提取到版本号")
-		return 0, err
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no Klei version page is available")
 	}
-
-	sort.Ints(versions)
-
-	return versions[len(versions)-1], nil
+	return 0, fmt.Errorf("failed to get game version: %w", lastErr)
 }
 
 func getServerGameVersionFromDstVersion(api string) (int, error) {
