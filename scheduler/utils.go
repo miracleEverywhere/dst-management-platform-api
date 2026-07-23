@@ -141,20 +141,15 @@ func getLocalGameVersion() int {
 }
 
 func getServerGameVersion() (int, error) {
-	version, err := getServerGameVersionFromKlei()
-	logger.Logger.Debug("尝试从饥荒论坛中获取游戏版本")
-	if err != nil {
-		logger.Logger.Warnf("从饥荒论坛中获取游戏版本失败: %v, 尝试从api获取", err)
-	} else {
-		logger.Logger.Debug("从饥荒论坛中获取游戏版本成功")
-		return version, nil
-	}
+	var (
+		version int
+		err     error
+	)
 
 	apis := []string{
 		utils.DSTServerVersionApi1,
 		utils.DSTServerVersionApi2,
 	}
-
 	for _, api := range apis {
 		logger.Logger.Debugf("尝试从api: %s 获取游戏版本", api)
 		version, err = getServerGameVersionFromDstVersion(api)
@@ -164,6 +159,15 @@ func getServerGameVersion() (int, error) {
 			logger.Logger.Debugf("从api: %s 获取游戏版本成功", api)
 			return version, nil
 		}
+	}
+
+	version, err = getServerGameVersionFromKlei()
+	logger.Logger.Debug("尝试从饥荒论坛中获取游戏版本")
+	if err != nil {
+		logger.Logger.Warnf("从饥荒论坛中获取游戏版本失败: %v, 尝试从api获取", err)
+	} else {
+		logger.Logger.Debug("从饥荒论坛中获取游戏版本成功")
+		return version, nil
 	}
 
 	return 0, fmt.Errorf("获取游戏版本失败，%d种方法均失败", 1+len(apis))
