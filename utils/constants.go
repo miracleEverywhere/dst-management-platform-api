@@ -22,7 +22,7 @@ const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
 const DSTLocalVersionPath = "dst/version.txt"
 
 // DSTServerVersionKlei 饥荒版本查询页面
-const DSTServerVersionKlei = "https://forums.kleientertainment.com/game-updates/dst"
+const DSTServerVersionKlei = "https://kleiforums.com/game-updates/dst/"
 
 // DSTServerVersionApi1 DSTServerVersionApi2 饥荒版本api
 const DSTServerVersionApi1 = "http://ver.tugos.cn/getLocalVersion"
