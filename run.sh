@@ -4,12 +4,9 @@
 # 用户自定义设置请修改下方变量，其他变量请不要修改 #
 ###########################################
 
-# --------------- ↓可修改↓ --------------- #
-# dmp暴露端口，即网页打开时所用的端口
-PORT=80
-
 # 数据库文件所在目录，例如：./config
 CONFIG_DIR="data"
+PORT_FILE="${CONFIG_DIR}/dmp_port.env"  # 新增：端口配置文件
 
 # 虚拟内存大小，例如 1G 4G等
 SWAPSIZE=2G
@@ -25,8 +22,8 @@ KEY_FILE=""
 
 # 加速节点
 ACCELERATION_SITE=(
-	"gh.llkk.cc"
 	"github.dpik.top"
+	"github.ikgy.top"
 	"ghfast.top"
 )
 # --------------- ↑可修改↑ --------------- #
@@ -121,9 +118,9 @@ function prompt_user() {
 	echo_yellow "————————————————————————————————————————————————————————————"
 	echo_green "[7]: 设置虚拟内存"
 	echo_green "[8]: 设置开机自启"
-	echo_green "[9]: 退出脚本"
+	echo_green "[9]: 修改饥荒管理平台端口"
 	echo_yellow "————————————————————————————————————————————————————————————"
-	echo_yellow "请输入要执行的操作 [0-9]: "
+	echo_yellow "请输入要执行的操作 [0-9/q]: "
 }
 
 # 加速节点选择
@@ -283,30 +280,53 @@ function check_dmp() {
 	sleep 1
 	if pgrep dmp >/dev/null; then
 		echo_green "启动成功"
+		echo_green "浏览器访问：http//公网ip:$PORT"
 	else
 		echo_red "启动失败"
 		exit 1
 	fi
 }
 
+# 新增：加载端口配置
+load_port_config() {
+    if [[ -f "$PORT_FILE" ]]; then
+        PORT=$(cat "$PORT_FILE")
+        echo_cyan "已从配置文件加载端口: $PORT"
+    fi
+}
+
+# 新增：保存端口配置
+save_port_config() {
+    mkdir -p "$CONFIG_DIR"
+    echo "$PORT" > "$PORT_FILE"
+    echo_green "端口已保存到配置文件: $PORT_FILE"
+}
+
 # 启动主程序
-function start_dmp() {
-	stop_dmp
+start_dmp() {
+    # 首先尝试加载已保存的端口配置
+    load_port_config
+    
+    # 如果未加载到端口，则默认 80
+    if [ -z "$PORT" ]; then
+        PORT=80
+        save_port_config
+    fi
+    
+    # 检查端口是否被占用
+    port=$(ss -ltnp | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
+    if [ -n "$port" ]; then
+        echo_red "端口 $PORT 已被占用: $port"
+        echo "请修改端口后重新运行"
+        exit 1
+    fi
 
-	# 检查端口是否被占用,如果被占用则退出
-	port=$(ss -ltn | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
-
-	if [ -n "$port" ]; then
-		echo_red "端口 $PORT 已被占用: $port", 修改 run.sh 中的 PORT 变量后重新运行或检查饥荒管理平台是否正在运行
-		exit 1
-	fi
-
-	if [ -e "$ExeFile" ]; then
-		nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} -cert "${CERT_FILE}" -key "${KEY_FILE}" >/dev/null 2>&1 &
-	else
-		install_dmp
-		nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} -cert "${CERT_FILE}" -key "${KEY_FILE}" >/dev/null 2>&1 &
-	fi
+    if [ -e "$ExeFile" ]; then
+        nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} >/dev/null 2>&1 &
+    else
+        install_dmp
+        nohup "$ExeFile" -bind ${PORT} -dbpath ${CONFIG_DIR} -level ${LEVEL} >/dev/null 2>&1 &
+    fi
 }
 
 # 关闭主程序
@@ -315,6 +335,7 @@ function stop_dmp() {
 	sleep 1
 	pkill -9 dmp 2>/dev/null
 	sleep 1
+	echo_green "已停止 DMP 进程"
 }
 
 # 删除主程序、请求日志、运行日志、遗漏的压缩包
@@ -322,6 +343,51 @@ function clear_dmp() {
 	echo_cyan "正在执行清理"
 	pkill -9 dmp 2>/dev/null
 	rm -f dmp dmp.tgz logs/*
+}
+
+# 新增：修改端口函数
+change_port() {
+
+    echo_cyan "修改 DMP 服务端口"
+    
+    # 显示当前端口
+    load_port_config
+    if [[ -n "$PORT" ]]; then
+        echo_cyan "当前端口: $PORT"
+    else
+        echo_red "当前未设置端口"
+    fi
+    
+    # 获取新端口
+    while true; do
+        read -p "请输入新的TCP端口 [1-65535，默认: 80]: " new_port
+        new_port=${new_port:-80}
+        
+        # 验证端口是否为数字且在有效范围内
+        if ! [[ "$new_port" =~ ^[0-9]+$ ]] || (( new_port < 1 || new_port > 65535 )); then
+            echo_red "端口必须是1-65535之间的数字"
+            continue
+        fi
+        
+        # 检查端口是否被占用
+        port_check=$(ss -ltnp | awk -v port=${new_port} '$4 ~ ":"port"$" {print $4}')
+        if [ -n "$port_check" ]; then
+            echo_red "端口 $new_port 已被占用: $port_check"
+            read -p "是否仍要使用此端口？(y/n): " force_use
+            if [[ "$force_use" != "y" && "$force_use" != "Y" ]]; then
+                continue
+            fi
+        fi
+        
+        break
+    done
+    
+    # 更新端口
+    PORT=$new_port
+    save_port_config
+    
+    echo_green "端口已修改为: $PORT"
+    echo_red "修改后需要重启 DMP 服务才能生效！"
 }
 
 # 检查当前版本号
@@ -517,10 +583,15 @@ while true; do
 		break
 		;;
 	9)
-		exit 0
+		change_port
+        break
 		;;
+    q|Q)
+        echo_green "感谢使用，再见！"
+        exit 0
+        ;;
 	*)
-		echo_red "请输入正确的数字 [0-9]"
+		echo_red "请输入正确的选项 [0-9 或 q]"
 		continue
 		;;
 	esac
