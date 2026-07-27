@@ -3,9 +3,11 @@ EMBED_DIR := embedFS/dist
 
 .PHONY: all frontend backend clean
 
-all: frontend copy-frontend backend
+all: frontend-only copy-frontend backend-only
 
-frontend:
+frontend2backend: frontend-only copy-frontend
+
+frontend-only:
 	@echo "=== Building frontend ==="
 	cd $(FRONTEND_DIR) && npx vite build
 
@@ -13,7 +15,7 @@ clean-embed:
 	@echo "=== Cleaning embedFS/dist ==="
 	rm -rf $(EMBED_DIR)/*
 
-backend:
+backend-only:
 	@echo "=== Building backend ==="
 	CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
 
