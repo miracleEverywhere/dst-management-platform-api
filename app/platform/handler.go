@@ -614,17 +614,19 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 			return
 		}
 
-		updateDb := func(plugin *models.Plugin) {
-			err = h.pluginDao.UpdatePlugin(plugin)
-			if err != nil {
-				logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		updateDb := func(plugin *models.Plugin) bool {
+			if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
+				logger.Logger.Errorf("更新数据库失败, err: %v", err)
 				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-				return
+				return false
 			}
+			return true
 		}
 
-		var step int
-		var images []models.DstImage
+		var (
+			images     []models.DstImage
+			installErr error
+		)
 
 		if imageParse {
 			if !utils.IsValidURL(reqForm.Proxy) && reqForm.Proxy != "" {
@@ -633,40 +635,42 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 				return
 			}
 
-			step = plugin.Step
+			step := plugin.Step
 
-			step, images, err = initTmi(reqForm.Proxy, step)
+			step, images, installErr = initTmi(reqForm.Proxy, step)
 			plugin.Step = step
-			if err != nil {
-				updateDb(plugin)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
+			if installErr != nil {
+				if !updateDb(plugin) {
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
 				return
 			}
 		} else {
-			step = 100
-
-			images, err = installTMIR("")
-			if err != nil {
+			images, installErr = installTMIR("")
+			if installErr != nil {
 				plugin.Step = 5
-				updateDb(plugin)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
+				if !updateDb(plugin) {
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
 				return
 			}
-			plugin.Step = step
+			plugin.Step = 100
 		}
 
-		err = h.dstImageDao.InitImages(images)
-		if err != nil {
+		if err := h.dstImageDao.InitImages(images); err != nil {
 			logger.Logger.Errorf("更新数据库失败, err: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 			return
 		}
 
 		plugin.Status = true
-		updateDb(plugin)
+		if !updateDb(plugin) {
+			return
+		}
 
-		err = h.dstImageDao.DeleteNoName()
-		if err != nil {
+		if err := h.dstImageDao.DeleteNoName(); err != nil {
 			logger.Logger.Warnf("清理异常图片失败: %v", err)
 		}
 
