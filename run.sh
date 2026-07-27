@@ -280,7 +280,7 @@ function check_dmp() {
 	sleep 1
 	if pgrep dmp >/dev/null; then
 		echo_green "启动成功"
-		echo_green "浏览器访问：http//公网ip:$PORT"
+		echo_green "浏览器访问：http://公网ip:$PORT"
 	else
 		echo_red "启动失败"
 		exit 1
