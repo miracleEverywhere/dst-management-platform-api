@@ -1,7 +1,7 @@
 package utils
 
 // Version 平台版本号
-const Version = "v3.1.6"
+const Version = "v3.1.7"
 
 // ApiVersion 接口版本号
 const ApiVersion = "v3" //
