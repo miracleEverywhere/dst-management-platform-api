@@ -749,6 +749,10 @@ func isSubPath(path, mountpoint string) bool {
 
 // GetFileLastNLines 获取文件的最后N行，返回字符串切片
 func GetFileLastNLines(filename string, n int) []string {
+	if n <= 0 {
+		return []string{}
+	}
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return []string{}
