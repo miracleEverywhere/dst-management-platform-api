@@ -56,6 +56,7 @@ var AllTables = []any{
 	&models.UidMap{},
 	&models.Plugin{},
 	&models.DstImage{},
+	&models.RoomAISetting{},
 }
 
 func AutoMigrate() {

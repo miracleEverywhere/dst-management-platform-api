@@ -1,6 +1,7 @@
 package server
 
 import (
+	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/app/dashboard"
 	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/mod"
@@ -59,12 +60,17 @@ func Run() {
 	uidMapDao := dao.NewUidMapDAO(db.DB)
 	pluginDao := dao.NewPluginDAO(db.DB)
 	dstImageDao := dao.NewDstImageDAO(db.DB)
+	roomAISettingDao := dao.NewRoomAISettingDAO(db.DB)
 
 	// 初始化 webhook sender
 	webhook.Snd = webhook.NewSender(globalSettingDao, roomSettingDao, roomDao)
 
 	// 开启定时任务
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
+
+	// 启动游戏内 AI 对话监听
+	aiManager := aichat.NewManager(roomAISettingDao, pluginDao)
+	defer aiManager.Close()
 
 	r := gin.New()
 

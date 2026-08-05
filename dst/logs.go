@@ -1,10 +1,17 @@
 package dst
 
 import (
+	"bufio"
+	"context"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 func (g *Game) getLogContent(logType string, id, lines int) []string {
@@ -202,4 +209,233 @@ func (g *Game) logsList(admin bool) []string {
 	}
 
 	return files
+}
+
+func (g *Game) tailChatLog(ctx context.Context, lines int, output chan<- string) error {
+	if ctx == nil {
+		return fmt.Errorf("context 不能为空")
+	}
+	if lines < 0 {
+		return fmt.Errorf("日志行数不能小于 0")
+	}
+	if output == nil {
+		return fmt.Errorf("日志输出通道不能为空")
+	}
+	if len(g.worldSaveData) == 0 {
+		return fmt.Errorf("房间中不存在世界")
+	}
+
+	world := &g.worldSaveData[0]
+	for i := range g.worldSaveData {
+		if g.worldSaveData[i].IsMaster {
+			world = &g.worldSaveData[i]
+			break
+		}
+	}
+
+	logPath := filepath.Join(world.worldPath, "server_chat_log.txt")
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("创建聊天日志监听器失败: %w", err)
+	}
+	defer watcher.Close()
+
+	if err = watcher.Add(filepath.Dir(logPath)); err != nil {
+		return fmt.Errorf("监听聊天日志目录失败: %w", err)
+	}
+
+	state, initialLines, err := openChatLogTail(logPath, lines, true)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	defer func() {
+		if state != nil {
+			state.close()
+		}
+	}()
+	for _, line := range initialLines {
+		if err = sendChatLogLine(ctx, output, line); err != nil {
+			return err
+		}
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return fmt.Errorf("聊天日志监听器已关闭")
+			}
+			if filepath.Clean(event.Name) != filepath.Clean(logPath) {
+				continue
+			}
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename|fsnotify.Remove) == 0 {
+				continue
+			}
+			if err = refreshChatLogTail(ctx, logPath, &state, output); err != nil {
+				return err
+			}
+		case watchErr, ok := <-watcher.Errors:
+			if !ok {
+				return fmt.Errorf("聊天日志监听器错误通道已关闭")
+			}
+			logger.Logger.Warnf("聊天日志监听事件异常，尝试重新同步文件: %v", watchErr)
+			if err = refreshChatLogTail(ctx, logPath, &state, output); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+const maxChatLogLineSize = 1024 * 1024
+
+type chatLogTailState struct {
+	file    *os.File
+	info    os.FileInfo
+	offset  int64
+	pending []byte
+}
+
+func (s *chatLogTailState) close() {
+	if s != nil && s.file != nil {
+		_ = s.file.Close()
+	}
+}
+
+func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState, []string, error) {
+	file, err := os.Open(logPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	state := &chatLogTailState{file: file}
+	info, err := file.Stat()
+	if err != nil {
+		state.close()
+		return nil, nil, fmt.Errorf("获取聊天日志信息失败: %w", err)
+	}
+	state.info = info
+
+	if !initial {
+		return state, nil, nil
+	}
+	if lines == 0 {
+		state.offset, err = file.Seek(0, io.SeekEnd)
+		if err != nil {
+			state.close()
+			return nil, nil, fmt.Errorf("定位聊天日志末尾失败: %w", err)
+		}
+		return state, nil, nil
+	}
+
+	lastLines := make([]string, 0, lines)
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 64*1024), maxChatLogLineSize)
+	for scanner.Scan() {
+		if len(lastLines) >= lines {
+			lastLines = lastLines[1:]
+		}
+		lastLines = append(lastLines, scanner.Text())
+	}
+	if err = scanner.Err(); err != nil {
+		state.close()
+		return nil, nil, fmt.Errorf("读取聊天日志最后几行失败: %w", err)
+	}
+
+	state.offset, err = file.Seek(0, io.SeekCurrent)
+	if err != nil {
+		state.close()
+		return nil, nil, fmt.Errorf("获取聊天日志读取位置失败: %w", err)
+	}
+	return state, lastLines, nil
+}
+
+func refreshChatLogTail(ctx context.Context, logPath string, state **chatLogTailState, output chan<- string) error {
+	pathInfo, err := os.Stat(logPath)
+	if os.IsNotExist(err) {
+		if *state != nil {
+			(*state).close()
+			*state = nil
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("获取聊天日志信息失败: %w", err)
+	}
+
+	if *state == nil || !os.SameFile((*state).info, pathInfo) {
+		if *state != nil {
+			(*state).close()
+		}
+		*state, _, err = openChatLogTail(logPath, 0, false)
+		if err != nil {
+			return fmt.Errorf("重新打开聊天日志失败: %w", err)
+		}
+	} else if pathInfo.Size() < (*state).offset {
+		if _, err = (*state).file.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("重置聊天日志读取位置失败: %w", err)
+		}
+		(*state).offset = 0
+		(*state).pending = nil
+	}
+
+	(*state).info = pathInfo
+	return drainChatLogTail(ctx, *state, output)
+}
+
+func drainChatLogTail(ctx context.Context, state *chatLogTailState, output chan<- string) error {
+	if _, err := state.file.Seek(state.offset, io.SeekStart); err != nil {
+		return fmt.Errorf("设置聊天日志读取位置失败: %w", err)
+	}
+
+	buffer := make([]byte, 64*1024)
+	for {
+		n, err := state.file.Read(buffer)
+		if n > 0 {
+			state.offset += int64(n)
+			if emitErr := emitChatLogLines(ctx, state, buffer[:n], output); emitErr != nil {
+				return emitErr
+			}
+		}
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("读取新增聊天日志失败: %w", err)
+		}
+	}
+}
+
+func emitChatLogLines(ctx context.Context, state *chatLogTailState, data []byte, output chan<- string) error {
+	state.pending = append(state.pending, data...)
+	if len(state.pending) > maxChatLogLineSize {
+		return fmt.Errorf("聊天日志单行内容超过限制")
+	}
+
+	start := 0
+	for i, b := range state.pending {
+		if b != '\n' {
+			continue
+		}
+		line := strings.TrimSuffix(string(state.pending[start:i]), "\r")
+		if err := sendChatLogLine(ctx, output, line); err != nil {
+			return err
+		}
+		start = i + 1
+	}
+
+	if start > 0 {
+		state.pending = append([]byte(nil), state.pending[start:]...)
+	}
+	return nil
+}
+
+func sendChatLogLine(ctx context.Context, output chan<- string, line string) error {
+	select {
+	case output <- line:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
