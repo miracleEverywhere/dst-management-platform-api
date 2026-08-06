@@ -15,6 +15,7 @@ import (
 // 负责管理游戏内 AI 聊天的工作协程、Wiki 知识库搜索（关键词+向量）。
 type Manager struct {
 	roomAISettingDao *dao.RoomAISettingDAO
+	systemDao        *dao.SystemDAO
 	client           *aiClient
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -47,8 +48,8 @@ type EmbeddingStats struct {
 }
 
 // NewManager 创建 AI 对话服务管理器
-func NewManager(roomAISettingDao *dao.RoomAISettingDAO, pluginDao *dao.PluginDAO) *Manager {
-	return newManager(roomAISettingDao, pluginDao)
+func NewManager(roomAISettingDao *dao.RoomAISettingDAO, systemDao *dao.SystemDAO, pluginDao *dao.PluginDAO) *Manager {
+	return newManager(roomAISettingDao, systemDao, pluginDao)
 }
 
 // Start 启动所有已启用房间的 AI 对话监听
@@ -71,6 +72,11 @@ func (m *Manager) StopRoom(roomID int) {
 // Reload 重新加载指定房间的 AI 配置并重启监听
 func (m *Manager) Reload(roomID int) error {
 	return m.reload(roomID)
+}
+
+// ReloadAll 重新加载所有已启用房间的 AI 对话监听。
+func (m *Manager) ReloadAll() error {
+	return m.reloadAll()
 }
 
 // Close 关闭 AI 对话服务，释放所有资源
@@ -107,4 +113,9 @@ func ValidateModelConfig(config *models.AIModelConfig) error {
 // ValidateRoomSetting 校验房间 AI 设置参数
 func ValidateRoomSetting(setting *models.RoomAISetting) error {
 	return validateRoomSetting(setting)
+}
+
+// ValidateBaseSetting 校验管理员维护的 AI 基础配置。
+func ValidateBaseSetting(setting *models.AIBaseSetting) error {
+	return validateBaseSetting(setting)
 }

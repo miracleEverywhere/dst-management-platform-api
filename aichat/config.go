@@ -33,7 +33,8 @@ func validateModelConfig(config *models.AIModelConfig) error {
 			return fmt.Errorf("嵌入 API Key 过长")
 		}
 	}
-	if utf8.RuneCountInString(config.EmbeddingBaseURL) > 8000 {
+	config.SystemPrompt = strings.TrimSpace(config.SystemPrompt)
+	if utf8.RuneCountInString(config.SystemPrompt) > 8000 {
 		return fmt.Errorf("系统提示词过长")
 	}
 	if config.Temperature < 0 || config.Temperature > 2 {
@@ -50,18 +51,22 @@ func validateModelConfig(config *models.AIModelConfig) error {
 }
 
 func validateRoomSetting(setting *models.RoomAISetting) error {
+	setting.Prefix = strings.TrimSpace(setting.Prefix)
 	if setting.RoomID <= 0 {
 		return fmt.Errorf("房间 ID 不合法")
 	}
 	if strings.ContainsAny(setting.Prefix, "\r\n") || utf8.RuneCountInString(setting.Prefix) > 64 {
 		return fmt.Errorf("AI 对话前缀不合法")
 	}
+	return nil
+}
+
+func validateBaseSetting(setting *models.AIBaseSetting) error {
 	if setting.ContextMaxMessages < 2 || setting.ContextMaxMessages > 100 {
 		return fmt.Errorf("上下文消息数量必须在 2 到 100 之间")
 	}
 	if setting.ContextTTLMinutes <= 0 || setting.ContextTTLMinutes > 10080 {
 		return fmt.Errorf("上下文有效期必须在 1 到 10080 分钟之间")
 	}
-
-	return ValidateModelConfig(&setting.AIModelConfig)
+	return validateModelConfig(&setting.AIModelConfig)
 }

@@ -2,6 +2,7 @@ package room
 
 import (
 	"bufio"
+	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
@@ -26,9 +27,11 @@ type Handler struct {
 	roomSettingDao   *dao.RoomSettingDAO
 	globalSettingDao *dao.GlobalSettingDAO
 	uidMapDao        *dao.UidMapDAO
+	roomAISettingDao *dao.RoomAISettingDAO
+	aiManager        *aichat.Manager
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO, roomAISettingDao *dao.RoomAISettingDAO, aiManager *aichat.Manager) *Handler {
 	return &Handler{
 		roomDao:          roomDao,
 		userDao:          userDao,
@@ -36,6 +39,8 @@ func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldD
 		roomSettingDao:   roomSettingDao,
 		globalSettingDao: globalSettingDao,
 		uidMapDao:        uidMapDao,
+		roomAISettingDao: roomAISettingDao,
+		aiManager:        aiManager,
 	}
 }
 

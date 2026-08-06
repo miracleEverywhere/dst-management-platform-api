@@ -69,7 +69,7 @@ func Run() {
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
 
 	// 启动游戏内 AI 对话监听
-	aiManager := aichat.NewManager(roomAISettingDao, pluginDao)
+	aiManager := aichat.NewManager(roomAISettingDao, systemDao, pluginDao)
 	defer aiManager.Close()
 
 	r := gin.New()
@@ -99,12 +99,12 @@ func Run() {
 
 	// 初始化即注册路由
 	user.NewHandler(userDao).RegisterRoutes(r)
-	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao).RegisterRoutes(r)
+	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao, userDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
-	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao).RegisterRoutes(r)
+	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao, aiManager).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao, dstImageDao).RegisterRoutes(r)
+	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, systemDao, roomAISettingDao, aiManager).RegisterRoutes(r)
 	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao, globalSettingDao).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))

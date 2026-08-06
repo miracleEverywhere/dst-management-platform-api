@@ -2,6 +2,7 @@ package platform
 
 import (
 	"bufio"
+	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
@@ -36,9 +37,10 @@ type Handler struct {
 	roomSettingDao   *dao.RoomSettingDAO
 	pluginDao        *dao.PluginDAO
 	dstImageDao      *dao.DstImageDAO
+	aiManager        *aichat.Manager
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, systemDao *dao.SystemDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO, roomSettingDao *dao.RoomSettingDAO, pluginDao *dao.PluginDAO, dstImageDao *dao.DstImageDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, systemDao *dao.SystemDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO, roomSettingDao *dao.RoomSettingDAO, pluginDao *dao.PluginDAO, dstImageDao *dao.DstImageDAO, aiManager *aichat.Manager) *Handler {
 	return &Handler{
 		userDao:          userDao,
 		roomDao:          roomDao,
@@ -49,6 +51,7 @@ func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldD
 		roomSettingDao:   roomSettingDao,
 		pluginDao:        pluginDao,
 		dstImageDao:      dstImageDao,
+		aiManager:        aiManager,
 	}
 }
 

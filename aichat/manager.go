@@ -31,11 +31,12 @@ type roomWorker struct {
 	cancel context.CancelFunc
 }
 
-func newManager(roomAISettingDao *dao.RoomAISettingDAO, pluginDao *dao.PluginDAO) *Manager {
+func newManager(roomAISettingDao *dao.RoomAISettingDAO, systemDao *dao.SystemDAO, pluginDao *dao.PluginDAO) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	aiManager := &Manager{
 		roomAISettingDao: roomAISettingDao,
+		systemDao:        systemDao,
 		client:           newClient(),
 		ctx:              ctx,
 		cancel:           cancel,
@@ -98,10 +99,20 @@ func (m *Manager) reload(roomID int) error {
 	if err = validateRoomSetting(setting); err != nil {
 		return err
 	}
+	baseSetting, err := m.systemDao.GetAIBaseSetting()
+	if err != nil {
+		return fmt.Errorf("获取 AI 基础配置失败: %w", err)
+	}
+	if err = validateBaseSetting(baseSetting); err != nil {
+		return fmt.Errorf("AI 基础配置无效: %w", err)
+	}
 
 	room, worlds, roomSetting, err := dao.FetchGameInfo(roomID)
 	if err != nil {
 		return err
+	}
+	if !room.Status {
+		return nil
 	}
 	game := dst.NewGameController(room, worlds, roomSetting, "zh")
 	workerCtx, cancel := context.WithCancel(m.ctx)
@@ -110,9 +121,26 @@ func (m *Manager) reload(roomID int) error {
 	m.workers[roomID] = &roomWorker{cancel: cancel}
 	m.mu.Unlock()
 
-	settingCopy := *setting
-	go m.runRoom(workerCtx, game, settingCopy)
+	runtimeSetting := models.AIChatSetting{
+		RoomAISetting: *setting,
+		AIBaseSetting: *baseSetting,
+	}
+	go m.runRoom(workerCtx, game, runtimeSetting)
 	return nil
+}
+
+func (m *Manager) reloadAll() error {
+	settings, err := m.roomAISettingDao.ListEnabled()
+	if err != nil {
+		return err
+	}
+	var reloadErrors []error
+	for _, setting := range settings {
+		if err = m.reload(setting.RoomID); err != nil {
+			reloadErrors = append(reloadErrors, fmt.Errorf("roomID %d: %w", setting.RoomID, err))
+		}
+	}
+	return errors.Join(reloadErrors...)
 }
 
 func (m *Manager) stopAll() {
@@ -154,7 +182,7 @@ func (m *Manager) stopAllWorkers() {
 	}
 }
 
-func (m *Manager) runRoom(ctx context.Context, game *dst.Game, setting models.RoomAISetting) {
+func (m *Manager) runRoom(ctx context.Context, game *dst.Game, setting models.AIChatSetting) {
 	lines := make(chan string, chatLogBufferSize)
 	go m.watchChatLog(ctx, game, setting.RoomID, lines)
 
@@ -201,13 +229,13 @@ func (m *Manager) watchChatLog(ctx context.Context, game *dst.Game, roomID int, 
 }
 
 // isEmbeddingConfigured 检查是否配置了嵌入模型
-func (m *Manager) isEmbeddingConfigured(setting models.RoomAISetting) bool {
+func (m *Manager) isEmbeddingConfigured(setting models.AIChatSetting) bool {
 	return setting.EmbeddingModel != "" && setting.ChatBaseURL != ""
 }
 
 // getEmbeddingSearcher 获取或创建向量搜索引擎
 // 仅创建 searcher 实例并缓存，不自动构建索引（构建需通过 BuildEmbeddingIndex 手动触发）
-func (m *Manager) getEmbeddingSearcher(setting models.RoomAISetting) *embeddingWikiSearcher {
+func (m *Manager) getEmbeddingSearcher(setting models.AIChatSetting) *embeddingWikiSearcher {
 	// EmbeddingApiKey 如果单独配置了则优先使用，否则复用 ChatApiKey
 	apiKey := setting.ChatApiKey
 	if setting.EmbeddingApiKey != "" {
@@ -318,7 +346,7 @@ func (m *Manager) unloadKeywordIndex() {
 }
 
 // searchWiki 搜索 Wiki 知识库，返回格式化的参考上下文
-func (m *Manager) searchWiki(setting models.RoomAISetting, question string) string {
+func (m *Manager) searchWiki(setting models.AIChatSetting, question string) string {
 	// 优先使用向量搜索
 	if m.isEmbeddingConfigured(setting) {
 		if searcher := m.getEmbeddingSearcher(setting); searcher != nil {
@@ -347,30 +375,22 @@ func (m *Manager) searchWiki(setting models.RoomAISetting, question string) stri
 }
 
 // buildSystemPrompt 构建系统提示词（Wiki 上下文 + 用户设定的提示词）
-func buildSystemPrompt(setting models.RoomAISetting, wikiContext string) string {
-	var parts []string
-
+func buildSystemPrompt(setting models.AIChatSetting, wikiContext string) string {
 	// 默认提示词
 	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式，回答不能超过30个字。"
+	systemPrompt := strings.TrimSpace(setting.SystemPrompt)
+	if systemPrompt == "" {
+		systemPrompt = defaultPrompt
+	}
 
 	// Wiki 参考文档
 	if wikiContext != "" {
-		parts = append(parts, wikiContext)
-		parts = append(parts, "")
-		parts = append(parts, defaultPrompt)
-		return strings.Join(parts, "\n")
+		return strings.Join([]string{wikiContext, "", systemPrompt}, "\n")
 	}
-
-	// 用户设定的系统提示词（存储在 EmbeddingBaseURL 字段中）
-	systemPrompt := strings.TrimSpace(setting.EmbeddingBaseURL)
-	if systemPrompt != "" {
-		return systemPrompt
-	}
-
-	return defaultPrompt
+	return systemPrompt
 }
 
-func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.RoomAISetting, sessions map[string]*chatSession, event chatEvent, question string) {
+func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIChatSetting, sessions map[string]*chatSession, event chatEvent, question string) {
 	now := time.Now()
 	ttl := time.Duration(setting.ContextTTLMinutes) * time.Minute
 	session := sessions[event.UID]

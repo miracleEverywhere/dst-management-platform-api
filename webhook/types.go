@@ -2,22 +2,24 @@ package webhook
 
 // 事件类型常量
 const (
-	EventRoomCreated          = "room_created"
-	EventRoomDeleted          = "room_deleted"
-	EventRoomSettingsUpdated  = "room_settings_updated"
-	EventRoomActivated        = "room_activated"
-	EventRoomDeactivated      = "room_deactivated"
-	EventGameBackup           = "game_backup"
-	EventGameReset            = "game_reset"
-	EventGameStart            = "game_start"
-	EventGameStop             = "game_stop"
-	EventGameUpdate           = "game_update"
-	EventKeepaliveTriggered   = "keepalive_triggered"
-	EventPlayerManage         = "player_manage"
-	EventGlobalSettingUpdated = "global_setting_updated"
-	EventWebsocketConnected   = "websocket_connected"
-	EventOnlinePlayerUpdated  = "online_player_updated"
-	EventPluginUpdated        = "plugin_updated"
+	EventRoomCreated              = "room_created"
+	EventRoomDeleted              = "room_deleted"
+	EventRoomSettingsUpdated      = "room_settings_updated"
+	EventRoomActivated            = "room_activated"
+	EventRoomDeactivated          = "room_deactivated"
+	EventGameBackup               = "game_backup"
+	EventGameReset                = "game_reset"
+	EventGameStart                = "game_start"
+	EventGameStop                 = "game_stop"
+	EventGameUpdate               = "game_update"
+	EventKeepaliveTriggered       = "keepalive_triggered"
+	EventPlayerManage             = "player_manage"
+	EventGlobalSettingUpdated     = "global_setting_updated"
+	EventWebsocketConnected       = "websocket_connected"
+	EventOnlinePlayerUpdated      = "online_player_updated"
+	EventPluginUpdated            = "plugin_updated"
+	EventAIChatSettingUpdated     = "ai_chat_setting_updated"
+	EventAIChatBaseSettingUpdated = "ai_chat_base_setting_updated"
 )
 
 // AllEventTypes 可选事件类型列表，供前端渲染 webhook 配置表单
@@ -38,6 +40,8 @@ var AllEventTypes = []EventInfo{
 	{Type: EventWebsocketConnected, ZH: "虚拟终端连接", EN: "Websocket Connected"},
 	{Type: EventOnlinePlayerUpdated, ZH: "在线玩家变化", EN: "Online Player Updated"},
 	{Type: EventPluginUpdated, ZH: "插件配置修改", EN: "Plugin Updated"},
+	{Type: EventAIChatSettingUpdated, ZH: "房间 AI 设置修改", EN: "Room AI Setting Updated"},
+	{Type: EventAIChatBaseSettingUpdated, ZH: "AI 基础设置修改", EN: "AI Base Setting Updated"},
 }
 
 type EventInfo struct {

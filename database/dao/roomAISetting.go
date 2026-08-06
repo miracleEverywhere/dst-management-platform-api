@@ -2,7 +2,6 @@ package dao
 
 import (
 	"dst-management-platform-api/database/models"
-	"errors"
 
 	"gorm.io/gorm"
 )
@@ -34,13 +33,5 @@ func (d *RoomAISettingDAO) ListEnabled() ([]models.RoomAISetting, error) {
 }
 
 func (d *RoomAISettingDAO) DeleteByRoomID(roomID int) error {
-	_, err := d.GetByRoomID(roomID)
-	if err == nil {
-		return d.db.Where("room_id = ?", roomID).Delete(&models.RoomAISetting{}).Error
-	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return d.db.Where("room_id = ?", roomID).Delete(&models.RoomAISetting{}).Error
-	}
-
-	return err
+	return d.db.Where("room_id = ?", roomID).Delete(&models.RoomAISetting{}).Error
 }

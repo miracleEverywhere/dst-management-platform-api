@@ -233,6 +233,9 @@ func (h *Handler) roomPut(c *gin.Context) {
 			scheduler.DeleteJob(jobName)
 		}
 	}
+	if err = h.aiManager.Reload(reqForm.RoomData.ID); err != nil {
+		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomData.ID, err)
+	}
 
 	webhook.Snd.Send(webhook.EventRoomSettingsUpdated, reqForm.RoomData.ID, reqForm)
 
@@ -744,6 +747,11 @@ func (h *Handler) uploadPost(c *gin.Context) {
 			logger.Logger.Errorf("复制存档数据失败, err: %v", err)
 		}
 	}
+	if !newRoom {
+		if err = h.aiManager.Reload(room.ID); err != nil {
+			logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", room.ID, err)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "upload success"), "data": nil})
 }
@@ -809,6 +817,7 @@ func (h *Handler) deactivatePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
+	h.aiManager.StopRoom(reqForm.RoomID)
 
 	webhook.Snd.Send(webhook.EventRoomDeactivated, reqForm.RoomID, map[string]interface{}{
 		"gameID":   room.ID,
@@ -902,6 +911,9 @@ func (h *Handler) activatePost(c *gin.Context) {
 			}
 		}
 	}
+	if err = h.aiManager.Reload(reqForm.RoomID); err != nil {
+		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomID, err)
+	}
 
 	webhook.Snd.Send(webhook.EventRoomActivated, reqForm.RoomID, map[string]interface{}{
 		"gameID":   room.ID,
@@ -956,10 +968,14 @@ func (h *Handler) roomDelete(c *gin.Context) {
 		return
 	}
 
-	// 删除游戏相关
+	// 删除游戏相关前先停止 AI 日志监听，避免继续读取即将删除的文件。
+	h.aiManager.StopRoom(reqForm.RoomID)
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	err = game.DeleteRoom()
 	if err != nil {
+		if reloadErr := h.aiManager.Reload(reqForm.RoomID); reloadErr != nil {
+			logger.Logger.Errorf("恢复房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomID, reloadErr)
+		}
 		logger.Logger.Errorf("删除游戏相关文件失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
 		return
@@ -1032,6 +1048,11 @@ func (h *Handler) roomDelete(c *gin.Context) {
 	err = h.uidMapDao.DeleteUidMapByRoomID(reqForm.RoomID)
 	if err != nil {
 		logger.Logger.Errorf("更新数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if err = h.roomAISettingDao.DeleteByRoomID(reqForm.RoomID); err != nil {
+		logger.Logger.Errorf("删除房间 AI 配置失败, roomID: %d, err: %v", reqForm.RoomID, err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}

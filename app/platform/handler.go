@@ -732,6 +732,12 @@ func (h *Handler) pluginActionPost(c *gin.Context) {
 	case "uninstall":
 		if reqForm.Name == models.PluginTmi {
 			pluginDir = utils.PluginTmiPath
+		} else if reqForm.Name == models.PluginChat {
+			pluginDir = utils.PluginAiChatPath
+		}
+		if pluginDir == "" {
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
 		}
 		err = utils.RemoveDir(pluginDir)
 		if err != nil {
@@ -752,6 +758,20 @@ func (h *Handler) pluginActionPost(c *gin.Context) {
 		logger.Logger.Errorf("查询数据库失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
+	}
+	if reqForm.Name == models.PluginChat {
+		switch reqForm.Type {
+		case "enable":
+			if err = h.aiManager.Start(); err != nil {
+				logger.Logger.Errorf("启动 AI 对话服务失败: %v", err)
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+				return
+			}
+		case "disable":
+			h.aiManager.StopAll()
+		case "uninstall":
+			h.aiManager.StopAll()
+		}
 	}
 
 	// webhook 通知

@@ -24,6 +24,12 @@ type Sender struct {
 	client           *http.Client
 }
 
+type sendTarget struct {
+	url    string
+	secret string
+	name   string
+}
+
 func NewSender(globalSettingDao *dao.GlobalSettingDAO, roomSettingDao *dao.RoomSettingDAO, roomDao *dao.RoomDAO) *Sender {
 	return &Sender{
 		globalSettingDao: globalSettingDao,
@@ -38,70 +44,29 @@ func NewSender(globalSettingDao *dao.GlobalSettingDAO, roomSettingDao *dao.RoomS
 // Send 异步发送 webhook 通知（fire-and-forget）
 // roomID 为 0 表示全局事件（如游戏更新），此时只匹配全局 webhook 且不检查 roomIds 过滤
 func (s *Sender) Send(eventType string, roomID int, data interface{}) {
+	event, err := getEventInfoByType(eventType)
+	if err != nil {
+		logger.Logger.Warnf("未识别的Event: %s", eventType)
+		event = EventInfo{Type: eventType}
+	}
+
+	payload := Payload{
+		Event:     event,
+		Timestamp: utils.GetTimestamp(),
+		RoomID:    roomID,
+		Data:      data,
+	}
+	targets := s.collectTargets(eventType, roomID, &payload)
+	if len(targets) == 0 {
+		return
+	}
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				logger.Logger.Errorf("webhook 发送 panic, event: %s, roomID: %d, panic: %v", eventType, roomID, r)
 			}
 		}()
-
-		event, err := getEventInfoByType(eventType)
-		if err != nil {
-			logger.Logger.Warnf("未识别的Event: %s", eventType)
-			event = EventInfo{Type: eventType}
-		}
-
-		payload := Payload{
-			Event:     event,
-			Timestamp: utils.GetTimestamp(),
-			Data:      data,
-		}
-
-		// 收集所有匹配的 webhook（url + secret + name）
-		type target struct {
-			url    string
-			secret string
-			name   string
-		}
-		var targets []target
-
-		// 1. 房间级 webhook（仅 roomID > 0 时匹配）
-		if roomID > 0 {
-			roomSetting, err := s.roomSettingDao.GetRoomSettingsByRoomID(roomID)
-			if err == nil && roomSetting.WebhookSetting != "" {
-				var items []WebhookItem
-				if json.Unmarshal([]byte(roomSetting.WebhookSetting), &items) == nil {
-					for _, item := range items {
-						if item.Enabled && containsEvent(item.Events, eventType) {
-							targets = append(targets, target{url: item.URL, secret: item.Secret, name: item.Name})
-						}
-					}
-				}
-			}
-		}
-
-		// 2. 全局级 webhook
-		var globalSetting models.GlobalSetting
-		if err := s.globalSettingDao.GetGlobalSetting(&globalSetting); err == nil && globalSetting.WebhookSetting != "" {
-			var items []GlobalWebhookItem
-			if json.Unmarshal([]byte(globalSetting.WebhookSetting), &items) == nil {
-				for _, item := range items {
-					if !item.Enabled || !containsEvent(item.Events, eventType) {
-						continue
-					}
-					// roomID == 0 是全局事件，不检查房间过滤
-					// roomID > 0 时，如果指定了 roomIds 则必须在列表中；空列表表示所有房间
-					if roomID > 0 && len(item.RoomIDs) > 0 && !containsRoom(item.RoomIDs, roomID) {
-						continue
-					}
-					targets = append(targets, target{url: item.URL, secret: item.Secret, name: item.Name})
-				}
-			}
-		}
-
-		if len(targets) == 0 {
-			return
-		}
 
 		for _, t := range targets {
 			payload.Name = t.name
@@ -113,6 +78,43 @@ func (s *Sender) Send(eventType string, roomID int, data interface{}) {
 			s.sendOne(t.url, t.secret, body)
 		}
 	}()
+}
+
+// collectTargets 在异步发送前快照订阅配置，避免房间删除后无法发送通知。
+func (s *Sender) collectTargets(eventType string, roomID int, payload *Payload) []sendTarget {
+	var targets []sendTarget
+	if roomID > 0 {
+		if room, err := s.roomDao.GetRoomByID(roomID); err == nil {
+			payload.RoomName = room.GameName
+		}
+		if roomSetting, err := s.roomSettingDao.GetRoomSettingsByRoomID(roomID); err == nil && roomSetting.WebhookSetting != "" {
+			var items []WebhookItem
+			if json.Unmarshal([]byte(roomSetting.WebhookSetting), &items) == nil {
+				for _, item := range items {
+					if item.Enabled && containsEvent(item.Events, eventType) {
+						targets = append(targets, sendTarget{url: item.URL, secret: item.Secret, name: item.Name})
+					}
+				}
+			}
+		}
+	}
+
+	var globalSetting models.GlobalSetting
+	if err := s.globalSettingDao.GetGlobalSetting(&globalSetting); err == nil && globalSetting.WebhookSetting != "" {
+		var items []GlobalWebhookItem
+		if json.Unmarshal([]byte(globalSetting.WebhookSetting), &items) == nil {
+			for _, item := range items {
+				if !item.Enabled || !containsEvent(item.Events, eventType) {
+					continue
+				}
+				if roomID > 0 && len(item.RoomIDs) > 0 && !containsRoom(item.RoomIDs, roomID) {
+					continue
+				}
+				targets = append(targets, sendTarget{url: item.URL, secret: item.Secret, name: item.Name})
+			}
+		}
+	}
+	return targets
 }
 
 func (s *Sender) sendOne(url, secret string, body []byte) {

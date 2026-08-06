@@ -37,14 +37,12 @@ const (
 // ========== 预处理正则 ==========
 
 var (
-	embedMdTitleRe    = regexp.MustCompile(`(?m)^#\s+.+$`)
-	embedMdCategoryRe = regexp.MustCompile(`(?m)^\*\*分类\*\*:.*$`)
-	embedMdHrRe       = regexp.MustCompile(`(?m)^---$`)
-	embedMdLinkRe     = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
-	embedMdImgRe      = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
-	embedMdFmtRe      = regexp.MustCompile(`[*#>` + "`" + `|]`)
-	embedWsRe         = regexp.MustCompile(`\s+`)
-	embedCatLinkRe    = regexp.MustCompile(`\[([^\]]+)\]\(`)
+	embedMdTitleRe = regexp.MustCompile(`(?m)^#\s+.+$`)
+	embedMdHrRe    = regexp.MustCompile(`(?m)^---$`)
+	embedMdLinkRe  = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
+	embedMdImgRe   = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
+	embedMdFmtRe   = regexp.MustCompile(`[*#>` + "`" + `|]`)
+	embedWsRe      = regexp.MustCompile(`\s+`)
 )
 
 // ========== 元数据结构 ==========
@@ -613,34 +611,14 @@ func (s *embeddingWikiSearcher) prepareBatch(files []string) (texts []string, me
 
 // ========== 预处理 ==========
 
-// extractWikiTitle 提取文档标题（markdown 一级标题）
-func extractWikiTitle(rawContent, fallback string) string {
-	match := embedMdTitleRe.FindStringSubmatch(rawContent)
-	if len(match) >= 1 {
-		return strings.TrimSpace(strings.TrimPrefix(match[0], "# "))
-	}
-	// 回退：文件名去扩展名
-	name := fallback
-	if ext := filepath.Ext(name); ext != "" {
-		name = strings.TrimSuffix(name, ext)
-	}
-	return name
+// extractWikiTitle 从文件名提取条目名称
+func extractWikiTitle(_ string, fallback string) string {
+	return wikiPageName(fallback)
 }
 
-// extractWikiCategories 提取文档分类
+// extractWikiCategories 从固定的“分类”章节提取分类
 func extractWikiCategories(rawContent string) []string {
-	match := embedMdCategoryRe.FindStringSubmatch(rawContent)
-	if len(match) < 1 {
-		return nil
-	}
-	linkMatches := embedCatLinkRe.FindAllStringSubmatch(match[0], -1)
-	cats := make([]string, 0, len(linkMatches))
-	for _, m := range linkMatches {
-		if len(m) >= 2 {
-			cats = append(cats, m[1])
-		}
-	}
-	return cats
+	return parseWikiDocument(rawContent, "").Categories
 }
 
 // preprocessWikiDoc 预处理文档文本，使其适合 embedding
@@ -652,9 +630,8 @@ func extractWikiCategories(rawContent string) []string {
 func preprocessWikiDoc(rawContent, title string) string {
 	text := rawContent
 
-	// 去标题行、分类行、水平线
+	// 去章节标题和水平线
 	text = embedMdTitleRe.ReplaceAllString(text, "")
-	text = embedMdCategoryRe.ReplaceAllString(text, "")
 	text = embedMdHrRe.ReplaceAllString(text, "")
 
 	// 去 markdown 格式字符
@@ -680,7 +657,6 @@ func preprocessWikiDoc(rawContent, title string) string {
 func stripWikiMeta(rawContent string) string {
 	text := rawContent
 	text = embedMdTitleRe.ReplaceAllString(text, "")
-	text = embedMdCategoryRe.ReplaceAllString(text, "")
 	text = embedMdHrRe.ReplaceAllString(text, "")
 	return strings.TrimSpace(text)
 }

@@ -55,24 +55,16 @@ func (d *PluginDAO) UpdatePlugin(plugin *models.Plugin) error {
 
 func (d *PluginDAO) initPlugin() {
 	logger.Logger.Debug("正在检查插件配置")
-	count, err := d.Count(nil)
-	if err != nil {
-		logger.Logger.Errorf("数据库检查失败: %v", err)
-		panic(fmt.Errorf("数据库检查失败: %v", err))
+	plugins := []models.Plugin{
+		{Name: models.PluginTmi, Status: false, Step: 0},
+		{Name: models.PluginChat, Status: false, Step: 0},
 	}
-	if count == 0 {
-		logger.Logger.Debug("正在初始化插件配置")
-		plugin := models.Plugin{
-			Name:   models.PluginTmi,
-			Status: false,
-			Step:   0,
-		}
-		err = d.Create(&plugin)
+	for _, plugin := range plugins {
+		err := d.db.Where("name = ?", plugin.Name).FirstOrCreate(&plugin).Error
 		if err != nil {
-			logger.Logger.Errorf("初始化插件配置失败: %v", err)
+			logger.Logger.Errorf("初始化插件配置失败, plugin: %s, err: %v", plugin.Name, err)
 			panic(fmt.Errorf("初始化插件配置失败: %v", err))
 		}
-		logger.Logger.Debug("插件配置初始化成功")
 	}
 	logger.Logger.Debug("插件配置检查成功")
 }
