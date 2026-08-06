@@ -36,11 +36,11 @@
 
 感谢以下群友对AI聊天知识库的贡献
 <div>
-    <img src="https://q1.qlogo.cn/g?b=qq&nk=2446583163&s=100" style="border-radius: 50%; width: 60px; height: 60px; border: 1px solid #d3d3d3;" alt="2446583163">
-    <img src="https://q1.qlogo.cn/g?b=qq&nk=1770072201&s=100" style="border-radius: 50%; width: 60px; height: 60px; border: 1px solid #d3d3d3;" alt="1770072201">
-    <img src="https://q1.qlogo.cn/g?b=qq&nk=1643924918&s=100" style="border-radius: 50%; width: 60px; height: 60px; border: 1px solid #d3d3d3;" alt="1643924918">
-    <img src="https://q1.qlogo.cn/g?b=qq&nk=1810655449&s=100" style="border-radius: 50%; width: 60px; height: 60px; border: 1px solid #d3d3d3;" alt="1810655449">
-    <img src="https://q1.qlogo.cn/g?b=qq&nk=2765013630&s=100" style="border-radius: 50%; width: 60px; height: 60px; border: 1px solid #d3d3d3;" alt="2765013630">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=2446583163&s=100" style="width: 60px; height: 60px; margin-right: 10px" alt="2446583163">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=1770072201&s=100" style="width: 60px; height: 60px; margin-right: 10px" alt="1770072201">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=1643924918&s=100" style="width: 60px; height: 60px; margin-right: 10px" alt="1643924918">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=1810655449&s=100" style="width: 60px; height: 60px; margin-right: 10px" alt="1810655449">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=2765013630&s=100" style="width: 60px; height: 60px; margin-right: 10px" alt="2765013630">
 </div>
 
 
