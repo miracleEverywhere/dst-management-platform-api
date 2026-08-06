@@ -5,3 +5,5 @@ deliverables
 dmp
 data
 logs
+aichat/qqunexcel/*
+!aichat/qqunexcel/generate_wiki.py

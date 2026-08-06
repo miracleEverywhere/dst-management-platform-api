@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	wikiPagesDir              = utils.PluginAiChatWikiPath + "/pages"
+	wikiPagesDir              = utils.PluginAiChatWikiPath
 	wikiIndexFile             = utils.PluginAiChatSearchDataPath + "/search_index.json"
 	keywordIndexIdleTimeout   = 5 * time.Minute
 	keywordIndexVersion       = 2

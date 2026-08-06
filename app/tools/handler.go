@@ -813,3 +813,8 @@ func (h *Handler) aiBaseSettingPut(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
+
+func (h *Handler) aiKeyIndexReBuild(c *gin.Context) {
+	_ = h.aiManager.BuildKeywordIndex(true)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}

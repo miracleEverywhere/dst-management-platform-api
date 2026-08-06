@@ -377,7 +377,7 @@ func (m *Manager) searchWiki(setting models.AIChatSetting, question string) stri
 // buildSystemPrompt 构建系统提示词（Wiki 上下文 + 用户设定的提示词）
 func buildSystemPrompt(setting models.AIChatSetting, wikiContext string) string {
 	// 默认提示词
-	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式，回答不能超过30个字。"
+	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式，回答不能超过60个字。"
 	systemPrompt := strings.TrimSpace(setting.SystemPrompt)
 	if systemPrompt == "" {
 		systemPrompt = defaultPrompt
@@ -391,6 +391,14 @@ func buildSystemPrompt(setting models.AIChatSetting, wikiContext string) string 
 }
 
 func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIChatSetting, sessions map[string]*chatSession, event chatEvent, question string) {
+	wikiContext := m.searchWiki(setting, question)
+	if wikiContext == "" {
+		if err := sendGameReply(game, event.Nickname, "还在学习中"); err != nil {
+			logger.Logger.Errorf("发送游戏内 AI 学习中提示失败, roomID: %d, uid: %s, err: %v", setting.RoomID, event.UID, err)
+		}
+		return
+	}
+
 	now := time.Now()
 	ttl := time.Duration(setting.ContextTTLMinutes) * time.Minute
 	session := sessions[event.UID]
@@ -400,8 +408,6 @@ func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIC
 	}
 
 	// 搜索 Wiki 知识库获取参考上下文
-	wikiContext := m.searchWiki(setting, question)
-
 	userMessage := chatMessage{Role: "user", Content: truncateRunes(question, maxQuestionRunes)}
 	messages := make([]chatMessage, 0, len(session.messages)+3)
 
