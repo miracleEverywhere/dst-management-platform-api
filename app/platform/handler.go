@@ -720,6 +720,11 @@ func (h *Handler) installAiChatPlugin(c *gin.Context, proxy string) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
+	if err := h.aiManager.Start(); err != nil {
+		logger.Logger.Errorf("启动 AI 对话服务失败: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
 }

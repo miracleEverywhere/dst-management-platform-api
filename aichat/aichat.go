@@ -57,6 +57,11 @@ func (m *Manager) Start() error {
 	return m.start()
 }
 
+// Restart 重启当前已激活的 AI 对话监听，插件未启用时保持停止状态。
+func (m *Manager) Restart() error {
+	return m.restart()
+}
+
 // StopAll 停止所有房间的 AI 对话监听
 func (m *Manager) StopAll() {
 	m.stopAll()

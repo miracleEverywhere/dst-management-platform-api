@@ -70,12 +70,31 @@ func (m *Manager) start() error {
 		m.stopAll()
 		return err
 	}
+	var reloadErrors []error
 	for _, setting := range settings {
 		if err = m.reload(setting.RoomID); err != nil {
-			logger.Logger.Errorf("启动房间 AI 对话监听失败, roomID: %d, err: %v", setting.RoomID, err)
+			reloadErr := fmt.Errorf("roomID %d: %w", setting.RoomID, err)
+			reloadErrors = append(reloadErrors, reloadErr)
+			logger.Logger.Errorf("启动房间 AI 对话监听失败, err: %v", reloadErr)
 		}
 	}
-	return nil
+	return errors.Join(reloadErrors...)
+}
+
+func (m *Manager) restart() error {
+	m.lifecycle.Lock()
+	if m.closed {
+		m.lifecycle.Unlock()
+		return context.Canceled
+	}
+	active := m.active
+	m.lifecycle.Unlock()
+	if !active {
+		return nil
+	}
+
+	m.stopAll()
+	return m.start()
 }
 
 func (m *Manager) reload(roomID int) error {
