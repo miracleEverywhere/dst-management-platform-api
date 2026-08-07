@@ -228,20 +228,17 @@ func (m *Manager) watchChatLog(ctx context.Context, game *dst.Game, roomID int, 
 	}
 }
 
-// isEmbeddingConfigured 检查是否配置了嵌入模型
+// isEmbeddingConfigured 只有 embedding 地址、密钥和模型均已配置时才启用向量检索。
 func (m *Manager) isEmbeddingConfigured(setting models.AIChatSetting) bool {
-	return setting.EmbeddingModel != "" && setting.ChatBaseURL != ""
+	return setting.EmbeddingBaseURL != "" &&
+		setting.EmbeddingApiKey != "" &&
+		setting.EmbeddingModel != ""
 }
 
 // getEmbeddingSearcher 获取或创建向量搜索引擎
 // 仅创建 searcher 实例并缓存，不自动构建索引（构建需通过 BuildEmbeddingIndex 手动触发）
 func (m *Manager) getEmbeddingSearcher(setting models.AIChatSetting) *embeddingWikiSearcher {
-	// EmbeddingApiKey 如果单独配置了则优先使用，否则复用 ChatApiKey
-	apiKey := setting.ChatApiKey
-	if setting.EmbeddingApiKey != "" {
-		apiKey = setting.EmbeddingApiKey
-	}
-	configKey := setting.ChatBaseURL + "|" + apiKey + "|" + setting.EmbeddingModel
+	configKey := setting.EmbeddingBaseURL + "|" + setting.EmbeddingApiKey + "|" + setting.EmbeddingModel
 
 	m.embedSearcherMu.Lock()
 	defer m.embedSearcherMu.Unlock()
@@ -257,8 +254,8 @@ func (m *Manager) getEmbeddingSearcher(setting models.AIChatSetting) *embeddingW
 	}
 
 	embedConfig := EmbeddingConfig{
-		APIURL:     setting.ChatBaseURL,
-		APIKey:     apiKey,
+		APIURL:     setting.EmbeddingBaseURL,
+		APIKey:     setting.EmbeddingApiKey,
 		Model:      setting.EmbeddingModel,
 		Dimensions: 1024,
 	}
@@ -347,25 +344,35 @@ func (m *Manager) unloadKeywordIndex() {
 
 // searchWiki 搜索 Wiki 知识库，返回格式化的参考上下文
 func (m *Manager) searchWiki(setting models.AIChatSetting, question string) string {
+	maxResults := setting.MaxResults
+	if maxResults <= 0 {
+		maxResults = models.DefaultAIWikiMaxResults
+	}
+
 	// 优先使用向量搜索
 	if m.isEmbeddingConfigured(setting) {
 		if searcher := m.getEmbeddingSearcher(setting); searcher != nil {
-			results, err := searcher.search(question, nil, 3, 0.3)
+			results, err := searcher.search(question, nil, maxResults, 0.3)
 			if err != nil {
 				logger.Logger.Warnf("向量搜索 Wiki 失败: %v，回退到关键词搜索", err)
 			} else if len(results) > 0 {
+				logger.Logger.Debugf("Wiki 搜索方式: embedding, roomID: %d, results: %d", setting.RoomID, len(results))
 				return formatWikiContext(results, maxContextTokens)
 			}
 		}
+	} else {
+		logger.Logger.Debugf("Wiki 搜索跳过 embedding，使用关键词搜索, roomID: %d", setting.RoomID)
 	}
 
 	// 回退到关键词搜索
 	if m.keywordSearcher != nil {
-		results, err := m.keywordSearcher.search(question, 3)
+		results, err := m.keywordSearcher.search(question, maxResults)
 		if err != nil {
 			logger.Logger.Warnf("关键词搜索 Wiki 失败: %v", err)
+			logger.Logger.Debugf("Wiki 搜索方式: keyword, roomID: %d, results: 0", setting.RoomID)
 			return ""
 		}
+		logger.Logger.Debugf("Wiki 搜索方式: keyword, roomID: %d, results: %d", setting.RoomID, len(results))
 		if len(results) > 0 {
 			return formatWikiContext(results, maxContextTokens)
 		}
@@ -374,13 +381,23 @@ func (m *Manager) searchWiki(setting models.AIChatSetting, question string) stri
 	return ""
 }
 
+func maxReplyLength(setting models.AIChatSetting) int {
+	if setting.MaxReplyLength <= 0 {
+		return models.DefaultAIReplyMaxLength
+	}
+	return setting.MaxReplyLength
+}
+
 // buildSystemPrompt 构建系统提示词（Wiki 上下文 + 用户设定的提示词）
 func buildSystemPrompt(setting models.AIChatSetting, wikiContext string) string {
 	// 默认提示词
-	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式，回答不能超过60个字。"
+	limitPrompt := fmt.Sprintf("回答不能超过%d个字。", maxReplyLength(setting))
+	defaultPrompt := fmt.Sprintf("你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式，%s", limitPrompt)
 	systemPrompt := strings.TrimSpace(setting.SystemPrompt)
 	if systemPrompt == "" {
 		systemPrompt = defaultPrompt
+	} else {
+		systemPrompt = strings.Join([]string{systemPrompt, limitPrompt}, "\n")
 	}
 
 	// Wiki 参考文档
@@ -428,6 +445,7 @@ func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIC
 		_ = sendGameReply(game, event.Nickname, "暂时无法回答，请稍后再试。")
 		return
 	}
+	answer = truncateRunes(answer, maxReplyLength(setting))
 
 	session.messages = append(session.messages, userMessage, chatMessage{Role: "assistant", Content: answer})
 	maxMessages := setting.ContextMaxMessages
@@ -470,7 +488,7 @@ func sendGameReply(game *dst.Game, nickname, answer string) error {
 		return fmt.Errorf("AI 回答为空")
 	}
 
-	prefix := fmt.Sprintf("[AI] %s: ", nickname)
+	prefix := fmt.Sprintf("[DMP] %s: ", nickname)
 	for _, part := range splitRunes(answer, maxReplyRunes-utf8.RuneCountInString(prefix)) {
 		if err := game.SystemMsg(prefix + part); err != nil {
 			return err

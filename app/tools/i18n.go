@@ -37,6 +37,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["no such category"] = "没有发现种类: %s"
 	i.ZH["exec fail"] = "执行失败"
 	i.ZH["exec success"] = "执行成功"
+	i.ZH["embedding config incomplete"] = "嵌入模型配置不完整"
+	i.ZH["embedding base url invalid"] = "嵌入模型 Base URL 不合法"
 
 	i.EN["get backup fail"] = "get backup fail"
 	i.EN["create backup fail"] = "create backup fail"
@@ -51,6 +53,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["no such category"] = "no such category: %s"
 	i.EN["exec fail"] = "Execute Fail"
 	i.EN["exec success"] = "Execute Success"
+	i.EN["embedding config incomplete"] = "Embedding model configuration is incomplete"
+	i.EN["embedding base url invalid"] = "Embedding model Base URL is invalid"
 
 	return i
 }

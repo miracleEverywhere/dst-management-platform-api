@@ -1,9 +1,17 @@
 package models
 
+const (
+	// DefaultAIWikiMaxResults 是房间未配置最大返回文档数时使用的默认值。
+	DefaultAIWikiMaxResults = 3
+	// DefaultAIReplyMaxLength 是房间未配置 AI 回复字数时使用的默认值。
+	DefaultAIReplyMaxLength = 60
+)
+
 type AIModelConfig struct {
 	ChatBaseURL           string  `json:"chatBaseURL"`
 	ChatApiKey            string  `json:"chatApiKey"`
 	ChatModel             string  `json:"chatModel"`
+	EmbeddingBaseURL      string  `json:"embeddingBaseURL"`
 	EmbeddingApiKey       string  `json:"embeddingApiKey"`
 	EmbeddingModel        string  `json:"embeddingModel"`
 	SystemPrompt          string  `json:"systemPrompt"`
@@ -34,9 +42,11 @@ func DefaultAIBaseSetting() AIBaseSetting {
 
 // RoomAISetting 是用户可修改的房间级配置。
 type RoomAISetting struct {
-	RoomID  int    `gorm:"primaryKey;not null;column:room_id" json:"roomID"`
-	Enabled bool   `gorm:"column:enabled" json:"enabled"`
-	Prefix  string `gorm:"column:prefix" json:"prefix"`
+	RoomID         int    `gorm:"primaryKey;not null;column:room_id" json:"roomID"`
+	Enabled        bool   `gorm:"column:enabled" json:"enabled"`
+	Prefix         string `gorm:"column:prefix" json:"prefix"`
+	MaxResults     int    `gorm:"column:max_results;default:3" json:"maxResults"`
+	MaxReplyLength int    `gorm:"column:max_reply_length;default:60" json:"maxReplyLength"`
 }
 
 func (RoomAISetting) TableName() string {

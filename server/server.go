@@ -62,15 +62,15 @@ func Run() {
 	dstImageDao := dao.NewDstImageDAO(db.DB)
 	roomAISettingDao := dao.NewRoomAISettingDAO(db.DB)
 
+	// 启动游戏内 AI 对话监听
+	aiManager := aichat.NewManager(roomAISettingDao, systemDao, pluginDao)
+	defer aiManager.Close()
+
 	// 初始化 webhook sender
 	webhook.Snd = webhook.NewSender(globalSettingDao, roomSettingDao, roomDao)
 
 	// 开启定时任务
 	scheduler.Start(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
-
-	// 启动游戏内 AI 对话监听
-	aiManager := aichat.NewManager(roomAISettingDao, systemDao, pluginDao)
-	defer aiManager.Close()
 
 	r := gin.New()
 

@@ -17,11 +17,13 @@ from xml.etree import ElementTree
 
 WORKBOOK_NAME = "饥荒管理平台AI功能资料收集.xlsx"
 MANIFEST_NAME = ".wiki-generated.json"
+ARCHIVE_NAME = "wiki.zip"
 MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 PACKAGE_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 INVALID_FILENAME_RE = re.compile(r'[\\/:*?"<>|]')
 CELL_REFERENCE_RE = re.compile(r"([A-Z]+)")
+TRAILING_ALIAS_RE = re.compile(r"\s*[（(][^（）()]*[）)]\s*$")
 FIELD_BY_HEADER = {
     "描述": "description",
     "制作材料及解锁": "crafting",
@@ -173,6 +175,69 @@ def add_unique(values: list[str], value: str) -> None:
         values.append(value)
 
 
+def document_name_key(name: str) -> str:
+    """返回用于匹配主名称和括号别名的规范化键。"""
+    value = clean_cell(name)
+    while True:
+        stripped = TRAILING_ALIAS_RE.sub("", value).rstrip()
+        if stripped == value:
+            return value.casefold()
+        value = stripped
+
+
+def merge_row(
+    document: WikiDocument,
+    headers: list[str],
+    row: list[str],
+    category: str | None,
+) -> None:
+    document.source_rows += 1
+    if category:
+        add_unique(document.categories, category)
+
+    for column, header in enumerate(headers):
+        value = clean_cell(row[column]) if column < len(row) else ""
+        if not value:
+            continue
+        field_name = FIELD_BY_HEADER.get(header)
+        if field_name is not None:
+            add_unique(getattr(document, field_name), value)
+        elif header and header != "名称":
+            add_unique(document.notes, f"{header}：{value}")
+
+
+def merge_sheet(
+    documents: dict[str, WikiDocument],
+    category: str | None,
+    rows: list[list[str]],
+) -> int:
+    """将一个 Sheet 合并到文档索引，返回其中有效数据行数。"""
+    if not rows:
+        return 0
+    headers = [clean_cell(value) for value in rows[0]]
+    try:
+        name_column = headers.index("名称")
+    except ValueError:
+        return 0
+
+    source_rows = 0
+    for row in rows[1:]:
+        name = clean_cell(row[name_column]) if name_column < len(row) else ""
+        if not name:
+            continue
+        source_rows += 1
+        key = document_name_key(name)
+        document = documents.get(key)
+        if document is None:
+            document = WikiDocument(name=name)
+            documents[key] = document
+        elif len(name) > len(document.name):
+            # 同一主名称有多个别名时，优先保留信息更完整的显示名称。
+            document.name = name
+        merge_row(document, headers, row, category)
+    return source_rows
+
+
 def safe_filename(name: str) -> str:
     filename = INVALID_FILENAME_RE.sub("_", name).rstrip(". ")
     if not filename:
@@ -182,40 +247,40 @@ def safe_filename(name: str) -> str:
 
 def collect_documents(
     sheets: list[tuple[str, list[list[str]]]],
-) -> tuple[dict[str, WikiDocument], dict[str, int]]:
-    documents: dict[str, WikiDocument] = {}
+) -> tuple[dict[str, WikiDocument], dict[str, int], int, list[str]]:
+    all_sheet_indexes = [index for index, (name, _) in enumerate(sheets) if name == "所有"]
+    if len(all_sheet_indexes) != 1:
+        raise ValueError("工作簿必须包含且只能包含一个“所有”Sheet")
+
+    all_sheet_index = all_sheet_indexes[0]
+    base_documents: dict[str, WikiDocument] = {}
+    maintained_documents: dict[str, WikiDocument] = {}
     category_rows: dict[str, int] = {}
+    source_rows = 0
 
-    for category, rows in sheets[1:]:
+    # “所有”是基础资料，不作为分类；未被维护 Sheet 覆盖的条目分类为“无”。
+    source_rows += merge_sheet(base_documents, None, sheets[all_sheet_index][1])
+
+    for index, (category, rows) in enumerate(sheets[1:], 1):
+        if index == all_sheet_index:
+            continue
         category_rows[category] = 0
-        if not rows:
-            continue
-        headers = [clean_cell(value) for value in rows[0]]
-        try:
-            name_column = headers.index("名称")
-        except ValueError:
-            continue
+        rows_count = merge_sheet(maintained_documents, category, rows)
+        category_rows[category] = rows_count
+        source_rows += rows_count
 
-        for row in rows[1:]:
-            name = clean_cell(row[name_column]) if name_column < len(row) else ""
-            if not name:
-                continue
-            category_rows[category] += 1
-            document = documents.setdefault(name, WikiDocument(name=name))
-            document.source_rows += 1
-            add_unique(document.categories, category)
+    documents: dict[str, WikiDocument] = {}
+    overridden_names: list[str] = []
+    for key, base_document in base_documents.items():
+        document = maintained_documents.pop(key, None)
+        if document is not None:
+            overridden_names.append(document.name)
+        else:
+            document = base_document
+        documents[key] = document
+    documents.update(maintained_documents)
 
-            for column, header in enumerate(headers):
-                value = clean_cell(row[column]) if column < len(row) else ""
-                if not value:
-                    continue
-                field_name = FIELD_BY_HEADER.get(header)
-                if field_name is not None:
-                    add_unique(getattr(document, field_name), value)
-                elif header and header != "名称":
-                    add_unique(document.notes, f"{header}：{value}")
-
-    return documents, category_rows
+    return documents, category_rows, source_rows, sorted(overridden_names)
 
 
 def section(values: list[str]) -> str:
@@ -300,17 +365,45 @@ def write_documents(
     return sorted(current_files), removed_files
 
 
+def write_archive(output_dir: Path, filenames: list[str]) -> Path:
+    archive_path = output_dir / ARCHIVE_NAME
+    if archive_path.exists():
+        if not archive_path.is_file():
+            raise ValueError(f"压缩包路径不是文件：{archive_path}")
+        archive_path.unlink()
+
+    with tempfile.NamedTemporaryFile(
+        "wb", suffix=".tmp", dir=output_dir, delete=False
+    ) as temporary_file:
+        temporary_path = Path(temporary_file.name)
+
+    try:
+        with zipfile.ZipFile(
+            temporary_path, mode="w", compression=zipfile.ZIP_DEFLATED
+        ) as archive:
+            for filename in filenames:
+                document_path = output_dir / filename
+                if not document_path.is_file():
+                    raise FileNotFoundError(f"找不到待压缩的 Markdown 文档：{document_path}")
+                archive.write(document_path, arcname=filename)
+        os.replace(temporary_path, archive_path)
+    except BaseException:
+        temporary_path.unlink(missing_ok=True)
+        raise
+    return archive_path
+
+
 def main() -> None:
     args = parse_args()
     sheets = read_workbook(args.workbook.resolve())
     if len(sheets) < 2:
         raise ValueError("工作簿除填写指南外没有分类 Sheet")
 
-    documents, category_rows = collect_documents(sheets)
+    documents, category_rows, source_rows, overridden_names = collect_documents(sheets)
     generated_files, removed_files = write_documents(
         documents, args.output.resolve(), args.keep_stale
     )
-    source_rows = sum(category_rows.values())
+    archive_path = write_archive(args.output.resolve(), generated_files)
     merged_names = sorted(
         document.name for document in documents.values() if document.source_rows > 1
     )
@@ -321,8 +414,11 @@ def main() -> None:
     print(f"已跳过首个 Sheet：{sheets[0][0]}")
     print(f"已读取 {len(category_rows)} 个分类，其中 {len(populated_categories)} 个包含数据")
     print(f"已将 {source_rows} 行数据生成 {len(generated_files)} 份 Markdown 文档")
+    print(f"已生成文档压缩包：{archive_path}")
     if merged_names:
         print(f"已合并同名条目：{'、'.join(merged_names)}")
+    if overridden_names:
+        print(f"已用玩家维护数据覆盖“所有”条目：{'、'.join(overridden_names)}")
     if removed_files:
         print(f"已删除过期文档：{'、'.join(removed_files)}")
 

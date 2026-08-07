@@ -11,6 +11,7 @@ import (
 func validateModelConfig(config *models.AIModelConfig) error {
 	config.ChatBaseURL = strings.TrimSpace(config.ChatBaseURL)
 	config.ChatModel = strings.TrimSpace(config.ChatModel)
+	config.EmbeddingBaseURL = strings.TrimSpace(config.EmbeddingBaseURL)
 	config.EmbeddingModel = strings.TrimSpace(config.EmbeddingModel)
 
 	if config.ChatBaseURL == "" || !utils.IsValidURL(config.ChatBaseURL) {
@@ -24,6 +25,9 @@ func validateModelConfig(config *models.AIModelConfig) error {
 	}
 	if len(config.ChatApiKey) > 16*1024 {
 		return fmt.Errorf("API Key 过长")
+	}
+	if config.EmbeddingBaseURL != "" && !utils.IsValidURL(config.EmbeddingBaseURL) {
+		return fmt.Errorf("嵌入模型 Base URL 不合法")
 	}
 	if config.EmbeddingModel != "" {
 		if utf8.RuneCountInString(config.EmbeddingModel) > 256 {
@@ -52,11 +56,23 @@ func validateModelConfig(config *models.AIModelConfig) error {
 
 func validateRoomSetting(setting *models.RoomAISetting) error {
 	setting.Prefix = strings.TrimSpace(setting.Prefix)
+	if setting.MaxResults == 0 {
+		setting.MaxResults = models.DefaultAIWikiMaxResults
+	}
+	if setting.MaxReplyLength == 0 {
+		setting.MaxReplyLength = models.DefaultAIReplyMaxLength
+	}
 	if setting.RoomID <= 0 {
 		return fmt.Errorf("房间 ID 不合法")
 	}
 	if strings.ContainsAny(setting.Prefix, "\r\n") || utf8.RuneCountInString(setting.Prefix) > 64 {
 		return fmt.Errorf("AI 对话前缀不合法")
+	}
+	if setting.MaxResults < 1 || setting.MaxResults > 20 {
+		return fmt.Errorf("最大返回文档数必须在 1 到 20 之间")
+	}
+	if setting.MaxReplyLength < 1 || setting.MaxReplyLength > 180 {
+		return fmt.Errorf("AI 回复最大字数必须在 1 到 180 之间")
 	}
 	return nil
 }
