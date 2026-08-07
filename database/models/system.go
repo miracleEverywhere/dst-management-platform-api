@@ -9,4 +9,7 @@ func (System) TableName() string {
 	return "system"
 }
 
-var JwtSecret = "jwt_secret"
+var (
+	JwtSecret        = "jwt_secret"
+	AIBaseSettingKey = "ai_base_setting"
+)

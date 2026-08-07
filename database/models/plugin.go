@@ -10,4 +10,7 @@ func (Plugin) TableName() string {
 	return "plugins"
 }
 
-var PluginTmi = "tmi"
+var (
+	PluginTmi  = "tmi"
+	PluginChat = "ai_chat"
+)

@@ -178,6 +178,16 @@ var tools = menuItem{
 			Icon:      "ri-ghost-4-line",
 			Links:     nil,
 		},
+		{
+			ID:        607,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsAI",
+			To:        "/tools/aichat",
+			Component: "tools/aichat",
+			Icon:      "ri-ghost-4-line",
+			Links:     nil,
+		},
 	},
 }
 

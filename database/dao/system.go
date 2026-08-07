@@ -5,6 +5,8 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"encoding/json"
+	"errors"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -37,6 +39,10 @@ func (d *SystemDAO) Set(key, value string) error {
 }
 
 func (d *SystemDAO) initSystem() {
+	d.initJWTSecret()
+}
+
+func (d *SystemDAO) initJWTSecret() {
 	logger.Logger.Debug("正在检查jwt秘钥")
 	jwtSecret, err := d.Get(models.JwtSecret)
 	if err != nil {
@@ -48,10 +54,34 @@ func (d *SystemDAO) initSystem() {
 		}
 		db.JwtSecret = secret
 		logger.Logger.Debug("jwt秘钥创建完成")
-
 		return
 	}
 
 	db.JwtSecret = jwtSecret.Value
 	logger.Logger.Debug("jwt秘钥已写入缓存")
+}
+
+func (d *SystemDAO) GetAIBaseSetting() (*models.AIBaseSetting, error) {
+	value, err := d.Get(models.AIBaseSettingKey)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		setting := models.DefaultAIBaseSetting()
+		return &setting, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var setting models.AIBaseSetting
+	if err = json.Unmarshal([]byte(value.Value), &setting); err != nil {
+		return nil, err
+	}
+	return &setting, nil
+}
+
+func (d *SystemDAO) UpdateAIBaseSetting(setting *models.AIBaseSetting) error {
+	data, err := json.Marshal(setting)
+	if err != nil {
+		return err
+	}
+	return d.Set(models.AIBaseSettingKey, string(data))
 }

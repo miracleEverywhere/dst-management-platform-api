@@ -4,6 +4,7 @@ go 1.25.4
 
 require (
 	github.com/creack/pty v1.1.24
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gin-contrib/pprof v1.5.3
 	github.com/gin-gonic/gin v1.11.0
 	github.com/glebarez/sqlite v1.11.0
@@ -14,6 +15,7 @@ require (
 	github.com/soulteary/gin-static v0.2.6
 	github.com/yuin/gopher-lua v1.1.1
 	go.uber.org/zap v1.27.1
+	golang.org/x/crypto v0.46.0
 	golang.org/x/term v0.39.0
 	gorm.io/gorm v1.31.1
 )
@@ -67,7 +69,6 @@ require (
 	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.32.0 // indirect

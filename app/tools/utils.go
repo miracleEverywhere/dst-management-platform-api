@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -14,20 +15,26 @@ import (
 )
 
 type Handler struct {
-	roomDao        *dao.RoomDAO
-	userDao        *dao.UserDAO
-	worldDao       *dao.WorldDAO
-	roomSettingDao *dao.RoomSettingDAO
-	dstImageDao    *dao.DstImageDAO
+	roomDao          *dao.RoomDAO
+	userDao          *dao.UserDAO
+	worldDao         *dao.WorldDAO
+	roomSettingDao   *dao.RoomSettingDAO
+	dstImageDao      *dao.DstImageDAO
+	systemDao        *dao.SystemDAO
+	roomAISettingDao *dao.RoomAISettingDAO
+	aiManager        *aichat.Manager
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, dstImageDao *dao.DstImageDAO) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, dstImageDao *dao.DstImageDAO, systemDao *dao.SystemDAO, roomAISettingDao *dao.RoomAISettingDAO, aiManager *aichat.Manager) *Handler {
 	return &Handler{
-		roomDao:        roomDao,
-		userDao:        userDao,
-		worldDao:       worldDao,
-		roomSettingDao: roomSettingDao,
-		dstImageDao:    dstImageDao,
+		roomDao:          roomDao,
+		userDao:          userDao,
+		worldDao:         worldDao,
+		roomSettingDao:   roomSettingDao,
+		dstImageDao:      dstImageDao,
+		systemDao:        systemDao,
+		roomAISettingDao: roomAISettingDao,
+		aiManager:        aiManager,
 	}
 }
 

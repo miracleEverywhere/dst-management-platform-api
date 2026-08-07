@@ -53,3 +53,12 @@ const PluginPath = DmpFiles + "/plugins"
 const PluginTmiPath = PluginPath + "/tmi"
 
 const TmirID = 3638290455
+
+// PluginAiChatPath ai聊天插件根目录
+const PluginAiChatPath = PluginPath + "/ai_chat"
+
+// PluginAiChatWikiPath ai聊天wiki数据
+const PluginAiChatWikiPath = PluginAiChatPath + "/wiki"
+
+// PluginAiChatSearchDataPath ai聊天搜索用数据
+const PluginAiChatSearchDataPath = PluginAiChatPath + "/search_data"

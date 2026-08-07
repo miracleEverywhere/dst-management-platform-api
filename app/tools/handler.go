@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
@@ -8,13 +9,16 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func (h *Handler) backupGet(c *gin.Context) {
@@ -199,6 +203,9 @@ func (h *Handler) backupRestorePost(c *gin.Context) {
 		logger.Logger.Errorf("更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
 		return
+	}
+	if err = h.aiManager.Reload(reqForm.RoomID); err != nil {
+		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomID, err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "restore success"), "data": nil})
@@ -672,4 +679,192 @@ func (h *Handler) consolePost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "exec success"), "data": nil})
+}
+
+func (h *Handler) aiSettingGet(c *gin.Context) {
+	var reqForm struct {
+		RoomID int `form:"roomID" binding:"required"`
+	}
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	setting, err := h.roomAISettingDao.GetByRoomID(reqForm.RoomID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		setting = &models.RoomAISetting{
+			RoomID:         reqForm.RoomID,
+			MaxResults:     models.DefaultAIWikiMaxResults,
+			MaxReplyLength: models.DefaultAIReplyMaxLength,
+		}
+	} else if err != nil {
+		logger.Logger.Errorf("获取房间 AI 配置失败, roomID: %d, err: %v", reqForm.RoomID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if setting.MaxResults == 0 {
+		setting.MaxResults = models.DefaultAIWikiMaxResults
+	}
+	if setting.MaxReplyLength == 0 {
+		setting.MaxReplyLength = models.DefaultAIReplyMaxLength
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": setting})
+}
+
+func (h *Handler) aiSettingPut(c *gin.Context) {
+	var reqForm struct {
+		RoomID         int                   `json:"roomID"`
+		Enabled        bool                  `json:"enabled"`
+		Prefix         string                `json:"prefix"`
+		MaxResults     int                   `json:"maxResults"`
+		MaxReplyLength int                   `json:"maxReplyLength"`
+		Setting        *models.RoomAISetting `json:"setting"`
+	}
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	setting := models.RoomAISetting{
+		RoomID:         reqForm.RoomID,
+		Enabled:        reqForm.Enabled,
+		Prefix:         reqForm.Prefix,
+		MaxResults:     reqForm.MaxResults,
+		MaxReplyLength: reqForm.MaxReplyLength,
+	}
+	// 兼容旧版 {setting: {...}} 请求体，嵌套对象也只能解析房间级字段。
+	if reqForm.Setting != nil {
+		setting = *reqForm.Setting
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(setting.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+	if _, err := h.roomDao.GetRoomByID(setting.RoomID); err != nil {
+		logger.Logger.Errorf("获取房间信息失败, roomID: %d, err: %v", setting.RoomID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if err := aichat.ValidateRoomSetting(&setting); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": err.Error(), "data": nil})
+		return
+	}
+	if setting.Enabled {
+		baseSetting, err := h.systemDao.GetAIBaseSetting()
+		if err != nil {
+			logger.Logger.Errorf("获取 AI 基础配置失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+		if err = aichat.ValidateBaseSetting(baseSetting); err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": err.Error(), "data": nil})
+			return
+		}
+	}
+
+	if err := h.roomAISettingDao.UpdateSetting(&setting); err != nil {
+		logger.Logger.Errorf("更新房间 AI 配置失败, roomID: %d, err: %v", setting.RoomID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	webhook.Snd.Send(webhook.EventAIChatSettingUpdated, setting.RoomID, map[string]interface{}{
+		"enabled":        setting.Enabled,
+		"prefix":         setting.Prefix,
+		"maxResults":     setting.MaxResults,
+		"maxReplyLength": setting.MaxReplyLength,
+		"username":       c.GetString("username"),
+	})
+	if err := h.aiManager.Reload(setting.RoomID); err != nil {
+		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", setting.RoomID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}
+
+func (h *Handler) aiBaseSettingGet(c *gin.Context) {
+	setting, err := h.systemDao.GetAIBaseSetting()
+	if err != nil {
+		logger.Logger.Errorf("获取 AI 基础配置失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": setting})
+}
+
+func (h *Handler) aiBaseSettingPut(c *gin.Context) {
+	var reqForm models.AIBaseSetting
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	if err := aichat.ValidateBaseSetting(&reqForm); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": err.Error(), "data": nil})
+		return
+	}
+	if err := h.systemDao.UpdateAIBaseSetting(&reqForm); err != nil {
+		logger.Logger.Errorf("更新 AI 基础配置失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	webhook.Snd.Send(webhook.EventAIChatBaseSettingUpdated, 0, map[string]interface{}{
+		"username":       c.GetString("username"),
+		"chatModel":      reqForm.ChatModel,
+		"embeddingModel": reqForm.EmbeddingModel,
+	})
+	if err := h.aiManager.ReloadAll(); err != nil {
+		logger.Logger.Errorf("重载 AI 对话服务失败, err: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}
+
+func (h *Handler) aiKeywordIndexReBuild(c *gin.Context) {
+	_ = h.aiManager.BuildKeywordIndex(true)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}
+
+func (h *Handler) aiEmbeddingIndexReBuild(c *gin.Context) {
+	setting, err := h.systemDao.GetAIBaseSetting()
+	if err != nil {
+		logger.Logger.Errorf("获取 AI 基础配置失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	baseURL := strings.TrimSpace(setting.EmbeddingBaseURL)
+	model := strings.TrimSpace(setting.EmbeddingModel)
+	if baseURL == "" || setting.EmbeddingApiKey == "" || model == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "embedding config incomplete"), "data": nil})
+		return
+	}
+	if !utils.IsValidURL(baseURL) {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "embedding base url invalid"), "data": nil})
+		return
+	}
+
+	err = h.aiManager.BuildEmbeddingIndex(aichat.EmbeddingConfig{
+		APIURL:     baseURL,
+		APIKey:     setting.EmbeddingApiKey,
+		Model:      model,
+		Dimensions: 1024,
+	}, true)
+	if err != nil {
+		logger.Logger.Errorf("重建 embedding 索引失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
