@@ -582,105 +582,146 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 		return
 	}
 
-	if reqForm.Name == models.PluginTmi {
-		osInfo, err := getOSInfo()
-		if err != nil {
-			logger.Logger.Errorf("获取系统信息失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get os info fail"), "data": nil})
-			return
-		}
+	switch reqForm.Name {
+	case models.PluginTmi:
+		h.installTmiPlugin(c, reqForm.Proxy)
+	case models.PluginChat:
+		h.installAiChatPlugin(c, reqForm.Proxy)
+	default:
+		logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+	}
+}
 
-		var imageParse bool
+func (h *Handler) installTmiPlugin(c *gin.Context, proxy string) {
+	osInfo, err := getOSInfo()
+	if err != nil {
+		logger.Logger.Errorf("获取系统信息失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get os info fail"), "data": nil})
+		return
+	}
 
-		platform := osInfo.Platform
-		version := strings.Split(osInfo.PlatformVersion, ".")[0]
+	var imageParse bool
 
-		if platform != "ubuntu" || version != "24" {
-			logger.Logger.Warn("系统不是ubuntu 24, 跳过图片转换")
-			imageParse = false
-		} else {
-			imageParse = true
-		}
+	platform := osInfo.Platform
+	version := strings.Split(osInfo.PlatformVersion, ".")[0]
 
-		plugin, err := h.pluginDao.GetPluginByPluginName(reqForm.Name)
-		if err != nil {
-			logger.Logger.Errorf("查询数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
+	if platform != "ubuntu" || version != "24" {
+		logger.Logger.Warn("系统不是ubuntu 24, 跳过图片转换")
+		imageParse = false
+	} else {
+		imageParse = true
+	}
 
-		if plugin.Step == 100 {
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
-			return
-		}
+	plugin, err := h.pluginDao.GetPluginByPluginName(models.PluginTmi)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
 
-		updateDb := func(plugin *models.Plugin) bool {
-			if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
-				logger.Logger.Errorf("更新数据库失败, err: %v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-				return false
-			}
-			return true
-		}
-
-		var (
-			images     []models.DstImage
-			installErr error
-		)
-
-		if imageParse {
-			if !utils.IsValidURL(reqForm.Proxy) && reqForm.Proxy != "" {
-				logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, reqForm.Proxy)
-				c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-				return
-			}
-
-			step := plugin.Step
-
-			step, images, installErr = initTmi(reqForm.Proxy, step)
-			plugin.Step = step
-			if installErr != nil {
-				if !updateDb(plugin) {
-					return
-				}
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
-				return
-			}
-		} else {
-			images, installErr = installTMIR("")
-			if installErr != nil {
-				plugin.Step = 5
-				if !updateDb(plugin) {
-					return
-				}
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
-				return
-			}
-			plugin.Step = 100
-		}
-
-		if err := h.dstImageDao.InitImages(images); err != nil {
-			logger.Logger.Errorf("更新数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		plugin.Status = true
-		if !updateDb(plugin) {
-			return
-		}
-
-		if err := h.dstImageDao.DeleteNoName(); err != nil {
-			logger.Logger.Warnf("清理异常图片失败: %v", err)
-		}
-
+	if plugin.Step == 100 {
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
 		return
 	}
 
-	logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
-	c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-	return
+	updateDb := func(plugin *models.Plugin) bool {
+		if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
+			logger.Logger.Errorf("更新数据库失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return false
+		}
+		return true
+	}
+
+	var (
+		images     []models.DstImage
+		installErr error
+	)
+
+	if imageParse {
+		if !utils.IsValidURL(proxy) && proxy != "" {
+			logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, proxy)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+
+		step := plugin.Step
+
+		step, images, installErr = initTmi(proxy, step)
+		plugin.Step = step
+		if installErr != nil {
+			if !updateDb(plugin) {
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
+			return
+		}
+	} else {
+		images, installErr = installTMIR("")
+		if installErr != nil {
+			plugin.Step = 5
+			if !updateDb(plugin) {
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
+			return
+		}
+		plugin.Step = 100
+	}
+
+	if err := h.dstImageDao.InitImages(images); err != nil {
+		logger.Logger.Errorf("更新数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	plugin.Status = true
+	if !updateDb(plugin) {
+		return
+	}
+
+	if err := h.dstImageDao.DeleteNoName(); err != nil {
+		logger.Logger.Warnf("清理异常图片失败: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
+}
+
+func (h *Handler) installAiChatPlugin(c *gin.Context, proxy string) {
+	if proxy != "" && !utils.IsValidURL(proxy) {
+		logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, proxy)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	plugin, err := h.pluginDao.GetPluginByPluginName(models.PluginChat)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	if plugin.Step == 100 {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
+		return
+	}
+
+	if err := installAiChatWiki(proxy); err != nil {
+		logger.Logger.Errorf("安装 AI Chat 插件失败: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
+		return
+	}
+
+	plugin.Step = 100
+	plugin.Status = true
+	if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
+		logger.Logger.Errorf("更新数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
 }
 
 func (h *Handler) pluginActionPost(c *gin.Context) {
@@ -701,87 +742,118 @@ func (h *Handler) pluginActionPost(c *gin.Context) {
 		return
 	}
 
-	var pluginDir string
+	if !h.preparePluginAction(c, plugin, reqForm.Name, reqForm.Type) {
+		return
+	}
 
-	switch reqForm.Type {
+	if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	if !h.applyPluginRuntimeAction(c, reqForm.Name, reqForm.Type) {
+		return
+	}
+
+	h.notifyPluginAction(c, reqForm.Name, reqForm.Type)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "exec success"), "data": nil})
+}
+
+func (h *Handler) preparePluginAction(c *gin.Context, plugin *models.Plugin, name, action string) bool {
+	switch action {
 	case "enable":
 		plugin.Status = true
 	case "disable":
 		plugin.Status = false
 	case "update":
-		if reqForm.Name == models.PluginTmi {
-			var images []models.DstImage
-			images, err = installTMIR("")
-			if err != nil {
-				logger.Logger.Errorf("更新插件失败: %v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
-				return
-			}
-			err = h.dstImageDao.InitImages(images)
-			if err != nil {
-				logger.Logger.Errorf("更新数据库失败, err: %v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-				return
-			}
-			err = h.dstImageDao.DeleteNoName()
-			if err != nil {
-				logger.Logger.Warnf("清理异常图片失败: %v", err)
+		if name == models.PluginChat {
+			logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return false
+		}
+		if name == models.PluginTmi {
+			if !h.updateTmiPlugin(c) {
+				return false
 			}
 			plugin.Status = true
 		}
 	case "uninstall":
-		if reqForm.Name == models.PluginTmi {
-			pluginDir = utils.PluginTmiPath
-		} else if reqForm.Name == models.PluginChat {
-			pluginDir = utils.PluginAiChatPath
-		}
+		pluginDir := pluginDirectory(name)
 		if pluginDir == "" {
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return
+			return false
 		}
-		err = utils.RemoveDir(pluginDir)
-		if err != nil {
+		if err := utils.RemoveDir(pluginDir); err != nil {
 			logger.Logger.Errorf("卸载插件失败: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
-			return
+			return false
 		}
 		plugin.Step = 0
 		plugin.Status = false
 	default:
-		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
+		return false
 	}
+	return true
+}
 
-	err = h.pluginDao.UpdatePlugin(plugin)
+func (h *Handler) updateTmiPlugin(c *gin.Context) bool {
+	images, err := installTMIR("")
 	if err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
+		logger.Logger.Errorf("更新插件失败: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+		return false
 	}
-	if reqForm.Name == models.PluginChat {
-		switch reqForm.Type {
-		case "enable":
-			if err = h.aiManager.Start(); err != nil {
-				logger.Logger.Errorf("启动 AI 对话服务失败: %v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
-				return
-			}
-		case "disable":
-			h.aiManager.StopAll()
-		case "uninstall":
-			h.aiManager.StopAll()
-		}
+	if err = h.dstImageDao.InitImages(images); err != nil {
+		logger.Logger.Errorf("更新数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return false
+	}
+	if err = h.dstImageDao.DeleteNoName(); err != nil {
+		logger.Logger.Warnf("清理异常图片失败: %v", err)
+	}
+	return true
+}
+
+func pluginDirectory(name string) string {
+	switch name {
+	case models.PluginTmi:
+		return utils.PluginTmiPath
+	case models.PluginChat:
+		return utils.PluginAiChatPath
+	default:
+		return ""
+	}
+}
+
+func (h *Handler) applyPluginRuntimeAction(c *gin.Context, name, action string) bool {
+	if name != models.PluginChat {
+		return true
 	}
 
+	switch action {
+	case "enable":
+		if err := h.aiManager.Start(); err != nil {
+			logger.Logger.Errorf("启动 AI 对话服务失败: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+			return false
+		}
+	case "disable", "uninstall":
+		h.aiManager.StopAll()
+	}
+	return true
+}
+
+func (h *Handler) notifyPluginAction(c *gin.Context, name, action string) {
 	// webhook 通知
 	webhook.Snd.Send(webhook.EventPluginUpdated, 0, map[string]interface{}{
 		"username":    c.GetString("username"),
-		"plugin_name": reqForm.Name,
-		"action":      reqForm.Type,
+		"plugin_name": name,
+		"action":      action,
 	})
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "exec success"), "data": nil})
 }
 
 func (h *Handler) pluginStatusGet(c *gin.Context) {

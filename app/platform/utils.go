@@ -130,8 +130,68 @@ const stexDir = utils.PluginTmiPath + "/stex"
 const StexBin = stexDir + "/bin/stex"
 const tmirID = utils.TmirID
 const gameImagesPath = utils.PluginTmiPath + "/dst_images"
+const aiChatWikiURL = "https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/aichat/wiki/wiki.zip"
 
 var tmirPath = fmt.Sprintf("%s/tmir/steamapps/workshop/content/322330/%d/scripts/TMIR/itemlist/lists", utils.PluginTmiPath, utils.TmirID)
+
+func installAiChatWiki(proxy string) error {
+	downloadURL := aiChatWikiURL
+	if proxy != "" {
+		if proxy[len(proxy)-1] != '/' {
+			proxy += "/"
+		}
+		downloadURL = proxy + aiChatWikiURL
+	}
+
+	if err := utils.EnsureDirExists(utils.PluginAiChatPath); err != nil {
+		return fmt.Errorf("创建 AI Chat 插件目录失败: %w", err)
+	}
+	temporaryDir, err := os.MkdirTemp(utils.PluginAiChatPath, ".wiki-install-")
+	if err != nil {
+		return fmt.Errorf("创建 Wiki 临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(temporaryDir)
+
+	client := &http.Client{Timeout: utils.HttpTimeout * time.Second}
+	resp, err := client.Get(downloadURL)
+	if err != nil {
+		return fmt.Errorf("下载 Wiki 压缩包失败: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("下载 Wiki 压缩包失败，HTTP 状态码: %s", resp.Status)
+	}
+
+	zipPath := filepath.Join(temporaryDir, "wiki.zip")
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		return fmt.Errorf("创建 Wiki 压缩包失败: %w", err)
+	}
+	_, copyErr := io.Copy(zipFile, resp.Body)
+	closeErr := zipFile.Close()
+	if copyErr != nil {
+		return fmt.Errorf("保存 Wiki 压缩包失败: %w", copyErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("关闭 Wiki 压缩包失败: %w", closeErr)
+	}
+
+	temporaryWikiDir := filepath.Join(temporaryDir, "wiki")
+	if err := utils.Unzip(zipPath, temporaryWikiDir); err != nil {
+		return fmt.Errorf("解压 Wiki 压缩包失败: %w", err)
+	}
+	if err := os.Remove(zipPath); err != nil {
+		return fmt.Errorf("清理 Wiki 压缩包失败: %w", err)
+	}
+
+	if err := utils.RemoveDir(utils.PluginAiChatWikiPath); err != nil {
+		return fmt.Errorf("清理旧 Wiki 目录失败: %w", err)
+	}
+	if err := os.Rename(temporaryWikiDir, utils.PluginAiChatWikiPath); err != nil {
+		return fmt.Errorf("替换 Wiki 目录失败: %w", err)
+	}
+	return nil
+}
 
 // 初始化Tmi工具，仅支持ubuntu24及以上
 func initTmi(proxy string, step int) (int, []models.DstImage, error) {

@@ -185,7 +185,7 @@ var tools = menuItem{
 			Title:     "toolsAI",
 			To:        "/tools/aichat",
 			Component: "tools/aichat",
-			Icon:      "ri-ghost-4-line",
+			Icon:      "ri-chat-smile-ai-3-line",
 			Links:     nil,
 		},
 	},
