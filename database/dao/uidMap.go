@@ -24,6 +24,18 @@ func (d *UidMapDAO) GetUidMapByRoomID(roomID int) (*[]models.UidMap, error) {
 	return &uidMaps, err
 }
 
+func (d *UidMapDAO) ListUidMaps(roomID int, q string, page, pageSize int) (*PaginatedResult[models.UidMap], error) {
+	condition := "room_id = ?"
+	args := []any{roomID}
+	if q != "" {
+		search := "%" + q + "%"
+		condition += " AND (uid LIKE ? OR nickname LIKE ?)"
+		args = append(args, search, search)
+	}
+
+	return d.Query(page, pageSize, condition, args...)
+}
+
 func (d *UidMapDAO) UpdateUidMap(uidMap *models.UidMap) error {
 	if uidMap.UID == "" || uidMap.Nickname == "" || uidMap.RoomID == 0 {
 		return fmt.Errorf("三个字段不能为空")

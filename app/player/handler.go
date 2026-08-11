@@ -171,33 +171,43 @@ func (h *Handler) listGet(c *gin.Context) {
 
 func (h *Handler) uidMapGet(c *gin.Context) {
 	type ReqForm struct {
-		RoomID int `json:"roomID" form:"roomID"`
+		RoomID   int    `json:"roomID" form:"roomID"`
+		Q        string `json:"q" form:"q"`
+		Page     int    `json:"page" form:"page"`
+		PageSize int    `json:"pageSize" form:"pageSize"`
 	}
-	var reqForm ReqForm
+	var (
+		reqForm ReqForm
+		data    dao.PaginatedResult[models.UidMap]
+	)
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": data})
 		return
 	}
 
 	if reqForm.RoomID == 0 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": data})
 		return
 	}
 
 	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": data})
 		return
 	}
 
-	uidMap, err := h.uidMapDao.GetUidMapByRoomID(reqForm.RoomID)
+	uidMap, err := h.uidMapDao.ListUidMaps(reqForm.RoomID, reqForm.Q, reqForm.Page, reqForm.PageSize)
 	if err != nil {
 		logger.Logger.Errorf("获取uidmap失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": data})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": uidMap})
+	data = *uidMap
+	if data.Data == nil {
+		data.Data = []models.UidMap{}
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
 func (h *Handler) statisticsOnlineTimeGet(c *gin.Context) {
