@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -161,6 +162,54 @@ func (h *Handler) downloadedModsGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": downloadedMods})
+}
+
+func (h *Handler) downloadedModIDsGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `form:"roomID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": []int{}})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": []int{}})
+		return
+	}
+
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": []int{}})
+		return
+	}
+
+	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": []int{}})
+		return
+	}
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	downloadedMods := game.GetDownloadedMods()
+	modIDs := make([]int, 0, len(*downloadedMods))
+	seen := make(map[int]struct{}, len(*downloadedMods))
+	for _, downloadedMod := range *downloadedMods {
+		if downloadedMod.ID <= 0 {
+			continue
+		}
+		if _, exists := seen[downloadedMod.ID]; exists {
+			continue
+		}
+
+		seen[downloadedMod.ID] = struct{}{}
+		modIDs = append(modIDs, downloadedMod.ID)
+	}
+	sort.Ints(modIDs)
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modIDs})
 }
 
 func (h *Handler) settingModConfigStructGet(c *gin.Context) {
