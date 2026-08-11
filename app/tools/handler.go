@@ -632,7 +632,7 @@ func (h *Handler) categoryItemsGet(c *gin.Context) {
 			for index, img := range images.Data {
 				if img.Prefab == k {
 					images.Data[index].Image = v
-					err = h.dstImageDao.UpdateImage(&img)
+					err = h.dstImageDao.UpdateImage(&images.Data[index])
 					if err != nil {
 						logger.Logger.Errorf("更新图片失败: %v, 跳过", err)
 					}
