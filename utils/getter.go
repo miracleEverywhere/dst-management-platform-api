@@ -3,6 +3,9 @@ package utils
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
+	"os"
+	"path/filepath"
 )
 
 func GetSteamApiKey() string {
@@ -25,4 +28,16 @@ func GetDstToken() string {
 	}
 
 	return decoded
+}
+
+// ClusterPath 饥荒存档根目录
+var ClusterPath = mustResolveClusterPath()
+
+func mustResolveClusterPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(fmt.Errorf("获取当前用户 Home 目录失败: %w", err))
+	}
+
+	return filepath.Join(homeDir, ".klei", "DoNotStarveTogether")
 }

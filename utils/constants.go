@@ -42,9 +42,6 @@ const SteamApiModSearch = "http://api.steampowered.com/IPublishedFileService/Que
 
 const DstBlockList = "https://dst-block.miraclesses.top/api/blacklist/public"
 
-// ClusterPath 饥荒存档根目录
-const ClusterPath = ".klei/DoNotStarveTogether"
-
 // DmpFiles 平台文件根目录
 const DmpFiles = "dmp_files"
 
