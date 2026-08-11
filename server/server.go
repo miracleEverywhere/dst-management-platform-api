@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
@@ -86,6 +87,20 @@ func Run() {
 	}))
 	// 静态资源缓存
 	r.Use(middleware.CacheControl())
+
+	// 启用Gzip压缩文本类型, 默认级别level6, 1kb开始压缩
+	// 不能使用 gzip.WithCustomShouldCompressFn，因为c.JSON()拿不到Content-Type类型，这样需要手写write方法。
+	// 先个蠢办法把，后续使用同一返回再优化这里。
+	if !noHttpCompression {
+		r.Use(gzip.Gzip(
+			gzip.DefaultCompression,
+			gzip.WithMinLength(1024),
+			gzip.WithExcludedExtensions([]string{
+				".woff", ".woff2", ".ttf",
+				".png", ".jpeg", "jpg", ".gif", ".webp", ".ico",
+				".zip", ".gz", ".tar", ".rar", ".7z",
+			})))
+	}
 
 	// debug日志等级下，注册pprof路由
 	if logLevel == "debug" {
