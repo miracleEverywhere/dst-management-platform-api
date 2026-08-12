@@ -26,6 +26,27 @@ func (d *RoomDAO) UpdateRoom(room *models.Room) error {
 	return err
 }
 
+// UpdateConfiguration 在同一事务中更新房间、世界和房间设置。
+func (d *RoomDAO) UpdateConfiguration(room *models.Room, worlds *[]models.World, setting *models.RoomSetting) error {
+	if room == nil || worlds == nil || setting == nil {
+		return gorm.ErrInvalidData
+	}
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(room).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", room.ID).Delete(&models.World{}).Error; err != nil {
+			return err
+		}
+		if len(*worlds) > 0 {
+			if err := tx.Create(worlds).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Save(setting).Error
+	})
+}
+
 func (d *RoomDAO) GetRoomByID(id int) (*models.Room, error) {
 	var room models.Room
 	err := d.db.Where("id = ?", id).First(&room).Error
