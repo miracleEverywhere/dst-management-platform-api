@@ -25,7 +25,7 @@ KEY_FILE=""
 
 # 加速节点
 ACCELERATION_SITE=(
-	"gh.llkk.cc"
+	"gh-proxy.com"
 	"github.dpik.top"
 	"ghfast.top"
 )
