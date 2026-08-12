@@ -12,4 +12,5 @@ func (System) TableName() string {
 var (
 	JwtSecret        = "jwt_secret"
 	AIBaseSettingKey = "ai_base_setting"
+	ReadmeKey        = "readme"
 )

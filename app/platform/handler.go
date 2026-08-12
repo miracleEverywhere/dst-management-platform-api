@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,34 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
 )
+
+func (h *Handler) readmeGet(c *gin.Context) {
+	readme, err := h.systemDao.Get(models.ReadmeKey)
+	if err != nil {
+		logger.Logger.Errorf("获取README阅读状态失败: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	value, err := strconv.ParseBool(readme.Value)
+	if err != nil {
+		logger.Logger.Errorf("README阅读状态无效: %q", readme.Value)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": value})
+}
+
+func (h *Handler) readmePost(c *gin.Context) {
+	if err := h.systemDao.Set(models.ReadmeKey, "true"); err != nil {
+		logger.Logger.Errorf("更新README阅读状态失败: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": true})
+}
 
 func (h *Handler) overviewGet(c *gin.Context) {
 	type Data struct {

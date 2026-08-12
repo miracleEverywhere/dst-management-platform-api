@@ -12,6 +12,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	{
 		platform := v.Group("platform")
 		{
+			platform.GET("/readme", middleware.TokenCheck(), h.readmeGet)
+			platform.POST("/readme", middleware.TokenCheck(), h.readmePost)
 			platform.GET("/overview", middleware.TokenCheck(), middleware.AdminOnly(), h.overviewGet)
 			platform.GET("/game_version", middleware.TokenCheck(), gameVersionGet)
 			platform.GET("/webssh", h.websshWS)

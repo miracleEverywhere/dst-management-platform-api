@@ -40,6 +40,8 @@ func (d *SystemDAO) Set(key, value string) error {
 
 func (d *SystemDAO) initSystem() {
 	d.initJWTSecret()
+	d.initReadme()
+	d.initAIBaseSetting()
 }
 
 func (d *SystemDAO) initJWTSecret() {
@@ -59,6 +61,45 @@ func (d *SystemDAO) initJWTSecret() {
 
 	db.JwtSecret = jwtSecret.Value
 	logger.Logger.Debug("jwt秘钥已写入缓存")
+}
+
+func (d *SystemDAO) initReadme() {
+	logger.Logger.Debug("正在检查README阅读状态")
+	_, err := d.Get(models.ReadmeKey)
+	if err == nil {
+		logger.Logger.Debug("README阅读状态已存在")
+		return
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		panic("数据库初始化失败: " + err.Error())
+	}
+
+	if err = d.Set(models.ReadmeKey, "false"); err != nil {
+		panic("数据库初始化失败: " + err.Error())
+	}
+	logger.Logger.Debug("README阅读状态创建完成")
+}
+
+func (d *SystemDAO) initAIBaseSetting() {
+	logger.Logger.Debug("正在检查AI基础配置")
+	_, err := d.Get(models.AIBaseSettingKey)
+	if err == nil {
+		logger.Logger.Debug("AI基础配置已存在")
+		return
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		panic("数据库初始化失败: " + err.Error())
+	}
+
+	setting := models.DefaultAIBaseSetting()
+	data, err := json.Marshal(&setting)
+	if err != nil {
+		panic("AI基础配置初始化失败: " + err.Error())
+	}
+	if err = d.Set(models.AIBaseSettingKey, string(data)); err != nil {
+		panic("数据库初始化失败: " + err.Error())
+	}
+	logger.Logger.Debug("AI基础配置创建完成")
 }
 
 func (d *SystemDAO) GetAIBaseSetting() (*models.AIBaseSetting, error) {
