@@ -14,7 +14,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		{
 			platform.GET("/overview", middleware.TokenCheck(), middleware.AdminOnly(), h.overviewGet)
 			platform.GET("/game_version", middleware.TokenCheck(), gameVersionGet)
-			platform.GET("/webssh", websshWS)
+			platform.GET("/webssh", h.websshWS)
 			platform.GET("/os_info", middleware.TokenCheck(), osInfoGet)
 			platform.GET("/metrics", middleware.TokenCheck(), middleware.AdminOnly(), metricsGet)
 			platform.GET("/global_settings", middleware.TokenCheck(), middleware.AdminOnly(), h.globalSettingsGet)
