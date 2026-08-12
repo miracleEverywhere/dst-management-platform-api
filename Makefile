@@ -3,18 +3,18 @@ EMBED_DIR := embedFS/dist
 
 .PHONY: all frontend backend clean
 
+# 构建前端 构建后端
 all: frontend-only copy-frontend backend-only
 
+# 构建前端并将产物复制到后端
 frontend2backend: frontend-only copy-frontend
 
+# 构建前端
 frontend-only:
 	@echo "=== Building frontend ==="
 	cd $(FRONTEND_DIR) && npx vite build
 
-clean-embed:
-	@echo "=== Cleaning embedFS/dist ==="
-	rm -rf $(EMBED_DIR)/*
-
+# 构建后端
 backend-only:
 	@echo "=== Building backend ==="
 	CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
