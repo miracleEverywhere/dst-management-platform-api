@@ -30,6 +30,17 @@ Thanks to the following developers for their code contributions to this project.
 
 ![https://github.com/miracleEverywhere/dst-management-platform-api/graphs/contributors](https://contrib.rocks/image?repo=miracleEverywhere/dst-management-platform-api)
 
+Thanks to the following group members for their contributions to the AI chat knowledge base.
+
+<div>
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=2446583163&s=100" style="width: 60px; height: 60px;" alt="2446583163">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=1770072201&s=100" style="width: 60px; height: 60px;" alt="1770072201">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=1643924918&s=100" style="width: 60px; height: 60px;" alt="1643924918">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=1810655449&s=100" style="width: 60px; height: 60px;" alt="1810655449">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=2765013630&s=100" style="width: 60px; height: 60px;" alt="2765013630">
+    <img src="https://q1.qlogo.cn/g?b=qq&nk=3230742618&s=100" style="width: 60px; height: 60px;" alt="3230742618">
+</div>
+
 ---
 
 ## :balloon: Screenshots
