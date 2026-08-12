@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -163,6 +164,16 @@ func (h *Handler) roomPut(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 		return
 	}
+	if len(reqForm.WorldData) == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	// 关联数据的房间归属由服务端确定，不能信任客户端提交的 RoomID。
+	roomID := reqForm.RoomData.ID
+	reqForm.RoomSettingData.RoomID = roomID
+	for i := range reqForm.WorldData {
+		reqForm.WorldData[i].RoomID = roomID
+	}
 
 	// 端口冲突检测
 	var ports []int
@@ -191,23 +202,9 @@ func (h *Handler) roomPut(c *gin.Context) {
 		return
 	}
 
-	err := h.roomDao.UpdateRoom(&reqForm.RoomData)
+	err := h.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
 	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	err = h.worldDao.UpdateWorlds(&reqForm.WorldData)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	err = h.roomSettingDao.UpdateRoomSetting(&reqForm.RoomSettingData)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
+		logger.Logger.Errorf("事务更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
@@ -535,7 +532,13 @@ func (h *Handler) uploadPost(c *gin.Context) {
 
 	//保存上传的文件
 	unzipPath := fmt.Sprintf("%s/", uploadPath)
-	savePath := fmt.Sprintf("%s/%s", unzipPath, file.Filename)
+	filename := filepath.Base(file.Filename)
+	if filename == "." || filename != file.Filename || strings.ContainsAny(filename, `/\\\x00`) {
+		logger.Logger.Warnf("上传文件名包含非法路径, filename: %q", file.Filename)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	savePath := filepath.Join(uploadPath, filename)
 	if err = c.SaveUploadedFile(file, savePath); err != nil {
 		logger.Logger.Errorf("文件保存失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{
