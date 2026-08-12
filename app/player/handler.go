@@ -168,7 +168,7 @@ func (h *Handler) listGet(c *gin.Context) {
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	list := game.GetPlayerList(reqForm.ListType)
-	logger.Logger.Debug(utils.StructToFlatString(list))
+	//logger.Logger.Debug(utils.StructToFlatString(list))
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": list})
 }
