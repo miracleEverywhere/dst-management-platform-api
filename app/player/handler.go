@@ -93,6 +93,10 @@ func (h *Handler) listPost(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "add success"), "data": nil})
 	case "delete":
+		if len(reqForm.UIDS) == 0 || reqForm.UIDS[0] == "" {
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
 		err = game.RemovePlayerList(reqForm.UIDS[0], reqForm.ListType)
 		if err != nil {
 			logger.Logger.Infof("修改player list失败: %v", err)
