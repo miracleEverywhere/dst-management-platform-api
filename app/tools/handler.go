@@ -234,6 +234,10 @@ func (h *Handler) backupDownloadGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
 	// 4. 构建文件路径
 	filePath := fmt.Sprintf("dmp_files/backup/%d/%s", reqForm.RoomID, reqForm.Filename)
 
