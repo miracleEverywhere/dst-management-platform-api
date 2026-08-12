@@ -115,13 +115,24 @@ func gameVersionGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": scheduler.GetDSTVersion()})
 }
 
-func websshWS(c *gin.Context) {
+func (h *Handler) websshWS(c *gin.Context) {
 	// JWT 认证
 	token := c.Query("token")
 	tokenSecret := db.JwtSecret
 	claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
 	if err != nil {
 		logger.Logger.Errorf("token认证失败: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
+		return
+	}
+	user, err := h.userDao.GetUserByUsername(claims.Username)
+	if err != nil || user.Username == "" || user.Disabled || user.Role != "admin" || user.TokenVersion != claims.TokenVersion {
+		logger.Logger.Warnf("WebSSH用户状态无效, username: %s", claims.Username)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
+		return
+	}
+	if !db.ValidateTokenVersion(claims.Username, claims.TokenVersion) {
+		logger.Logger.Warnf("WebSSH token已撤销, username: %s", claims.Username)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
 		return
 	}
@@ -319,6 +330,14 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 	var reqForm models.GlobalSetting
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	// PlayerGetFrequency 秒
+	// PlayerInfoSaveTime 天
+	if reqForm.PlayerGetFrequency <= 0 || reqForm.PlayerGetFrequency > 86400 ||
+		reqForm.PlayerInfoSaveTime <= 0 || reqForm.PlayerInfoSaveTime > 3650 ||
+		(reqForm.SysMetricsEnable && (reqForm.SysMetricsSetting <= 0 || reqForm.SysMetricsSetting > 86400)) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
