@@ -2,8 +2,6 @@ package dst
 
 import (
 	"context"
-	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
 )
 
 // SaveAll 保存所有配置文件
@@ -216,7 +214,7 @@ func (g *Game) RemovePlayerListAll(listType string) error {
 func (g *Game) GetPlayerList(listType string) []string {
 	switch listType {
 	case "adminlist":
-		logger.Logger.Debug(utils.StructToFlatString(g.adminlist))
+		//logger.Logger.Debug(utils.StructToFlatString(g.adminlist))
 		return g.adminlist
 	case "blocklist":
 		return g.blocklist

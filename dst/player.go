@@ -33,7 +33,6 @@ func getPlayerList(filepath string) []string {
 	}
 	var uidList []string
 	for _, uid := range al {
-		logger.Logger.Debug(uid)
 		if uid == "" || strings.HasPrefix(uid, " ") {
 			continue
 		}
