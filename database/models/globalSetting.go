@@ -2,8 +2,8 @@ package models
 
 type GlobalSetting struct {
 	ID                 int    `gorm:"primaryKey;not null;column:id" json:"id"`
-	PlayerGetFrequency int    `gorm:"column:player_get_frequency" json:"playerGetFrequency"`
-	PlayerInfoSaveTime int    `gorm:"column:player_info_save_time" json:"playerInfoSaveTime"`
+	PlayerGetFrequency int    `gorm:"column:player_get_frequency" json:"playerGetFrequency"`  // 秒
+	PlayerInfoSaveTime int    `gorm:"column:player_info_save_time" json:"playerInfoSaveTime"` // 天
 	UIDMaintainEnable  bool   `gorm:"column:uid_maintain_enable" json:"UIDMaintainEnable"`
 	SysMetricsEnable   bool   `gorm:"column:sys_metrics_enable" json:"sysMetricsEnable"`
 	SysMetricsSetting  int    `gorm:"column:sys_metrics_setting" json:"sysMetricsSetting"`
