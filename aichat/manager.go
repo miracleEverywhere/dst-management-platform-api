@@ -37,6 +37,7 @@ func newManager(roomAISettingDao *dao.RoomAISettingDAO, systemDao *dao.SystemDAO
 	aiManager := &Manager{
 		roomAISettingDao: roomAISettingDao,
 		systemDao:        systemDao,
+		pluginDao:        pluginDao,
 		client:           newClient(),
 		ctx:              ctx,
 		cancel:           cancel,
@@ -72,7 +73,7 @@ func (m *Manager) start() error {
 	}
 	var reloadErrors []error
 	for _, setting := range settings {
-		if err = m.reload(setting.RoomID); err != nil {
+		if err = m.reloadRoom(setting.RoomID); err != nil {
 			reloadErr := fmt.Errorf("roomID %d: %w", setting.RoomID, err)
 			reloadErrors = append(reloadErrors, reloadErr)
 			logger.Logger.Errorf("启动房间 AI 对话监听失败, err: %v", reloadErr)
@@ -81,23 +82,38 @@ func (m *Manager) start() error {
 	return errors.Join(reloadErrors...)
 }
 
-func (m *Manager) restart() error {
-	m.lifecycle.Lock()
-	if m.closed {
-		m.lifecycle.Unlock()
-		return context.Canceled
+func (m *Manager) reload(roomIDs ...int) error {
+	started, err := m.ensureActive()
+	if err != nil {
+		return err
 	}
-	active := m.active
-	m.lifecycle.Unlock()
-	if !active {
+	if len(roomIDs) == 0 {
+		if started {
+			return nil
+		}
+		m.lifecycle.Lock()
+		active := m.active
+		m.lifecycle.Unlock()
+		if !active {
+			return nil
+		}
+		m.stopAll()
+		return m.start()
+	}
+
+	if started {
 		return nil
 	}
-
-	m.stopAll()
-	return m.start()
+	var reloadErrors []error
+	for _, roomID := range roomIDs {
+		if err = m.reloadRoom(roomID); err != nil {
+			reloadErrors = append(reloadErrors, fmt.Errorf("roomID %d: %w", roomID, err))
+		}
+	}
+	return errors.Join(reloadErrors...)
 }
 
-func (m *Manager) reload(roomID int) error {
+func (m *Manager) reloadRoom(roomID int) error {
 	m.lifecycle.Lock()
 	defer m.lifecycle.Unlock()
 	m.stopRoom(roomID)
@@ -148,18 +164,28 @@ func (m *Manager) reload(roomID int) error {
 	return nil
 }
 
-func (m *Manager) reloadAll() error {
-	settings, err := m.roomAISettingDao.ListEnabled()
+// ensureActive 恢复插件已启用但管理器尚未激活的运行状态。
+// 返回值表示本次调用是否启动了管理器。
+func (m *Manager) ensureActive() (bool, error) {
+	m.lifecycle.Lock()
+	if m.closed {
+		m.lifecycle.Unlock()
+		return false, context.Canceled
+	}
+	if m.active {
+		m.lifecycle.Unlock()
+		return false, nil
+	}
+	m.lifecycle.Unlock()
+
+	plugin, err := m.pluginDao.GetPluginByPluginName(models.PluginChat)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("获取 %s 插件状态失败: %w", models.PluginChat, err)
 	}
-	var reloadErrors []error
-	for _, setting := range settings {
-		if err = m.reload(setting.RoomID); err != nil {
-			reloadErrors = append(reloadErrors, fmt.Errorf("roomID %d: %w", setting.RoomID, err))
-		}
+	if !plugin.Status {
+		return false, nil
 	}
-	return errors.Join(reloadErrors...)
+	return true, m.start()
 }
 
 func (m *Manager) stopAll() {

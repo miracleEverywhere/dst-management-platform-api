@@ -827,8 +827,8 @@ func (h *Handler) aiBaseSettingPut(c *gin.Context) {
 		"chatModel":      reqForm.ChatModel,
 		"embeddingModel": reqForm.EmbeddingModel,
 	})
-	if err := h.aiManager.Restart(); err != nil {
-		logger.Logger.Errorf("重启 AI 对话服务失败, err: %v", err)
+	if err := h.aiManager.Reload(); err != nil {
+		logger.Logger.Errorf("重载 AI 对话服务失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
 		return
 	}

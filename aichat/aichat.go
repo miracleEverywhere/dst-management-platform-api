@@ -16,6 +16,7 @@ import (
 type Manager struct {
 	roomAISettingDao *dao.RoomAISettingDAO
 	systemDao        *dao.SystemDAO
+	pluginDao        *dao.PluginDAO
 	client           *aiClient
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -57,11 +58,6 @@ func (m *Manager) Start() error {
 	return m.start()
 }
 
-// Restart 重启当前已激活的 AI 对话监听，插件未启用时保持停止状态。
-func (m *Manager) Restart() error {
-	return m.restart()
-}
-
 // StopAll 停止所有房间的 AI 对话监听
 func (m *Manager) StopAll() {
 	m.stopAll()
@@ -74,14 +70,10 @@ func (m *Manager) StopRoom(roomID int) {
 	m.stopRoom(roomID)
 }
 
-// Reload 重新加载指定房间的 AI 配置并重启监听
-func (m *Manager) Reload(roomID int) error {
-	return m.reload(roomID)
-}
-
-// ReloadAll 重新加载所有已启用房间的 AI 对话监听。
-func (m *Manager) ReloadAll() error {
-	return m.reloadAll()
+// Reload 重新加载 AI 对话监听。
+// 传入房间 ID 时只重新加载指定房间；不传参数时重新加载所有已启用房间。
+func (m *Manager) Reload(roomIDs ...int) error {
+	return m.reload(roomIDs...)
 }
 
 // Close 关闭 AI 对话服务，释放所有资源
