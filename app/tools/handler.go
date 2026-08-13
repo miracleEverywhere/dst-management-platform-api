@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -216,6 +217,7 @@ func (h *Handler) backupDownloadGet(c *gin.Context) {
 	type ReqForm struct {
 		RoomID   int    `json:"roomID" form:"roomID"`
 		Filename string `json:"filename" form:"filename"`
+		Token    string `json:"token" form:"token"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
@@ -223,7 +225,16 @@ func (h *Handler) backupDownloadGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
-
+	// 1. 验证token
+	tokenSecret := db.JwtSecret
+	claims, err := utils.ValidateJWT(reqForm.Token, []byte(tokenSecret))
+	if err != nil {
+		logger.Logger.Errorf("token认证失败: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
+		return
+	}
+	c.Set("username", claims.Username)
+	c.Set("role", claims.Role)
 	// 2. 参数验证
 	if reqForm.RoomID == 0 || reqForm.Filename == "" {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
@@ -240,7 +251,7 @@ func (h *Handler) backupDownloadGet(c *gin.Context) {
 	}
 	// 4. 构建文件路径
 	filePath := fmt.Sprintf("dmp_files/backup/%d/%s", reqForm.RoomID, reqForm.Filename)
-
+	c.Header("Content-Disposition", "attachment; filename="+url.QueryEscape(reqForm.Filename))
 	c.File(filePath)
 }
 

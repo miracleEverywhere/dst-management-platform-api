@@ -11,13 +11,15 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	v := r.Group(utils.ApiVersion)
 	{
 		tools := v.Group("tools")
+		// 使用浏览器A标签Get，无法带header认证 ，token验证放到handle里面执行
+		// 暂时需要.zip后缀，否则会进行Gzip压缩
+		tools.GET("/backup/download.zip", h.backupDownloadGet)
 		tools.Use(middleware.TokenCheck())
 		{
 			tools.GET("/backup", h.backupGet)
 			tools.POST("/backup", h.backupPost)
 			tools.DELETE("/backup", h.backupDelete)
 			tools.POST("/backup/restore", h.backupRestorePost)
-			tools.GET("/backup/download", h.backupDownloadGet)
 			tools.GET("/announce", h.announceGet)
 			tools.PUT("/announce", h.announcePut)
 			tools.GET("/map", h.mapGet)
