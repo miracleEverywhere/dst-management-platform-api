@@ -714,7 +714,7 @@ func (h *Handler) aiSettingGet(c *gin.Context) {
 	if setting.MaxResults == 0 {
 		setting.MaxResults = models.DefaultAIWikiMaxResults
 	}
-	if setting.MaxReplyLength == 0 {
+	if setting.MaxReplyLength < models.MinAIReplyLength {
 		setting.MaxReplyLength = models.DefaultAIReplyMaxLength
 	}
 

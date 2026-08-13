@@ -132,6 +132,10 @@ func (m *Manager) reloadRoom(roomID int) error {
 	if !setting.Enabled {
 		return nil
 	}
+	// 兼容旧版本保存的 60 字默认值，升级后按新默认值运行。
+	if setting.MaxReplyLength < models.MinAIReplyLength {
+		setting.MaxReplyLength = models.DefaultAIReplyMaxLength
+	}
 	if err = validateRoomSetting(setting); err != nil {
 		return err
 	}
@@ -428,8 +432,11 @@ func (m *Manager) searchWiki(setting models.AIChatSetting, question string) stri
 }
 
 func maxReplyLength(setting models.AIChatSetting) int {
-	if setting.MaxReplyLength <= 0 {
+	if setting.MaxReplyLength < models.MinAIReplyLength {
 		return models.DefaultAIReplyMaxLength
+	}
+	if setting.MaxReplyLength > models.MaxAIReplyLength {
+		return models.MaxAIReplyLength
 	}
 	return setting.MaxReplyLength
 }

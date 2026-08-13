@@ -71,8 +71,8 @@ func validateRoomSetting(setting *models.RoomAISetting) error {
 	if setting.MaxResults < 1 || setting.MaxResults > 20 {
 		return fmt.Errorf("最大返回文档数必须在 1 到 20 之间")
 	}
-	if setting.MaxReplyLength < 1 || setting.MaxReplyLength > 180 {
-		return fmt.Errorf("AI 回复最大字数必须在 1 到 180 之间")
+	if setting.MaxReplyLength < models.MinAIReplyLength || setting.MaxReplyLength > models.MaxAIReplyLength {
+		return fmt.Errorf("AI 回复最大字数必须在 %d 到 %d 之间", models.MinAIReplyLength, models.MaxAIReplyLength)
 	}
 	return nil
 }
