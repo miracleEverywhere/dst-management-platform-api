@@ -14,6 +14,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		player.Use(middleware.TokenCheck())
 		{
 			player.GET("/online", h.onlineGet)
+			player.GET("/gantt", h.ganttGet) // 玩家在线时长甘特图
 			player.GET("/list", h.listGet)
 			player.POST("/list", h.listPost)
 			player.GET("/uidmap", h.uidMapGet)

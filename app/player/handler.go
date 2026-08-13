@@ -8,7 +8,9 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"net/http"
+	"sort"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,6 +48,133 @@ func (h *Handler) onlineGet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": players})
+}
+
+func (h *Handler) ganttGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID    int `json:"roomID" form:"roomID"`
+		TimeRange int `json:"timeRange" form:"timeRange"` // 最近多少小时
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	if reqForm.RoomID <= 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	if reqForm.TimeRange == 0 {
+		reqForm.TimeRange = 1
+	}
+	if reqForm.TimeRange < 1 || reqForm.TimeRange > 24*3650 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	var globalSetting models.GlobalSetting
+	if err := h.globalSettingDao.GetGlobalSetting(&globalSetting); err != nil {
+		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	intervalSeconds := globalSetting.PlayerGetFrequency
+	if intervalSeconds <= 0 {
+		intervalSeconds = 60
+	}
+
+	now := time.Now()
+	rangeStart := now.Add(-time.Duration(reqForm.TimeRange) * time.Hour).UnixMilli()
+	rangeEnd := now.UnixMilli()
+	intervalMillis := int64(intervalSeconds) * 1000
+
+	type ganttItem struct {
+		UID       string `json:"uid"`
+		Nickname  string `json:"nickname"`
+		Prefab    string `json:"prefab"`
+		StartTime int64  `json:"startTime"`
+		EndTime   int64  `json:"endTime"`
+		Duration  int64  `json:"duration"`
+	}
+
+	itemsByPlayer := make(map[string][]ganttItem)
+	db.PlayersStatisticMutex.Lock()
+	snapshots := db.PlayersStatistic[reqForm.RoomID]
+	for _, snapshot := range snapshots {
+		if snapshot.Timestamp <= 0 || snapshot.Timestamp > rangeEnd {
+			continue
+		}
+		start := snapshot.Timestamp
+		if start < rangeStart {
+			start = rangeStart
+		}
+		end := snapshot.Timestamp + intervalMillis
+		if end > rangeEnd {
+			end = rangeEnd
+		}
+		if start >= end {
+			continue
+		}
+
+		for _, player := range snapshot.PlayerInfo {
+			key := player.UID
+			if key == "" {
+				key = player.Nickname
+			}
+			if key == "" {
+				continue
+			}
+			items := itemsByPlayer[key]
+			item := ganttItem{
+				UID:       player.UID,
+				Nickname:  player.Nickname,
+				Prefab:    player.Prefab,
+				StartTime: start,
+				EndTime:   end,
+				Duration:  (end - start) / 1000,
+			}
+			if len(items) > 0 {
+				last := &items[len(items)-1]
+				if last.EndTime >= item.StartTime {
+					if item.EndTime > last.EndTime {
+						last.EndTime = item.EndTime
+					}
+					if item.Nickname != "" {
+						last.Nickname = item.Nickname
+					}
+					if item.Prefab != "" {
+						last.Prefab = item.Prefab
+					}
+					last.Duration = (last.EndTime - last.StartTime) / 1000
+					itemsByPlayer[key] = items
+					continue
+				}
+			}
+			itemsByPlayer[key] = append(items, item)
+		}
+	}
+	db.PlayersStatisticMutex.Unlock()
+
+	data := make([]ganttItem, 0)
+	for _, items := range itemsByPlayer {
+		data = append(data, items...)
+	}
+	sort.Slice(data, func(i, j int) bool {
+		if data[i].StartTime != data[j].StartTime {
+			return data[i].StartTime < data[j].StartTime
+		}
+		if data[i].Nickname != data[j].Nickname {
+			return data[i].Nickname < data[j].Nickname
+		}
+		return data[i].UID < data[j].UID
+	})
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
 }
 
 func (h *Handler) listPost(c *gin.Context) {
