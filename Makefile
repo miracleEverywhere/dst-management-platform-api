@@ -24,3 +24,9 @@ copy-frontend:
 	@echo "=== Copying frontend dist ==="
 	rm -rf $(EMBED_DIR)/*
 	cp -r $(FRONTEND_DIR)/dist/* $(EMBED_DIR)/
+
+help:
+	@echo ""
+	@echo "make frontend2backend    构建前端并将产物复制到后端"
+	@echo "make all                 构建前端后构建后端"
+	@echo ""
