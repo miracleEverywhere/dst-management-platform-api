@@ -17,7 +17,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/creack/pty"
@@ -621,8 +620,9 @@ func (h *Handler) pluginListGet(c *gin.Context) {
 
 func (h *Handler) pluginInstallPost(c *gin.Context) {
 	var reqForm struct {
-		Name  string `json:"name" binding:"required"`
-		Proxy string `json:"proxy"`
+		Name       string `json:"name" binding:"required"`
+		Proxy      string `json:"proxy"`
+		ImageParse *bool  `json:"imageParse"`
 	}
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
@@ -632,7 +632,12 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 
 	switch reqForm.Name {
 	case models.PluginTmi:
-		h.installTmiPlugin(c, reqForm.Proxy)
+		if reqForm.ImageParse == nil {
+			logger.Logger.Infof("请求参数缺少imageParse, api: %s", c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+		h.installTmiPlugin(c, reqForm.Proxy, *reqForm.ImageParse)
 	case models.PluginChat:
 		h.installAiChatPlugin(c, reqForm.Proxy)
 	default:
@@ -641,26 +646,7 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 	}
 }
 
-func (h *Handler) installTmiPlugin(c *gin.Context, proxy string) {
-	osInfo, err := getOSInfo()
-	if err != nil {
-		logger.Logger.Errorf("获取系统信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get os info fail"), "data": nil})
-		return
-	}
-
-	var imageParse bool
-
-	platform := osInfo.Platform
-	version := strings.Split(osInfo.PlatformVersion, ".")[0]
-
-	if platform != "ubuntu" || version != "24" {
-		logger.Logger.Warn("系统不是ubuntu 24, 跳过图片转换")
-		imageParse = false
-	} else {
-		imageParse = true
-	}
-
+func (h *Handler) installTmiPlugin(c *gin.Context, proxy string, imageParse bool) {
 	plugin, err := h.pluginDao.GetPluginByPluginName(models.PluginTmi)
 	if err != nil {
 		logger.Logger.Errorf("查询数据库失败, err: %v", err)
