@@ -3,6 +3,7 @@ package aichat
 import (
 	"context"
 	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -433,11 +434,16 @@ func maxReplyLength(setting models.AIChatSetting) int {
 	return setting.MaxReplyLength
 }
 
-// buildSystemPrompt 构建系统提示词（Wiki 上下文 + 用户设定的提示词）
-func buildSystemPrompt(setting models.AIChatSetting, wikiContext string) string {
+// buildSystemPrompt 构建系统提示词（Wiki 上下文 + 用户设定的提示词）。
+// playerPrefab 为空时不添加玩家角色上下文。
+func buildSystemPrompt(setting models.AIChatSetting, wikiContext, playerPrefab string) string {
 	// 默认提示词
 	limitPrompt := fmt.Sprintf("回答不能超过%d个字。", maxReplyLength(setting))
-	defaultPrompt := fmt.Sprintf("你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式，%s", limitPrompt)
+	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式。"
+	if playerPrefab != "" {
+		defaultPrompt += fmt.Sprintf("当前提问玩家使用的角色是 %s，请结合该角色信息理解问题。", playerPrefab)
+	}
+	defaultPrompt += limitPrompt
 	systemPrompt := strings.TrimSpace(setting.SystemPrompt)
 	if systemPrompt == "" {
 		systemPrompt = defaultPrompt
@@ -450,6 +456,27 @@ func buildSystemPrompt(setting models.AIChatSetting, wikiContext string) string 
 		return strings.Join([]string{wikiContext, "", systemPrompt}, "\n")
 	}
 	return systemPrompt
+}
+
+func currentPlayerPrefab(roomID int, uid string) string {
+	if roomID <= 0 || uid == "" {
+		return ""
+	}
+
+	db.PlayersStatisticMutex.Lock()
+	defer db.PlayersStatisticMutex.Unlock()
+
+	snapshots := db.PlayersStatistic[roomID]
+	if len(snapshots) == 0 {
+		return ""
+	}
+	players := snapshots[len(snapshots)-1].PlayerInfo
+	for _, player := range players {
+		if player.UID == uid {
+			return strings.TrimSpace(player.Prefab)
+		}
+	}
+	return ""
 }
 
 func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIChatSetting, sessions map[string]*chatSession, event chatEvent, question string) {
@@ -474,7 +501,7 @@ func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIC
 	messages := make([]chatMessage, 0, len(session.messages)+3)
 
 	// 构建系统提示词（Wiki 上下文 + 用户设定的提示词）
-	systemContent := buildSystemPrompt(setting, wikiContext)
+	systemContent := buildSystemPrompt(setting, wikiContext, currentPlayerPrefab(setting.RoomID, event.UID))
 	if systemContent != "" {
 		messages = append(messages, chatMessage{Role: "system", Content: systemContent})
 	}
