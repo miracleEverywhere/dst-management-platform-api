@@ -2,13 +2,13 @@ package models
 
 const (
 	// DefaultAIWikiMaxResults 是房间未配置最大返回文档数时使用的默认值。
-	DefaultAIWikiMaxResults = 3
+	DefaultAIWikiMaxResults = 10
 	// MinAIReplyLength 是 AI 回复字数允许的最小值。
 	MinAIReplyLength = 100
 	// MaxAIReplyLength 是 AI 回复字数允许的最大值。
 	MaxAIReplyLength = 300
 	// DefaultAIReplyMaxLength 是房间未配置 AI 回复字数时使用的默认值。
-	DefaultAIReplyMaxLength = MinAIReplyLength
+	DefaultAIReplyMaxLength = 200
 )
 
 type AIModelConfig struct {
@@ -49,8 +49,8 @@ type RoomAISetting struct {
 	RoomID         int    `gorm:"primaryKey;not null;column:room_id" json:"roomID"`
 	Enabled        bool   `gorm:"column:enabled" json:"enabled"`
 	Prefix         string `gorm:"column:prefix" json:"prefix"`
-	MaxResults     int    `gorm:"column:max_results;default:3" json:"maxResults"`
-	MaxReplyLength int    `gorm:"column:max_reply_length;default:100" json:"maxReplyLength"`
+	MaxResults     int    `gorm:"column:max_results;default:10" json:"maxResults"`
+	MaxReplyLength int    `gorm:"column:max_reply_length;default:200" json:"maxReplyLength"`
 }
 
 func (RoomAISetting) TableName() string {
