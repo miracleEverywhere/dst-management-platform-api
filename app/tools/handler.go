@@ -14,8 +14,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -240,8 +242,38 @@ func (h *Handler) backupDownloadGet(c *gin.Context) {
 	}
 	// 4. 构建文件路径
 	filePath := fmt.Sprintf("dmp_files/backup/%d/%s", reqForm.RoomID, reqForm.Filename)
-
-	c.File(filePath)
+	// 5. 构造文件名
+	fileName := reqForm.Filename
+	base64Str := strings.TrimSuffix(fileName, ".zip")
+	decodeFilename, err := utils.Base64Decode(base64Str)
+	if err != nil {
+		c.FileAttachment(filePath, fileName)
+		return
+	}
+	// 房间名，房间天数，备份时间
+	decodeFilenameParts := strings.Split(decodeFilename, "<-@dmp@->")
+	roomName := decodeFilenameParts[0]
+	cycle := decodeFilenameParts[1] + "天"
+	if len(decodeFilenameParts) != 3 {
+		c.FileAttachment(filePath, fileName)
+		return
+	}
+	// 文件名安全替换
+	var invalidChars = regexp.MustCompile(`[\x00-\x1f\\/:*?"<>|]`)
+	roomName = invalidChars.ReplaceAllString(decodeFilenameParts[0], "")
+	if roomName == "" {
+		roomName = "存档"
+	}
+	ms, err := strconv.ParseInt(decodeFilenameParts[2], 10, 64)
+	if err != nil {
+		fileName = fmt.Sprintf("%s_%s.zip", roomName, cycle)
+		c.FileAttachment(filePath, fileName)
+		return
+	}
+	ts := time.UnixMilli(ms)
+	tsStr := ts.Format("2006-01-02-15-04")
+	fileName = fmt.Sprintf("%s_%s_%s.zip", roomName, cycle, tsStr)
+	c.FileAttachment(filePath, fileName)
 }
 
 func (h *Handler) announceGet(c *gin.Context) {
