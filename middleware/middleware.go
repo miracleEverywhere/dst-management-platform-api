@@ -17,6 +17,9 @@ import (
 func TokenCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Request.Header.Get("X-DMP-TOKEN")
+		if token == "" {
+			token, _ = c.Cookie("X-DMP-TOKEN")
+		}
 		claims, err := utils.ValidateJWT(token, []byte(db.JwtSecret))
 		if err != nil {
 			logger.Logger.Warnf("未授权的访问, DMP已拦截, ip为: %s", c.ClientIP())
@@ -51,6 +54,7 @@ func TokenCheck() gin.HandlerFunc {
 				logger.Logger.Errorf("刷新Token失败：%v", err)
 			} else {
 				c.Header("X-DMP-NEW-TOKEN", token)
+				c.SetCookie("X-DMP-TOKEN", token, 3600*utils.JwtExpirationHours, `/`+utils.ApiVersion+`/tools/backup/download`, "", false, true)
 			}
 		}
 
