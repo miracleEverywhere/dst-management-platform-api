@@ -66,7 +66,6 @@ func TokenCheck() gin.HandlerFunc {
 				logger.Logger.Errorf("刷新Token失败：%v", err)
 			} else {
 				c.Header("X-DMP-NEW-TOKEN", token)
-				c.SetCookie("X-DMP-TOKEN", token, 3600*utils.JwtExpirationHours, `/`+utils.ApiVersion+`/tools/backup/download`, "", false, true)
 			}
 		}
 
