@@ -417,6 +417,10 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 	} else {
 		roomSetting.TickRate = tickRate
 	}
+	// steam 群组设置
+	room.SteamGroupID = clusterIni["steam_group_id"]
+	room.SteamGroupAdmins, _ = strconv.ParseBool(clusterIni["steam_group_admins"])
+	room.SteamGroupOnly, _ = strconv.ParseBool(clusterIni["steam_group_only"])
 
 	// 6. 读取世界目录
 	allWorldsPath, err := utils.GetDirs(clusterDir, false)

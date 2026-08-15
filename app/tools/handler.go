@@ -257,10 +257,9 @@ func (h *Handler) backupDownloadGet(c *gin.Context) {
 		return
 	}
 	// 文件名安全替换
-	roomName := decodeFilenameParts[0]
 	cycle := decodeFilenameParts[1] + "天"
 	var invalidChars = regexp.MustCompile(`[\x00-\x1f\\/:*?"<>|]`)
-	roomName = invalidChars.ReplaceAllString(decodeFilenameParts[0], "")
+	roomName := invalidChars.ReplaceAllString(decodeFilenameParts[0], "")
 	if roomName == "" {
 		roomName = "存档"
 	}
