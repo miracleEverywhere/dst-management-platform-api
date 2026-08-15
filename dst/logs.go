@@ -211,7 +211,7 @@ func (g *Game) logsList(admin bool) []string {
 	return files
 }
 
-func (g *Game) tailChatLog(ctx context.Context, lines int, output chan<- string) error {
+func (g *Game) tailGameLog(ctx context.Context, logFileName string, lines int, output chan<- string) error {
 	if ctx == nil {
 		return fmt.Errorf("context 不能为空")
 	}
@@ -233,18 +233,18 @@ func (g *Game) tailChatLog(ctx context.Context, lines int, output chan<- string)
 		}
 	}
 
-	logPath := filepath.Join(world.worldPath, "server_chat_log.txt")
+	logPath := filepath.Join(world.worldPath, logFileName)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return fmt.Errorf("创建聊天日志监听器失败: %w", err)
+		return fmt.Errorf("创建%s日志监听器失败: %w", logFileName, err)
 	}
 	defer watcher.Close()
 
 	if err = watcher.Add(filepath.Dir(logPath)); err != nil {
-		return fmt.Errorf("监听聊天日志目录失败: %w", err)
+		return fmt.Errorf("监听%s日志目录失败: %w", logFileName, err)
 	}
 
-	state, initialLines, err := openChatLogTail(logPath, lines, true)
+	state, initialLines, err := openLogTail(logPath, lines, true)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -254,7 +254,7 @@ func (g *Game) tailChatLog(ctx context.Context, lines int, output chan<- string)
 		}
 	}()
 	for _, line := range initialLines {
-		if err = sendChatLogLine(ctx, output, line); err != nil {
+		if err = sendLogLine(ctx, output, line); err != nil {
 			return err
 		}
 	}
@@ -265,7 +265,7 @@ func (g *Game) tailChatLog(ctx context.Context, lines int, output chan<- string)
 			return ctx.Err()
 		case event, ok := <-watcher.Events:
 			if !ok {
-				return fmt.Errorf("聊天日志监听器已关闭")
+				return fmt.Errorf("%s日志监听器已关闭", logFileName)
 			}
 			if filepath.Clean(event.Name) != filepath.Clean(logPath) {
 				continue
@@ -273,15 +273,15 @@ func (g *Game) tailChatLog(ctx context.Context, lines int, output chan<- string)
 			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename|fsnotify.Remove) == 0 {
 				continue
 			}
-			if err = refreshChatLogTail(ctx, logPath, &state, output); err != nil {
+			if err = refreshLogTail(ctx, logPath, &state, output); err != nil {
 				return err
 			}
 		case watchErr, ok := <-watcher.Errors:
 			if !ok {
-				return fmt.Errorf("聊天日志监听器错误通道已关闭")
+				return fmt.Errorf("%s日志监听器错误通道已关闭", logFileName)
 			}
-			logger.Logger.Warnf("聊天日志监听事件异常，尝试重新同步文件: %v", watchErr)
-			if err = refreshChatLogTail(ctx, logPath, &state, output); err != nil {
+			logger.Logger.Warnf("%s日志监听事件异常，尝试重新同步文件: %v", logFileName, watchErr)
+			if err = refreshLogTail(ctx, logPath, &state, output); err != nil {
 				return err
 			}
 		}
@@ -303,7 +303,7 @@ func (s *chatLogTailState) close() {
 	}
 }
 
-func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState, []string, error) {
+func openLogTail(logPath string, lines int, initial bool) (*chatLogTailState, []string, error) {
 	file, err := os.Open(logPath)
 	if err != nil {
 		return nil, nil, err
@@ -313,7 +313,7 @@ func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState
 	info, err := file.Stat()
 	if err != nil {
 		state.close()
-		return nil, nil, fmt.Errorf("获取聊天日志信息失败: %w", err)
+		return nil, nil, fmt.Errorf("获取日志信息失败: %w", err)
 	}
 	state.info = info
 
@@ -324,7 +324,7 @@ func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState
 		state.offset, err = file.Seek(0, io.SeekEnd)
 		if err != nil {
 			state.close()
-			return nil, nil, fmt.Errorf("定位聊天日志末尾失败: %w", err)
+			return nil, nil, fmt.Errorf("定位日志末尾失败: %w", err)
 		}
 		return state, nil, nil
 	}
@@ -340,7 +340,7 @@ func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState
 	}
 	if err = scanner.Err(); err != nil {
 		state.close()
-		return nil, nil, fmt.Errorf("读取聊天日志最后几行失败: %w", err)
+		return nil, nil, fmt.Errorf("读取日志最后几行失败: %w", err)
 	}
 
 	// 显式将指针和 offset 强制对齐到物理文件末尾
@@ -348,7 +348,7 @@ func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState
 	state.offset, err = file.Seek(0, io.SeekEnd)
 	if err != nil {
 		state.close()
-		return nil, nil, fmt.Errorf("获取聊天日志读取位置失败: %w", err)
+		return nil, nil, fmt.Errorf("获取日志读取位置失败: %w", err)
 	}
 	return state, lastLines, nil
 }
@@ -360,15 +360,15 @@ func (s *chatLogTailState) flushPending(ctx context.Context, output chan<- strin
 	}
 	line := strings.TrimSuffix(string(s.pending), "\r")
 	s.pending = nil // 清空缓存
-	return sendChatLogLine(ctx, output, line)
+	return sendLogLine(ctx, output, line)
 }
 
-func refreshChatLogTail(ctx context.Context, logPath string, state **chatLogTailState, output chan<- string) error {
+func refreshLogTail(ctx context.Context, logPath string, state **chatLogTailState, output chan<- string) error {
 	pathInfo, err := os.Stat(logPath)
 	if os.IsNotExist(err) {
 		if *state != nil {
 			// 文件被删：先读完新追加的，再强行刷出残留的半行，最后关闭
-			if err := drainChatLogTail(ctx, *state, output); err != nil {
+			if err := drainLogTail(ctx, *state, output); err != nil {
 				fmt.Printf("[Warn] 移除旧文件前 drain 失败, path: %s, err: %v", logPath, err)
 			}
 			if err := (*state).flushPending(ctx, output); err != nil {
@@ -380,14 +380,14 @@ func refreshChatLogTail(ctx context.Context, logPath string, state **chatLogTail
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("获取聊天日志信息失败: %w", err)
+		return fmt.Errorf("获取日志信息失败: %w", err)
 	}
 
 	// 检测到文件轮转（Inode 改变）或者第一次初始化
 	if *state == nil || !os.SameFile((*state).info, pathInfo) {
 		if *state != nil {
 			// 1. 旧文件收尾：如果在 drain 或 flush 时遇到 ctx 取消，应当直接返回 error 终止轮转
-			if err := drainChatLogTail(ctx, *state, output); err != nil {
+			if err := drainLogTail(ctx, *state, output); err != nil {
 				fmt.Printf("[Error] 日志轮转读取旧文件剩余内容失败: %v", err)
 				if ctx.Err() != nil {
 					return ctx.Err() // 如果是 context 取消导致，直接中断
@@ -405,31 +405,31 @@ func refreshChatLogTail(ctx context.Context, logPath string, state **chatLogTail
 		}
 
 		// 3. 打开新文件
-		*state, _, err = openChatLogTail(logPath, 0, false)
+		*state, _, err = openLogTail(logPath, 0, false)
 		if err != nil {
-			return fmt.Errorf("重新打开聊天日志失败: %w", err)
+			return fmt.Errorf("重新打开日志失败: %w", err)
 		}
 	} else if pathInfo.Size() < (*state).offset {
 		// 文件被截断 (Truncated)
 		if _, err = (*state).file.Seek(0, io.SeekStart); err != nil {
-			return fmt.Errorf("重置聊天日志读取位置失败: %w", err)
+			return fmt.Errorf("重置日志读取位置失败: %w", err)
 		}
 		(*state).offset = 0
 		(*state).pending = nil
 	}
 
 	(*state).info = pathInfo
-	return drainChatLogTail(ctx, *state, output)
+	return drainLogTail(ctx, *state, output)
 }
 
-func drainChatLogTail(ctx context.Context, state *chatLogTailState, output chan<- string) error {
+func drainLogTail(ctx context.Context, state *chatLogTailState, output chan<- string) error {
 	// 只有在初始时确保指针对齐一次即可，循环内部绝不 Seek
 	buffer := make([]byte, 64*1024)
 	for {
 		n, err := state.file.Read(buffer) // Read 会自动、连续地推进文件指针
 		if n > 0 {
 			state.offset += int64(n) // 内存记录仅作状态标记
-			if emitErr := emitChatLogLines(ctx, state, buffer[:n], output); emitErr != nil {
+			if emitErr := emitLogLines(ctx, state, buffer[:n], output); emitErr != nil {
 				return emitErr
 			}
 		}
@@ -437,12 +437,12 @@ func drainChatLogTail(ctx context.Context, state *chatLogTailState, output chan<
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("读取新增聊天日志失败: %w", err)
+			return fmt.Errorf("读取新增日志失败: %w", err)
 		}
 	}
 }
 
-func emitChatLogLines(ctx context.Context, state *chatLogTailState, data []byte, output chan<- string) error {
+func emitLogLines(ctx context.Context, state *chatLogTailState, data []byte, output chan<- string) error {
 	state.pending = append(state.pending, data...)
 
 	start := 0
@@ -451,7 +451,7 @@ func emitChatLogLines(ctx context.Context, state *chatLogTailState, data []byte,
 			continue
 		}
 		line := strings.TrimSuffix(string(state.pending[start:i]), "\r")
-		if err := sendChatLogLine(ctx, output, line); err != nil {
+		if err := sendLogLine(ctx, output, line); err != nil {
 			// ✅ 回滚：丢弃已发送的行，保留未发送的部分（含当前失败行）
 			n := copy(state.pending, state.pending[start:])
 			state.pending = state.pending[:n]
@@ -468,13 +468,13 @@ func emitChatLogLines(ctx context.Context, state *chatLogTailState, data []byte,
 
 	// 修正：只有在【处理完完整行后】，剩下的未完成单行超过限制才报错
 	if len(state.pending) > maxChatLogLineSize {
-		return fmt.Errorf("聊天日志单行内容超过限制")
+		return fmt.Errorf("日志单行内容超过限制")
 	}
 
 	return nil
 }
 
-func sendChatLogLine(ctx context.Context, output chan<- string, line string) error {
+func sendLogLine(ctx context.Context, output chan<- string, line string) error {
 	select {
 	case output <- line:
 		return nil

@@ -275,9 +275,9 @@ func (g *Game) TmiConsoleCmd(t, uid, prefab string, num, worldID int) error {
 	return g.tmiConsoleCmd(t, uid, prefab, num, worldID)
 }
 
-// TailChatLog 先输出聊天日志的最后 lines 行，之后持续输出新写入的完整行。
+// TailGameLog 先输出聊天日志的最后 lines 行，之后持续输出新写入的完整行。
 // 监听的是日志所在目录，游戏重启导致日志被截断、删除或替换后会自动重新打开文件。
 // 调用方应在不再需要日志时取消 ctx，并持续消费 output，避免阻塞日志读取。
-func (g *Game) TailChatLog(ctx context.Context, lines int, output chan<- string) error {
-	return g.tailChatLog(ctx, lines, output)
+func (g *Game) TailGameLog(ctx context.Context, logFileName string, lines int, output chan<- string) error {
+	return g.tailGameLog(ctx, logFileName, lines, output)
 }
