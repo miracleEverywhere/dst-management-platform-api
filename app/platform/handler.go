@@ -145,33 +145,33 @@ func gameVersionGet(c *gin.Context) {
 
 func (h *Handler) websshWS(c *gin.Context) {
 	// JWT 认证
-	token := c.Query("token")
-	tokenSecret := db.JwtSecret
-	claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
-	if err != nil {
-		logger.Logger.Errorf("token认证失败: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
-		return
-	}
-	user, err := h.userDao.GetUserByUsername(claims.Username)
-	if err != nil || user.Username == "" || user.Disabled || user.Role != "admin" || user.TokenVersion != claims.TokenVersion {
-		logger.Logger.Warnf("WebSSH用户状态无效, username: %s", claims.Username)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
-		return
-	}
-	if !db.ValidateTokenVersion(claims.Username, claims.TokenVersion) {
-		logger.Logger.Warnf("WebSSH token已撤销, username: %s", claims.Username)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
-		return
-	}
-	if claims.Role != "admin" {
-		logger.Logger.Errorf("越权请求: 用户角色为 %s", claims.Role)
-		c.JSON(http.StatusForbidden, gin.H{"error": "权限不足"})
-		return
-	}
+	//token := c.Query("token")
+	//tokenSecret := db.JwtSecret
+	//claims, err := utils.ValidateJWT(token, []byte(tokenSecret))
+	//if err != nil {
+	//	logger.Logger.Errorf("token认证失败: %v", err)
+	//	c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
+	//	return
+	//}
+	//user, err := h.userDao.GetUserByUsername(claims.Username)
+	//if err != nil || user.Username == "" || user.Disabled || user.Role != "admin" || user.TokenVersion != claims.TokenVersion {
+	//	logger.Logger.Warnf("WebSSH用户状态无效, username: %s", claims.Username)
+	//	c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
+	//	return
+	//}
+	//if !db.ValidateTokenVersion(claims.Username, claims.TokenVersion) {
+	//	logger.Logger.Warnf("WebSSH token已撤销, username: %s", claims.Username)
+	//	c.JSON(http.StatusUnauthorized, gin.H{"error": "认证失败"})
+	//	return
+	//}
+	//if claims.Role != "admin" {
+	//	logger.Logger.Errorf("越权请求: 用户角色为 %s", claims.Role)
+	//	c.JSON(http.StatusForbidden, gin.H{"error": "权限不足"})
+	//	return
+	//}
 
 	webhook.Snd.Send(webhook.EventWebsocketConnected, 0, map[string]interface{}{
-		"username": claims.Username,
+		"username": c.GetString("username"),
 	})
 
 	// 创建PTY进程 - 使用login shell确保正确的环境
@@ -285,7 +285,7 @@ func (h *Handler) websshWS(c *gin.Context) {
 
 	// 连接建立处理
 	m.HandleConnect(func(s *melody.Session) {
-		logger.Logger.Infof("新的WebSSH连接建立, 用户: %s", claims.Username)
+		logger.Logger.Infof("新的WebSSH连接建立, 用户: %s", c.GetString("username"))
 	})
 
 	// 处理WebSocket升级
@@ -301,7 +301,7 @@ func (h *Handler) websshWS(c *gin.Context) {
 		logger.Logger.Error(err.Error())
 	}
 
-	logger.Logger.Infof("WebSSH会话结束, 用户: %s", claims.Username)
+	logger.Logger.Infof("WebSSH会话结束, 用户: %s", c.GetString("username"))
 }
 
 func osInfoGet(c *gin.Context) {
