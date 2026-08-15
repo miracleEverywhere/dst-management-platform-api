@@ -234,7 +234,7 @@ func (m *Manager) stopAllWorkers() {
 
 func (m *Manager) runRoom(ctx context.Context, game *dst.Game, setting models.AIChatSetting) {
 	lines := make(chan string, chatLogBufferSize)
-	go m.watchGameLog(ctx, "server_chat_log.txt", game, setting.RoomID, lines)
+	go m.watchChatLog(ctx, game, setting.RoomID, lines)
 
 	sessions := make(map[string]*chatSession)
 	cleanupTicker := time.NewTicker(time.Minute)
@@ -260,7 +260,8 @@ func (m *Manager) runRoom(ctx context.Context, game *dst.Game, setting models.AI
 	}
 }
 
-func (m *Manager) watchGameLog(ctx context.Context, logFileName string, game *dst.Game, roomID int, lines chan<- string) {
+func (m *Manager) watchChatLog(ctx context.Context, game *dst.Game, roomID int, lines chan<- string) {
+	logFileName := "server_chat_log.txt"
 	for {
 		err := game.TailGameLog(ctx, logFileName, 0, lines)
 		if ctx.Err() != nil {

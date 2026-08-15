@@ -211,7 +211,7 @@ func (g *Game) logsList(admin bool) []string {
 	return files
 }
 
-func (g *Game) tailGameLog(ctx context.Context, logFileName string, lines int, output chan<- string) error {
+func (g *Game) tailGameLog(ctx context.Context, logPath string, lines int, output chan<- string) error {
 	if ctx == nil {
 		return fmt.Errorf("context 不能为空")
 	}
@@ -221,27 +221,15 @@ func (g *Game) tailGameLog(ctx context.Context, logFileName string, lines int, o
 	if output == nil {
 		return fmt.Errorf("日志输出通道不能为空")
 	}
-	if len(g.worldSaveData) == 0 {
-		return fmt.Errorf("房间中不存在世界")
-	}
 
-	world := &g.worldSaveData[0]
-	for i := range g.worldSaveData {
-		if g.worldSaveData[i].IsMaster {
-			world = &g.worldSaveData[i]
-			break
-		}
-	}
-
-	logPath := filepath.Join(world.worldPath, logFileName)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return fmt.Errorf("创建%s日志监听器失败: %w", logFileName, err)
+		return fmt.Errorf("创建%s日志监听器失败: %w", logPath, err)
 	}
 	defer watcher.Close()
 
 	if err = watcher.Add(filepath.Dir(logPath)); err != nil {
-		return fmt.Errorf("监听%s日志目录失败: %w", logFileName, err)
+		return fmt.Errorf("监听%s日志目录失败: %w", logPath, err)
 	}
 
 	state, initialLines, err := openLogTail(logPath, lines, true)
@@ -265,7 +253,7 @@ func (g *Game) tailGameLog(ctx context.Context, logFileName string, lines int, o
 			return ctx.Err()
 		case event, ok := <-watcher.Events:
 			if !ok {
-				return fmt.Errorf("%s日志监听器已关闭", logFileName)
+				return fmt.Errorf("%s日志监听器已关闭", logPath)
 			}
 			if filepath.Clean(event.Name) != filepath.Clean(logPath) {
 				continue
@@ -278,9 +266,9 @@ func (g *Game) tailGameLog(ctx context.Context, logFileName string, lines int, o
 			}
 		case watchErr, ok := <-watcher.Errors:
 			if !ok {
-				return fmt.Errorf("%s日志监听器错误通道已关闭", logFileName)
+				return fmt.Errorf("%s日志监听器错误通道已关闭", logPath)
 			}
-			logger.Logger.Warnf("%s日志监听事件异常，尝试重新同步文件: %v", logFileName, watchErr)
+			logger.Logger.Warnf("%s日志监听事件异常，尝试重新同步文件: %v", logPath, watchErr)
 			if err = refreshLogTail(ctx, logPath, &state, output); err != nil {
 				return err
 			}

@@ -2,6 +2,8 @@ package dst
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
 )
 
 // SaveAll 保存所有配置文件
@@ -279,5 +281,18 @@ func (g *Game) TmiConsoleCmd(t, uid, prefab string, num, worldID int) error {
 // 监听的是日志所在目录，游戏重启导致日志被截断、删除或替换后会自动重新打开文件。
 // 调用方应在不再需要日志时取消 ctx，并持续消费 output，避免阻塞日志读取。
 func (g *Game) TailGameLog(ctx context.Context, logFileName string, lines int, output chan<- string) error {
-	return g.tailGameLog(ctx, logFileName, lines, output)
+	if len(g.worldSaveData) == 0 {
+		return fmt.Errorf("房间中不存在世界")
+	}
+
+	world := &g.worldSaveData[0]
+	for i := range g.worldSaveData {
+		if g.worldSaveData[i].IsMaster {
+			world = &g.worldSaveData[i]
+			break
+		}
+	}
+
+	logPath := filepath.Join(world.worldPath, logFileName)
+	return g.tailGameLog(ctx, logPath, lines, output)
 }
