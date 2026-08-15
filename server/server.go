@@ -95,6 +95,9 @@ func Run() {
 		r.Use(gzip.Gzip(
 			gzip.DefaultCompression,
 			gzip.WithMinLength(1024),
+			gzip.WithExcludedPaths([]string{
+				"/" + utils.ApiVersion + "/tools/backup/download",
+			}),
 			gzip.WithExcludedExtensions([]string{
 				".woff", ".woff2", ".ttf",
 				".png", ".jpeg", "jpg", ".gif", ".webp", ".ico",

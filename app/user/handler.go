@@ -170,7 +170,7 @@ func (h *Handler) loginPost(c *gin.Context) {
 
 	// 登录成功后缓存 token 版本号
 	db.SetTokenVersion(dbUser.Username, dbUser.TokenVersion)
-
+	c.SetCookie("X-DMP-TOKEN", token, 3600*utils.JwtExpirationHours, `/`+utils.ApiVersion+`/tools/backup/download`, "", false, true)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "login success"), "data": token})
 }
 
