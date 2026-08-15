@@ -343,7 +343,9 @@ func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState
 		return nil, nil, fmt.Errorf("读取聊天日志最后几行失败: %w", err)
 	}
 
-	state.offset, err = file.Seek(0, io.SeekCurrent)
+	// 显式将指针和 offset 强制对齐到物理文件末尾
+	// 此时 lastLines 包含了截至 SeekEnd 前的最后 N 行，后续 drain 绝对只读 SeekEnd 之后的新数据
+	state.offset, err = file.Seek(0, io.SeekEnd)
 	if err != nil {
 		state.close()
 		return nil, nil, fmt.Errorf("获取聊天日志读取位置失败: %w", err)
@@ -351,10 +353,27 @@ func openChatLogTail(logPath string, lines int, initial bool) (*chatLogTailState
 	return state, lastLines, nil
 }
 
+// 强制刷盘：在文件轮转/关闭时，将 pending 中遗留的半行数据作为最后一行强行发送
+func (s *chatLogTailState) flushPending(ctx context.Context, output chan<- string) error {
+	if len(s.pending) == 0 {
+		return nil
+	}
+	line := strings.TrimSuffix(string(s.pending), "\r")
+	s.pending = nil // 清空缓存
+	return sendChatLogLine(ctx, output, line)
+}
+
 func refreshChatLogTail(ctx context.Context, logPath string, state **chatLogTailState, output chan<- string) error {
 	pathInfo, err := os.Stat(logPath)
 	if os.IsNotExist(err) {
 		if *state != nil {
+			// 文件被删：先读完新追加的，再强行刷出残留的半行，最后关闭
+			if err := drainChatLogTail(ctx, *state, output); err != nil {
+				fmt.Printf("[Warn] 移除旧文件前 drain 失败, path: %s, err: %v", logPath, err)
+			}
+			if err := (*state).flushPending(ctx, output); err != nil {
+				fmt.Printf("[Warn] 移除旧文件前 flush 失败, path: %s, err: %v", logPath, err)
+			}
 			(*state).close()
 			*state = nil
 		}
@@ -364,15 +383,34 @@ func refreshChatLogTail(ctx context.Context, logPath string, state **chatLogTail
 		return fmt.Errorf("获取聊天日志信息失败: %w", err)
 	}
 
+	// 检测到文件轮转（Inode 改变）或者第一次初始化
 	if *state == nil || !os.SameFile((*state).info, pathInfo) {
 		if *state != nil {
+			// 1. 旧文件收尾：如果在 drain 或 flush 时遇到 ctx 取消，应当直接返回 error 终止轮转
+			if err := drainChatLogTail(ctx, *state, output); err != nil {
+				fmt.Printf("[Error] 日志轮转读取旧文件剩余内容失败: %v", err)
+				if ctx.Err() != nil {
+					return ctx.Err() // 如果是 context 取消导致，直接中断
+				}
+			}
+			if err := (*state).flushPending(ctx, output); err != nil {
+				fmt.Printf("[Error] 日志轮转刷新旧文件末尾半行失败: %v", err)
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+			}
+
+			// 2. 正常关闭旧文件
 			(*state).close()
 		}
+
+		// 3. 打开新文件
 		*state, _, err = openChatLogTail(logPath, 0, false)
 		if err != nil {
 			return fmt.Errorf("重新打开聊天日志失败: %w", err)
 		}
 	} else if pathInfo.Size() < (*state).offset {
+		// 文件被截断 (Truncated)
 		if _, err = (*state).file.Seek(0, io.SeekStart); err != nil {
 			return fmt.Errorf("重置聊天日志读取位置失败: %w", err)
 		}
@@ -385,15 +423,12 @@ func refreshChatLogTail(ctx context.Context, logPath string, state **chatLogTail
 }
 
 func drainChatLogTail(ctx context.Context, state *chatLogTailState, output chan<- string) error {
-	if _, err := state.file.Seek(state.offset, io.SeekStart); err != nil {
-		return fmt.Errorf("设置聊天日志读取位置失败: %w", err)
-	}
-
+	// 只有在初始时确保指针对齐一次即可，循环内部绝不 Seek
 	buffer := make([]byte, 64*1024)
 	for {
-		n, err := state.file.Read(buffer)
+		n, err := state.file.Read(buffer) // Read 会自动、连续地推进文件指针
 		if n > 0 {
-			state.offset += int64(n)
+			state.offset += int64(n) // 内存记录仅作状态标记
 			if emitErr := emitChatLogLines(ctx, state, buffer[:n], output); emitErr != nil {
 				return emitErr
 			}
@@ -409,9 +444,6 @@ func drainChatLogTail(ctx context.Context, state *chatLogTailState, output chan<
 
 func emitChatLogLines(ctx context.Context, state *chatLogTailState, data []byte, output chan<- string) error {
 	state.pending = append(state.pending, data...)
-	if len(state.pending) > maxChatLogLineSize {
-		return fmt.Errorf("聊天日志单行内容超过限制")
-	}
 
 	start := 0
 	for i, b := range state.pending {
@@ -420,14 +452,25 @@ func emitChatLogLines(ctx context.Context, state *chatLogTailState, data []byte,
 		}
 		line := strings.TrimSuffix(string(state.pending[start:i]), "\r")
 		if err := sendChatLogLine(ctx, output, line); err != nil {
+			// ✅ 回滚：丢弃已发送的行，保留未发送的部分（含当前失败行）
+			n := copy(state.pending, state.pending[start:])
+			state.pending = state.pending[:n]
 			return err
 		}
 		start = i + 1
 	}
 
+	// 提取完所有完整行后，平移剩余的半行数据 (零内存分配)
 	if start > 0 {
-		state.pending = append([]byte(nil), state.pending[start:]...)
+		n := copy(state.pending, state.pending[start:])
+		state.pending = state.pending[:n]
 	}
+
+	// 修正：只有在【处理完完整行后】，剩下的未完成单行超过限制才报错
+	if len(state.pending) > maxChatLogLineSize {
+		return fmt.Errorf("聊天日志单行内容超过限制")
+	}
+
 	return nil
 }
 
