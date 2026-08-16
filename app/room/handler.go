@@ -532,12 +532,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 
 	//保存上传的文件
 	unzipPath := fmt.Sprintf("%s/", uploadPath)
-	filename := filepath.Base(file.Filename)
-	if filename == "." || filename != file.Filename || strings.ContainsAny(filename, `/\\\x00`) {
-		logger.Logger.Warnf("上传文件名包含非法路径, filename: %q", file.Filename)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
+	filename := "room.zip"
 	savePath := filepath.Join(uploadPath, filename)
 	if err = c.SaveUploadedFile(file, savePath); err != nil {
 		logger.Logger.Errorf("文件保存失败, err: %v", err)
