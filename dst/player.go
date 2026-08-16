@@ -302,7 +302,7 @@ func (g *Game) chatMessages(lines int, needTime bool) ([]ChatMessage, error) {
 		}
 
 		switch parsed.Type {
-		case "Say":
+		case "Say", "Whisper":
 			matches := rePlayerChat.FindStringSubmatch(parsed.Message)
 			if matches != nil && len(matches) >= 4 {
 				chatMessage.UID = matches[1]
@@ -331,6 +331,9 @@ func (g *Game) chatMessages(lines int, needTime bool) ([]ChatMessage, error) {
 			chatMessage.Nickname = "DST"
 		}
 
+		if chatMessage.Type == "Whisper" {
+			chatMessage.Type = "Say"
+		}
 		chatMessage.Type = strings.ReplaceAll(chatMessage.Type, " ", "")
 
 		chatMessages = append(chatMessages, chatMessage)
