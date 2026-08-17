@@ -3,7 +3,7 @@ package dst
 import (
 	"bufio"
 	"bytes"
-	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"encoding/base64"
@@ -435,13 +435,13 @@ func (g *Game) playerPosition(worldID int) []PlayerPosition {
 	screenName := world.screenName
 	logPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
 
-	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
+	cache.PlayersStatisticMutex.Lock()
+	defer cache.PlayersStatisticMutex.Unlock()
 
 	var Players []PlayerPosition
 
-	if len(db.PlayersStatistic[g.room.ID]) > 0 {
-		players := db.PlayersStatistic[g.room.ID][len(db.PlayersStatistic[g.room.ID])-1].PlayerInfo
+	if len(cache.PlayersStatistic[g.room.ID]) > 0 {
+		players := cache.PlayersStatistic[g.room.ID][len(cache.PlayersStatistic[g.room.ID])-1].PlayerInfo
 		for _, player := range players {
 			Players = append(Players, PlayerPosition{
 				UID:      player.UID,

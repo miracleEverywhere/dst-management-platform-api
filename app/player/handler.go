@@ -1,8 +1,8 @@
 package player
 
 import (
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -36,15 +36,15 @@ func (h *Handler) onlineGet(c *gin.Context) {
 		return
 	}
 
-	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
+	cache.PlayersStatisticMutex.Lock()
+	defer cache.PlayersStatisticMutex.Unlock()
 
-	var players []db.PlayerInfo
+	var players []cache.PlayerInfo
 
-	if len(db.PlayersStatistic[reqForm.RoomID]) > 0 {
-		players = db.PlayersStatistic[reqForm.RoomID][len(db.PlayersStatistic[reqForm.RoomID])-1].PlayerInfo
+	if len(cache.PlayersStatistic[reqForm.RoomID]) > 0 {
+		players = cache.PlayersStatistic[reqForm.RoomID][len(cache.PlayersStatistic[reqForm.RoomID])-1].PlayerInfo
 	} else {
-		players = []db.PlayerInfo{}
+		players = []cache.PlayerInfo{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": players})
@@ -103,8 +103,8 @@ func (h *Handler) ganttGet(c *gin.Context) {
 	}
 
 	itemsByPlayer := make(map[string][]ganttItem)
-	db.PlayersStatisticMutex.Lock()
-	snapshots := db.PlayersStatistic[reqForm.RoomID]
+	cache.PlayersStatisticMutex.Lock()
+	snapshots := cache.PlayersStatistic[reqForm.RoomID]
 	for _, snapshot := range snapshots {
 		if snapshot.Timestamp <= 0 || snapshot.Timestamp > rangeEnd {
 			continue
@@ -158,7 +158,7 @@ func (h *Handler) ganttGet(c *gin.Context) {
 			itemsByPlayer[key] = append(items, item)
 		}
 	}
-	db.PlayersStatisticMutex.Unlock()
+	cache.PlayersStatisticMutex.Unlock()
 
 	data := make([]ganttItem, 0)
 	for _, items := range itemsByPlayer {
@@ -364,10 +364,10 @@ func (h *Handler) statisticsOnlineTimeGet(c *gin.Context) {
 		return
 	}
 
-	db.PlayersOnlineTimeMutex.Lock()
-	defer db.PlayersOnlineTimeMutex.Unlock()
+	cache.PlayersOnlineTimeMutex.Lock()
+	defer cache.PlayersOnlineTimeMutex.Unlock()
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.PlayersOnlineTime[reqForm.RoomID]})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.PlayersOnlineTime[reqForm.RoomID]})
 }
 
 func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
@@ -392,8 +392,8 @@ func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
 		return
 	}
 
-	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
+	cache.PlayersStatisticMutex.Lock()
+	defer cache.PlayersStatisticMutex.Unlock()
 
 	var globalSettings models.GlobalSetting
 
@@ -409,12 +409,12 @@ func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
 	}
 
 	dataCount := int(reqForm.TimeRange / globalSettings.PlayerGetFrequency) // 返回多少个数据
-	dataLength := len(db.PlayersStatistic[reqForm.RoomID])                  // 当前房间统计数据的个数
+	dataLength := len(cache.PlayersStatistic[reqForm.RoomID])               // 当前房间统计数据的个数
 
 	if dataLength > dataCount {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.PlayersStatistic[reqForm.RoomID][dataLength-dataCount:]})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.PlayersStatistic[reqForm.RoomID][dataLength-dataCount:]})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.PlayersStatistic[reqForm.RoomID]})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.PlayersStatistic[reqForm.RoomID]})
 	}
 }
 
@@ -440,8 +440,8 @@ func (h *Handler) statisticsPlayerCountV2Get(c *gin.Context) {
 		return
 	}
 
-	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
+	cache.PlayersStatisticMutex.Lock()
+	defer cache.PlayersStatisticMutex.Unlock()
 
 	var globalSettings models.GlobalSetting
 
@@ -457,14 +457,14 @@ func (h *Handler) statisticsPlayerCountV2Get(c *gin.Context) {
 	}
 
 	dataCount := int(reqForm.TimeRange / globalSettings.PlayerGetFrequency) // 返回多少个数据
-	dataLength := len(db.PlayersStatistic[reqForm.RoomID])                  // 当前房间统计数据的个数
+	dataLength := len(cache.PlayersStatistic[reqForm.RoomID])               // 当前房间统计数据的个数
 
-	var neededStatistics []db.Players
+	var neededStatistics []cache.Players
 
 	if dataLength > dataCount {
-		neededStatistics = db.PlayersStatistic[reqForm.RoomID][dataLength-dataCount:]
+		neededStatistics = cache.PlayersStatistic[reqForm.RoomID][dataLength-dataCount:]
 	} else {
-		neededStatistics = db.PlayersStatistic[reqForm.RoomID]
+		neededStatistics = cache.PlayersStatistic[reqForm.RoomID]
 	}
 
 	type dataItem struct {

@@ -1,7 +1,6 @@
-package db
+package cache
 
 import (
-	"os"
 	"sync"
 )
 
@@ -37,6 +36,9 @@ var (
 	RoomNoPlayersSecondsMutex sync.Mutex
 	// GameServerVersion 饥荒的版本号
 	GameServerVersion int
+	// 自定义游戏启动命令
+	customGameStartupCmd     string
+	customGameStartupCmdLock sync.RWMutex
 )
 
 type PlayerInfo struct {
@@ -57,16 +59,4 @@ type SysMetrics struct {
 	NetUplink   float64 `json:"netUplink"`
 	NetDownlink float64 `json:"netDownlink"`
 	Disk        float64 `json:"disk"`
-}
-
-func init() {
-	setCurrentDir()
-}
-
-func setCurrentDir() {
-	var err error
-	CurrentDir, err = os.Getwd()
-	if err != nil {
-		panic("获取工作路径失败")
-	}
 }

@@ -2,8 +2,8 @@ package aichat
 
 import (
 	"context"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -470,10 +470,10 @@ func currentPlayerPrefab(roomID int, uid string) string {
 		return ""
 	}
 
-	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
+	cache.PlayersStatisticMutex.Lock()
+	defer cache.PlayersStatisticMutex.Unlock()
 
-	snapshots := db.PlayersStatistic[roomID]
+	snapshots := cache.PlayersStatistic[roomID]
 	if len(snapshots) == 0 {
 		return ""
 	}

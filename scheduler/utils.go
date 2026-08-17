@@ -3,8 +3,8 @@ package scheduler
 import (
 	"bufio"
 	"crypto/tls"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"encoding/json"
@@ -86,8 +86,8 @@ func GetDSTVersion() DSTVersion {
 
 	dstVersion.Local = getLocalGameVersion()
 
-	if db.GameServerVersion != 0 {
-		dstVersion.Server = db.GameServerVersion
+	if cache.GameServerVersion != 0 {
+		dstVersion.Server = cache.GameServerVersion
 	} else {
 		var err error
 		dstVersion.Server, err = getServerGameVersion()

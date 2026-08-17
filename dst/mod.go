@@ -1,7 +1,7 @@
 package dst
 
 import (
-	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -70,8 +70,8 @@ func (g *Game) dsModsSetup() error {
 }
 
 func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
-	atomic.AddInt32(&db.ModDownloadExecuting, 1)
-	defer atomic.AddInt32(&db.ModDownloadExecuting, -1)
+	atomic.AddInt32(&cache.ModDownloadExecuting, 1)
+	defer atomic.AddInt32(&cache.ModDownloadExecuting, -1)
 	modAcfMutex.Lock()
 	defer modAcfMutex.Unlock()
 
@@ -163,7 +163,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 }
 
 func (g *Game) generateModDownloadCmd(id int) string {
-	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/%s/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", db.CurrentDir, utils.DmpFiles, g.clusterName, id)
+	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/%s/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", cache.CurrentDir, utils.DmpFiles, g.clusterName, id)
 }
 
 func (g *Game) removeGameOldMod(id int) error {

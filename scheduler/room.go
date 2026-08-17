@@ -1,7 +1,7 @@
 package scheduler
 
 import (
-	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -71,12 +71,12 @@ func Reset(game *dst.Game, roomID int, force bool, days int) {
 	} else {
 		// 空闲重置
 		secs := days * 24 * 60 * 60
-		db.RoomNoPlayersSecondsMutex.Lock()
-		if db.RoomNoPlayersSeconds[roomID] > secs {
+		cache.RoomNoPlayersSecondsMutex.Lock()
+		if cache.RoomNoPlayersSeconds[roomID] > secs {
 			go reset()
-			db.RoomNoPlayersSeconds[roomID] = 0
+			cache.RoomNoPlayersSeconds[roomID] = 0
 		}
-		db.RoomNoPlayersSecondsMutex.Unlock()
+		cache.RoomNoPlayersSecondsMutex.Unlock()
 	}
 }
 

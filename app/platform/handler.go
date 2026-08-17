@@ -2,8 +2,8 @@ package platform
 
 import (
 	"context"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -95,16 +95,16 @@ func (h *Handler) overviewGet(c *gin.Context) {
 		uidCount = 0
 	}
 	// 1小时cpu内存网络最大值
-	db.SystemMetricsMutex.RLock()
-	systemMetricsLength := len(db.SystemMetrics)
+	cache.SystemMetricsMutex.RLock()
+	systemMetricsLength := len(cache.SystemMetrics)
 	reqLength := 60
-	var systemMetricsData []db.SysMetrics
+	var systemMetricsData []cache.SysMetrics
 	if systemMetricsLength > reqLength {
-		systemMetricsData = db.SystemMetrics[systemMetricsLength-reqLength:]
+		systemMetricsData = cache.SystemMetrics[systemMetricsLength-reqLength:]
 	} else {
-		systemMetricsData = db.SystemMetrics
+		systemMetricsData = cache.SystemMetrics
 	}
-	db.SystemMetricsMutex.RUnlock()
+	cache.SystemMetricsMutex.RUnlock()
 	var maxCpu, maxMemory, maxNetUp, maxNetDown float64
 	for _, m := range systemMetricsData {
 		if m.Cpu > maxCpu {
@@ -326,19 +326,19 @@ func metricsGet(c *gin.Context) {
 		return
 	}
 
-	db.SystemMetricsMutex.RLock()
-	systemMetricsLength := len(db.SystemMetrics)
+	cache.SystemMetricsMutex.RLock()
+	systemMetricsLength := len(cache.SystemMetrics)
 	reqLength := reqForm.TimeRange * 60
 	if reqLength <= 0 {
 		reqLength = 60 // 默认1小时
 	}
 
 	if systemMetricsLength > reqLength {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.SystemMetrics[systemMetricsLength-reqLength:]})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.SystemMetrics[systemMetricsLength-reqLength:]})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": db.SystemMetrics})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.SystemMetrics})
 	}
-	db.SystemMetricsMutex.RUnlock()
+	cache.SystemMetricsMutex.RUnlock()
 }
 
 func (h *Handler) globalSettingsGet(c *gin.Context) {
@@ -392,14 +392,14 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			DayAt:    "",
 		})
 
-		db.PlayersStatisticMutex.Lock()
-		for roomID := range db.PlayersStatistic {
-			if len(db.PlayersStatistic[roomID])*reqForm.PlayerGetFrequency > scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) {
+		cache.PlayersStatisticMutex.Lock()
+		for roomID := range cache.PlayersStatistic {
+			if len(cache.PlayersStatistic[roomID])*reqForm.PlayerGetFrequency > scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) {
 				n := int(scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) / reqForm.PlayerGetFrequency)
-				db.PlayersStatistic[roomID] = utils.GetLastNElements(db.PlayersStatistic[roomID], n)
+				cache.PlayersStatistic[roomID] = utils.GetLastNElements(cache.PlayersStatistic[roomID], n)
 			}
 		}
-		db.PlayersStatisticMutex.Unlock()
+		cache.PlayersStatisticMutex.Unlock()
 
 		if err != nil {
 			logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "onlinePlayerGet")
@@ -426,9 +426,9 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 			}
 		} else {
 			scheduler.DeleteJob("systemMetricsGet")
-			db.SystemMetricsMutex.Lock()
-			db.SystemMetrics = []db.SysMetrics{}
-			db.SystemMetricsMutex.Unlock()
+			cache.SystemMetricsMutex.Lock()
+			cache.SystemMetrics = []cache.SysMetrics{}
+			cache.SystemMetricsMutex.Unlock()
 		}
 	}
 
@@ -453,6 +453,12 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 		}
 	}
 
+	if dbGlobalSettings.CustomStartupCmd != reqForm.CustomStartupCmd {
+		needUpdateDB = true
+		cache.SetCustomGameStartupCmd(reqForm.CustomStartupCmd)
+	}
+
+	// 放在最后
 	if dbGlobalSettings.WebhookSetting != reqForm.WebhookSetting {
 		var webhooks []webhook.GlobalWebhookItem
 		if json.Unmarshal([]byte(reqForm.WebhookSetting), &webhooks) == nil {

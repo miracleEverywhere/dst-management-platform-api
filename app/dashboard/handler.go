@@ -1,8 +1,8 @@
 package dashboard
 
 import (
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -107,10 +107,10 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		}
 
 		go func() {
-			db.DstUpdating = true
+			cache.DstUpdating = true
 			updateCmd := fmt.Sprintf("cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit")
 			_ = utils.BashCMD(updateCmd)
-			db.DstUpdating = false
+			cache.DstUpdating = false
 
 			// 如果需要重启，则重启激活的房间
 			var globalSettings models.GlobalSetting
@@ -283,18 +283,18 @@ func (h *Handler) infoBaseGet(c *gin.Context) {
 		Worlds      []GameWorldInfo     `json:"worlds"`
 		RoomSetting models.RoomSetting  `json:"roomSetting"`
 		Session     dst.RoomSessionInfo `json:"session"`
-		Players     []db.PlayerInfo     `json:"players"`
+		Players     []cache.PlayerInfo  `json:"players"`
 	}
 
-	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
+	cache.PlayersStatisticMutex.Lock()
+	defer cache.PlayersStatisticMutex.Unlock()
 
-	var players []db.PlayerInfo
+	var players []cache.PlayerInfo
 
-	if len(db.PlayersStatistic[reqForm.RoomID]) > 0 {
-		players = db.PlayersStatistic[reqForm.RoomID][len(db.PlayersStatistic[reqForm.RoomID])-1].PlayerInfo
+	if len(cache.PlayersStatistic[reqForm.RoomID]) > 0 {
+		players = cache.PlayersStatistic[reqForm.RoomID][len(cache.PlayersStatistic[reqForm.RoomID])-1].PlayerInfo
 	} else {
-		players = []db.PlayerInfo{}
+		players = []cache.PlayerInfo{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
@@ -316,7 +316,7 @@ func (h *Handler) infoSysGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
 		Cpu:      utils.CpuUsage(),
 		Memory:   utils.MemoryUsage(),
-		Updating: db.DstUpdating,
+		Updating: cache.DstUpdating,
 	}})
 }
 
@@ -360,7 +360,7 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 			masterPort int
 		)
 
-		if db.InternetIP == "" {
+		if cache.InternetIP == "" {
 			internetIp, err = scheduler.GetInternetIP1()
 			if err != nil {
 				logger.Logger.Warnf("调用公网ip接口1失败: %v", err)
@@ -371,10 +371,10 @@ func (h *Handler) connectionCodeGet(c *gin.Context) {
 					return
 				}
 			}
-			db.InternetIP = internetIp
+			cache.InternetIP = internetIp
 		} else {
 			logger.Logger.Debug("发现缓存的公网IP")
-			internetIp = db.InternetIP
+			internetIp = cache.InternetIP
 		}
 
 		for _, world := range *worlds {

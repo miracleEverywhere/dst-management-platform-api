@@ -1,8 +1,8 @@
 package room
 
 import (
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -328,17 +328,17 @@ func (h *Handler) listGet(c *gin.Context) {
 			return
 		}
 		xRoomWorld.Worlds = worlds.Data
-		if len(db.PlayersStatistic[room.ID]) > 0 {
+		if len(cache.PlayersStatistic[room.ID]) > 0 {
 			dataLength := 3600 / globalSetting.PlayerGetFrequency
 			// 返回最近一个小时的数据
-			if len(db.PlayersStatistic[room.ID]) > dataLength {
-				xRoomWorld.Players = db.PlayersStatistic[room.ID][len(db.PlayersStatistic[room.ID])-dataLength:]
+			if len(cache.PlayersStatistic[room.ID]) > dataLength {
+				xRoomWorld.Players = cache.PlayersStatistic[room.ID][len(cache.PlayersStatistic[room.ID])-dataLength:]
 			} else {
-				xRoomWorld.Players = db.PlayersStatistic[room.ID]
+				xRoomWorld.Players = cache.PlayersStatistic[room.ID]
 			}
 
 		} else {
-			xRoomWorld.Players = []db.Players{}
+			xRoomWorld.Players = []cache.Players{}
 		}
 		data.Data = append(data.Data, xRoomWorld)
 	}
@@ -804,9 +804,9 @@ func (h *Handler) deactivatePost(c *gin.Context) {
 		scheduler.DeleteJob(jobName)
 	}
 	// 删除玩家统计
-	db.PlayersStatisticMutex.Lock()
-	defer db.PlayersStatisticMutex.Unlock()
-	delete(db.PlayersStatistic, reqForm.RoomID)
+	cache.PlayersStatisticMutex.Lock()
+	defer cache.PlayersStatisticMutex.Unlock()
+	delete(cache.PlayersStatistic, reqForm.RoomID)
 	// 更新数据库
 	room.Status = false
 	err = h.roomDao.UpdateRoom(room)
@@ -985,16 +985,16 @@ func (h *Handler) roomDelete(c *gin.Context) {
 		scheduler.DeleteJob(jobName)
 	}
 	// 删除玩家统计
-	db.PlayersStatisticMutex.Lock()
-	delete(db.PlayersStatistic, reqForm.RoomID)
-	db.PlayersStatisticMutex.Unlock()
-	db.PlayersOnlineTimeMutex.Lock()
-	delete(db.PlayersOnlineTime, reqForm.RoomID)
-	db.PlayersOnlineTimeMutex.Unlock()
+	cache.PlayersStatisticMutex.Lock()
+	delete(cache.PlayersStatistic, reqForm.RoomID)
+	cache.PlayersStatisticMutex.Unlock()
+	cache.PlayersOnlineTimeMutex.Lock()
+	delete(cache.PlayersOnlineTime, reqForm.RoomID)
+	cache.PlayersOnlineTimeMutex.Unlock()
 	// 删除重置计时
-	db.RoomNoPlayersSecondsMutex.Lock()
-	delete(db.RoomNoPlayersSeconds, reqForm.RoomID)
-	db.RoomNoPlayersSecondsMutex.Unlock()
+	cache.RoomNoPlayersSecondsMutex.Lock()
+	delete(cache.RoomNoPlayersSeconds, reqForm.RoomID)
+	cache.RoomNoPlayersSecondsMutex.Unlock()
 	// 更新用户权限
 	roomIDStr := strconv.Itoa(reqForm.RoomID)
 	for _, user := range *nonAdminUsers {

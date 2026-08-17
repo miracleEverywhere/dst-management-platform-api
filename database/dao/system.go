@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -54,12 +54,12 @@ func (d *SystemDAO) initJWTSecret() {
 		if err != nil {
 			panic("数据库初始化失败: " + err.Error())
 		}
-		db.JwtSecret = secret
+		cache.JwtSecret = secret
 		logger.Logger.Debug("jwt秘钥创建完成")
 		return
 	}
 
-	db.JwtSecret = jwtSecret.Value
+	cache.JwtSecret = jwtSecret.Value
 	logger.Logger.Debug("jwt秘钥已写入缓存")
 }
 

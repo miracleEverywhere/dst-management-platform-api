@@ -10,6 +10,7 @@ import (
 	"dst-management-platform-api/app/room"
 	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/app/user"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/embedFS"
@@ -62,6 +63,9 @@ func Run() {
 	pluginDao := dao.NewPluginDAO(db.DB)
 	dstImageDao := dao.NewDstImageDAO(db.DB)
 	roomAISettingDao := dao.NewRoomAISettingDAO(db.DB)
+
+	// 初始化缓存
+	cache.InitCache()
 
 	// 启动游戏内 AI 对话监听
 	aiManager := aichat.NewManager(roomAISettingDao, systemDao, pluginDao)

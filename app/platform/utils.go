@@ -3,8 +3,8 @@ package platform
 import (
 	"bufio"
 	"dst-management-platform-api/aichat"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -423,7 +423,7 @@ func texToPng(string) ([]models.DstImage, error) {
 func installTMIR(string) ([]models.DstImage, error) {
 	var images []models.DstImage
 
-	modDir := filepath.Join(db.CurrentDir, utils.PluginTmiPath, "tmir")
+	modDir := filepath.Join(cache.CurrentDir, utils.PluginTmiPath, "tmir")
 	cmdArgs := []string{
 		"+force_install_dir",
 		modDir,

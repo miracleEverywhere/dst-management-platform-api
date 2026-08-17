@@ -1,4 +1,16 @@
-package db
+package cache
+
+import (
+	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
+	"os"
+)
+
+// InitCache 初始化缓存
+func InitCache() {
+	initCurrentDir()
+	initCustomGameStartupCmd()
+}
 
 // SetTokenVersion 将用户的 token 版本号写入缓存（登录时调用）
 func SetTokenVersion(username string, version int) {
@@ -33,4 +45,32 @@ func RevokeTokenVersion(username string, currentVersion int) int {
 	TokenVersionCache[username] = newVersion
 	TokenVersionCacheLock.Unlock()
 	return newVersion
+}
+
+func initCurrentDir() {
+	var err error
+	CurrentDir, err = os.Getwd()
+	if err != nil {
+		panic("获取工作路径失败")
+	}
+}
+
+func initCustomGameStartupCmd() {
+	var globalSetting models.GlobalSetting
+	if err := db.DB.First(&globalSetting).Error; err != nil {
+		panic("初始化自定义游戏启动命令失败: " + err.Error())
+	}
+	SetCustomGameStartupCmd(globalSetting.CustomStartupCmd)
+}
+
+func GetCustomGameStartupCmd() string {
+	customGameStartupCmdLock.RLock()
+	defer customGameStartupCmdLock.RUnlock()
+	return customGameStartupCmd
+}
+
+func SetCustomGameStartupCmd(cmd string) {
+	customGameStartupCmdLock.Lock()
+	defer customGameStartupCmdLock.Unlock()
+	customGameStartupCmd = cmd
 }

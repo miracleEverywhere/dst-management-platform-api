@@ -3,8 +3,8 @@ package room
 import (
 	"bufio"
 	"dst-management-platform-api/aichat"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -51,8 +51,8 @@ type Partition struct {
 
 type XRoomWorld struct {
 	models.Room
-	Worlds  []models.World `json:"worlds"`
-	Players []db.Players   `json:"players"`
+	Worlds  []models.World  `json:"worlds"`
+	Players []cache.Players `json:"players"`
 }
 
 type XRoomTotalInfo struct {

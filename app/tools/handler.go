@@ -2,8 +2,8 @@ package tools
 
 import (
 	"dst-management-platform-api/aichat"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -491,7 +491,7 @@ func tokenPost(c *gin.Context) {
 	username, _ := c.Get("username")
 	nickname, _ := c.Get("nickname")
 
-	cachedVersion, exists := db.TokenVersionCache[username.(string)]
+	cachedVersion, exists := cache.TokenVersionCache[username.(string)]
 	if !exists {
 		cachedVersion = 0
 	}
@@ -512,7 +512,7 @@ func tokenPost(c *gin.Context) {
 		expiration = reqForm.Expiration
 	}
 
-	token, err := utils.GenerateJWT(user, []byte(db.JwtSecret), expiration)
+	token, err := utils.GenerateJWT(user, []byte(cache.JwtSecret), expiration)
 	if err != nil {
 		logger.Logger.Errorf("创建token失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "create fail"), "data": nil})

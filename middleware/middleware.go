@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -36,14 +36,14 @@ func TokenCheck() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := utils.ValidateJWT(token, []byte(db.JwtSecret))
+		claims, err := utils.ValidateJWT(token, []byte(cache.JwtSecret))
 		if err != nil {
 			tokenMissing(c)
 			return
 		}
 
 		// 校验 token 版本号，检查是否已被撤销
-		if !db.ValidateTokenVersion(claims.Username, claims.TokenVersion) {
+		if !cache.ValidateTokenVersion(claims.Username, claims.TokenVersion) {
 			tokenRevoked(c, *claims)
 			return
 		}
@@ -61,7 +61,7 @@ func TokenCheck() gin.HandlerFunc {
 				Role:         claims.Role,
 				TokenVersion: claims.TokenVersion,
 			}
-			token, err = utils.GenerateJWT(user, []byte(db.JwtSecret), utils.JwtExpirationHours)
+			token, err = utils.GenerateJWT(user, []byte(cache.JwtSecret), utils.JwtExpirationHours)
 			if err != nil {
 				logger.Logger.Errorf("刷新Token失败：%v", err)
 			} else {

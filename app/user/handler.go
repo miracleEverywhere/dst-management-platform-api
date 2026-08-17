@@ -2,8 +2,8 @@ package user
 
 import (
 	"crypto/sha512"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -161,7 +161,7 @@ func (h *Handler) loginPost(c *gin.Context) {
 		return
 	}
 
-	token, err := utils.GenerateJWT(*dbUser, []byte(db.JwtSecret), utils.JwtExpirationHours)
+	token, err := utils.GenerateJWT(*dbUser, []byte(cache.JwtSecret), utils.JwtExpirationHours)
 	if err != nil {
 		logger.Logger.Errorf("生成jwt失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "login fail"), "data": nil})
@@ -169,7 +169,7 @@ func (h *Handler) loginPost(c *gin.Context) {
 	}
 
 	// 登录成功后缓存 token 版本号
-	db.SetTokenVersion(dbUser.Username, dbUser.TokenVersion)
+	cache.SetTokenVersion(dbUser.Username, dbUser.TokenVersion)
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "login success"), "data": token})
 }
 
@@ -304,7 +304,7 @@ func (h *Handler) basePut(c *gin.Context) {
 
 	// 如果管理员禁用了用户或修改了角色，撤销其所有 token
 	if (!dbUser.Disabled && user.Disabled) || dbUser.Role != user.Role {
-		dbUser.TokenVersion = db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
+		dbUser.TokenVersion = cache.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
 	}
 
 	// basePut不涉及密码修改
@@ -356,7 +356,7 @@ func (h *Handler) baseDelete(c *gin.Context) {
 	}
 
 	// 撤销被删除用户的所有 token
-	db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
+	cache.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
 
 	// 执行删除
 	err = h.userDao.Delete(dbUser)
@@ -438,7 +438,7 @@ func (h *Handler) myselfPut(c *gin.Context) {
 			dbUser.Password = password
 			dbUser.PasswordVersion = models.PasswordVersionBcrypt
 			// 修改密码后撤销所有旧 token
-			dbUser.TokenVersion = db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
+			dbUser.TokenVersion = cache.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
 		}
 	}
 	if user.Nickname != "" {
@@ -481,7 +481,7 @@ func (h *Handler) revokePost(c *gin.Context) {
 	}
 
 	// 递增 token 版本号，使所有旧 token 失效
-	dbUser.TokenVersion = db.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
+	dbUser.TokenVersion = cache.RevokeTokenVersion(dbUser.Username, dbUser.TokenVersion)
 	err = h.userDao.UpdateUser(dbUser)
 	if err != nil {
 		logger.Logger.Errorf("更新数据库失败, err: %v", err)

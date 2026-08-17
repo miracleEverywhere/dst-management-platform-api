@@ -11,6 +11,7 @@ type GlobalSetting struct {
 	AutoUpdateSetting  string `gorm:"column:auto_update_setting" json:"autoUpdateSetting"` // 自动更新时间设置
 	AutoUpdateRestart  bool   `gorm:"column:auto_update_restart" json:"autoUpdateRestart"` // 自动更新后是否重启，按理说要加在Setting中，但是太麻烦了
 	WebhookSetting     string `gorm:"column:webhook_setting" json:"webhookSetting"`
+	CustomStartupCmd   string `gorm:"column:custom_startup_cmd;default:./dontstarve_dedicated_server_nullrenderer" json:"customStartupCmd"`
 }
 
 func (GlobalSetting) TableName() string {
