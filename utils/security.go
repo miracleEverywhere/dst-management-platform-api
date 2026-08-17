@@ -23,6 +23,12 @@ func IsValidGameMode(mode string) bool {
 	return matched
 }
 
+// IsValidGameStartupCmd 判断自定义启动命令是否安全
+func IsValidGameStartupCmd(cmd string) bool {
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-\.\/\\:\s]+$`, cmd)
+	return matched
+}
+
 // IsValidURL 判断 URL 是否为合法的 webhook URL，防止 SSRF 攻击
 // 合法的 webhook URL 必须满足：格式合法、协议为 http/https、不允许携带 query 参数、不允许携带fragment
 func IsValidURL(rawURL string) bool {

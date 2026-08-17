@@ -454,6 +454,11 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 	}
 
 	if dbGlobalSettings.CustomStartupCmd != reqForm.CustomStartupCmd {
+		if !utils.IsValidGameStartupCmd(reqForm.CustomStartupCmd) {
+			logger.Logger.Warnf("自定义游戏启动命令不合法: %s", reqForm.CustomStartupCmd)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
 		needUpdateDB = true
 		cache.SetCustomGameStartupCmd(reqForm.CustomStartupCmd)
 	}
