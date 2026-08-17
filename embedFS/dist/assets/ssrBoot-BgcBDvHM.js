@@ -1,1 +1,0 @@
-import{$r as e,Pr as t,ri as n,ti as r}from"./index-GRr9qt8k.js";function i(){let i=r(!1);return t(()=>{window.requestAnimationFrame(()=>{i.value=!0})}),{ssrBootStyles:n(()=>i.value?void 0:{transition:`none !important`}),isBooted:e(i)}}export{i as t};

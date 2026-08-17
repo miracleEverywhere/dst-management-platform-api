@@ -1,0 +1,1 @@
+import{Ir as e,br as t}from"./index-yRwSz3Tt.js";import n from"./singleLog-DwTAvo3P.js";var r={__name:`steam`,setup(r){return(r,i)=>(e(),t(n,{type:`steam`}))}};export{r as default};
