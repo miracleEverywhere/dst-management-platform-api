@@ -39,6 +39,8 @@ var (
 	// 自定义游戏启动命令
 	customGameStartupCmd     string
 	customGameStartupCmdLock sync.RWMutex
+	// ModDownloadStatus 模组下载状态
+	ModDownloadStatus *ModCache
 )
 
 type PlayerInfo struct {
