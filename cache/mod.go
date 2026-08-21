@@ -5,6 +5,13 @@ import (
 	"sync"
 )
 
+var (
+	// ModDownloadExecuting 如果没有模组正在下载(==0)，则执行临时模组文件清理任务 scheduler/global.go ModDownloadClean()
+	ModDownloadExecuting int32
+	// ModDownloadStatus 模组下载状态
+	ModDownloadStatus *ModCache
+)
+
 type ModItem struct {
 	ID          int `json:"id"`
 	Size        int `json:"size"`
