@@ -1,1 +1,0 @@
-import{Br as e,Ir as t,Sr as n,_ as r,wr as i}from"./index-yRwSz3Tt.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(r,a){let s=e(`router-view`);return t(),n(`div`,o,[i(s)])}var c=r(a,[[`render`,s]]);export{c as default};

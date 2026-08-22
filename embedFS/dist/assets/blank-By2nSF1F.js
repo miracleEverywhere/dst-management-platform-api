@@ -1,0 +1,1 @@
+import{Hr as e,Rr as t,Sr as n,Tr as r,_ as i}from"./index-lU0QHcv9.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(i,a){let s=e(`router-view`);return t(),n(`div`,o,[r(s)])}var c=i(a,[[`render`,s]]);export{c as default};
