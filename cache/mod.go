@@ -44,6 +44,11 @@ func (m *ModCache) Set(roomID int, item *ModItem) error {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	itemCopy := &ModItem{
+		ID:          item.ID,
+		Size:        item.Size,
+		CurrentSize: item.CurrentSize,
+	}
 
 	// 检查是否已存在，存在则更新
 	items, exists := m.mods[roomID]
@@ -51,14 +56,14 @@ func (m *ModCache) Set(roomID int, item *ModItem) error {
 		for i, existing := range items {
 			if existing.ID == item.ID {
 				// 更新已存在的项
-				items[i] = item
+				items[i] = itemCopy
 				return nil
 			}
 		}
 	}
 
 	// 不存在则追加
-	m.mods[roomID] = append(m.mods[roomID], item)
+	m.mods[roomID] = append(m.mods[roomID], itemCopy)
 	return nil
 }
 
@@ -78,7 +83,11 @@ func (m *ModCache) Get(roomID, modID int) (*ModItem, error) {
 
 	for _, item := range items {
 		if item.ID == modID {
-			return item, nil
+			return &ModItem{
+				ID:          item.ID,
+				Size:        item.Size,
+				CurrentSize: item.CurrentSize,
+			}, nil
 		}
 	}
 
@@ -103,6 +112,9 @@ func (m *ModCache) Delete(roomID, modID int) error {
 		if item.ID == modID {
 			// 删除该元素
 			m.mods[roomID] = append(items[:i], items[i+1:]...)
+			if len(m.mods[roomID]) == 0 {
+				delete(m.mods, roomID)
+			}
 			return nil
 		}
 	}

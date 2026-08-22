@@ -1,6 +1,7 @@
 package mod
 
 import (
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -95,7 +96,7 @@ func (h *Handler) downloadPost(c *gin.Context) {
 	}
 
 	reqSize, err := strconv.Atoi(reqForm.Size)
-	if err != nil {
+	if err != nil || reqSize <= 0 || reqForm.RoomID <= 0 || reqForm.ID <= 0 {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
@@ -111,23 +112,85 @@ func (h *Handler) downloadPost(c *gin.Context) {
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	err, modSize := game.DownloadMod(reqForm.ID, reqForm.FileURL)
-	if err != nil || modSize != reqSize64 {
-		logger.Logger.Debugf("模组大小与预期不符, %d, %d", modSize, reqSize64)
-		if reqForm.Update {
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": reqForm.Name + " " + message.Get(c, "update fail"), "data": nil})
+	if cache.ModDownloadStatus == nil {
+		logger.Logger.Error("模组下载状态缓存未初始化")
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "server error"), "data": nil})
+		return
+	}
+
+	if item, err := cache.ModDownloadStatus.Get(reqForm.RoomID, reqForm.ID); err == nil && item.CurrentSize < item.Size {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "downloading"), "data": nil})
+		return
+	}
+
+	if err := cache.ModDownloadStatus.Set(reqForm.RoomID, &cache.ModItem{
+		ID:          reqForm.ID,
+		Size:        reqSize,
+		CurrentSize: 0,
+	}); err != nil {
+		logger.Logger.Errorf("写入模组下载状态失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "server error"), "data": nil})
+		return
+	}
+
+	go func() {
+		err, modSize := game.DownloadMod(reqForm.ID, reqForm.FileURL)
+		if err != nil || modSize != reqSize64 {
+			logger.Logger.Debugf("模组大小与预期不符, %d, %d, err: %v", modSize, reqSize64, err)
+			if deleteErr := cache.ModDownloadStatus.Delete(reqForm.RoomID, reqForm.ID); deleteErr != nil {
+				logger.Logger.Debugf("删除模组下载状态失败, err: %v", deleteErr)
+			}
 			return
-		} else {
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": reqForm.Name + " " + message.Get(c, "download fail"), "data": nil})
-			return
+		}
+
+		if setErr := cache.ModDownloadStatus.Set(reqForm.RoomID, &cache.ModItem{
+			ID:          reqForm.ID,
+			Size:        reqSize,
+			CurrentSize: reqSize,
+		}); setErr != nil {
+			logger.Logger.Errorf("更新模组下载状态失败, err: %v", setErr)
+		}
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "downloading"), "data": nil})
+}
+
+func (h *Handler) downloadStatusGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID int `form:"roomID"`
+		ID     int `form:"id"`
+		ModID  int `form:"modID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil || reqForm.RoomID <= 0 || (reqForm.ID <= 0 && reqForm.ModID <= 0) {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": 0})
+		return
+	}
+	if reqForm.ID <= 0 {
+		reqForm.ID = reqForm.ModID
+	}
+
+	progress := 0
+	if cache.ModDownloadStatus != nil {
+		if item, err := cache.ModDownloadStatus.Get(reqForm.RoomID, reqForm.ID); err == nil {
+			if item.Size > 0 && item.CurrentSize >= item.Size {
+				progress = 100
+			} else if item.Size > 0 && item.CurrentSize > 0 {
+				progress = int(float64(item.CurrentSize) / float64(item.Size) * 100)
+			} else if item.CurrentSize > 0 {
+				progress = 100
+			}
+			if progress < 0 {
+				progress = 0
+			}
+			if progress > 100 {
+				progress = 100
+			}
 		}
 	}
 
-	if reqForm.Update {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "update success"), "data": nil})
-	} else {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "download success"), "data": nil})
-	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": progress})
 }
 
 func (h *Handler) downloadedModsGet(c *gin.Context) {

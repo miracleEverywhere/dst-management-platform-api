@@ -15,6 +15,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		{
 			mod.GET("/search", modSearchGet)
 			mod.POST("/download", h.downloadPost)
+			mod.GET("/download/status", h.downloadStatusGet)
 			mod.GET("/downloaded", h.downloadedModsGet)
 			mod.GET("/downloaded/ids", h.downloadedModIDsGet)
 			mod.POST("/add/enable", h.addEnablePost)

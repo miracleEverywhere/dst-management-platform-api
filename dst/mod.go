@@ -70,20 +70,19 @@ func (g *Game) dsModsSetup() error {
 }
 
 func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
+	ugc := fileURL == ""
+
 	atomic.AddInt32(&cache.ModDownloadExecuting, 1)
 	defer atomic.AddInt32(&cache.ModDownloadExecuting, -1)
 	modAcfMutex.Lock()
 	defer modAcfMutex.Unlock()
+	stopMonitor := g.monitorModDownload(id, ugc)
+	defer stopMonitor()
 
 	var (
 		err     error
-		ugc     bool
 		modSize int64
 	)
-
-	if fileURL == "" {
-		ugc = true
-	}
 
 	if ugc {
 		// 1. ugc mod 统一下载到 dmp_files/ugc, 也就是dmp_files/ugc/{cluster}/steamapps/workshop{appworkshop_322330.acf  content  downloads}
@@ -164,6 +163,83 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 
 func (g *Game) generateModDownloadCmd(id int) string {
 	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/%s/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", cache.CurrentDir, utils.DmpFiles, g.clusterName, id)
+}
+
+// ugcDownloadBytes 返回 SteamCMD 下载目录中模组当前占用的字节数。
+func (g *Game) ugcDownloadBytes(id int) int64 {
+	paths := []string{
+		fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/downloads/322330/%d", utils.DmpFiles, g.clusterName, id),
+		fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/temp/322330/%d", utils.DmpFiles, g.clusterName, id),
+	}
+	var largest int64
+	for _, path := range paths {
+		size, err := utils.GetDirSize(path)
+		if err == nil && size > largest {
+			largest = size
+		}
+	}
+	return largest
+}
+
+func (g *Game) monitorModDownload(id int, ugc bool) func() {
+	if cache.ModDownloadStatus == nil {
+		return func() {}
+	}
+
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				g.updateModDownloadStatus(id, ugc)
+			case <-stop:
+				return
+			}
+		}
+	}()
+
+	return func() {
+		close(stop)
+		<-done
+	}
+}
+
+func (g *Game) updateModDownloadStatus(id int, ugc bool) {
+	item, err := cache.ModDownloadStatus.Get(g.room.ID, id)
+	if err != nil {
+		return
+	}
+
+	var currentSize int64
+	if ugc {
+		currentSize = g.ugcDownloadBytes(id)
+	} else {
+		currentSize, err = utils.GetFileSize(fmt.Sprintf("dst/mods/%d.zip", id))
+		if err != nil {
+			currentSize = 0
+		}
+	}
+
+	_ = cache.ModDownloadStatus.Set(g.room.ID, &cache.ModItem{
+		ID:          id,
+		Size:        item.Size,
+		CurrentSize: modDownloadSizeToInt(currentSize),
+	})
+}
+
+func modDownloadSizeToInt(size int64) int {
+	if size <= 0 {
+		return 0
+	}
+	maxInt := int64(^uint(0) >> 1)
+	if size > maxInt {
+		return int(maxInt)
+	}
+	return int(size)
 }
 
 func (g *Game) removeGameOldMod(id int) error {
