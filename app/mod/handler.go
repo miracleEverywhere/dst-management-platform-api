@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -144,12 +143,12 @@ func (h *Handler) downloadPost(c *gin.Context) {
 			return
 		}
 
-		time.Sleep(5 * time.Second)
-
-		if deleteErr := cache.ModDownloadStatus.Delete(reqForm.RoomID, reqForm.ID); deleteErr != nil {
-			logger.Logger.Errorf("清理模组下载状态失败, err: %v", deleteErr)
-		} else {
-			logger.Logger.Debug("模组下载状态缓存已清理")
+		if setErr := cache.ModDownloadStatus.Set(reqForm.RoomID, &cache.ModItem{
+			ID:          reqForm.ID,
+			Size:        reqSize,
+			CurrentSize: reqSize,
+		}); setErr != nil {
+			logger.Logger.Errorf("更新模组下载状态失败, err: %v", setErr)
 		}
 	}()
 
