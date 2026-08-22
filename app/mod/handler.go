@@ -574,6 +574,11 @@ func (h *Handler) deletePost(c *gin.Context) {
 		return
 	}
 
+	err = cache.ModDownloadStatus.Delete(reqForm.RoomID, reqForm.ID)
+	if err != nil {
+		logger.Logger.Errorf("删除模组下载状态缓存失败: %v", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
 }
 
@@ -606,6 +611,11 @@ func (h *Handler) acfDelete(c *gin.Context) {
 		logger.Logger.Errorf("删除acf文件失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
 		return
+	}
+
+	err = cache.ModDownloadStatus.DeleteByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("删除模组下载状态缓存失败: %v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})

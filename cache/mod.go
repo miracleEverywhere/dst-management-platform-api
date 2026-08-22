@@ -121,3 +121,16 @@ func (m *ModCache) Delete(roomID, modID int) error {
 
 	return fmt.Errorf("模组 %d 不存在于房间 %d 中", modID, roomID)
 }
+
+func (m *ModCache) DeleteByRoomID(roomID int) error {
+	if m.mods == nil {
+		return fmt.Errorf("缓存未初始化")
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	delete(m.mods, roomID)
+
+	return nil
+}
