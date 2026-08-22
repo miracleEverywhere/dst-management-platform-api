@@ -58,7 +58,7 @@ type loginRateLimitCache struct {
 func shouldRefreshToken(exp time.Time) bool {
 	remainingTime := time.Until(exp)
 
-	logger.Logger.Debugf("token剩余有效时间还剩: %.2f小时", remainingTime.Hours())
+	//logger.Logger.Debugf("token剩余有效时间还剩: %.2f小时", remainingTime.Hours())
 
 	totalDuration := time.Duration(utils.JwtExpirationHours) * time.Hour
 
