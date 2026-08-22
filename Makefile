@@ -1,5 +1,12 @@
 FRONTEND_DIR := $(HOME)/WebstormProjects/dst-management-platform-web
 EMBED_DIR := embedFS/dist
+RM := rm -rf
+
+ifeq ($(OS),Windows_NT)
+	SHELL := powershell.exe
+	RM = rm -r
+	FRONTEND_DIR = $(USERPROFILE)\WebstormProjects\dst-management-platform-web
+endif
 
 .PHONY: all frontend backend clean
 
@@ -12,7 +19,8 @@ frontend2backend: frontend-only copy-frontend
 # 构建前端
 frontend-only:
 	@echo "=== Building frontend ==="
-	cd $(FRONTEND_DIR) && npx vite build
+	cd $(FRONTEND_DIR); pnpm run build
+
 
 # 构建后端
 backend-only:
@@ -22,7 +30,7 @@ backend-only:
 # 复制前端产物到 embedFS/dist（不重新构建前端）
 copy-frontend:
 	@echo "=== Copying frontend dist ==="
-	rm -rf $(EMBED_DIR)/*
+	$(RM) $(EMBED_DIR)/*
 	cp -r $(FRONTEND_DIR)/dist/* $(EMBED_DIR)/
 
 help:
