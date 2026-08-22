@@ -19,6 +19,7 @@ frontend2backend: frontend-only copy-frontend
 # 构建前端
 frontend-only:
 	@echo "=== Building frontend ==="
+	$(RM) $(FRONTEND_DIR)/dist/*
 	cd $(FRONTEND_DIR); pnpm run build
 
 
