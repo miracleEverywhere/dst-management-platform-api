@@ -1,0 +1,1 @@
+import{Ir as e,ii as t,ni as n,oi as r}from"./index-C_Fp4zKB.js";function i(){let i=t(!1);return e(()=>{window.requestAnimationFrame(()=>{i.value=!0})}),{ssrBootStyles:r(()=>i.value?void 0:{transition:`none !important`}),isBooted:n(i)}}export{i as t};
