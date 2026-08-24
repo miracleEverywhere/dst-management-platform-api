@@ -74,6 +74,7 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		Update  bool   `json:"update"`
 		Size    string `json:"size"`
 		Name    string `json:"name"`
+		Sync    bool   `json:"sync"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
@@ -133,7 +134,7 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		return
 	}
 
-	go func() {
+	dl := func() {
 		err, modSize := game.DownloadMod(reqForm.ID, reqForm.FileURL)
 		if err != nil || modSize != reqSize64 {
 			logger.Logger.Debugf("模组大小与预期不符, %d, %d, err: %v", modSize, reqSize64, err)
@@ -150,9 +151,15 @@ func (h *Handler) downloadPost(c *gin.Context) {
 		}); setErr != nil {
 			logger.Logger.Errorf("更新模组下载状态失败, err: %v", setErr)
 		}
-	}()
+	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "downloading"), "data": nil})
+	if reqForm.Sync {
+		dl()
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.GetF(c, "downloaded", reqForm.Name), "data": nil})
+	} else {
+		go dl()
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.GetF(c, "downloading", reqForm.Name), "data": nil})
+	}
 }
 
 func (h *Handler) downloadStatusGet(c *gin.Context) {
