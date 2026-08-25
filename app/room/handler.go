@@ -431,6 +431,50 @@ func (h *Handler) allRoomBasicGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": rooms})
 }
 
+func (h *Handler) allRoomPermittedBasicGet(c *gin.Context) {
+	rooms, err := h.roomDao.GetRoomBasic()
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	if c.GetString("role") == "admin" {
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": rooms})
+		return
+	}
+
+	user, err := h.userDao.GetUserByUsername(c.GetString("username"))
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	roomIDs := make(map[int]struct{})
+	for _, roomID := range strings.Split(user.Rooms, ",") {
+		if roomID == "" {
+			continue
+		}
+		id, err := strconv.Atoi(roomID)
+		if err != nil {
+			logger.Logger.Errorf("用户房间权限数据无效, username: %s, roomID: %s", user.Username, roomID)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+		roomIDs[id] = struct{}{}
+	}
+
+	permittedRooms := make([]dao.RoomBasic, 0, len(roomIDs))
+	for _, room := range *rooms {
+		if _, ok := roomIDs[room.RoomID]; ok {
+			permittedRooms = append(permittedRooms, room)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": permittedRooms})
+}
+
 func (h *Handler) roomWorldsGet(c *gin.Context) {
 	type ReqForm struct {
 		RoomID int `json:"roomID" form:"roomID"`
