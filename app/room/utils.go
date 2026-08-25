@@ -281,22 +281,22 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	// 玩家更新模组
 	if roomSetting.PlayerUpdateModEnable {
 		errFalse := scheduler.UpdateJob(&scheduler.JobConfig{
-			Name:     fmt.Sprintf("%d-PlauerUpdateModFalse", roomID),
+			Name:     fmt.Sprintf("%d-PlayerUpdateModFalse", roomID),
 			Func:     scheduler.PlayerUpdateMod,
 			Args:     []any{game, false},
-			TimeType: scheduler.MinuteType,
-			Interval: 10,
+			TimeType: scheduler.SecondType,
+			Interval: scheduler.PlayerUpdateModFalseInterval,
 			DayAt:    "",
 		})
 		if errFalse != nil {
 			logger.Logger.Errorf("玩家更新模组定时任务处理失败, err: %v", errFalse)
 		}
 		errTrue := scheduler.UpdateJob(&scheduler.JobConfig{
-			Name:     fmt.Sprintf("%d-PlauerUpdateModTrue", roomID),
+			Name:     fmt.Sprintf("%d-PlayerUpdateModTrue", roomID),
 			Func:     scheduler.PlayerUpdateMod,
 			Args:     []any{game, true},
-			TimeType: scheduler.MinuteType,
-			Interval: 1,
+			TimeType: scheduler.SecondType,
+			Interval: scheduler.PlayerUpdateModTrueInterval,
 			DayAt:    "",
 		})
 		if errTrue != nil {

@@ -416,7 +416,7 @@ func (h *Handler) globalSettingsPost(c *gin.Context) {
 				Func:     scheduler.SystemMetricsGet,
 				Args:     []any{reqForm.SysMetricsSetting},
 				TimeType: scheduler.MinuteType,
-				Interval: 1,
+				Interval: scheduler.SystemMetricsGetInInterval,
 				DayAt:    "",
 			})
 			if err != nil {

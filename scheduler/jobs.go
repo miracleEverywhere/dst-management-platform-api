@@ -12,6 +12,18 @@ import (
 
 var Jobs []JobConfig
 
+const (
+	SystemMetricsGetInInterval      = 1 // 1分钟
+	InternetIPUpdateInterval        = 6 // 6小时
+	ModDownloadCleanInterval        = 1 // 1分钟
+	GameServerVersionUpdateInterval = 1 // 1小时
+)
+
+const (
+	PlayerUpdateModFalseInterval = 60 // 60秒
+	PlayerUpdateModTrueInterval  = 10 // 10秒
+)
+
 func initJobs() {
 	var globalSetting models.GlobalSetting
 	err := DBHandler.globalSettingDao.GetGlobalSetting(&globalSetting)
@@ -37,7 +49,7 @@ func initJobs() {
 		Func:     SystemMetricsGet,
 		Args:     []any{globalSetting.SysMetricsSetting},
 		TimeType: MinuteType,
-		Interval: 1,
+		Interval: SystemMetricsGetInInterval,
 		DayAt:    "",
 	})
 
@@ -57,7 +69,7 @@ func initJobs() {
 		Func:     InternetIPUpdate,
 		Args:     nil,
 		TimeType: HourType,
-		Interval: 6,
+		Interval: InternetIPUpdateInterval,
 		DayAt:    "",
 	})
 
@@ -67,7 +79,7 @@ func initJobs() {
 		Func:     ModDownloadClean,
 		Args:     nil,
 		TimeType: MinuteType,
-		Interval: 1,
+		Interval: ModDownloadCleanInterval,
 		DayAt:    "",
 	})
 
@@ -77,7 +89,7 @@ func initJobs() {
 		Func:     ServerVersionGet,
 		Args:     nil,
 		TimeType: HourType,
-		Interval: 1,
+		Interval: GameServerVersionUpdateInterval,
 		DayAt:    "",
 	})
 
@@ -225,19 +237,19 @@ func initJobs() {
 		// 玩家更新模组
 		if roomSetting.PlayerUpdateModEnable {
 			Jobs = append(Jobs, JobConfig{
-				Name:     fmt.Sprintf("%d-PlauerUpdateModFalse", room.ID),
+				Name:     fmt.Sprintf("%d-PlayerUpdateModFalse", room.ID),
 				Func:     PlayerUpdateMod,
 				Args:     []any{game, false},
-				TimeType: MinuteType,
-				Interval: 10,
+				TimeType: SecondType,
+				Interval: PlayerUpdateModFalseInterval,
 				DayAt:    "",
 			})
 			Jobs = append(Jobs, JobConfig{
-				Name:     fmt.Sprintf("%d-PlauerUpdateModTrue", room.ID),
+				Name:     fmt.Sprintf("%d-PlayerUpdateModTrue", room.ID),
 				Func:     PlayerUpdateMod,
 				Args:     []any{game, true},
-				TimeType: MinuteType,
-				Interval: 1,
+				TimeType: SecondType,
+				Interval: PlayerUpdateModTrueInterval,
 				DayAt:    "",
 			})
 		}
