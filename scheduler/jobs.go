@@ -222,5 +222,24 @@ func initJobs() {
 				})
 			}
 		}
+		// 玩家更新模组
+		if roomSetting.PlayerUpdateModEnable {
+			Jobs = append(Jobs, JobConfig{
+				Name:     fmt.Sprintf("%d-PlauerUpdateModFalse", room.ID),
+				Func:     PlayerUpdateMod,
+				Args:     []any{game, false},
+				TimeType: MinuteType,
+				Interval: 10,
+				DayAt:    "",
+			})
+			Jobs = append(Jobs, JobConfig{
+				Name:     fmt.Sprintf("%d-PlauerUpdateModTrue", room.ID),
+				Func:     PlayerUpdateMod,
+				Args:     []any{game, true},
+				TimeType: MinuteType,
+				Interval: 1,
+				DayAt:    "",
+			})
+		}
 	}
 }

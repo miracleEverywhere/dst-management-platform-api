@@ -10,6 +10,10 @@ var (
 	ModDownloadExecuting int32
 	// ModDownloadStatus 模组下载状态
 	ModDownloadStatus *ModCache
+
+	// PlayerUpdateModStatus 玩家更新模组状态 (正在更新-true|未在更新-false)
+	PlayerUpdateModStatus      = make(map[int]bool)
+	PlayerUpdateModStatusMutex sync.Mutex
 )
 
 type ModItem struct {

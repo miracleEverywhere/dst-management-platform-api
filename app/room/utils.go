@@ -278,6 +278,31 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-Keepalive", roomID))
 	}
+	// 玩家更新模组
+	if roomSetting.PlayerUpdateModEnable {
+		errFalse := scheduler.UpdateJob(&scheduler.JobConfig{
+			Name:     fmt.Sprintf("%d-PlauerUpdateModFalse", roomID),
+			Func:     scheduler.PlayerUpdateMod,
+			Args:     []any{game, false},
+			TimeType: scheduler.MinuteType,
+			Interval: 10,
+			DayAt:    "",
+		})
+		if errFalse != nil {
+			logger.Logger.Errorf("玩家更新模组定时任务处理失败, err: %v", errFalse)
+		}
+		errTrue := scheduler.UpdateJob(&scheduler.JobConfig{
+			Name:     fmt.Sprintf("%d-PlauerUpdateModTrue", roomID),
+			Func:     scheduler.PlayerUpdateMod,
+			Args:     []any{game, true},
+			TimeType: scheduler.MinuteType,
+			Interval: 1,
+			DayAt:    "",
+		})
+		if errTrue != nil {
+			logger.Logger.Errorf("玩家更新模组定时任务处理失败, err: %v", errTrue)
+		}
+	}
 }
 
 func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]models.World, roomSetting *models.RoomSetting, uploadExtraInfo *UploadExtraInfo) (string, error) {

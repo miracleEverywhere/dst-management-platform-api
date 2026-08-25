@@ -2,6 +2,7 @@ package dst
 
 import (
 	"context"
+	"dst-management-platform-api/database/models"
 )
 
 // SaveAll 保存所有配置文件
@@ -280,4 +281,17 @@ func (g *Game) TmiConsoleCmd(t, uid, prefab string, num, worldID int) error {
 // 调用方应在不再需要日志时取消 ctx，并持续消费 output，避免阻塞日志读取。
 func (g *Game) TailChatLog(ctx context.Context, lines int, output chan<- string) error {
 	return g.tailChatLog(ctx, lines, output)
+}
+
+// RoomID 返回房间 ID
+func (g *Game) RoomID() int {
+	return g.room.ID
+}
+
+// Worlds 返回世界信息
+func (g *Game) Worlds() []models.World {
+	original := *g.worlds
+	copySlice := make([]models.World, len(original))
+	copy(copySlice, original)
+	return copySlice
 }
