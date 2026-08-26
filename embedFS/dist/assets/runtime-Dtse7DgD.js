@@ -1,0 +1,1 @@
+import{Rr as e,br as t}from"./index-DMrKU-XX.js";import n from"./singleLog-CPcmV-Ai.js";var r={__name:`runtime`,setup(r){return(r,i)=>(e(),t(n,{type:`runtime`}))}};export{r as default};
