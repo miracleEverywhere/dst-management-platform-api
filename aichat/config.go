@@ -27,14 +27,14 @@ func validateModelConfig(config *models.AIModelConfig) error {
 		return fmt.Errorf("API Key 过长")
 	}
 	if config.EmbeddingBaseURL != "" && !utils.IsValidURL(config.EmbeddingBaseURL) {
-		return fmt.Errorf("嵌入模型 Base URL 不合法")
+		return fmt.Errorf("向量模型 Base URL 不合法")
 	}
 	if config.EmbeddingModel != "" {
 		if utf8.RuneCountInString(config.EmbeddingModel) > 256 {
-			return fmt.Errorf("嵌入模型名称过长")
+			return fmt.Errorf("向量模型名称过长")
 		}
 		if len(config.EmbeddingApiKey) > 16*1024 {
-			return fmt.Errorf("嵌入 API Key 过长")
+			return fmt.Errorf("向量 API Key 过长")
 		}
 	}
 	config.SystemPrompt = strings.TrimSpace(config.SystemPrompt)

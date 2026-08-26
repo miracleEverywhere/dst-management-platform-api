@@ -34,7 +34,7 @@ type Manager struct {
 	embedBuildCancel context.CancelFunc
 }
 
-// EmbeddingConfig 向量嵌入模型配置
+// EmbeddingConfig 向量向量模型配置
 type EmbeddingConfig struct {
 	APIURL     string
 	APIKey     string
