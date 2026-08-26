@@ -905,3 +905,11 @@ func (h *Handler) aiEmbeddingIndexReBuild(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }
+
+func (h *Handler) aiEmbeddingIndexCancel(c *gin.Context) {
+	if !h.aiManager.CancelEmbeddingIndexBuild() {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "embedding build not running"), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "embedding build cancel success"), "data": nil})
+}

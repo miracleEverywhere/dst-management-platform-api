@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"bytes"
+	"context"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"encoding/json"
@@ -265,7 +266,7 @@ func (s *embeddingWikiSearcher) stopIdleTimer() {
 }
 
 func (s *embeddingWikiSearcher) embedSingle(text string) ([]float64, error) {
-	vectors, err := s.embedBatch([]string{text})
+	vectors, err := s.embedBatch(context.Background(), []string{text})
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +276,7 @@ func (s *embeddingWikiSearcher) embedSingle(text string) ([]float64, error) {
 	return vectors[0], nil
 }
 
-func (s *embeddingWikiSearcher) embedBatch(texts []string) ([][]float64, error) {
+func (s *embeddingWikiSearcher) embedBatch(ctx context.Context, texts []string) ([][]float64, error) {
 	// 构建请求
 	reqBody := map[string]interface{}{
 		"model":           s.model,
@@ -292,7 +293,7 @@ func (s *embeddingWikiSearcher) embedBatch(texts []string) ([][]float64, error) 
 	}
 
 	endpoint := s.apiURL + "/embeddings"
-	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("创建 embedding 请求失败: %w", err)
 	}
@@ -402,8 +403,7 @@ func (s *embeddingWikiSearcher) save() error {
 //   - 文本预处理
 //   - 分批调用 Embedding API
 //   - 每批完成后保存（支持断点续传）
-//   - 连接错误自动重试，严重时自动降级 batch_size
-func (s *embeddingWikiSearcher) buildIndex(force bool) error {
+func (s *embeddingWikiSearcher) buildIndex(ctx context.Context, force bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -452,10 +452,12 @@ func (s *embeddingWikiSearcher) buildIndex(force bool) error {
 	logger.Logger.Infof("API: %s  模型: %s", s.apiURL, s.model)
 
 	var failedFiles []string
-	consecutiveFailures := 0
 	batchIdx := 0
 
 	for batchIdx < totalBatches {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		batchFiles := batches[batchIdx]
 
 		// 准备这批的文本
@@ -470,7 +472,7 @@ func (s *embeddingWikiSearcher) buildIndex(force bool) error {
 		}
 
 		// 调用 API
-		vectors, apiErr := s.embedBatch(texts)
+		vectors, apiErr := s.embedBatch(ctx, texts)
 
 		if apiErr == nil {
 			// 成功
@@ -480,7 +482,6 @@ func (s *embeddingWikiSearcher) buildIndex(force bool) error {
 			for k, v := range metas {
 				s.metadata[k] = v
 			}
-			consecutiveFailures = 0
 
 			if saveErr := s.save(); saveErr != nil {
 				logger.Logger.Errorf("保存 embedding 失败: %v", saveErr)
@@ -488,68 +489,20 @@ func (s *embeddingWikiSearcher) buildIndex(force bool) error {
 			logger.Logger.Infof("第 %d/%d 批完成 (%d 篇)", batchIdx+1, totalBatches, len(s.embeddings))
 
 			if batchIdx < totalBatches-1 {
-				time.Sleep(embedRequestInterval)
+				timer := time.NewTimer(embedRequestInterval)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return ctx.Err()
+				case <-timer.C:
+				}
 			}
 			batchIdx++
 			continue
 		}
 
-		// --- API 调用失败，错误恢复 ---
-		consecutiveFailures++
-		errorStr := strings.ToLower(apiErr.Error())
+		// API 调用失败时跳过当前批次，不再自动重试或调整批次大小。
 		logger.Logger.Errorf("第 %d/%d 批失败: %v", batchIdx+1, totalBatches, apiErr)
-
-		// batch size 超限 → 立刻调整为 10
-		if strings.Contains(errorStr, "batch size") && currentBatchSize > 10 {
-			currentBatchSize = 10
-			logger.Logger.Infof("[自动调整] batch_size 调整为 %d（API 限制）", currentBatchSize)
-			batches, totalBatches = rebuildBatches(mdFiles, s.embeddings, currentBatchSize)
-			batchIdx = 0
-			consecutiveFailures = 0
-			continue
-		}
-
-		// 连续失败 3 次，降级 batch_size
-		if consecutiveFailures >= 3 && currentBatchSize > embedMinBatchSize {
-			currentBatchSize = max(embedMinBatchSize, currentBatchSize/2)
-			logger.Logger.Infof("[自动调整] batch_size 降为 %d，重新分批...", currentBatchSize)
-			batches, totalBatches = rebuildBatches(mdFiles, s.embeddings, currentBatchSize)
-			batchIdx = 0
-			consecutiveFailures = 0
-			continue
-		}
-
-		// 把这一批拆成单篇重试
-		if currentBatchSize > 1 && len(batchFiles) > 1 {
-			logger.Logger.Infof("尝试逐篇处理这一批...")
-			for _, fp := range batchFiles {
-				singleTexts, singleMetas, prepErr := s.prepareBatch([]string{fp})
-				if prepErr != nil {
-					logger.Logger.Errorf("[跳过] %s: %v", filepath.Base(fp), prepErr)
-					failedFiles = append(failedFiles, filepath.Base(fp))
-					continue
-				}
-				vec, embErr := s.embedBatch(singleTexts)
-				if embErr != nil {
-					logger.Logger.Errorf("[跳过] %s: %v", filepath.Base(fp), embErr)
-					failedFiles = append(failedFiles, filepath.Base(fp))
-					continue
-				}
-				s.embeddings[filepath.Base(fp)] = vec[0]
-				for k, v := range singleMetas {
-					s.metadata[k] = v
-				}
-				time.Sleep(500 * time.Millisecond)
-			}
-			if saveErr := s.save(); saveErr != nil {
-				logger.Logger.Errorf("保存 embedding 失败: %v", saveErr)
-			}
-			batchIdx++
-			consecutiveFailures = 0
-			continue
-		}
-
-		// 单篇也失败，跳过
 		logger.Logger.Errorf("[跳过] 这 %d 篇 embed 失败", len(batchFiles))
 		for _, f := range batchFiles {
 			failedFiles = append(failedFiles, filepath.Base(f))

@@ -320,6 +320,21 @@ func (m *Manager) getEmbeddingSearcher(setting models.AIChatSetting) *embeddingW
 // config 指定 Embedding API 配置，force 为 true 时强制全量重建。
 // 构建过程可能耗时较长，建议在后台执行。
 func (m *Manager) buildEmbeddingIndex(config EmbeddingConfig, force bool) error {
+	m.embedBuildMu.Lock()
+	if m.embedBuildCancel != nil {
+		m.embedBuildMu.Unlock()
+		return fmt.Errorf("向量索引正在构建中")
+	}
+	ctx, cancel := context.WithCancel(m.ctx)
+	m.embedBuildCancel = cancel
+	m.embedBuildMu.Unlock()
+	defer func() {
+		cancel()
+		m.embedBuildMu.Lock()
+		m.embedBuildCancel = nil
+		m.embedBuildMu.Unlock()
+	}()
+
 	searcher := newEmbeddingWikiSearcher(wikiPagesDir, config)
 
 	if !force && !searcher.needsSetup() {
@@ -328,7 +343,7 @@ func (m *Manager) buildEmbeddingIndex(config EmbeddingConfig, force bool) error 
 	}
 
 	logger.Logger.Infof("开始手动构建向量索引 (force=%v)...", force)
-	if err := searcher.buildIndex(force); err != nil {
+	if err := searcher.buildIndex(ctx, force); err != nil {
 		return fmt.Errorf("构建向量索引失败: %w", err)
 	}
 

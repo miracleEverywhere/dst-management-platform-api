@@ -39,6 +39,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["exec success"] = "执行成功"
 	i.ZH["embedding config incomplete"] = "嵌入模型配置不完整"
 	i.ZH["embedding base url invalid"] = "嵌入模型 Base URL 不合法"
+	i.ZH["embedding build not running"] = "当前没有正在进行的嵌入索引构建"
+	i.ZH["embedding build cancel success"] = "已取消嵌入索引构建"
 
 	i.EN["get backup fail"] = "get backup fail"
 	i.EN["create backup fail"] = "create backup fail"
@@ -55,6 +57,8 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["exec success"] = "Execute Success"
 	i.EN["embedding config incomplete"] = "Embedding model configuration is incomplete"
 	i.EN["embedding base url invalid"] = "Embedding model Base URL is invalid"
+	i.EN["embedding build not running"] = "No embedding index build is running"
+	i.EN["embedding build cancel success"] = "Embedding index build cancelled"
 
 	return i
 }

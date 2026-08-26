@@ -26,10 +26,12 @@ type Manager struct {
 	active           bool
 	closed           bool
 
-	keywordSearcher *keywordWikiSearcher
-	embedSearcher   *embeddingWikiSearcher
-	embedSearcherMu sync.Mutex
-	lastEmbedConfig string
+	keywordSearcher  *keywordWikiSearcher
+	embedSearcher    *embeddingWikiSearcher
+	embedSearcherMu  sync.Mutex
+	lastEmbedConfig  string
+	embedBuildMu     sync.Mutex
+	embedBuildCancel context.CancelFunc
 }
 
 // EmbeddingConfig 向量嵌入模型配置
@@ -85,6 +87,18 @@ func (m *Manager) Close() {
 // 构建过程可能耗时较长。
 func (m *Manager) BuildEmbeddingIndex(config EmbeddingConfig, force bool) error {
 	return m.buildEmbeddingIndex(config, force)
+}
+
+// CancelEmbeddingIndexBuild 取消正在进行的向量索引构建。
+// 返回值表示是否存在正在运行的构建任务。
+func (m *Manager) CancelEmbeddingIndexBuild() bool {
+	m.embedBuildMu.Lock()
+	defer m.embedBuildMu.Unlock()
+	if m.embedBuildCancel == nil {
+		return false
+	}
+	m.embedBuildCancel()
+	return true
 }
 
 // GetEmbeddingStats 获取向量索引统计信息

@@ -31,6 +31,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			tools.PUT("/aichat/setting", h.aiSettingPut)
 			tools.POST("/aichat/keyword/rebuild", middleware.AdminOnly(), h.aiKeywordIndexReBuild)
 			tools.POST("/aichat/embedding/rebuild", middleware.AdminOnly(), h.aiEmbeddingIndexReBuild)
+			tools.POST("/aichat/embedding/cancel", middleware.AdminOnly(), h.aiEmbeddingIndexCancel)
 			tools.GET("/aichat/setting/base", middleware.AdminOnly(), h.aiBaseSettingGet)
 			tools.PUT("/aichat/setting/base", middleware.AdminOnly(), h.aiBaseSettingPut)
 		}
