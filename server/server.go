@@ -63,6 +63,7 @@ func Run() {
 	pluginDao := dao.NewPluginDAO(db.DB)
 	dstImageDao := dao.NewDstImageDAO(db.DB)
 	roomAISettingDao := dao.NewRoomAISettingDAO(db.DB)
+	modInfoDao := dao.NewModInfoDAO(db.DB)
 
 	// 初始化缓存
 	cache.InitCache()
@@ -122,7 +123,7 @@ func Run() {
 	// 初始化即注册路由
 	user.NewHandler(userDao).RegisterRoutes(r)
 	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager).RegisterRoutes(r)
-	mod.NewHandler(roomDao, worldDao, roomSettingDao, userDao).RegisterRoutes(r)
+	mod.NewHandler(roomDao, worldDao, roomSettingDao, userDao, modInfoDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao, aiManager).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
