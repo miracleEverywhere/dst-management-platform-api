@@ -705,6 +705,11 @@ func (g *Game) modDisable(modID int) error {
 	return g.saveMods()
 }
 
+type DeleteModInfo struct {
+	ID      int    `json:"id"`
+	FileUrl string `json:"file_url"`
+}
+
 func (g *Game) deleteMod(modID int, fileURL string) error {
 	var ugc bool
 

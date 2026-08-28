@@ -126,6 +126,18 @@ func (g *Game) ModDelete(modID int, fileURL string) error {
 	return g.deleteMod(modID, fileURL)
 }
 
+// ModDeleteMulti 批量删除mod
+func (g *Game) ModDeleteMulti(mods []DeleteModInfo) error {
+	for _, mod := range mods {
+		err := g.deleteMod(mod.ID, mod.FileUrl)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // LogContent 获取日志
 func (g *Game) LogContent(logType string, id, lines int) []string {
 	return g.getLogContent(logType, id, lines)

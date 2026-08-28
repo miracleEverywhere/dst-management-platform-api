@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			mod.PUT("/setting/mod_config_value", h.settingModConfigValuePut)
 			mod.GET("/setting/enabled", h.getEnabledModsGet)
 			mod.POST("/delete", h.deletePost)
+			mod.POST("/delete/multi", h.deletePostMulti)
 			mod.DELETE("/delete/acf", h.acfDelete)
 		}
 	}
