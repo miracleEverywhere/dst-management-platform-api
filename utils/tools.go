@@ -132,9 +132,7 @@ func Contains[T comparable](s []T, i T) bool {
 
 // GetTimestamp 获取毫秒级时间戳
 func GetTimestamp() int64 {
-	now := time.Now()
-	milliseconds := now.UnixNano() / int64(time.Millisecond)
-	return milliseconds
+	return time.Now().UnixMilli()
 }
 
 // Base64Encode 对字符串进行Base64编码
