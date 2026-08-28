@@ -2,6 +2,7 @@ package mod
 
 import (
 	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/datatypes"
 )
 
 type Handler struct {
@@ -21,14 +23,21 @@ type Handler struct {
 	worldDao       *dao.WorldDAO
 	roomSettingDao *dao.RoomSettingDAO
 	userDao        *dao.UserDAO
+	modInfoDao     *dao.ModInfoDAO
 }
 
-func NewHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, userDao *dao.UserDAO) *Handler {
+func NewHandler(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, userDao *dao.UserDAO, modInfoDaos ...*dao.ModInfoDAO) *Handler {
+	var modInfoDao *dao.ModInfoDAO
+	if len(modInfoDaos) > 0 {
+		modInfoDao = modInfoDaos[0]
+	}
+
 	return &Handler{
 		roomDao:        roomDao,
 		worldDao:       worldDao,
 		roomSettingDao: roomSettingDao,
 		userDao:        userDao,
+		modInfoDao:     modInfoDao,
 	}
 }
 
@@ -40,47 +49,27 @@ type Response struct {
 	Publishedfiledetails []PublishedFileDetails `json:"publishedfiledetails"`
 }
 type PublishedFileDetails struct {
-	ID              string   `json:"publishedfileid"`
-	FileSize        string   `json:"file_size"`
-	FileDescription string   `json:"file_description"`
-	FileUrl         string   `json:"file_url"`
-	Title           string   `json:"title"`
-	Tags            []Tags   `json:"tags"`
-	PreviewUrl      string   `json:"preview_url"`
-	VoteData        VoteData `json:"vote_data"`
-	TimeCreated     int      `json:"time_created"`
-	TimeUpdated     int      `json:"time_updated"`
-	Subscriptions   int      `json:"subscriptions"`
+	ID              string          `json:"publishedfileid"`
+	FileSize        string          `json:"file_size"`
+	FileDescription string          `json:"file_description"`
+	FileUrl         string          `json:"file_url"`
+	Title           string          `json:"title"`
+	Tags            []models.Tags   `json:"tags"`
+	PreviewUrl      string          `json:"preview_url"`
+	VoteData        models.VoteData `json:"vote_data"`
+	TimeCreated     int             `json:"time_created"`
+	TimeUpdated     int             `json:"time_updated"`
+	Subscriptions   int             `json:"subscriptions"`
 }
 type Data struct {
-	Total    int       `json:"total"`
-	Page     int       `json:"page"`
-	PageSize int       `json:"pageSize"`
-	Rows     []ModInfo `json:"rows"`
+	Total    int              `json:"total"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"pageSize"`
+	Rows     []models.ModInfo `json:"rows"`
 }
-type ModInfo struct {
-	Name            string   `json:"name"`
-	ID              int      `json:"id"`
-	Size            string   `json:"size"`
-	Tags            []Tags   `json:"tags"`
-	PreviewUrl      string   `json:"preview_url"`
-	FileDescription string   `json:"file_description"`
-	FileUrl         string   `json:"file_url"`
-	VoteData        VoteData `json:"vote_data"`
-	DownloadedReady bool     `json:"downloadedReady"`
-	TimeCreated     int      `json:"time_created"`
-	TimeUpdated     int      `json:"time_updated"`
-	Subscriptions   int      `json:"subscriptions"`
-}
-type Tags struct {
-	Tag         string `json:"tag"`
-	DisplayName string `json:"display_name"`
-}
-type VoteData struct {
-	Score     float64 `json:"score"`
-	VotesUp   int     `json:"votes_up"`
-	VotesDown int     `json:"votes_down"`
-}
+
+// 模组信息缓存时长 10分钟
+const cacheModInfoMaxAgeMs = 10 * 60 * 1000
 
 var client *http.Client = &http.Client{
 	Timeout: utils.HttpTimeout * time.Second,
@@ -89,6 +78,7 @@ var client *http.Client = &http.Client{
 func SearchMod(page int, pageSize int, searchText string, lang string) (Data, error) {
 	var language int
 
+	lang = normalizeModLanguage(lang)
 	if lang == "zh" {
 		language = 6
 	} else {
@@ -136,22 +126,9 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 		return Data{}, err
 	}
 
-	var modInfoList []ModInfo
+	var modInfoList []models.ModInfo
 	for _, i := range jsonResp.Response.Publishedfiledetails {
-		modInfo := ModInfo{
-			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
-			Name:            i.Title,
-			Size:            i.FileSize,
-			Tags:            i.Tags,
-			PreviewUrl:      i.PreviewUrl,
-			FileDescription: i.FileDescription,
-			FileUrl:         i.FileUrl,
-			VoteData:        i.VoteData,
-			TimeCreated:     i.TimeCreated,
-			TimeUpdated:     i.TimeUpdated,
-			Subscriptions:   i.Subscriptions,
-		}
-		modInfoList = append(modInfoList, modInfo)
+		modInfoList = append(modInfoList, modInfoFromPublishedFile(i, lang))
 	}
 
 	data := Data{
@@ -166,6 +143,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 
 func SearchModById(id int, lang string) (Data, error) {
 	var language int
+	lang = normalizeModLanguage(lang)
 	if lang == "zh" {
 		language = 6
 	} else {
@@ -203,19 +181,9 @@ func SearchModById(id int, lang string) (Data, error) {
 		return Data{}, err
 	}
 
-	var modInfoList []ModInfo
+	var modInfoList []models.ModInfo
 	for _, i := range jsonResp.Response.Publishedfiledetails {
-		modInfo := ModInfo{
-			ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
-			Name:            i.Title,
-			Size:            i.FileSize,
-			Tags:            i.Tags,
-			PreviewUrl:      i.PreviewUrl,
-			FileDescription: i.FileDescription,
-			FileUrl:         i.FileUrl,
-			VoteData:        i.VoteData,
-		}
-		modInfoList = append(modInfoList, modInfo)
+		modInfoList = append(modInfoList, modInfoFromPublishedFile(i, lang))
 	}
 
 	data := Data{
@@ -228,8 +196,45 @@ func SearchModById(id int, lang string) (Data, error) {
 	return data, nil
 }
 
-func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
+func (h *Handler) addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 	if len(*mods) == 0 {
+		return nil
+	}
+
+	var ids []int
+	for _, mod := range *mods {
+		ids = append(ids, mod.ID)
+	}
+
+	lang = normalizeModLanguage(lang)
+	cacheValid := h.modInfoDao != nil
+	modInfos := []models.ModInfo(nil)
+	if cacheValid {
+		var err error
+		modInfos, err = h.modInfoDao.GetModInfoByIDs(ids, lang)
+		cacheValid = err == nil
+	}
+
+	if cacheValid {
+		cachedByID := make(map[int]models.ModInfo, len(modInfos))
+		for _, modInfo := range modInfos {
+			cachedByID[modInfo.ID] = modInfo
+		}
+		for idx := range *mods {
+			modInfo, ok := cachedByID[(*mods)[idx].ID]
+			if !ok || !checkCacheValidity(modInfo.CacheTimestamp) {
+				cacheValid = false
+				continue
+			}
+			(*mods)[idx].Name = modInfo.Name
+			(*mods)[idx].FileURL = modInfo.FileUrl
+			(*mods)[idx].PreviewURL = modInfo.PreviewUrl
+			(*mods)[idx].ServerSize = modInfo.Size
+		}
+	}
+
+	if cacheValid {
+		logger.Logger.Debugf("返回模组缓存数据")
 		return nil
 	}
 
@@ -283,6 +288,14 @@ func addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 				(*mods)[idx].ServerSize = i.FileSize
 			}
 		}
+		if h.modInfoDao != nil {
+			modInfo := modInfoFromPublishedFile(i, lang)
+			modInfo.CacheTimestamp = utils.GetTimestamp()
+			if err = h.modInfoDao.UpdateModInfo(&modInfo); err != nil {
+				logger.Logger.Errorf("更新模组缓存信息失败, err: %v", err)
+			}
+		}
+
 	}
 
 	return nil
@@ -327,4 +340,37 @@ func checkNotUgcUrl(url string) bool {
 	}
 
 	return true
+}
+
+func checkCacheValidity(ts int64) bool {
+	if ts <= 0 {
+		return false
+	}
+
+	tsDiff := time.Now().UnixMilli() - ts
+	return tsDiff >= 0 && tsDiff < cacheModInfoMaxAgeMs
+}
+
+func modInfoFromPublishedFile(i PublishedFileDetails, lang string) models.ModInfo {
+	return models.ModInfo{
+		ID:              func() int { id, _ := strconv.Atoi(i.ID); return id }(),
+		Language:        normalizeModLanguage(lang),
+		Name:            i.Title,
+		Size:            i.FileSize,
+		Tags:            datatypes.NewJSONType(i.Tags),
+		PreviewUrl:      i.PreviewUrl,
+		FileDescription: i.FileDescription,
+		FileUrl:         i.FileUrl,
+		VoteData:        i.VoteData,
+		TimeCreated:     i.TimeCreated,
+		TimeUpdated:     i.TimeUpdated,
+		Subscriptions:   i.Subscriptions,
+	}
+}
+
+func normalizeModLanguage(lang string) string {
+	if lang == "en" {
+		return "en"
+	}
+	return "zh"
 }

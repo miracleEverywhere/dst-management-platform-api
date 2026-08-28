@@ -3,6 +3,7 @@ package mod
 import (
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -13,12 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func modSearchGet(c *gin.Context) {
-	lang, _ := c.Get("lang")
-	langStr := "zh" // 默认语言
-	if strLang, ok := lang.(string); ok {
-		langStr = strLang
-	}
+func (h *Handler) modSearchGet(c *gin.Context) {
+	langStr := normalizeModLanguage(c.Request.Header.Get("X-I18n-Lang"))
 
 	type SearchForm struct {
 		SearchType string `form:"searchType" json:"searchType"`
@@ -36,16 +33,40 @@ func modSearchGet(c *gin.Context) {
 
 	if searchForm.SearchType == "id" {
 		id, err := strconv.Atoi(searchForm.SearchText)
-		if err != nil {
+		if err != nil || id <= 0 {
 			logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
+
+		var cachedModInfo *models.ModInfo
+		if h.modInfoDao != nil {
+			cachedModInfo, err = h.modInfoDao.GetModInfoByID(id, langStr)
+		}
+		if err == nil && cachedModInfo != nil && checkCacheValidity(cachedModInfo.CacheTimestamp) {
+			data := Data{
+				Total:    1,
+				Page:     1,
+				PageSize: 1,
+				Rows: []models.ModInfo{
+					*cachedModInfo,
+				},
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+			return
+		}
+
 		data, err := SearchModById(id, langStr)
 		if err != nil {
 			logger.Logger.Errorf("获取mod信息失败, err: %v", err)
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "search fail"), "data": nil})
 			return
+		}
+		if len(data.Rows) > 0 && h.modInfoDao != nil {
+			data.Rows[0].CacheTimestamp = utils.GetTimestamp()
+			if cacheErr := h.modInfoDao.UpdateModInfo(&data.Rows[0]); cacheErr != nil {
+				logger.Logger.Errorf("更新模组缓存信息失败, err: %v", cacheErr)
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
@@ -226,7 +247,7 @@ func (h *Handler) downloadedModsGet(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	downloadedMods := game.GetDownloadedMods()
 
-	err = addDownloadedModInfo(downloadedMods, c.Request.Header.Get("X-I18n-Lang"))
+	err = h.addDownloadedModInfo(downloadedMods, c.Request.Header.Get("X-I18n-Lang"))
 	if err != nil {
 		logger.Logger.Error("添加模组额外信息失败")
 	}
@@ -540,7 +561,7 @@ func (h *Handler) getEnabledModsGet(c *gin.Context) {
 		return
 	}
 
-	err = addDownloadedModInfo(&modsID, c.Request.Header.Get("X-I18n-Lang"))
+	err = h.addDownloadedModInfo(&modsID, c.Request.Header.Get("X-I18n-Lang"))
 	if err != nil {
 		logger.Logger.Error("添加模组额外信息失败")
 	}
