@@ -20,12 +20,12 @@ trap error_exit ERR
 # 工具函数
 function install_ubuntu() {
     dpkg --add-architecture i386
-    apt update -y
-    apt install -y screen wget
-    apt install -y lib32gcc1 || true	# ubuntu ≤ 22
-    apt install -y lib32gcc-s1 || true
-    apt install -y libcurl4-gnutls-dev:i386 || error_exit
-    apt install -y libcurl4-gnutls-dev || true
+    apt-get update -y
+    apt-get install -y screen wget
+    apt-get install -y lib32gcc1 || true	# ubuntu ≤ 22
+    apt-get install -y lib32gcc-s1 || true
+    apt-get install -y libcurl4-gnutls-dev:i386 || error_exit
+    apt-get install -y libcurl4-gnutls-dev || true
 }
 
 function install_rhel() {
