@@ -74,6 +74,7 @@ type OSInfo struct {
 	OS              string
 	CPUModel        string
 	CPUCores        int
+	CPUDetail       []cpu.InfoStat
 	MemorySize      uint64
 	Platform        string
 	PlatformVersion string
@@ -91,6 +92,7 @@ func getOSInfo() (*OSInfo, error) {
 	cpuModel := cpuInfo[0].ModelName
 	cpuCount, _ := cpu.Counts(true)
 	cpuCore := cpuCount
+	cpuDetail := cpuInfo
 
 	// 获取内存信息
 	virtualMemory, err := mem.VirtualMemory()
@@ -114,6 +116,7 @@ func getOSInfo() (*OSInfo, error) {
 		OS:              osName,
 		CPUModel:        cpuModel,
 		CPUCores:        cpuCore,
+		CPUDetail:       cpuDetail,
 		MemorySize:      memorySize,
 		Platform:        platform,
 		Uptime:          uptime,
