@@ -832,7 +832,7 @@ func (h *Handler) preparePluginAction(c *gin.Context, plugin *models.Plugin, nam
 		}
 		if err := utils.RemoveDir(pluginDir); err != nil {
 			logger.Logger.Errorf("卸载插件失败: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "uninstall fail"), "data": nil})
 			return false
 		}
 		plugin.Step = 0

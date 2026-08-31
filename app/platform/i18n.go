@@ -35,6 +35,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.ZH["setting no change"] = "配置未修改"
 	i.ZH["install fail"] = "安装失败: %s"
 	i.ZH["install success"] = "安装成功"
+	i.ZH["uninstall fail"] = "卸载失败"
 
 	i.EN["get os info fail"] = "Get OS Info Fail"
 	i.EN["get screens fail"] = "Get Screens Fail"
@@ -45,6 +46,7 @@ func NewExtendedI18n() *ExtendedI18n {
 	i.EN["setting no change"] = "Setting no change"
 	i.EN["install fail"] = "Install Failed: %s"
 	i.EN["install success"] = "Install Success"
+	i.EN["uninstall fail"] = "Uninstall Fail"
 
 	return i
 }
