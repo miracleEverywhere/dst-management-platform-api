@@ -21,6 +21,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.GET("/basic", h.allRoomBasicGet)
 			room.GET("/permitted/basic", h.allRoomPermittedBasicGet)
 			room.GET("/worlds", h.roomWorldsGet)
+			room.PUT("/worlds/custom/cmd", middleware.AdminOnly(), h.worldCustomStartupCmdPut)
 			room.POST("/upload", h.uploadPost)
 			room.POST("/activate", h.activatePost)
 			room.POST("/deactivate", h.deactivatePost)

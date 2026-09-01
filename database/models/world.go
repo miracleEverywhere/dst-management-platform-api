@@ -13,6 +13,7 @@ type World struct {
 	LevelData          string `gorm:"column:level_data" json:"levelData"`
 	ModData            string `gorm:"column:mod_data" json:"modData"`
 	LastAliveTime      string `gorm:"column:last_alive_time" json:"lastAliveTime"`
+	CustomStartupCmd   string `gorm:"column:custom_startup_cmd" json:"customStartupCmd"`
 }
 
 func (World) TableName() string {

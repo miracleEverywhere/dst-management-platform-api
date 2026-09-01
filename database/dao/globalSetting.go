@@ -41,7 +41,6 @@ func (d *GlobalSettingDAO) initGlobalSetting() {
 			AutoUpdateEnable:   true,
 			AutoUpdateSetting:  "06:41:38",
 			AutoUpdateRestart:  false,
-			CustomStartupCmd:   "./dontstarve_dedicated_server_nullrenderer",
 		}
 		err = d.db.Create(&globalSetting).Error
 		if err != nil {

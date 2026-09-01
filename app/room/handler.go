@@ -175,6 +175,27 @@ func (h *Handler) roomPut(c *gin.Context) {
 		reqForm.WorldData[i].RoomID = roomID
 	}
 
+	// CustomStartupCmd权限校验
+	dbWorlds, err := h.worldDao.GetWorldsByRoomID(roomID)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	for i := range *dbWorlds {
+		dbWorldID := (*dbWorlds)[i].ID
+		dbCustomStartupCmd := (*dbWorlds)[i].CustomStartupCmd
+
+		for _, reqWorld := range reqForm.WorldData {
+			if reqWorld.ID == dbWorldID {
+				if dbCustomStartupCmd != reqWorld.CustomStartupCmd {
+					c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+					return
+				}
+			}
+		}
+	}
+
 	// 端口冲突检测
 	var ports []int
 	ports = append(ports, reqForm.RoomData.MasterPort)
@@ -202,7 +223,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 		return
 	}
 
-	err := h.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
+	err = h.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
 	if err != nil {
 		logger.Logger.Errorf("事务更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -357,7 +378,7 @@ func (h *Handler) roomGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
-	logger.Logger.Debug(utils.StructToFlatString(reqForm))
+	//logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
 	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
@@ -981,10 +1002,6 @@ func (h *Handler) roomDelete(c *gin.Context) {
 		return
 	}
 
-	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
 	nonAdminUsers, err := h.userDao.GetNonAdminUsers()
 	if err != nil {
 		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
@@ -1165,4 +1182,52 @@ func webhookTestPost(c *gin.Context) {
 
 func webhookEventsGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": webhook.AllEventTypes})
+}
+
+func (h *Handler) worldCustomStartupCmdPut(c *gin.Context) {
+	type WorldCustomStartupCmd struct {
+		WorldID          int    `json:"worldID" form:"worldID"`
+		CustomStartupCmd string `json:"customStartupCmd" form:"customStartupCmd"`
+	}
+	var reqForm struct {
+		RoomID int                     `json:"roomID" form:"roomID"`
+		Worlds []WorldCustomStartupCmd `json:"worldCustomStartupCmd" form:"worldCustomStartupCmd"`
+	}
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if len(reqForm.Worlds) == 0 || reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	cmdMap := make(map[int]string, len(reqForm.Worlds))
+	for _, reqWorld := range reqForm.Worlds {
+		cmdMap[reqWorld.WorldID] = reqWorld.CustomStartupCmd
+	}
+
+	for i := range *worlds {
+		if cmd, ok := cmdMap[(*worlds)[i].ID]; ok {
+			(*worlds)[i].CustomStartupCmd = cmd
+		}
+	}
+
+	err = h.worldDao.UpdateWorlds(worlds)
+	if err != nil {
+		logger.Logger.Errorf("更新数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
 }

@@ -63,8 +63,8 @@ func (g *Game) initInfo() {
 	g.clusterTokenTxtPath = fmt.Sprintf("%s/cluster_token.txt", g.clusterPath)
 
 	// worlds
-	customGameStartupCmd := cache.GetCustomGameStartupCmd()
 	for _, world := range *g.worlds {
+		customGameStartupCmd := world.CustomStartupCmd
 		if !utils.IsSafeString(world.WorldName) {
 			logger.Logger.Warnf("世界名 %s 可能存在注入风险，跳过", world.WorldName)
 			continue
@@ -80,11 +80,11 @@ func (g *Game) initInfo() {
 		var startCmd string
 		switch g.setting.StartType {
 		case "32-bit":
-			startCmd = fmt.Sprintf("cd dst/bin/ && screen -d -h 200 -m -S %s %s -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
+			startCmd = fmt.Sprintf("cd dst/bin/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
 		case "64-bit":
-			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s_x64 -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
+			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
 		case "luajit":
-			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s_x64_luajit -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
+			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64_luajit -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
 		default:
 			startCmd = "exit 1"
 		}

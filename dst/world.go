@@ -289,7 +289,7 @@ func (g *Game) stopWorld(id int) error {
 
 	err = utils.ScreenCMD("c_shutdown()", world.screenName)
 	if err != nil {
-		logger.Logger.Infof("执行ScreenCMD失败，可能是未运行: %v, cmd: c_shutdown()", err)
+		logger.Logger.Infof("执行ScreenCMD失败，可能是未运行，忽略: %v, cmd: c_shutdown()", err)
 	}
 
 	time.Sleep(1 * time.Second)
@@ -297,7 +297,7 @@ func (g *Game) stopWorld(id int) error {
 	killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
 	err = utils.BashCMD(killCMD)
 	if err != nil {
-		logger.Logger.Infof("结束进程失败，可能是未运行: %v", err)
+		logger.Logger.Infof("结束进程失败，可能是未运行，忽略: %v", err)
 	}
 
 	return nil
