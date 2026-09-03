@@ -138,3 +138,7 @@ func (m *ModCache) DeleteByRoomID(roomID int) error {
 
 	return nil
 }
+
+func initModDownloadStatus() {
+	ModDownloadStatus = NewModCache()
+}

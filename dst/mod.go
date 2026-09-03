@@ -8,14 +8,18 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/yuin/gopher-lua"
 )
 
+var modAcfMutex sync.Mutex
+
 type modSaveData struct {
-	ugcPath string
+	ugcPath    string
+	notUgcPath string
 }
 
 func (g *Game) dsModsSetup() error {
@@ -40,7 +44,7 @@ func (g *Game) dsModsSetup() error {
 	if tbl, ok := modsTable.(*lua.LTable); ok {
 		// 有配置，但为空
 		if tbl.Len() == 0 {
-			err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+			err := utils.TruncAndWriteFile(getGameModSettingPath(), fileContent)
 			if err != nil {
 				return err
 			}
@@ -54,19 +58,27 @@ func (g *Game) dsModsSetup() error {
 			}
 		})
 		// 有配置，不为空
-		err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+		err := utils.TruncAndWriteFile(getGameModSettingPath(), fileContent)
 		if err != nil {
 			return err
 		}
 	} else {
 		// 无配置
-		err := utils.TruncAndWriteFile(utils.GameModSettingPath, fileContent)
+		err := utils.TruncAndWriteFile(getGameModSettingPath(), fileContent)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func getGameModSettingPath() string {
+	if cache.OsType == utils.Darwin {
+		return utils.DarwinGameModSettingPath
+	} else {
+		return utils.GameModSettingPath
+	}
 }
 
 func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
@@ -86,7 +98,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 
 	if ugc {
 		// 1. ugc mod 统一下载到 dmp_files/ugc, 也就是dmp_files/ugc/{cluster}/steamapps/workshop{appworkshop_322330.acf  content  downloads}
-		// 2. 下载完成后，将下载的mod文件全部移动至dst/ugc_mods/{cluster}/{worlds}/ 删除-复制
+		// 2. 下载完成后，将下载的mod文件全部移动至{ugcPath}/{cluster}/{worlds}/ 删除-复制
 		// 3. 读取游戏acf文件和dmp_files的acf文件，更新当前mod-id所对应的所有字段
 
 		// 1
@@ -117,7 +129,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		time.Sleep(500 * time.Millisecond)
 
 		// 3
-		gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
+		gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, g.worldSaveData[0].WorldName)
 		logger.Logger.Debugf("正在处理acf文件：%s", gameAcfPath)
 		gameAcfContent, err := utils.ReadLinesToSlice(gameAcfPath)
 		if err != nil {
@@ -129,7 +141,7 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 			// 下载失败就恢复下载前的acf文件
 			logger.Logger.Info("正在恢复旧的acf文件")
 			for _, world := range g.worldSaveData {
-				gameAcfPath = fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
+				gameAcfPath = fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, world.WorldName)
 				writeErr := utils.WriteLinesFromSlice(gameAcfPath, gameAcfContent)
 				if writeErr != nil {
 					logger.Logger.Errorf("恢复acf文件失败, err: %v", writeErr)
@@ -140,8 +152,8 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 		}
 		time.Sleep(500 * time.Millisecond)
 
-		modSize, err = utils.GetDirSize(fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
-		logger.Logger.Debugf("模组路径为%s", fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, g.worldSaveData[0].WorldName, id))
+		modSize, err = utils.GetDirSize(fmt.Sprintf("%s/%s/content/322330/%d", g.ugcPath, g.worldSaveData[0].WorldName, id))
+		logger.Logger.Debugf("模组路径为%s", fmt.Sprintf("%s/%s/content/322330/%d", g.ugcPath, g.worldSaveData[0].WorldName, id))
 		logger.Logger.Debugf("模组大小为%d", modSize)
 		if err != nil {
 			logger.Logger.Errorf("获取模组大小失败, err: %v", err)
@@ -150,8 +162,8 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 
 	} else {
 		// 1. 下载zip文件并保存
-		// 2. 解压zip文件至dst/mods/workshop-id
-		err, modSize = downloadNotUGCMod(fileURL, id)
+		// 2. 解压zip文件至{g.notUgcPath}/workshop-id
+		err, modSize = downloadNotUGCMod(fileURL, id, g.notUgcPath)
 		if err != nil {
 			logger.Logger.Errorf("下载mod失败, err: %v", err)
 			return err, modSize
@@ -218,7 +230,7 @@ func (g *Game) updateModDownloadStatus(id int, ugc bool) {
 	if ugc {
 		currentSize = g.ugcDownloadBytes(id)
 	} else {
-		currentSize, err = utils.GetFileSize(fmt.Sprintf("dst/mods/%d.zip", id))
+		currentSize, err = utils.GetFileSize(fmt.Sprintf("%s/%d.zip", g.notUgcPath, id))
 		if err != nil {
 			currentSize = 0
 		}
@@ -244,7 +256,7 @@ func modDownloadSizeToInt(size int64) int {
 
 func (g *Game) removeGameOldMod(id int) error {
 	for _, world := range g.worldSaveData {
-		path := fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, world.WorldName, id)
+		path := fmt.Sprintf("%s/%s/content/322330/%d", g.ugcPath, world.WorldName, id)
 		err := utils.RemoveDir(path)
 		if err != nil {
 			return err
@@ -264,8 +276,8 @@ func (g *Game) generateModCopyCmd(id int) string {
 
 	// 生成 复制 命令
 	for _, world := range g.worldSaveData {
-		gamePath := fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, world.WorldName, id)
-		cmd := fmt.Sprintf("mkdir -p dst/ugc_mods/%s/%s/content/322330", g.clusterName, world.WorldName)
+		gamePath := fmt.Sprintf("%s/%s/content/322330/%d", g.ugcPath, world.WorldName, id)
+		cmd := fmt.Sprintf("mkdir -p %s/%s/content/322330", g.ugcPath, world.WorldName)
 		cmds = append(cmds, cmd)
 		cmd = fmt.Sprintf("cp -r %s %s", dmpPath, gamePath)
 		cmds = append(cmds, cmd)
@@ -278,7 +290,7 @@ func (g *Game) processAcf(id int) error {
 	acfModID := strconv.Itoa(id)
 
 	dmpAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", utils.DmpFiles, g.clusterName)
-	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
+	gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, g.worldSaveData[0].WorldName)
 
 	err := utils.EnsureFileExists(gameAcfPath)
 	if err != nil {
@@ -322,7 +334,7 @@ func (g *Game) processAcf(id int) error {
 	}
 
 	for _, world := range g.worldSaveData {
-		gameAcfPath = fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
+		gameAcfPath = fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, world.WorldName)
 		err = utils.EnsureDirExists(fmt.Sprintf("%s/%s", g.ugcPath, world.WorldName))
 		if err != nil {
 			return err
@@ -349,7 +361,7 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	var downloadedMods []DownloadedMod
 
 	// 获取非ugc
-	modDirs, err := utils.GetDirs("dst/mods", false)
+	modDirs, err := utils.GetDirs(g.notUgcPath, false)
 	for _, dir := range modDirs {
 		if strings.HasPrefix(dir, "workshop") {
 			parts := strings.Split(dir, "-")
@@ -367,7 +379,7 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	}
 
 	// 获取ugc
-	gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, g.worldSaveData[0].WorldName)
+	gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, g.worldSaveData[0].WorldName)
 	err = utils.EnsureFileExists(gameAcfPath)
 	if err != nil {
 		logger.Logger.Errorf("EnsureFileExists失败, path: %v", gameAcfPath)
@@ -402,7 +414,7 @@ func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]Configur
 		if ugc {
 			modinfoLuaPath = fmt.Sprintf("%s/%s/content/322330/%d/modinfo.lua", g.ugcPath, g.worldSaveData[0].WorldName, modID)
 		} else {
-			modinfoLuaPath = fmt.Sprintf("dst/mods/workshop-%d/modinfo.lua", modID)
+			modinfoLuaPath = fmt.Sprintf("%s/workshop-%d/modinfo.lua", g.notUgcPath, modID)
 		}
 	} else {
 		if ugc {
@@ -415,7 +427,7 @@ func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]Configur
 			}
 			modinfoLuaPath = fmt.Sprintf("%s/%s/content/322330/%d/modinfo.lua", g.ugcPath, g.worldSaveData[wi].WorldName, modID)
 		} else {
-			modinfoLuaPath = fmt.Sprintf("dst/mods/workshop-%d/modinfo.lua", modID)
+			modinfoLuaPath = fmt.Sprintf("%s/workshop-%d/modinfo.lua", g.notUgcPath, modID)
 		}
 	}
 
@@ -724,7 +736,7 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 		acfID := strconv.Itoa(modID)
 
 		for _, world := range g.worldSaveData {
-			gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
+			gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, world.WorldName)
 
 			err := utils.EnsureFileExists(gameAcfPath)
 			if err != nil {
@@ -748,7 +760,7 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 				return err
 			}
 
-			modPath := fmt.Sprintf("dst/ugc_mods/%s/%s/content/322330/%d", g.clusterName, world.WorldName, modID)
+			modPath := fmt.Sprintf("%s/%s/content/322330/%d", g.ugcPath, world.WorldName, modID)
 			err = utils.RemoveDir(modPath)
 			if err != nil {
 				logger.Logger.Errorf("删除模组失败, err: %v", err)
@@ -756,7 +768,7 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 			}
 		}
 	} else {
-		err := utils.RemoveDir(fmt.Sprintf("dst/mods/workshop-%d", modID))
+		err := utils.RemoveDir(fmt.Sprintf("%s/workshop-%d", g.notUgcPath, modID))
 		if err != nil {
 			logger.Logger.Errorf("删除模组失败, err: %v", err)
 			return err
@@ -768,7 +780,7 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 
 func (g *Game) deleteAcf() error {
 	for _, world := range g.worldSaveData {
-		gameAcfPath := fmt.Sprintf("dst/ugc_mods/%s/%s/appworkshop_322330.acf", g.clusterName, world.WorldName)
+		gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, world.WorldName)
 		err := utils.RemoveFile(gameAcfPath)
 		if err != nil {
 			return err

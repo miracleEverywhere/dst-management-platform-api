@@ -1,6 +1,7 @@
 package embedFS
 
 import (
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"embed"
@@ -19,8 +20,8 @@ var LuaJit embed.FS
 //go:embed shell/*
 var Shell embed.FS
 
-// CopyEmbeddedFiles err := CopyEmbeddedFiles(embedFS.Shell, "shell", "./output/shell", "start.sh", "stop.sh")
-func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir string, includeFiles ...string) error {
+// CopyEmbeddedFiles err := CopyEmbeddedFiles(embedFS.Shell, "shell", "./output/shell", "", "start.sh", "stop.sh")
+func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir, targetName string, includeFiles ...string) error {
 	// 直接构建完整的源文件路径
 	for _, filename := range includeFiles {
 		sourcePath := filepath.Join(sourceRoot, filename)
@@ -32,7 +33,12 @@ func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir string, includeF
 		}
 
 		// 构建目标路径
-		targetPath := filepath.Join(targetDir, filename)
+		var targetPath string
+		if targetName != "" {
+			targetPath = filepath.Join(targetDir, targetName)
+		} else {
+			targetPath = filepath.Join(targetDir, filename)
+		}
 
 		// 确保目标目录存在
 		dir := filepath.Dir(targetPath)
@@ -50,42 +56,58 @@ func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir string, includeF
 
 func GenerateDefaultFile() {
 	var err error
-	// luajit
-	err = utils.EnsureDirExists(fmt.Sprintf("%s/luajit", utils.DmpFiles))
-	if err != nil {
-		logger.Logger.Errorf("创建dmp_files/luajit失败, err: %v", err)
-		return
-	}
-	err = CopyEmbeddedFiles(LuaJit, "luajit", fmt.Sprintf("%s/luajit/", utils.DmpFiles), "liblua.so", "libluajit.so", "libpreload.so")
-	if err != nil {
-		logger.Logger.Errorf("生成luajit依赖失败, err: %v", err)
-		return
+
+	if cache.OsType == utils.Darwin {
+		// install create
+		err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_install.sh", "manual_install_darwin.sh")
+		if err != nil {
+			logger.Logger.Errorf("生成手动安装脚本失败, err: %v", err)
+			panic("生成手动安装脚本失败")
+		}
+		err = utils.ChangeFileMode("./manual_install.sh", 0755)
+		if err != nil {
+			logger.Logger.Errorf("手动安装脚本添加权限失败, err: %v", err)
+			panic("手动安装脚本添加权限失败")
+		}
+	} else {
+		// luajit create
+		err = utils.EnsureDirExists(fmt.Sprintf("%s/luajit", utils.DmpFiles))
+		if err != nil {
+			logger.Logger.Errorf("创建dmp_files/luajit失败, err: %v", err)
+			panic("创建dmp_files/luajit失败")
+		}
+		err = CopyEmbeddedFiles(LuaJit, "luajit", fmt.Sprintf("%s/luajit/", utils.DmpFiles), "", "liblua.so", "libluajit.so", "libpreload.so")
+		if err != nil {
+			logger.Logger.Errorf("生成luajit依赖失败, err: %v", err)
+			panic("生成luajit依赖失败")
+		}
+
+		// install create
+		err = CopyEmbeddedFiles(Shell, "shell", "./", "", "manual_install.sh")
+		if err != nil {
+			logger.Logger.Errorf("生成手动安装脚本失败, err: %v", err)
+			panic("生成手动安装脚本失败")
+		}
 	}
 
-	// install 脚本
-	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_install.sh")
-	if err != nil {
-		logger.Logger.Errorf("生成手动安装脚本失败, err: %v", err)
-		return
-	}
-
+	//install chmod
 	err = utils.ChangeFileMode("./manual_install.sh", 0755)
 	if err != nil {
 		logger.Logger.Errorf("手动安装脚本添加权限失败, err: %v", err)
-		return
+		panic("手动安装脚本添加权限失败")
 	}
 
 	// update 脚本
-	err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_update.sh")
+	err = CopyEmbeddedFiles(Shell, "shell", "./", "", "manual_update.sh")
 	if err != nil {
 		logger.Logger.Errorf("生成手动更新脚本失败, err: %v", err)
-		return
+		panic("生成手动更新脚本失败")
 	}
 
 	err = utils.ChangeFileMode("./manual_update.sh", 0755)
 	if err != nil {
 		logger.Logger.Errorf("手动更新脚本添加权限失败, err: %v", err)
-		return
+		panic("手动更新脚本添加权限失败")
 	}
 
 	// 删除Windows的换行符

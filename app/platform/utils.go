@@ -364,8 +364,16 @@ func unzipDstImages(string) ([]models.DstImage, error) {
 	_ = utils.RemoveDir(gameImagesPath)
 
 	_ = utils.EnsureDirExists(gameImagesPath)
+
+	var dstDataPath string
+	if cache.OsType == utils.Darwin {
+		dstDataPath = utils.DarwinDstContentsPath + "/data"
+	} else {
+		dstDataPath = utils.GameMainPath + "/data"
+	}
+
 	cmdArgs := []string{
-		"dst/data/databundles/images.zip",
+		dstDataPath + "/databundles/images.zip",
 		"-d",
 		gameImagesPath,
 	}

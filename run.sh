@@ -45,6 +45,21 @@ SCRIPT_GITHUB="https://raw.githubusercontent.com/miracleEverywhere/dst-managemen
 DMP_HOME="https://miraclesses.top/"
 
 ACCELERATED_URL=""
+OS_NAME=$(uname -s)
+IS_DARWIN=false
+if [[ "${OS_NAME}" == "Darwin" ]]; then
+	IS_DARWIN=true
+fi
+
+if ${IS_DARWIN}; then
+	ARCHIVE_NAME="dmp_darwin.tgz"
+	if ! brew --version >/dev/null 2>&1; then
+		echo_red "brew未安装"
+		exit 1
+	fi
+else
+	ARCHIVE_NAME="dmp.tgz"
+fi
 
 function echo_red() {
 	echo -e "\033[0;31m$*\033[0m"
@@ -70,15 +85,14 @@ function echo_red_blink() {
 ORIGINAL_ARGS=("$@")
 RUN_SH_CMD="$0 ${ORIGINAL_ARGS[*]}"
 
-# 检查是否以 no-root 模式运行
-if [[ "$1" == "no-root" ]]; then
-	SUDO="sudo"
-	shift
-	echo_yellow "以非root模式运行，需要root权限的操作将使用sudo"
-else
-	SUDO=""
-	# 检查用户，只能使用root执行
-	if [[ "${USER}" != "root" ]]; then
+# Darwin 不需要 root 判断；Linux 保留 no-root 模式
+SUDO=""
+if ! ${IS_DARWIN}; then
+	if [[ "$1" == "no-root" ]]; then
+		SUDO="sudo"
+		shift
+		echo_yellow "以非root模式运行，需要root权限的操作将使用sudo"
+	elif [[ "${USER}" != "root" ]]; then
 		echo_red "请使用root用户执行此脚本，或使用 ./run.sh no-root 以非root模式运行"
 		exit 1
 	fi
@@ -119,11 +133,19 @@ function prompt_user() {
 	echo_green "[5]: 强制更新饥荒管理平台"
 	echo_green "[6]: 更新run.sh启动脚本"
 	echo_yellow "————————————————————————————————————————————————————————————"
-	echo_green "[7]: 设置虚拟内存"
-	echo_green "[8]: 设置开机自启"
-	echo_green "[9]: 退出脚本"
+	if ${IS_DARWIN}; then
+		echo_green "[7]: 退出脚本"
+	else
+		echo_green "[7]: 设置虚拟内存"
+		echo_green "[8]: 设置开机自启"
+		echo_green "[9]: 退出脚本"
+	fi
 	echo_yellow "————————————————————————————————————————————————————————————"
-	echo_yellow "请输入要执行的操作 [0-9]: "
+	if ${IS_DARWIN}; then
+		echo_yellow "请输入要执行的操作 [0-7]: "
+	else
+		echo_yellow "请输入要执行的操作 [0-9]: "
+	fi
 }
 
 # 加速节点选择
@@ -176,6 +198,10 @@ function generate_acceleration() {
 # 通用包安装函数
 function install_pkg() {
 	local pkg="$1"
+	if ${IS_DARWIN}; then
+		brew install "$pkg"
+		return
+	fi
 	OS=$(grep -P "^ID=" /etc/os-release | awk -F'=' '{print($2)}' | sed "s/['\"]//g")
 	if [[ ${OS} == "ubuntu" ]]; then
 		${SUDO} apt install -y "$pkg"
@@ -243,12 +269,12 @@ function install_dmp() {
 		echo_red "获取最新版本信息失败，请检查网络连接"
 		exit 1
 	fi
-	github_url=$(echo "$release_json" | jq -r '.assets[] | select(.name == "dmp.tgz") | .browser_download_url')
+	github_url=$(echo "$release_json" | jq -r --arg name "$ARCHIVE_NAME" '.assets[] | select(.name == $name) | .browser_download_url')
 	if [[ -z "$github_url" ]]; then
 		echo_red "未找到下载文件，请检查网络连接"
 		exit 1
 	fi
-	github_digest=$(echo "$release_json" | jq -r '.assets[] | select(.name == "dmp.tgz") | .digest' | awk -F':' '{print $2}')
+	github_digest=$(echo "$release_json" | jq -r --arg name "$ARCHIVE_NAME" '.assets[] | select(.name == $name) | .digest' | awk -F':' '{print $2}')
 	if [[ -z "$github_digest" ]]; then
 		echo_red "获取安装包校验值失败，请检查网络连接"
 		exit 1
@@ -259,9 +285,13 @@ function install_dmp() {
 
 	# 开始下载
 	echo_cyan "正在从${url}进行下载"
-	if download "${url}" "dmp.tgz" 10; then
+	if download "${url}" "${ARCHIVE_NAME}" 10; then
 		# 验证 SHA-256
-		file_digest=$(sha256sum dmp.tgz | awk '{print $1}')
+		if command -v sha256sum >/dev/null 2>&1; then
+			file_digest=$(sha256sum "${ARCHIVE_NAME}" | awk '{print $1}')
+		else
+			file_digest=$(shasum -a 256 "${ARCHIVE_NAME}" | awk '{print $1}')
+		fi
 		if [[ "$github_digest" != "$file_digest" ]]; then
 			echo_red "DMP下载失败"
 			exit 1
@@ -272,8 +302,8 @@ function install_dmp() {
 	fi
 
 	set -e
-	tar zxvf dmp.tgz >/dev/null
-	rm -f dmp.tgz
+	tar zxvf "${ARCHIVE_NAME}" >/dev/null
+	rm -f "${ARCHIVE_NAME}"
 	chmod +x "$ExeFile"
 	set +e
 }
@@ -294,10 +324,17 @@ function start_dmp() {
 	stop_dmp
 
 	# 检查端口是否被占用,如果被占用则退出
-	port=$(ss -ltn | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
-
+	if ${IS_DARWIN}; then
+		if command -v lsof >/dev/null 2>&1; then
+			port=$(lsof -nP -iTCP:"${PORT}" -sTCP:LISTEN -t 2>/dev/null)
+		else
+			port=$(netstat -anv -p tcp 2>/dev/null | awk -v port="${PORT}" '$4 ~ "\\." port "$" && $6 == "LISTEN" {print $4}')
+		fi
+	else
+		port=$(ss -ltn | awk -v port=${PORT} '$4 ~ ":"port"$" {print $4}')
+	fi
 	if [ -n "$port" ]; then
-		echo_red "端口 $PORT 已被占用: $port", 修改 run.sh 中的 PORT 变量后重新运行或检查饥荒管理平台是否正在运行
+		echo_red "端口 $PORT 已被占用: $port, 修改 run.sh 中的 PORT 变量后重新运行或检查饥荒管理平台是否正在运行"
 		exit 1
 	fi
 
@@ -321,7 +358,7 @@ function stop_dmp() {
 function clear_dmp() {
 	echo_cyan "正在执行清理"
 	pkill -9 dmp 2>/dev/null
-	rm -f dmp dmp.tgz logs/*
+	rm -f dmp "${ARCHIVE_NAME}" logs/*
 }
 
 # 检查当前版本号
@@ -368,13 +405,22 @@ function update_script() {
 		exit 1
 	fi
 
-	# 修改下载好的最新文件
-	sed -i "s/^PORT=.*/PORT=${PORT}/" $TEMP_FILE
-	sed -i "s/^SWAPSIZE=.*/SWAPSIZE=${SWAPSIZE}/" $TEMP_FILE
-	sed -i "s#^CONFIG_DIR=.*#CONFIG_DIR=${CONFIG_DIR}#" $TEMP_FILE
-	sed -i "s#^LEVEL=.*#LEVEL=${LEVEL}#" $TEMP_FILE
-	sed -i "s#^CERT_FILE=.*#CERT_FILE=${CERT_FILE}#" $TEMP_FILE
-	sed -i "s#^KEY_FILE=.*#KEY_FILE=${KEY_FILE}#" $TEMP_FILE
+	# 修改下载好的最新文件，不生成备份
+	if ${IS_DARWIN}; then
+		sed -i '' "s/^PORT=.*/PORT=${PORT}/" "$TEMP_FILE"
+		sed -i '' "s/^SWAPSIZE=.*/SWAPSIZE=${SWAPSIZE}/" "$TEMP_FILE"
+		sed -i '' "s#^CONFIG_DIR=.*#CONFIG_DIR=${CONFIG_DIR}#" "$TEMP_FILE"
+		sed -i '' "s#^LEVEL=.*#LEVEL=${LEVEL}#" "$TEMP_FILE"
+		sed -i '' "s#^CERT_FILE=.*#CERT_FILE=${CERT_FILE}#" "$TEMP_FILE"
+		sed -i '' "s#^KEY_FILE=.*#KEY_FILE=${KEY_FILE}#" "$TEMP_FILE"
+	else
+		sed -i "s/^PORT=.*/PORT=${PORT}/" "$TEMP_FILE"
+		sed -i "s/^SWAPSIZE=.*/SWAPSIZE=${SWAPSIZE}/" "$TEMP_FILE"
+		sed -i "s#^CONFIG_DIR=.*#CONFIG_DIR=${CONFIG_DIR}#" "$TEMP_FILE"
+		sed -i "s#^LEVEL=.*#LEVEL=${LEVEL}#" "$TEMP_FILE"
+		sed -i "s#^CERT_FILE=.*#CERT_FILE=${CERT_FILE}#" "$TEMP_FILE"
+		sed -i "s#^KEY_FILE=.*#KEY_FILE=${KEY_FILE}#" "$TEMP_FILE"
+	fi
 
 	# 替换当前脚本
 	mv -f "$TEMP_FILE" "$0" && chmod +x "$0"
@@ -505,22 +551,38 @@ while true; do
 		break
 		;;
 	7)
-		set_tty
-		set_swap
-		unset_tty
-		break
+		if ${IS_DARWIN}; then
+			exit 0
+		else
+			set_tty
+			set_swap
+			unset_tty
+			break
+		fi
 		;;
 	8)
+		if ${IS_DARWIN}; then
+			echo_red "请输入正确的数字 [0-7]"
+			continue
+		fi
 		set_tty
 		auto_start_dmp
 		unset_tty
 		break
 		;;
 	9)
+		if ${IS_DARWIN}; then
+			echo_red "请输入正确的数字 [0-7]"
+			continue
+		fi
 		exit 0
 		;;
 	*)
-		echo_red "请输入正确的数字 [0-9]"
+		if ${IS_DARWIN}; then
+			echo_red "请输入正确的数字 [0-7]"
+		else
+			echo_red "请输入正确的数字 [0-9]"
+		fi
 		continue
 		;;
 	esac

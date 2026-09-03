@@ -47,9 +47,6 @@ func Run() {
 	// 初始化日志
 	logger.InitLogger(logLevel)
 
-	// 初始化文件
-	embedFS.GenerateDefaultFile()
-
 	// 初始化数据库
 	db.InitDB(dbPath)
 	db.AutoMigrate()
@@ -67,6 +64,9 @@ func Run() {
 
 	// 初始化缓存
 	cache.InitCache()
+
+	// 初始化文件
+	embedFS.GenerateDefaultFile()
 
 	// 启动游戏内 AI 对话监听
 	aiManager := aichat.NewManager(roomAISettingDao, systemDao, pluginDao)
