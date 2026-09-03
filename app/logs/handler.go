@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -60,7 +61,11 @@ func (h *Handler) contentGet(c *gin.Context) {
 		var logPath string
 		switch reqForm.LogType {
 		case "steam":
-			logPath = "Steam/logs/bootstrap_log.txt"
+			if cache.OsType == utils.Darwin {
+				logPath = utils.DarwinSteamLogPath
+			} else {
+				logPath = utils.SteamLogPath
+			}
 		case "access":
 			logPath = "logs/access.log"
 		case "runtime":
