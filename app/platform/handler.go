@@ -638,7 +638,11 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 			return
 		}
-		h.installTmiPlugin(c, reqForm.Proxy, *reqForm.ImageParse)
+		imageParse := *reqForm.ImageParse
+		if cache.OsType == utils.Darwin {
+			imageParse = false
+		}
+		h.installTmiPlugin(c, reqForm.Proxy, imageParse)
 	case models.PluginChat:
 		h.installAiChatPlugin(c, reqForm.Proxy)
 	default:

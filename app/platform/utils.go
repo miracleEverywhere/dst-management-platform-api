@@ -452,7 +452,14 @@ func installTMIR(string) ([]models.DstImage, error) {
 		return images, fmt.Errorf("下载TMIR模组失败: %v", err)
 	}
 
-	scriptPath := filepath.Join("dst", "data", "databundles", "scripts.zip")
+	var dstDataPath string
+	if cache.OsType == utils.Darwin {
+		dstDataPath = utils.DarwinDstContentsPath + "/data"
+	} else {
+		dstDataPath = utils.GameMainPath + "/data"
+	}
+
+	scriptPath := filepath.Join(dstDataPath, "databundles", "scripts.zip")
 	tmpDir := filepath.Join(utils.PluginTmiPath, "tmp")
 	gameChinesePo := filepath.Join(tmpDir, "scripts", "languages", "chinese_s.po")
 
