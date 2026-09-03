@@ -30,6 +30,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			platform.POST("/plugin/install", middleware.AdminOnly(), h.pluginInstallPost)
 			platform.POST("/plugin/action", middleware.AdminOnly(), h.pluginActionPost)
 			platform.GET("/plugin/status", h.pluginStatusGet)
+			platform.GET("/os", osTypeGet)
 		}
 	}
 }
