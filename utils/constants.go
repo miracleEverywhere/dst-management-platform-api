@@ -27,6 +27,8 @@ const GameNotUgcPath = GameMainPath + "/mods"
 // GameModSettingPath 自动下载mod配置文件
 const GameModSettingPath = GameNotUgcPath + "/dedicated_server_mods_setup.lua"
 
+const SteamLogPath = "Steam/logs/bootstrap_log.txt"
+
 // DSTLocalVersionPath 饥荒版本文件
 const DSTLocalVersionPath = "dst/version.txt"
 
@@ -88,3 +90,5 @@ const DarwinGameUgcPath = DarwinDstContentsPath + "/ugc_mods"
 
 // DarwinGameNotUgcPath macos 非ugc模组目录
 const DarwinGameNotUgcPath = DarwinDstContentsPath + "/mods"
+
+const DarwinSteamLogPath = "steamcmd/logs/console_log.txt"
