@@ -1,7 +1,7 @@
 package utils
 
 // Version 平台版本号
-const Version = "v3.1.8"
+const Version = "v3.2.0"
 
 // ApiVersion 接口版本号
 const ApiVersion = "v3" //
@@ -15,8 +15,17 @@ const JwtExpirationHours = 24 * 3
 // StaticCacheHours 静态资源缓存时间
 const StaticCacheHours = 24 * 7
 
+// GameMainPath 游戏主目录
+const GameMainPath = "dst"
+
+// GameUgcPath 游戏ugc模组目录
+const GameUgcPath = GameMainPath + "/ugc_mods"
+
+// GameNotUgcPath 游戏非ugc模组目录
+const GameNotUgcPath = GameMainPath + "/mods"
+
 // GameModSettingPath 自动下载mod配置文件
-const GameModSettingPath = "dst/mods/dedicated_server_mods_setup.lua"
+const GameModSettingPath = GameNotUgcPath + "/dedicated_server_mods_setup.lua"
 
 // DSTLocalVersionPath 饥荒版本文件
 const DSTLocalVersionPath = "dst/version.txt"
@@ -59,3 +68,23 @@ const PluginAiChatWikiPath = PluginAiChatPath + "/wiki"
 
 // PluginAiChatSearchDataPath ai聊天搜索用数据
 const PluginAiChatSearchDataPath = PluginAiChatPath + "/search_data"
+
+// ========== Darwin ==========
+
+// Darwin 系统名
+const Darwin = "darwin"
+
+// DarwinDstContentsPath 游戏主目录
+const DarwinDstContentsPath = "dst/dontstarve_dedicated_server_nullrenderer.app/Contents"
+
+// DarwinDstBinDir macos下游戏二进制文件目录
+const DarwinDstBinDir = DarwinDstContentsPath + "/MacOS"
+
+// DarwinGameModSettingPath dedicated_server_mods_setup.lua文件
+const DarwinGameModSettingPath = DarwinGameNotUgcPath + "/dedicated_server_mods_setup.lua"
+
+// DarwinGameUgcPath macos ugc模组目录
+const DarwinGameUgcPath = DarwinDstContentsPath + "/ugc_mods"
+
+// DarwinGameNotUgcPath macos 非ugc模组目录
+const DarwinGameNotUgcPath = DarwinDstContentsPath + "/mods"

@@ -1,8 +1,6 @@
 package dst
 
 import (
-	"dst-management-platform-api/cache"
-	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -13,106 +11,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	lua "github.com/yuin/gopher-lua"
 )
-
-type Game struct {
-	room    *models.Room
-	worlds  *[]models.World
-	setting *models.RoomSetting
-	lang    string
-	roomSaveData
-	worldSaveData []worldSaveData
-	playerSaveData
-	modSaveData
-	// room全局文件锁
-	roomMutex sync.Mutex
-	// world全局文件锁
-	worldMutex sync.Mutex
-	// player全局文件锁
-	playerMutex sync.Mutex
-	// acf文件锁
-	acfMutex sync.Mutex
-	// mod 文件、map锁
-	modMutex sync.Mutex
-}
-
-var modAcfMutex sync.Mutex
-
-func NewGameController(room *models.Room, worlds *[]models.World, setting *models.RoomSetting, lang string) *Game {
-	game := &Game{
-		room:    room,
-		worlds:  worlds,
-		setting: setting,
-		lang:    lang,
-	}
-
-	game.initInfo()
-
-	return game
-}
-
-func (g *Game) initInfo() {
-	// room
-	g.clusterName = fmt.Sprintf("Cluster_%d", g.room.ID)
-	g.clusterPath = fmt.Sprintf("%s/%s", utils.ClusterPath, g.clusterName)
-	g.clusterIniPath = fmt.Sprintf("%s/cluster.ini", g.clusterPath)
-	g.clusterTokenTxtPath = fmt.Sprintf("%s/cluster_token.txt", g.clusterPath)
-
-	// worlds
-	for _, world := range *g.worlds {
-		customGameStartupCmd := world.CustomStartupCmd
-		if !utils.IsSafeString(world.WorldName) {
-			logger.Logger.Warnf("世界名 %s 可能存在注入风险，跳过", world.WorldName)
-			continue
-		}
-		worldPath := fmt.Sprintf("%s/%s", g.clusterPath, world.WorldName)
-		serverIniPath := fmt.Sprintf("%s/server.ini", worldPath)
-		savePath := fmt.Sprintf("%s/save", worldPath)
-		sessionPath := fmt.Sprintf("%s/session", savePath)
-		levelDataOverridePath := fmt.Sprintf("%s/leveldataoverride.lua", worldPath)
-		modOverridesPath := fmt.Sprintf("%s/modoverrides.lua", worldPath)
-		screenName := fmt.Sprintf("DMP_%s_%s", g.clusterName, world.WorldName)
-
-		var startCmd string
-		switch g.setting.StartType {
-		case "32-bit":
-			startCmd = fmt.Sprintf("cd dst/bin/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
-		case "64-bit":
-			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
-		case "luajit":
-			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64_luajit -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, world.WorldName)
-		default:
-			startCmd = "exit 1"
-		}
-
-		g.worldSaveData = append(g.worldSaveData, worldSaveData{
-			worldPath:             worldPath,
-			serverIniPath:         serverIniPath,
-			savePath:              savePath,
-			sessionPath:           sessionPath,
-			levelDataOverridePath: levelDataOverridePath,
-			modOverridesPath:      modOverridesPath,
-			startCmd:              startCmd,
-			screenName:            screenName,
-			World:                 world,
-		})
-	}
-
-	// players
-	g.adminlistPath = fmt.Sprintf("%s/adminlist.txt", g.clusterPath)
-	g.whitelistPath = fmt.Sprintf("%s/whitelist.txt", g.clusterPath)
-	g.blocklistPath = fmt.Sprintf("%s/blocklist.txt", g.clusterPath)
-	g.adminlist = getPlayerList(g.adminlistPath)
-	g.whitelist = getPlayerList(g.whitelistPath)
-	g.blocklist = getPlayerList(g.blocklistPath)
-
-	// mods
-	g.ugcPath = fmt.Sprintf("%s/dst/ugc_mods/%s", cache.CurrentDir, g.clusterName)
-}
 
 // ============== //
 // modinfo.lua
@@ -728,10 +630,10 @@ func formatLuaKey(s string) string {
 	return s
 }
 
-func downloadNotUGCMod(url string, id int) (error, int64) {
-	filename := strconv.Itoa(id) + ".zip"              // 临时zip文件名
-	filepath := fmt.Sprintf("dst/mods/%s", filename)   // 临时zip文件路径
-	modPath := fmt.Sprintf("dst/mods/workshop-%d", id) // mod路径
+func downloadNotUGCMod(url string, id int, notUgcPath string) (error, int64) {
+	filename := strconv.Itoa(id) + ".zip"                    // 临时zip文件名
+	filepath := fmt.Sprintf("%s/%s", notUgcPath, filename)   // 临时zip文件路径
+	modPath := fmt.Sprintf("%s/workshop-%d", notUgcPath, id) // mod路径
 
 	var modSize int64
 

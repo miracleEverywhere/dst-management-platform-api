@@ -57,7 +57,7 @@ func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir, targetName stri
 func GenerateDefaultFile() {
 	var err error
 
-	if cache.OsType == "darwin" {
+	if cache.OsType == utils.Darwin {
 		// install create
 		err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_install.sh", "manual_install_darwin.sh")
 		if err != nil {

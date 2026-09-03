@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 set -e
 
@@ -6,6 +6,9 @@ WORK_DIR=$(pwd)
 STEAM_DIR="$WORK_DIR/steamcmd"
 DST_DIR="$WORK_DIR/dst"
 DST_SETTING_DIR="$HOME/.klei"
+
+# 设置trap捕获所有错误
+trap error_exit ERR
 
 function error_exit() {
     echo -e "==>dmp@@ 安装失败 @@dmp<=="
@@ -35,9 +38,9 @@ cd "$STEAM_DIR" || error_exit
 
 # 初始化一些目录和文件
 mkdir -p "$HOME/Documents/Klei/DoNotStarveTogether"
-
-cd "$HOME/Documents/Klei/DoNotStarveTogether"
-ln -s "${DST_SETTING_DIR}"/DoNotStarveTogether/MyDediServer .
+mkdir -p "${DST_SETTING_DIR}"
+cd "$HOME"
+ln -s "$HOME"/Documents/Klei .klei
 
 # 清理
 cd "$WORK_DIR" || error_exit

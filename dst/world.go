@@ -2,6 +2,7 @@ package dst
 
 import (
 	"bufio"
+	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -210,16 +211,18 @@ func (g *Game) startWorld(id int) error {
 		}
 	}()
 
-	// 给klei擦钩子，检查so文件
-	if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
-		logger.Logger.Debug("发现so文件异常，开始替换")
-		replaceDSTSOFile()
-	}
-
 	var (
 		err   error
 		world *worldSaveData
 	)
+
+	// 给klei擦钩子，检查so文件
+	if cache.OsType != "darwin" {
+		if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
+			logger.Logger.Debug("发现so文件异常，开始替换")
+			replaceDSTSOFile()
+		}
+	}
 
 	// 如果正在运行，则跳过
 	if g.worldUpStatus(id) {
@@ -227,12 +230,12 @@ func (g *Game) startWorld(id int) error {
 		return nil
 	}
 
-	world, err = g.getWorldByID(id)
+	err = g.dsModsSetup()
 	if err != nil {
 		return err
 	}
 
-	err = g.dsModsSetup()
+	world, err = g.getWorldByID(id)
 	if err != nil {
 		return err
 	}
@@ -248,10 +251,12 @@ func (g *Game) startAllWorld() error {
 
 	var err error
 
-	// 给klei擦钩子，检查so文件
-	if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
-		logger.Logger.Debug("发现so文件异常，开始替换")
-		replaceDSTSOFile()
+	if cache.OsType != "darwin" {
+		// 给klei擦钩子，检查so文件
+		if !utils.CompareFileSHA256("dst/bin/lib32/steamclient.so", "steamcmd/linux32/steamclient.so") {
+			logger.Logger.Debug("发现so文件异常，开始替换")
+			replaceDSTSOFile()
+		}
 	}
 
 	err = g.dsModsSetup()

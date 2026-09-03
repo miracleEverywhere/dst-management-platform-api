@@ -12,8 +12,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -84,7 +86,11 @@ type DSTVersion struct {
 func GetDSTVersion() DSTVersion {
 	var dstVersion DSTVersion
 
-	dstVersion.Local = getLocalGameVersion()
+	if cache.OsType == utils.Darwin {
+		dstVersion.Local = getLocalGameVersionDarwin()
+	} else {
+		dstVersion.Local = getLocalGameVersion()
+	}
 
 	if cache.GameServerVersion != 0 {
 		dstVersion.Server = cache.GameServerVersion
@@ -135,6 +141,29 @@ func getLocalGameVersion() int {
 		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 
 		return version
+	}
+
+	return version
+}
+
+func getLocalGameVersionDarwin() int {
+	// strings dontstarve_dedicated_server_nullrenderer | grep -A1 "cfg:%s" | tail -1
+
+	binPath := filepath.Join(utils.DarwinDstBinDir, "dontstarve_dedicated_server_nullrenderer")
+	cmd := fmt.Sprintf("strings %s | grep -A1 \"cfg:%%s\" | tail -1", binPath)
+
+	out, errSystem, errGo := utils.BashCMDOutput(cmd)
+	if errGo != nil || errSystem != "" {
+		logger.Logger.Errorf("获取游戏版本失败，system: %s，err: %v", errSystem, errGo)
+		return 0
+	}
+
+	out = strings.TrimSpace(out)
+
+	version, err := strconv.Atoi(out)
+	if err != nil {
+		logger.Logger.Errorf("获取游戏版本失败，err: %v", err)
+		return 0
 	}
 
 	return version
