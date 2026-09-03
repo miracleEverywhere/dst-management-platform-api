@@ -54,7 +54,7 @@ fi
 if ${IS_DARWIN}; then
 	ARCHIVE_NAME="dmp_darwin.tgz"
 	if ! brew --version >/dev/null 2>&1; then
-		echo_red "brew未安装"
+		echo "brew未安装"
 		exit 1
 	fi
 else
@@ -80,6 +80,11 @@ function echo_cyan() {
 function echo_red_blink() {
 	echo -e "\033[5;31m$*\033[0m"
 }
+
+if ${IS_DARWIN} && { [[ ! "${PORT}" =~ ^[0-9]+$ ]] || (( PORT < 1024 )); }; then
+	echo_red "MacOS系统中运行DMP，端口必须大于1024，当前端口: ${PORT}"
+	exit 1
+fi
 
 # 保存原始参数，供 update_script 和 auto_start_dmp 使用
 ORIGINAL_ARGS=("$@")
