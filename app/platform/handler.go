@@ -914,7 +914,3 @@ func (h *Handler) pluginStatusGet(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": plugin.Status})
 }
-
-func osTypeGet(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.OsType})
-}
