@@ -38,9 +38,21 @@ cd "$STEAM_DIR" || error_exit
 
 # 初始化一些目录和文件
 mkdir -p "$HOME/Documents/Klei/DoNotStarveTogether"
-mkdir -p "${DST_SETTING_DIR}"
 cd "$HOME"
-ln -s "$HOME"/Documents/Klei .klei
+
+# 将游戏存档目录统一到 Documents/Klei。空目录可以安全替换，非空目录则保留用户数据。
+if [ -L "${DST_SETTING_DIR}" ]; then
+    ln -sfn "$HOME/Documents/Klei" "${DST_SETTING_DIR}"
+elif [ -d "${DST_SETTING_DIR}" ]; then
+    if [ -z "$(find "${DST_SETTING_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+        rmdir "${DST_SETTING_DIR}"
+        ln -s "$HOME/Documents/Klei" "${DST_SETTING_DIR}"
+    else
+        echo "${DST_SETTING_DIR} 已存在且包含文件，保留现有目录"
+    fi
+else
+    ln -s "$HOME/Documents/Klei" "${DST_SETTING_DIR}"
+fi
 
 # 清理
 cd "$WORK_DIR" || error_exit
