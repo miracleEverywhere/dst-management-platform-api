@@ -1,0 +1,1 @@
+import{Lr as e,ai as t,ri as n,si as r}from"./index-D3EtMxce.js";function i(){let i=t(!1);return e(()=>{window.requestAnimationFrame(()=>{i.value=!0})}),{ssrBootStyles:r(()=>i.value?void 0:{transition:`none !important`}),isBooted:n(i)}}export{i as t};

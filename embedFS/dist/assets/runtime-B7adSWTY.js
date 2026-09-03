@@ -1,1 +1,0 @@
-import{Rr as e,br as t}from"./index-BGP4BgEb.js";import n from"./singleLog-BVpv-Ge8.js";var r={__name:`runtime`,setup(r){return(r,i)=>(e(),t(n,{type:`runtime`}))}};export{r as default};
