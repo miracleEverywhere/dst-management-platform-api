@@ -6,6 +6,8 @@ WORK_DIR=$(pwd)
 STEAM_DIR="$WORK_DIR/steamcmd"
 DST_DIR="$WORK_DIR/dst"
 DST_SETTING_DIR="$HOME/.klei"
+DST_BIN_DIR="$DST_DIR/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS"
+DST_BIN="dontstarve_dedicated_server_nullrenderer"
 
 # 设置trap捕获所有错误
 trap error_exit ERR
@@ -37,7 +39,7 @@ cd "$STEAM_DIR" || error_exit
 
 
 # 初始化一些目录和文件
-mkdir -p "$HOME/Documents/Klei/DoNotStarveTogether"
+mkdir -p "$HOME/Documents/Klei"
 cd "$HOME"
 
 # 将游戏存档目录统一到 Documents/Klei。空目录可以安全替换，非空目录则保留用户数据。
@@ -57,5 +59,9 @@ fi
 # 清理
 cd "$WORK_DIR" || error_exit
 rm -f steamcmd_osx.tar.gz
+
+# 运行下载好的饥荒，防止dmp修改.app后MacOS应用校验不通过
+cd "$DST_BIN_DIR" || error_exit
+timeout 1m ./$DST_BIN
 
 echo -e "==>dmp@@ 安装完成 @@dmp<=="
