@@ -6,15 +6,18 @@
 
 DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务器管理平台。本仓库包含 Go 后端，以及由独立前端仓库构建后嵌入二进制的静态资源。
 
-- Go 工具链：`go.mod` 指定 Go 1.25.4。
+- Go 工具链：`go.mod` 指定 Go 1.25.4；模块路径为 `dst-management-platform-api`。
 - HTTP：Gin；数据访问：GORM + SQLite；任务调度：gocron；日志：Zap。
 - `main.go` 仅调用 `server.Run()`；初始化、依赖装配和路由注册位于 `server/`。
 - API 版本取自 `utils.ApiVersion`，平台版本取自 `utils.Version`。
-- 运行环境主要面向 Linux，并依赖 `screen`、SteamCMD、DST 文件与进程等外部资源。
+- 运行环境主要面向 Linux，也支持 macOS；依赖 `screen`、SteamCMD、DST 文件与进程等外部资源。
+- 前端由独立仓库构建后复制到 `embedFS/dist/`，再通过 `go:embed` 嵌入后端二进制。
 
 ## 目录职责
 
 - `app/<module>/`：HTTP 业务模块，通常包含 `handler.go`、`router.go`、`i18n.go` 和 `utils.go`。
+- `aichat/`：游戏内 AI 对话监听、关键词/向量索引及相关知识库能力。
+- `cache/`：进程级缓存初始化与访问。
 - `database/models/`：GORM 模型；`database/dao/`：数据访问；`database/db/`：SQLite 初始化、迁移和缓存。
 - `dst/`：DST 房间、世界、模组、玩家、地图、日志和进程控制。
 - `scheduler/`：全局及房间级定时任务。
@@ -22,6 +25,7 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - `webhook/`：Webhook 事件、签名和异步发送。
 - `utils/`、`logger/`：共享工具与日志设施。
 - `embedFS/`：通过 `go:embed` 打包的前端、LuaJIT 库和安装脚本。
+- `docs/`：项目文档及图片资源。
 - `docker/`、`run.sh`：发布和最终用户部署，不是日常开发入口。
 
 ## 常用命令
@@ -35,14 +39,17 @@ gofmt -w path/to/changed.go
 # 静态检查
 go vet ./...
 
-# 与发布工作流一致的后端构建
+# Linux 发布构建（无 CGO）
 CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
 
-# 等价的 Make 目标
-make backend
+# Make 构建后端；macOS 会按 Makefile 使用 CGO 并输出到 ~/dmp
+make backend-only
+
+# 查看 Makefile 提供的目标
+make help
 ```
 
-`make all` 和 `make copy-frontend` 假定前端仓库位于 `$(HOME)/WebstormProjects/dst-management-platform-web`，并会清空再替换 `embedFS/dist/`。只有任务明确涉及前端构建产物、且该外部仓库存在时才运行。
+`make all`、`make frontend-only`、`make frontend2backend` 和 `make copy-frontend` 假定前端仓库位于 `$(HOME)/WebstormProjects/dst-management-platform-web`，并可能清空或替换前端 `dist/` 及 `embedFS/dist/`。只有任务明确涉及前端构建产物、且该外部仓库存在时才运行；不要手工编辑 `embedFS/dist/` 中带哈希的资源。
 
 如确需本地启动，使用非特权端口和隔离数据目录，例如：
 
@@ -51,6 +58,8 @@ go run . -bind 8080 -dbpath ./data -level debug
 ```
 
 启动服务会创建数据库、日志、`dmp_files/` 和手动安装脚本，并启动可能访问网络或操作 DST 进程的调度任务。不要把启动服务作为普通代码修改的默认验证步骤。
+
+可用启动参数包括 `-bind`、`-dbpath`、`-level`、`-cert`、`-key`、`-no-http-compress`、`-v` 和 `-console`。`-cert` 与 `-key` 同时提供时启动 HTTPS；`-level debug` 会注册 pprof 路由，不应在生产环境启用；`-console` 执行一次控制台命令后退出。
 
 ## 修改规则
 
@@ -86,13 +95,18 @@ go run . -bind 8080 -dbpath ./data -level debug
 - 不要为了整理而改写 `go.mod`/`go.sum`。仅在依赖确有变化时执行 `go mod tidy`，并审查依赖差异。
 - 不提交本地运行产物，如 `dmp`、`data/`、`logs/`、`dmp_files/` 或运行时生成的脚本。
 
+### 测试与验证
+
+- 当前仓库没有 `_test.go` 测试文件；遵循 `.agents/skills/no-test/SKILL.md`，不要为普通修改新增测试文件。
+- 优先执行与改动范围匹配的 `gofmt`、`go vet ./...` 或构建命令；需要 Linux、DST、网络或外部服务的行为无法验证时，在交付说明中明确指出。
+
 ## 验证要求
 
 按改动范围执行最小充分验证：
 
 1. 对所有修改过的 Go 文件运行 `gofmt`，并确认没有意外格式变化。
 2. 修改共享工具、中间件、数据库、调度器或 API 契约时，运行 `go vet ./...`。
-3. 修改入口、依赖、嵌入资源或发布相关代码时，执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp`；验证后不要提交生成的 `dmp`。
+3. 修改入口、依赖、嵌入资源或发布相关代码时，在 Linux 上执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp`；macOS 使用 `make backend-only`，验证后不要提交生成的 `dmp`。
 4. 无法执行依赖 Linux/DST/网络的验证时，在交付说明中明确列出未验证项和原因。
 
 ## Agent 工作方式
