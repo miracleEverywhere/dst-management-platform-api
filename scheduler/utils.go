@@ -225,7 +225,8 @@ func getServerGameVersionFromKlei() (int, error) {
 		versionPageURL + "?rss=1",
 		versionPageURL + "?sortby=newest&sortdirection=desc",
 	}
-	currentReleaseTagRE := regexp.MustCompile(`(?is)<a\b[^>]*\bdata-currentrelease(?:\s|=)[^>]*>`)
+	releaseEntryRE := regexp.MustCompile(`(?is)<a\b[^>]*\bhref\s*=\s*["'][^"']*/dst/[0-9]+-[^"']*["'][^>]*>.*?</a>`)
+	releaseBadgeRE := regexp.MustCompile(`(?is)<span\b[^>]*\bclass\s*=\s*["'][^"']*\bipsBadge_positive\b[^"']*["'][^>]*>\s*Release\s*</span>`)
 	versionLinkRE := regexp.MustCompile(`(?i)/dst/([0-9]+)-`)
 	var lastErr error
 
@@ -268,7 +269,7 @@ func getServerGameVersionFromKlei() (int, error) {
 			}
 			if response.StatusCode < 200 || response.StatusCode >= 300 {
 				if response.StatusCode == http.StatusForbidden {
-					lastErr = fmt.Errorf("Klei returned HTTP 403 (Cloudflare or site access rule)")
+					lastErr = fmt.Errorf("klei returned HTTP 403, Cloudflare or site access rule")
 				} else {
 					lastErr = fmt.Errorf("HTTP statusCode: %d", response.StatusCode)
 				}
@@ -280,14 +281,14 @@ func getServerGameVersionFromKlei() (int, error) {
 			}
 
 			html := string(body)
-			tags := currentReleaseTagRE.FindAllString(html, -1)
-			if len(tags) == 0 {
-				tags = []string{html}
-			}
+			entries := releaseEntryRE.FindAllString(html, -1)
 
 			latestVersion := 0
-			for _, tag := range tags {
-				matches := versionLinkRE.FindAllStringSubmatch(tag, -1)
+			for _, entry := range entries {
+				if !releaseBadgeRE.MatchString(entry) {
+					continue
+				}
+				matches := versionLinkRE.FindAllStringSubmatch(entry, -1)
 				for _, match := range matches {
 					version, convertErr := strconv.Atoi(match[1])
 					if convertErr == nil && version > latestVersion {
@@ -299,13 +300,13 @@ func getServerGameVersionFromKlei() (int, error) {
 				return latestVersion, nil
 			}
 
-			lastErr = fmt.Errorf("no version number found on the Klei version page")
+			lastErr = fmt.Errorf("no release version found on the Klei version page")
 			break
 		}
 	}
 
 	if lastErr == nil {
-		lastErr = fmt.Errorf("no Klei version page is available")
+		lastErr = fmt.Errorf("no klei version page is available")
 	}
 	return 0, fmt.Errorf("failed to get game version: %w", lastErr)
 }
