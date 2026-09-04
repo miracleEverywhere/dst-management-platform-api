@@ -60,7 +60,7 @@ fi
 cd "$WORK_DIR" || error_exit
 rm -f steamcmd_osx.tar.gz
 
-# 运行下载好的饥荒，防止dmp修改.app后MacOS应用校验不通过
+# 运行下载好的饥荒，防止dmp修改.app中的mod后MacOS应用校验不通过
 cd "$DST_BIN_DIR" || error_exit
 timeout 1m ./$DST_BIN
 
