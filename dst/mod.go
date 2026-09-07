@@ -379,7 +379,10 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	}
 
 	// 获取ugc
-	gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, g.worldSaveData[0].WorldName)
+	// 统一模组配置下各分世界共享同一套模组，但导入存档或游戏服务端自行下载可能只
+	// 填充了部分分世界目录，这里回退到实际存在模组目录的分世界，避免固定读第一个分
+	// 世界(Master)时因目录缺失导致 EnsureFileExists 失败、获取已下载模组失败。
+	gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, g.resolveUgcWorld("content/322330"))
 	err = utils.EnsureFileExists(gameAcfPath)
 	if err != nil {
 		logger.Logger.Errorf("EnsureFileExists失败, path: %v", gameAcfPath)
@@ -408,11 +411,34 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	return &downloadedMods
 }
 
+// resolveUgcWorld 按 worldSaveData 顺序返回 ugc 目录下第一个存在相对路径 rel 的分世界名。
+//
+// 统一模组配置(ModInOne)下各分世界共享同一套模组，但导入存档或游戏服务端自行下载
+// 模组时可能只填充了部分分世界目录（例如只有 Caves 而没有 Master）。若固定读第一个
+// 分世界，会因目录/文件缺失导致“获取模组配置失败”。这里返回第一个实际存在 rel 的分
+// 世界（因此第一个分世界存在时仍优先使用它）；若都不存在则回退到第一个分世界名，保持
+// 原有报错语义。rel 可为目录(如 "content/322330")或具体文件(如
+// "content/322330/<id>/modinfo.lua")。
+func (g *Game) resolveUgcWorld(rel string) string {
+	if len(g.worldSaveData) == 0 {
+		return ""
+	}
+	for _, world := range g.worldSaveData {
+		if utils.FileDirectoryExists(fmt.Sprintf("%s/%s/%s", g.ugcPath, world.WorldName, rel)) {
+			return world.WorldName
+		}
+	}
+	return g.worldSaveData[0].WorldName
+}
+
 func (g *Game) getModConfigureOptions(worldID, modID int, ugc bool) (*[]ConfigurationOption, error) {
 	var modinfoLuaPath string
 	if g.room.ModInOne {
 		if ugc {
-			modinfoLuaPath = fmt.Sprintf("%s/%s/content/322330/%d/modinfo.lua", g.ugcPath, g.worldSaveData[0].WorldName, modID)
+			// 统一模组配置下各分世界共享同一套模组，但导入存档或游戏服务端自行下载可能
+			// 只填充了部分分世界目录，这里回退到实际含有该模组的分世界，避免固定读第一个
+			// 分世界(Master)时因 modinfo.lua 缺失导致获取模组配置失败。
+			modinfoLuaPath = fmt.Sprintf("%s/%s/content/322330/%d/modinfo.lua", g.ugcPath, g.resolveUgcWorld(fmt.Sprintf("content/322330/%d/modinfo.lua", modID)), modID)
 		} else {
 			modinfoLuaPath = fmt.Sprintf("%s/workshop-%d/modinfo.lua", g.notUgcPath, modID)
 		}
