@@ -525,13 +525,17 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 				return "level data not found", fmt.Errorf("未发现世界配置")
 			}
 		}
-		world.LevelData = levelData
+		// 归一化世界配置，剥离 BOM / Klei 引擎头等非法前缀，避免前端世界配置页解析失败
+		world.LevelData = utils.NormalizeLuaConfig(levelData)
+		if world.LevelData != levelData {
+			logger.Logger.Infof("世界配置含非法前缀(BOM/Klei头)，已自动归一化，世界目录: %s", i)
+		}
 
 		// 读取mod配置 modoverrides.lua
 		modDataPath := fmt.Sprintf("%s/%s/modoverrides.lua", clusterDir, i)
 		modData, err := utils.GetFileAllContent(modDataPath)
 		if err == nil {
-			world.ModData = modData
+			world.ModData = utils.NormalizeLuaConfig(modData)
 		}
 
 		uploadExtraInfo.worldPath = append(uploadExtraInfo.worldPath, worldPath)

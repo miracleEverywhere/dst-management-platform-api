@@ -402,6 +402,13 @@ func (h *Handler) roomGet(c *gin.Context) {
 	}
 	data.WorldData = *worlds
 
+	// 归一化世界/模组配置，剥离 BOM、Klei 引擎头等非法前缀，避免前端世界配置页解析失败；
+	// 同时可自愈历史导入的脏数据：前端拿到干净内容并保存后会写回数据库与磁盘。
+	for i := range data.WorldData {
+		data.WorldData[i].LevelData = utils.NormalizeLuaConfig(data.WorldData[i].LevelData)
+		data.WorldData[i].ModData = utils.NormalizeLuaConfig(data.WorldData[i].ModData)
+	}
+
 	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(reqForm.RoomID)
 	if err != nil {
 		logger.Logger.Errorf("查询数据库失败, err: %v", err)
