@@ -103,7 +103,7 @@ func (g *Game) generateGameStartCmd(screenName, customGameStartupCmd, worldName 
 	var startCmd string
 
 	if cache.OsType == utils.Darwin {
-		startCmd = fmt.Sprintf("cd %s && export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:%s/steamcmd && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", utils.DarwinDstBinDir, cache.CurrentDir, screenName, customGameStartupCmd, g.clusterName, worldName)
+		startCmd = fmt.Sprintf("export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:%s/steamcmd && cd %s && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", cache.CurrentDir, utils.DarwinDstBinDir, screenName, customGameStartupCmd, g.clusterName, worldName)
 	} else {
 		switch g.setting.StartType {
 		case "32-bit":
