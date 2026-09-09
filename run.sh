@@ -242,7 +242,6 @@ function check_curl() {
 	fi
 }
 
-
 # 下载函数:下载链接,尝试次数,超时时间(s)
 function download() {
 	# 显示详细进度
@@ -364,6 +363,8 @@ function clear_dmp() {
 	echo_cyan "正在执行清理"
 	pkill -9 dmp 2>/dev/null
 	rm -f dmp "${ARCHIVE_NAME}" logs/*
+	rm -f manual_install.sh
+	rm -f manual_update.sh
 }
 
 # 检查当前版本号
