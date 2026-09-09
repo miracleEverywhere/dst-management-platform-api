@@ -1,3 +1,9 @@
+###############################################################################################################
+#                                                                                                             #
+# This file is intended for the development environment only; the actual build is performed in GitHub Actions #
+#                                                                                                             #
+###############################################################################################################
+
 FRONTEND_DIR := $(HOME)/WebstormProjects/dst-management-platform-web
 EMBED_DIR := embedFS/dist
 OUT_DIR := .
