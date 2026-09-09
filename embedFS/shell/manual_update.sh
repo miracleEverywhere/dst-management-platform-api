@@ -25,7 +25,7 @@ if [[ "${OS_TYPE}" == "Darwin" ]]; then
 	DST_BIN_DIR="$DST_DIR/dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS"
     DST_BIN="dontstarve_dedicated_server_nullrenderer"
     cd "$DST_BIN_DIR" || error_exit
-    timeout 1m ./$DST_BIN
+    timeout 1m ./$DST_BIN || true
 fi
 
 cd || true
