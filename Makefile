@@ -2,7 +2,7 @@
 #																#
 #	This file is intended for the development environment only	#
 #		The actual build is performed in GitHub Actions			#
-#			该文件仅用于开发环境，实际编译在github-action中			#
+#			该文件仅用于开发环境，实际编译在Github Action中			#
 #																#
 #################################################################
 
