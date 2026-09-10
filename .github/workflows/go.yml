@@ -34,7 +34,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         if: matrix.os == 'macos-latest'
-        run: CGO_ENABLED=1 go build -ldflags '-s -w' -v -o ./dmp && tar zcf dmp_darwin.tgz dmp
+        run: CGO_ENABLED=0 go build -ldflags '-s -w' -v -o ./dmp && tar zcf dmp_darwin.tgz dmp
 
       - name: release
         uses: softprops/action-gh-release@v1
