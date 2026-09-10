@@ -1,1 +1,0 @@
-import{Cr as e,Er as t,Ur as n,_ as r,zr as i}from"./index-pNPotxpS.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(r,a){let s=n(`router-view`);return i(),e(`div`,o,[t(s)])}var c=r(a,[[`render`,s]]);export{c as default};

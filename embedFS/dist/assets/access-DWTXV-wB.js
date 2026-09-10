@@ -1,0 +1,1 @@
+import{xr as e,zr as t}from"./index-CBq_2PiC.js";import n from"./singleLog-fcMY6MfS.js";var r={__name:`access`,setup(r){return(r,i)=>(t(),e(n,{type:`access`}))}};export{r as default};

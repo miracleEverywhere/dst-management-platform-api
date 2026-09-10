@@ -1,1 +1,0 @@
-import{xr as e,zr as t}from"./index-pNPotxpS.js";import n from"./singleLog-D9vVncl2.js";var r={__name:`access`,setup(r){return(r,i)=>(t(),e(n,{type:`access`}))}};export{r as default};
