@@ -756,6 +756,7 @@ func (h *Handler) aiSettingPut(c *gin.Context) {
 	var reqForm struct {
 		RoomID         int                   `json:"roomID"`
 		Enabled        bool                  `json:"enabled"`
+		AllowChat      bool                  `json:"allowChat"`
 		Prefix         string                `json:"prefix"`
 		MaxResults     int                   `json:"maxResults"`
 		MaxReplyLength int                   `json:"maxReplyLength"`
@@ -769,6 +770,7 @@ func (h *Handler) aiSettingPut(c *gin.Context) {
 	setting := models.RoomAISetting{
 		RoomID:         reqForm.RoomID,
 		Enabled:        reqForm.Enabled,
+		AllowChat:      reqForm.AllowChat,
 		Prefix:         reqForm.Prefix,
 		MaxResults:     reqForm.MaxResults,
 		MaxReplyLength: reqForm.MaxReplyLength,
@@ -812,6 +814,7 @@ func (h *Handler) aiSettingPut(c *gin.Context) {
 
 	webhook.Snd.Send(webhook.EventAIChatSettingUpdated, setting.RoomID, map[string]interface{}{
 		"enabled":        setting.Enabled,
+		"allowChat":      setting.AllowChat,
 		"prefix":         setting.Prefix,
 		"maxResults":     setting.MaxResults,
 		"maxReplyLength": setting.MaxReplyLength,

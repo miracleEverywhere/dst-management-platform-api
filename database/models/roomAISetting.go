@@ -48,6 +48,7 @@ func DefaultAIBaseSetting() AIBaseSetting {
 type RoomAISetting struct {
 	RoomID         int    `gorm:"primaryKey;not null;column:room_id" json:"roomID"`
 	Enabled        bool   `gorm:"column:enabled" json:"enabled"`
+	AllowChat      bool   `gorm:"column:allow_chat" json:"allowChat"`
 	Prefix         string `gorm:"column:prefix" json:"prefix"`
 	MaxResults     int    `gorm:"column:max_results;default:10" json:"maxResults"`
 	MaxReplyLength int    `gorm:"column:max_reply_length;default:200" json:"maxReplyLength"`

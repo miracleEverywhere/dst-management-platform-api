@@ -461,7 +461,10 @@ func maxReplyLength(setting models.AIChatSetting) int {
 func buildSystemPrompt(setting models.AIChatSetting, wikiContext, playerPrefab string) string {
 	// 默认提示词
 	limitPrompt := fmt.Sprintf("回答不能超过%d个字。", maxReplyLength(setting))
-	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式。"
+	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式。"
+	if wikiContext != "" {
+		defaultPrompt = "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式。"
+	}
 	if playerPrefab != "" {
 		defaultPrompt += fmt.Sprintf("当前提问玩家使用的角色是 %s，请结合该角色信息理解问题。", playerPrefab)
 	}
@@ -503,7 +506,7 @@ func currentPlayerPrefab(roomID int, uid string) string {
 
 func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIChatSetting, sessions map[string]*chatSession, event chatEvent, question string) {
 	wikiContext := m.searchWiki(setting, question)
-	if wikiContext == "" {
+	if wikiContext == "" && !setting.AllowChat {
 		if err := sendGameReply(game, event.Nickname, "还在学习中"); err != nil {
 			logger.Logger.Errorf("发送游戏内 AI 学习中提示失败, roomID: %d, uid: %s, err: %v", setting.RoomID, event.UID, err)
 		}
