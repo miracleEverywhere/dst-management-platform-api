@@ -24,7 +24,6 @@ else
         DETECTED_OS := Linux
     else ifeq ($(UNAME_S),Darwin)
         DETECTED_OS := MacOS
-        CGO = CGO_ENABLED=1
         OUT_DIR = $(HOME)/dmp
     else
         $(error Unsupported OS: $(UNAME_S))
