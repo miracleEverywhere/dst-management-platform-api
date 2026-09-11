@@ -1,0 +1,1 @@
+import{xr as e,zr as t}from"./index-GVipQhCH.js";import n from"./singleLog-DeSPI9xY.js";var r={__name:`access`,setup(r){return(r,i)=>(t(),e(n,{type:`access`}))}};export{r as default};

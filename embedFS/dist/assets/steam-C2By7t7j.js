@@ -1,1 +1,0 @@
-import{xr as e,zr as t}from"./index-CBq_2PiC.js";import n from"./singleLog-fcMY6MfS.js";var r={__name:`steam`,setup(r){return(r,i)=>(t(),e(n,{type:`steam`}))}};export{r as default};
