@@ -120,18 +120,18 @@ func initJobs() {
 			var backupSettings []BackupSetting
 			if err := json.Unmarshal([]byte(roomSetting.BackupSetting), &backupSettings); err != nil {
 				logger.Logger.Errorf("获取房间备份设置失败, err: %v", err)
-				continue
-			}
-			for i, backupSetting := range backupSettings {
-				// 房间id-time_index-Backup
-				Jobs = append(Jobs, JobConfig{
-					Name:     fmt.Sprintf("%d-%d-Backup", room.ID, i),
-					Func:     Backup,
-					Args:     []any{game},
-					TimeType: DayType,
-					Interval: 0,
-					DayAt:    backupSetting.Time,
-				})
+			} else {
+				for i, backupSetting := range backupSettings {
+					// 房间id-time_index-Backup
+					Jobs = append(Jobs, JobConfig{
+						Name:     fmt.Sprintf("%d-%d-Backup", room.ID, i),
+						Func:     Backup,
+						Args:     []any{game},
+						TimeType: DayType,
+						Interval: 0,
+						DayAt:    backupSetting.Time,
+					})
+				}
 			}
 		}
 		// 备份清理 30
@@ -165,16 +165,16 @@ func initJobs() {
 			}
 			if err := json.Unmarshal([]byte(roomSetting.ResetSetting), &resetSetting); err != nil {
 				logger.Logger.Errorf("获取自动重置设置失败, err: %v", err)
-				continue
+			} else {
+				Jobs = append(Jobs, JobConfig{
+					Name:     fmt.Sprintf("%d-Reset", room.ID),
+					Func:     Reset,
+					Args:     []any{game, room.ID, resetSetting.Force, resetSetting.Days},
+					TimeType: DayType,
+					Interval: 0,
+					DayAt:    resetSetting.Time,
+				})
 			}
-			Jobs = append(Jobs, JobConfig{
-				Name:     fmt.Sprintf("%d-Reset", room.ID),
-				Func:     Reset,
-				Args:     []any{game, room.ID, resetSetting.Force, resetSetting.Days},
-				TimeType: DayType,
-				Interval: 0,
-				DayAt:    resetSetting.Time,
-			})
 		}
 		// 自动开启关闭游戏 {"start":"07:00:00","stop":"01:00:00"}
 		if roomSetting.ScheduledStartStopEnable {
@@ -185,24 +185,24 @@ func initJobs() {
 			var scheduledStartStopSetting ScheduledStartStopSetting
 			if err := json.Unmarshal([]byte(roomSetting.ScheduledStartStopSetting), &scheduledStartStopSetting); err != nil {
 				logger.Logger.Errorf("获取自动开启关闭游戏设置失败, err: %v", err)
-				continue
+			} else {
+				Jobs = append(Jobs, JobConfig{
+					Name:     fmt.Sprintf("%d-ScheduledStart", room.ID),
+					Func:     ScheduledStart,
+					Args:     []any{game},
+					TimeType: DayType,
+					Interval: 0,
+					DayAt:    scheduledStartStopSetting.Start,
+				})
+				Jobs = append(Jobs, JobConfig{
+					Name:     fmt.Sprintf("%d-ScheduledStop", room.ID),
+					Func:     ScheduledStop,
+					Args:     []any{game},
+					TimeType: DayType,
+					Interval: 0,
+					DayAt:    scheduledStartStopSetting.Stop,
+				})
 			}
-			Jobs = append(Jobs, JobConfig{
-				Name:     fmt.Sprintf("%d-ScheduledStart", room.ID),
-				Func:     ScheduledStart,
-				Args:     []any{game},
-				TimeType: DayType,
-				Interval: 0,
-				DayAt:    scheduledStartStopSetting.Start,
-			})
-			Jobs = append(Jobs, JobConfig{
-				Name:     fmt.Sprintf("%d-ScheduledStop", room.ID),
-				Func:     ScheduledStop,
-				Args:     []any{game},
-				TimeType: DayType,
-				Interval: 0,
-				DayAt:    scheduledStartStopSetting.Stop,
-			})
 		}
 		// 自动保活
 		if roomSetting.KeepaliveEnable {
@@ -217,21 +217,25 @@ func initJobs() {
 		}
 		// 定时通知 [{id: '', content: '', interval: 0, status: false}]
 		var announces []AnnounceSetting
-		if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
-			logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
-			continue
+		announceSetting := roomSetting.AnnounceSetting
+		if strings.TrimSpace(announceSetting) == "" {
+			announceSetting = "[]"
 		}
-		for _, announce := range announces {
-			if announce.Status {
-				// 注意，-为分隔符，需要删除uuid中的-
-				Jobs = append(Jobs, JobConfig{
-					Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
-					Func:     Announce,
-					Args:     []any{game, announce.Content},
-					TimeType: SecondType,
-					Interval: announce.Interval,
-					DayAt:    "",
-				})
+		if err := json.Unmarshal([]byte(announceSetting), &announces); err != nil {
+			logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
+		} else {
+			for _, announce := range announces {
+				if announce.Status {
+					// 注意，-为分隔符，需要删除uuid中的-
+					Jobs = append(Jobs, JobConfig{
+						Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
+						Func:     Announce,
+						Args:     []any{game, announce.Content},
+						TimeType: SecondType,
+						Interval: announce.Interval,
+						DayAt:    "",
+					})
+				}
 			}
 		}
 		// 玩家更新模组

@@ -302,6 +302,9 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 		if errTrue != nil {
 			logger.Logger.Errorf("玩家更新模组定时任务处理失败, err: %v", errTrue)
 		}
+	} else {
+		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModFalse", roomID))
+		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModTrue", roomID))
 	}
 }
 
