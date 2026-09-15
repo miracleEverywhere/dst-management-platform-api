@@ -34,7 +34,7 @@ func BackupClean(roomID int, days int) {
 
 func Restart(game *dst.Game) {
 	logger.Logger.Info("[定时任务]：执行自动重启任务")
-	go func() {
+	runJobAsync(fmt.Sprintf("%d-Restart", game.RoomID()), func() {
 		_ = game.SystemMsg("自动重启任务触发：将在1分钟后重启服务器，在线玩家请在5分钟后重连")
 		_ = game.SystemMsg("Automatic restart task triggered: The server will restart in 1 minute. Online players, please reconnect after 5 minutes")
 		time.Sleep(60 * time.Second)
@@ -49,7 +49,7 @@ func Restart(game *dst.Game) {
 		} else {
 			logger.Logger.Info("[定时任务]：自动重启任务执行成功")
 		}
-	}()
+	})
 }
 
 func Reset(game *dst.Game, roomID int, force bool, days int) {
@@ -71,13 +71,13 @@ func Reset(game *dst.Game, roomID int, force bool, days int) {
 
 	if force {
 		// 直接进行重置
-		go reset()
+		runJobAsync(fmt.Sprintf("%d-Reset", roomID), reset)
 	} else {
 		// 空闲重置
 		secs := days * 24 * 60 * 60
 		cache.RoomNoPlayersSecondsMutex.Lock()
 		if cache.RoomNoPlayersSeconds[roomID] > secs {
-			go reset()
+			runJobAsync(fmt.Sprintf("%d-Reset", roomID), reset)
 			cache.RoomNoPlayersSeconds[roomID] = 0
 		}
 		cache.RoomNoPlayersSecondsMutex.Unlock()
@@ -95,7 +95,7 @@ func ScheduledStart(game *dst.Game) {
 
 func ScheduledStop(game *dst.Game) {
 	logger.Logger.Info("[定时任务]：执行自动关闭游戏")
-	go func() {
+	runJobAsync(fmt.Sprintf("%d-ScheduledStop", game.RoomID()), func() {
 		_ = game.SystemMsg("自动关机任务触发：将在1分钟后关闭服务器")
 		_ = game.SystemMsg("Automatic shutdown task triggered: The server will restart in 1 minute")
 		time.Sleep(60 * time.Second)
@@ -104,7 +104,7 @@ func ScheduledStop(game *dst.Game) {
 			logger.Logger.Warnf("关闭游戏失败, err: %v", err)
 		}
 		logger.Logger.Info("[定时任务]：自动关闭游戏执行成功")
-	}()
+	})
 }
 
 func Keepalive(game *dst.Game, roomID int) {

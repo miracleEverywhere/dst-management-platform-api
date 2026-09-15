@@ -78,6 +78,20 @@ func registerJobs() {
 	}
 }
 
+// runJobAsync 异步执行定时任务中耗时较长的操作
+// gocron的panic处理只能覆盖任务函数本身，协程中的panic需要自行捕获，否则会导致整个进程退出
+func runJobAsync(name string, fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Logger.Errorf("[定时任务]：任务[%s]异步执行发生panic，已恢复, err: %v", name, r)
+			}
+		}()
+
+		fn()
+	}()
+}
+
 type DSTVersion struct {
 	Local  int `json:"local"`
 	Server int `json:"server"`

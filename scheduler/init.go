@@ -13,6 +13,10 @@ import (
 // Start 开启定时任务
 func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO) {
 	DBHandler = newDBHandler(roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao)
+	// 注册panic处理，任务执行中的panic由gocron捕获，避免整个进程退出
+	gocron.SetPanicHandler(func(jobName string, recoverData interface{}) {
+		logger.Logger.Errorf("[定时任务]：任务[%s]执行发生panic，已恢复, err: %v", jobName, recoverData)
+	})
 	initJobs()
 	registerJobs()
 	go Scheduler.StartAsync()
