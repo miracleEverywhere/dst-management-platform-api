@@ -38,7 +38,7 @@ func convertValue(v reflect.Value, path string, depth int) string {
 	case reflect.Struct:
 		// 特殊处理time.Time类型
 		if v.Type() == reflect.TypeOf(time.Time{}) {
-			return path + ":" + v.Interface().(time.Time).Format("2006-01-02 15:04:05")
+			return path + ":" + v.Interface().(time.Time).Format("2006-01-012 15:04:05")
 		}
 
 		var parts []string
