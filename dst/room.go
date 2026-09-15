@@ -239,7 +239,9 @@ func (g *Game) sessionInfo() *RoomSessionInfo {
 
 	// 将文件内容作为 Lua 代码执行
 	content := string(data)
-	content = content[:len(content)-1]
+	if len(content) > 0 {
+		content = content[:len(content)-1]
+	}
 
 	err = L.DoString(content)
 	if err != nil {

@@ -53,10 +53,6 @@ func (g *Game) initInfo() {
 	// worlds
 	for _, world := range *g.worlds {
 		customGameStartupCmd := world.CustomStartupCmd
-		if !utils.IsSafeString(world.WorldName) {
-			logger.Logger.Warnf("世界名 %s 可能存在注入风险，跳过", world.WorldName)
-			continue
-		}
 		// 自定义启动命令会被拼接进 bash -c 执行，不合法时一律忽略，使用默认启动命令
 		if customGameStartupCmd != "" && !utils.IsValidGameStartupCmd(customGameStartupCmd) {
 			logger.Logger.Warnf("自定义启动命令不合法，已忽略, world: %s, cmd: %s", world.WorldName, customGameStartupCmd)

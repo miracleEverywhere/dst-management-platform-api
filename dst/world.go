@@ -241,6 +241,10 @@ func (g *Game) startWorld(id int) error {
 	}
 
 	logger.Logger.Debug(world.startCmd)
+	if !utils.IsSafeString(world.WorldName) {
+		logger.Logger.Warnf("世界名 %s 可能存在注入风险", world.WorldName)
+		return fmt.Errorf("世界名 %s 可能存在注入风险", world.WorldName)
+	}
 	err = utils.BashCMD(world.startCmd)
 
 	return err
