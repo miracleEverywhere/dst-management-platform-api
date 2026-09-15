@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -464,6 +465,11 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 		if strings.HasPrefix(i, "__") {
 			continue
 		}
+		// worldPath会放入bash命令中，需要校验worldName
+		if !isSafeWorldDir(i) {
+			return "get worlds path fail", fmt.Errorf("非法的世界目录名")
+		}
+
 		var (
 			world     models.World
 			worldPath WorldPath
@@ -572,6 +578,12 @@ func findClusterDir(path string) (string, error) {
 	}
 
 	return "", fmt.Errorf("未找到包含 cluster.ini 的目录")
+}
+
+func isSafeWorldDir(s string) bool {
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9/]+$`, s)
+
+	return matched
 }
 
 // 将ini文件读取为map

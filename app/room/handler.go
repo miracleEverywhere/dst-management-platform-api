@@ -37,6 +37,20 @@ func (h *Handler) roomPost(c *gin.Context) {
 		}
 		//logger.Logger.Debug(utils.StructToFlatString(reqForm))
 
+		if len(reqForm.WorldData) == 0 {
+			logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+
+		for _, world := range reqForm.WorldData {
+			if world.CustomStartupCmd != "" {
+				logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+				c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+				return
+			}
+		}
+
 		// 验证游戏模式，防止XSS注入
 		if !utils.IsValidGameMode(reqForm.RoomData.GameMode) {
 			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
@@ -176,23 +190,30 @@ func (h *Handler) roomPut(c *gin.Context) {
 	}
 
 	// CustomStartupCmd权限校验
-	dbWorlds, err := h.worldDao.GetWorldsByRoomID(roomID)
-	if err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-	for i := range *dbWorlds {
-		dbWorldID := (*dbWorlds)[i].ID
-		dbCustomStartupCmd := (*dbWorlds)[i].CustomStartupCmd
-
-		for _, reqWorld := range reqForm.WorldData {
-			if reqWorld.ID == dbWorldID {
-				if dbCustomStartupCmd != reqWorld.CustomStartupCmd {
-					c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-					return
-				}
+	// 该字段会被拼接进 bash -c 执行，只有管理员才能修改（专用接口同样仅限管理员）。
+	// 客户端保存时会丢弃世界ID，因此世界名才是世界在房间内的标识，不能用ID匹配，
+	// 非管理员提交的值一律丢弃，以数据库中的值为准，数据库中不存在的世界（新增世界）只能使用默认启动命令
+	if c.GetString("role") != "admin" {
+		dbWorlds, err := h.worldDao.GetWorldsByRoomID(roomID)
+		if err != nil {
+			logger.Logger.Errorf("查询数据库失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+		dbCustomStartupCmds := make(map[string]string, len(*dbWorlds))
+		for _, dbWorld := range *dbWorlds {
+			if dbWorld.WorldName == "" {
+				continue
 			}
+			dbCustomStartupCmds[dbWorld.WorldName] = dbWorld.CustomStartupCmd
+		}
+		for i := range reqForm.WorldData {
+			dbCustomStartupCmd := dbCustomStartupCmds[reqForm.WorldData[i].WorldName]
+			if reqForm.WorldData[i].CustomStartupCmd == dbCustomStartupCmd {
+				continue
+			}
+			logger.Logger.Warnf("非管理员修改自定义启动命令已拦截, api: %s, username: %s, world: %s", c.Request.URL.Path, c.GetString("username"), reqForm.WorldData[i].WorldName)
+			reqForm.WorldData[i].CustomStartupCmd = dbCustomStartupCmd
 		}
 	}
 
@@ -223,7 +244,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 		return
 	}
 
-	err = h.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
+	err := h.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
 	if err != nil {
 		logger.Logger.Errorf("事务更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
