@@ -1,6 +1,7 @@
 reviews:
   auto_review:
     enabled: true
+    language: "zh-CN"
     base_branches:
       - "master"
       - "feature/.*"
