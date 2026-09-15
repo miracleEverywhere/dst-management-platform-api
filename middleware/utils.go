@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"dst-management-platform-api/i18n"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"net/http"
@@ -13,25 +14,25 @@ import (
 
 func tokenMissing(c *gin.Context) {
 	logger.Logger.Warnf("未授权的访问, DMP已拦截, ip为: %s", c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "token fail"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 420, "message": i18n.I18n.Get(c, "token fail"), "data": nil})
 	c.Abort()
 }
 
 func tokenRevoked(c *gin.Context, claims utils.Claims) {
 	logger.Logger.Warnf("token已被撤销, username: %s, ip: %s", claims.Username, c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{"code": 420, "message": utils.I18n.Get(c, "token revoked"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 420, "message": i18n.I18n.Get(c, "token revoked"), "data": nil})
 	c.Abort()
 }
 
 func tokenNoPermission(c *gin.Context, username, nickname string) {
 	logger.Logger.Warnf("越权请求, ip: %v, user: %v, nickname: %v", c.ClientIP(), username, nickname)
-	c.JSON(http.StatusOK, gin.H{"code": 201, "message": utils.I18n.Get(c, "permission needed"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 201, "message": i18n.I18n.Get(c, "permission needed"), "data": nil})
 	c.Abort()
 }
 
 func tooManyRequests(c *gin.Context, ip string) {
 	logger.Logger.Warnf("登录频率过高, IP: %s", ip)
-	c.JSON(http.StatusOK, gin.H{"code": 429, "message": utils.I18n.Get(c, "too many requests"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 429, "message": i18n.I18n.Get(c, "too many requests"), "data": nil})
 	c.Abort()
 }
 

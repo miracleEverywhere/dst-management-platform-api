@@ -20,7 +20,7 @@ func (h *Handler) registerGet(c *gin.Context) {
 	if err != nil {
 		registered = false
 		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "fail", "data": registered})
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "database error"), "data": registered})
 		return
 	}
 

@@ -1,70 +1,25 @@
 package dashboard
 
-import "dst-management-platform-api/utils"
+import (
+	"dst-management-platform-api/i18n"
+)
 
-type ExtendedI18n struct {
-	utils.BaseI18n
-}
-
-func NewExtendedI18n() *ExtendedI18n {
-	i := &ExtendedI18n{
-		BaseI18n: utils.BaseI18n{
-			ZH: make(map[string]string),
-			EN: make(map[string]string),
-		},
-	}
-
-	utils.I18nMutex.Lock()
-	defer utils.I18nMutex.Unlock()
-
-	for k, v := range utils.I18n.ZH {
-		i.ZH[k] = v
-	}
-	for k, v := range utils.I18n.EN {
-		i.EN[k] = v
-	}
-
-	i.ZH["startup game fail"] = "启动失败"
-	i.ZH["startup game success"] = "启动成功"
-	i.ZH["shutdown game fail"] = "关闭失败"
-	i.ZH["shutdown game success"] = "关闭成功"
-	i.ZH["restart game fail"] = "重启失败"
-	i.ZH["restart game success"] = "重启成功"
-	i.ZH["updating"] = "更新中，请耐心等待"
-	i.ZH["reset game fail"] = "重置失败"
-	i.ZH["reset game success"] = "重置成功"
-	i.ZH["delete game fail"] = "清空世界失败"
-	i.ZH["delete game success"] = "清空世界成功"
-	i.ZH["announce fail"] = "宣告失败"
-	i.ZH["announce success"] = "宣告成功"
-	i.ZH["system msg fail"] = "通知失败"
-	i.ZH["system msg success"] = "通知成功"
-	i.ZH["exec fail"] = "执行失败"
-	i.ZH["exec success"] = "执行成功"
-	i.ZH["connection code fail"] = "直连代码获取失败"
-	i.ZH["check lobby fail"] = "检查世界失败"
-
-	i.EN["startup game fail"] = "Startup Fail"
-	i.EN["startup game success"] = "Startup Success"
-	i.EN["shutdown game fail"] = "Shutdown Fail"
-	i.EN["shutdown game success"] = "Shutdown Success"
-	i.EN["restart game fail"] = "Restart Fail"
-	i.EN["restart game success"] = "Restart Success"
-	i.EN["updating"] = "Updating, please wait patiently"
-	i.EN["reset game fail"] = "Reset Fail"
-	i.EN["reset game success"] = "Reset Success"
-	i.EN["delete game fail"] = "Delete Fail"
-	i.EN["delete game success"] = "Delete Success"
-	i.EN["announce fail"] = "Announce Fail"
-	i.EN["announce success"] = "Announce Success"
-	i.EN["system msg fail"] = "System Message Send Fail"
-	i.EN["system msg success"] = "System Message Send Success"
-	i.EN["exec fail"] = "Execute Fail"
-	i.EN["exec success"] = "Execute Success"
-	i.EN["connection code fail"] = "Get Connection Code Fail"
-	i.EN["check lobby fail"] = "Check Lobby Fail"
-
-	return i
-}
-
-var message = NewExtendedI18n()
+var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+	"startup game fail":     {ZH: "启动失败", EN: "Startup Fail"},
+	"startup game success":  {ZH: "启动成功", EN: "Startup Success"},
+	"shutdown game fail":    {ZH: "关闭失败", EN: "Shutdown Fail"},
+	"shutdown game success": {ZH: "关闭成功", EN: "Shutdown Success"},
+	"restart game fail":     {ZH: "重启失败", EN: "Restart Fail"},
+	"restart game success":  {ZH: "重启成功", EN: "Restart Success"},
+	"updating":              {ZH: "更新中，请耐心等待", EN: "Updating, please wait patiently"},
+	"reset game fail":       {ZH: "重置失败", EN: "Reset Fail"},
+	"reset game success":    {ZH: "重置成功", EN: "Reset Success"},
+	"delete game fail":      {ZH: "清空世界失败", EN: "Delete Fail"},
+	"delete game success":   {ZH: "清空世界成功", EN: "Delete Success"},
+	"announce fail":         {ZH: "宣告失败", EN: "Announce Fail"},
+	"announce success":      {ZH: "宣告成功", EN: "Announce Success"},
+	"system msg fail":       {ZH: "通知失败", EN: "System Message Send Fail"},
+	"system msg success":    {ZH: "通知成功", EN: "System Message Send Success"},
+	"connection code fail":  {ZH: "直连代码获取失败", EN: "Get Connection Code Fail"},
+	"check lobby fail":      {ZH: "检查世界失败", EN: "Check Lobby Fail"},
+})

@@ -141,7 +141,7 @@ func (h *Handler) backupDelete(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 	count := game.DeleteBackups(reqForm.Filenames)
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "?", "data": count})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": count})
 }
 
 func (h *Handler) backupRestorePost(c *gin.Context) {
@@ -556,7 +556,7 @@ func (h *Handler) snapshotGet(c *gin.Context) {
 	snapshot, err := game.GetSnapshot()
 	if err != nil {
 		logger.Logger.Errorf("获取游戏存档文件失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": "get snapshot fail", "data": snapshot})
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get snapshot fail"), "data": snapshot})
 		return
 	}
 
