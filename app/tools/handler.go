@@ -491,7 +491,9 @@ func tokenPost(c *gin.Context) {
 	username, _ := c.Get("username")
 	nickname, _ := c.Get("nickname")
 
+	cache.TokenVersionCacheLock.RLock()
 	cachedVersion, exists := cache.TokenVersionCache[username.(string)]
+	cache.TokenVersionCacheLock.RUnlock()
 	if !exists {
 		cachedVersion = 0
 	}

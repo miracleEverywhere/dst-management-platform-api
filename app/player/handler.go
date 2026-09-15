@@ -404,7 +404,12 @@ func (h *Handler) statisticsPlayerCountGet(c *gin.Context) {
 		return
 	}
 
-	if reqForm.TimeRange == 0 {
+	if globalSettings.PlayerGetFrequency <= 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	if reqForm.TimeRange <= 0 {
 		reqForm.TimeRange = 24 * 60 * 60
 	}
 
