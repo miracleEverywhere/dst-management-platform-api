@@ -152,12 +152,16 @@ func Announce(game *dst.Game, content string) {
 
 // PlayerUpdateMod check指已经发送了更新ID
 func PlayerUpdateMod(game *dst.Game, check bool) {
-	cache.PlayerUpdateModStatusMutex.Lock()
-	defer cache.PlayerUpdateModStatusMutex.Unlock()
-
-	if cache.PlayerUpdateModStatus[game.RoomID()] {
+	roomID := game.RoomID()
+	if !cache.TryStartPlayerUpdateMod(roomID) {
 		return
 	}
+	releaseStatus := true
+	defer func() {
+		if releaseStatus {
+			cache.FinishPlayerUpdateMod(roomID)
+		}
+	}()
 
 	worlds := game.Worlds()
 	var (
@@ -179,41 +183,34 @@ func PlayerUpdateMod(game *dst.Game, check bool) {
 		return
 	}
 
-	var (
-		updateTip string
-		err       error
-	)
-
 	if check {
 		// 已发送更新ID，开始处理业务
 		for _, line := range logContent {
 			subMatches := rePlayerUpdateMod.FindStringSubmatch(line)
 			if len(subMatches) > 1 {
 				if utils.VerifyUpdateModID(subMatches[1]) {
-					cache.PlayerUpdateModStatus[game.RoomID()] = true
-					updateTip = "模组更新命令校验成功"
-					err = game.SystemMsg(updateTip)
-					if err != nil {
-						logger.Logger.Errorf("玩家更新模组定时任务异常，发送通知失败, err: %v", err)
-					}
-					time.Sleep(500 * time.Millisecond)
+					releaseStatus = false
+					runJobAsync(fmt.Sprintf("%d-PlayerUpdateMod", roomID), func() {
+						defer cache.FinishPlayerUpdateMod(roomID)
 
-					updateTip = "将在1分钟后自动重启服务器并更新模组"
-					err = game.SystemMsg(updateTip)
-					if err != nil {
-						logger.Logger.Errorf("玩家更新模组定时任务异常，发送通知失败, err: %v", err)
-					}
-					time.Sleep(1 * time.Minute)
+						if err := game.SystemMsg("模组更新命令校验成功"); err != nil {
+							logger.Logger.Errorf("玩家更新模组定时任务异常，发送通知失败, err: %v", err)
+						}
+						time.Sleep(500 * time.Millisecond)
 
-					_ = game.StopAllWorld()
-					time.Sleep(5 * time.Second)
+						if err := game.SystemMsg("将在1分钟后自动重启服务器并更新模组"); err != nil {
+							logger.Logger.Errorf("玩家更新模组定时任务异常，发送通知失败, err: %v", err)
+						}
+						time.Sleep(1 * time.Minute)
 
-					err = game.StartAllWorld()
-					if err != nil {
-						logger.Logger.Errorf("玩家更新模组定时任务异常，启动游戏失败, err: %v", err)
-					}
-					time.Sleep(10 * time.Minute)
-					cache.PlayerUpdateModStatus[game.RoomID()] = false
+						_ = game.StopAllWorld()
+						time.Sleep(5 * time.Second)
+
+						if err := game.StartAllWorld(); err != nil {
+							logger.Logger.Errorf("玩家更新模组定时任务异常，启动游戏失败, err: %v", err)
+						}
+						time.Sleep(10 * time.Minute)
+					})
 					return
 				}
 			}
@@ -229,15 +226,14 @@ func PlayerUpdateMod(game *dst.Game, check bool) {
 		if len(updateModID) == 0 {
 			return fmt.Errorf("更新ID生成异常")
 		}
-		updateTip = fmt.Sprintf("饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入 ID-LKGX 进行模组更新", updateModID)
+		updateTip := fmt.Sprintf("饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入 ID-LKGX 进行模组更新", updateModID)
 
 		return game.SystemMsg(updateTip)
 	}
 
 	for _, line := range logContent {
 		if strings.Contains(line, "服务器需要从Steam创意工坊获得最新版本") || strings.Contains(line, "is out of date and needs to be updated for new users to be able to join the server") {
-			err = sendTip()
-			if err != nil {
+			if err := sendTip(); err != nil {
 				logger.Logger.Errorf("玩家更新模组定时任务异常，发送通知失败, err: %v", err)
 			}
 
