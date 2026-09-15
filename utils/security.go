@@ -25,7 +25,7 @@ func IsValidGameMode(mode string) bool {
 
 // IsValidGameStartupCmd 判断自定义启动命令是否安全
 func IsValidGameStartupCmd(cmd string) bool {
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-\.\/\\:\s]+$`, cmd)
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-\.\/\\: ]+$`, cmd)
 	return matched
 }
 
