@@ -703,6 +703,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 		roomSetting.KeepaliveSetting = 30
 		roomSetting.ScheduledStartStopEnable = false
 		roomSetting.ScheduledStartStopSetting = "{\"start\":\"07:00:00\",\"stop\":\"01:00:00\"}"
+		roomSetting.AnnounceSetting = "[]"
 		roomSetting.StartType = "32-bit"
 	} else {
 		dbRoom, err := h.roomDao.GetRoomByID(roomID)
@@ -979,7 +980,11 @@ func (h *Handler) activatePost(c *gin.Context) {
 		scheduler.DeleteJob(jobName)
 	}
 	var announces []scheduler.AnnounceSetting
-	if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
+	announceSetting := roomSetting.AnnounceSetting
+	if strings.TrimSpace(announceSetting) == "" {
+		announceSetting = "[]"
+	}
+	if err = json.Unmarshal([]byte(announceSetting), &announces); err != nil {
 		logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "activate fail"), "data": nil})
 		return
