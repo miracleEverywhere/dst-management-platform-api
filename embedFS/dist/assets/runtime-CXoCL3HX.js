@@ -1,0 +1,1 @@
+import{xr as e,zr as t}from"./index-B_xhKm2g.js";import n from"./singleLog-ZsP4CbaE.js";var r={__name:`runtime`,setup(r){return(r,i)=>(t(),e(n,{type:`runtime`}))}};export{r as default};
