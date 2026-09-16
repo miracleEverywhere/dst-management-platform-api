@@ -11,10 +11,32 @@ var (
 	// ModDownloadStatus 模组下载状态
 	ModDownloadStatus *ModCache
 
-	// PlayerUpdateModStatus 玩家更新模组状态 (正在更新-true|未在更新-false)
-	PlayerUpdateModStatus      = make(map[int]bool)
-	PlayerUpdateModStatusMutex sync.Mutex
+	// playerUpdateModStatus 玩家更新模组任务状态 (检查或更新中-true|空闲-false)
+	playerUpdateModStatus      = make(map[int]bool)
+	playerUpdateModStatusMutex sync.Mutex
 )
+
+// TryStartPlayerUpdateMod 尝试占用指定房间的模组更新状态。
+// 返回 false 表示该房间已有检查或更新流程正在执行。
+func TryStartPlayerUpdateMod(roomID int) bool {
+	playerUpdateModStatusMutex.Lock()
+	defer playerUpdateModStatusMutex.Unlock()
+
+	if playerUpdateModStatus[roomID] {
+		return false
+	}
+	playerUpdateModStatus[roomID] = true
+
+	return true
+}
+
+// FinishPlayerUpdateMod 释放指定房间的模组更新状态。
+func FinishPlayerUpdateMod(roomID int) {
+	playerUpdateModStatusMutex.Lock()
+	defer playerUpdateModStatusMutex.Unlock()
+
+	delete(playerUpdateModStatus, roomID)
+}
 
 type ModItem struct {
 	ID          int `json:"id"`
