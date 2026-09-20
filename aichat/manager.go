@@ -288,7 +288,7 @@ func (m *Manager) isEmbeddingConfigured(setting models.AIChatSetting) bool {
 // getEmbeddingSearcher 获取或创建向量搜索引擎
 // 仅创建 searcher 实例并缓存，不自动构建索引（构建需通过 BuildEmbeddingIndex 手动触发）
 func (m *Manager) getEmbeddingSearcher(setting models.AIChatSetting) *embeddingWikiSearcher {
-	configKey := setting.EmbeddingBaseURL + "|" + setting.EmbeddingApiKey + "|" + setting.EmbeddingModel
+	configKey := embeddingConfigKey(setting.EmbeddingBaseURL, setting.EmbeddingApiKey, setting.EmbeddingModel, setting.EmbeddingDimensions)
 
 	m.embedSearcherMu.Lock()
 	defer m.embedSearcherMu.Unlock()
@@ -307,13 +307,18 @@ func (m *Manager) getEmbeddingSearcher(setting models.AIChatSetting) *embeddingW
 		APIURL:     setting.EmbeddingBaseURL,
 		APIKey:     setting.EmbeddingApiKey,
 		Model:      setting.EmbeddingModel,
-		Dimensions: 1024,
+		Dimensions: setting.EmbeddingDimensions,
 	}
 	searcher := newEmbeddingWikiSearcher(wikiPagesDir, embedConfig)
 
 	m.embedSearcher = searcher
 	m.lastEmbedConfig = configKey
 	return m.embedSearcher
+}
+
+// embeddingConfigKey 生成向量配置缓存键，维度变化也必须重建 searcher。
+func embeddingConfigKey(apiURL, apiKey, model string, dimensions int) string {
+	return fmt.Sprintf("%s|%s|%s|%d", apiURL, apiKey, model, dimensions)
 }
 
 // BuildEmbeddingIndex 手动构建向量索引。
@@ -352,10 +357,8 @@ func (m *Manager) buildEmbeddingIndex(config EmbeddingConfig, force bool) error 
 	if m.embedSearcher != nil {
 		m.embedSearcher.stopIdleTimer()
 	}
-	apiKey := config.APIKey
-	configKey := config.APIURL + "|" + apiKey + "|" + config.Model
 	m.embedSearcher = searcher
-	m.lastEmbedConfig = configKey
+	m.lastEmbedConfig = embeddingConfigKey(config.APIURL, config.APIKey, config.Model, config.Dimensions)
 	m.embedSearcherMu.Unlock()
 
 	logger.Logger.Infof("向量索引构建完成")

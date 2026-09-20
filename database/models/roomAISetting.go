@@ -12,12 +12,17 @@ const (
 )
 
 type AIModelConfig struct {
-	ChatBaseURL           string  `json:"chatBaseURL"`
-	ChatApiKey            string  `json:"chatApiKey"`
-	ChatModel             string  `json:"chatModel"`
-	EmbeddingBaseURL      string  `json:"embeddingBaseURL"`
-	EmbeddingApiKey       string  `json:"embeddingApiKey"`
-	EmbeddingModel        string  `json:"embeddingModel"`
+	ChatBaseURL      string `json:"chatBaseURL"`
+	ChatApiKey       string `json:"chatApiKey"`
+	ChatModel        string `json:"chatModel"`
+	EmbeddingBaseURL string `json:"embeddingBaseURL"`
+	EmbeddingApiKey  string `json:"embeddingApiKey"`
+	EmbeddingModel   string `json:"embeddingModel"`
+
+	// EmbeddingDimensions 是向量维度。0 表示不向 embedding API 发送 dimensions 参数，
+	// 由模型自行决定原生维度（BGE-M3 等模型不支持该参数，必须保持 0）。
+	EmbeddingDimensions int `json:"embeddingDimensions"`
+
 	SystemPrompt          string  `json:"systemPrompt"`
 	Temperature           float64 `json:"temperature"`
 	MaxTokens             int     `json:"maxTokens"`

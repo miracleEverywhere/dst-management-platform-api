@@ -30,10 +30,12 @@ const (
 	embedBatchSize        = 10
 	embedMaxChars         = 4000
 	embedRequestInterval  = 300 * time.Millisecond
-	embedMinBatchSize     = 5
 	embedMinContentLength = 50
 	embeddingIdleTimeout  = 5 * time.Minute
 )
+
+// embeddingIndexMetaFile 记录向量索引构建来源的元数据文件名。
+const embeddingIndexMetaFile = "index_meta.json"
 
 // ========== 预处理正则 ==========
 
@@ -56,6 +58,15 @@ type wikiMeta struct {
 	Filename      string   `json:"filename"`
 }
 
+// embeddingIndexMeta 记录向量索引的构建来源，用于检测模型或维度变更。
+// 旧版本没有该文件，此时各字段为零值，除维度外的校验会被跳过。
+type embeddingIndexMeta struct {
+	Model      string `json:"model"`
+	Dimensions int    `json:"dimensions"`
+	TotalDocs  int    `json:"totalDocs"`
+	UpdatedAt  string `json:"updatedAt"`
+}
+
 // ========== 向量搜索引擎 ==========
 
 // EmbeddingWikiSearcher 基于向量相似度的 Wiki 搜索引擎
@@ -65,23 +76,22 @@ type embeddingWikiSearcher struct {
 	apiURL       string
 	apiKey       string
 	model        string
-	dimensions   int
+	// dimensions 为 0 时不向 API 发送 dimensions 参数，由模型决定原生维度。
+	dimensions int
 
 	httpClient *http.Client
 
 	mu         sync.RWMutex
 	metadata   map[string]wikiMeta  // filename -> meta
 	embeddings map[string][]float64 // filename -> vector
+	meta       embeddingIndexMeta   // 已保存索引的构建来源
 	loaded     bool
 	idleTimer  *time.Timer // 空闲自动释放计时器
 }
 
-// newEmbeddingWikiSearcher 创建向量搜索引擎
+// newEmbeddingWikiSearcher 创建向量搜索引擎。
+// dimensions 为 0 表示不发送 dimensions 参数（BGE-M3 等模型不支持该参数）。
 func newEmbeddingWikiSearcher(pagesDir string, config EmbeddingConfig) *embeddingWikiSearcher {
-	if config.Dimensions <= 0 {
-		config.Dimensions = 1024
-	}
-
 	return &embeddingWikiSearcher{
 		pagesDir:     pagesDir,
 		embeddingDir: embeddingDir,
@@ -95,17 +105,47 @@ func newEmbeddingWikiSearcher(pagesDir string, config EmbeddingConfig) *embeddin
 	}
 }
 
+// indexDimensions 返回已加载索引中向量的实际维度，索引为空时返回 0。
+// 调用方需持有 s.mu。
+func (s *embeddingWikiSearcher) indexDimensions() int {
+	for _, vector := range s.embeddings {
+		return len(vector)
+	}
+	return 0
+}
+
+// configMismatch 检查已保存的索引是否与当前配置一致，返回不一致的原因（一致时返回空字符串）。
+// 维度以索引中向量的实际长度为准；dimensions 为 0 时表示跟随模型原生维度，无法在构建前比较。
+// 调用方需持有 s.mu。
+func (s *embeddingWikiSearcher) configMismatch() string {
+	dim := s.indexDimensions()
+	if dim == 0 {
+		return ""
+	}
+	if s.meta.Model != "" && s.meta.Model != s.model {
+		return fmt.Sprintf("索引由模型 %s 构建，当前模型为 %s", s.meta.Model, s.model)
+	}
+	if s.dimensions > 0 && dim != s.dimensions {
+		return fmt.Sprintf("索引维度为 %d，当前配置维度为 %d", dim, s.dimensions)
+	}
+	return ""
+}
+
 // NeedsSetup 是否需要构建索引
 func (s *embeddingWikiSearcher) needsSetup() bool {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if !s.loaded {
-		s.mu.RUnlock()
+	loaded := s.loaded
+	s.mu.RUnlock()
+	if !loaded {
 		s.load()
-		s.mu.RLock()
 	}
-	return len(s.embeddings) == 0
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if len(s.embeddings) == 0 {
+		return true
+	}
+	return s.configMismatch() != ""
 }
 
 // Search 向量语义搜索
@@ -118,6 +158,8 @@ func (s *embeddingWikiSearcher) search(query string, categories []string, maxRes
 	}
 	embeddings := s.embeddings
 	metadata := s.metadata
+	indexDim := s.indexDimensions()
+	mismatch := s.configMismatch()
 	s.mu.RUnlock()
 
 	// 每次搜索重置空闲计时器
@@ -128,11 +170,19 @@ func (s *embeddingWikiSearcher) search(query string, categories []string, maxRes
 	if len(embeddings) == 0 {
 		return nil, fmt.Errorf("向量索引为空")
 	}
+	if mismatch != "" {
+		return nil, fmt.Errorf("%s，请重建向量索引", mismatch)
+	}
 
 	// 对查询文本做 embedding
 	queryVector, err := s.embedSingle(query)
 	if err != nil {
 		return nil, fmt.Errorf("查询文本 embedding 失败: %w", err)
+	}
+
+	// 查询向量与索引向量维度必须一致，否则余弦相似度全部为 0。
+	if indexDim > 0 && len(queryVector) != indexDim {
+		return nil, fmt.Errorf("查询向量维度为 %d，索引维度为 %d，embedding 模型或向量维度配置已变更，请重建向量索引", len(queryVector), indexDim)
 	}
 
 	// 计算余弦相似度
@@ -228,9 +278,16 @@ func (s *embeddingWikiSearcher) loadLocked() {
 		s.embeddings = make(map[string][]float64)
 	}
 
+	s.meta = embeddingIndexMeta{}
+	if meta, metaErr := readEmbeddingIndexMeta(); metaErr == nil {
+		s.meta = meta
+	} else if !os.IsNotExist(metaErr) {
+		logger.Logger.Errorf("载入向量索引元数据失败: %v", metaErr)
+	}
+
 	s.loaded = true
 	s.resetIdleTimer()
-	logger.Logger.Infof("已加载向量索引: %d 篇文档", len(s.embeddings))
+	logger.Logger.Infof("已加载向量索引: %d 篇文档 (模型: %s, 维度: %d)", len(s.embeddings), s.meta.Model, s.indexDimensions())
 }
 
 // unload 释放向量索引占用的内存。下次 search 时会自动从磁盘重新加载。
@@ -240,6 +297,7 @@ func (s *embeddingWikiSearcher) unload() {
 	}
 	s.metadata = nil
 	s.embeddings = nil
+	s.meta = embeddingIndexMeta{}
 	s.loaded = false
 	s.stopIdleTimer()
 }
@@ -276,6 +334,16 @@ func (s *embeddingWikiSearcher) embedSingle(text string) ([]float64, error) {
 	return vectors[0], nil
 }
 
+// dimensionsLabel 返回 dimensions 参数的日志描述。
+func (s *embeddingWikiSearcher) dimensionsLabel() string {
+	if s.dimensions > 0 {
+		return fmt.Sprintf("%d", s.dimensions)
+	}
+	return "模型原生（不发送 dimensions 参数）"
+}
+
+// embedBatch 调用 embedding API。
+// dimensions 为 0 时不发送该参数；BGE-M3 等不支持 dimensions 的模型必须如此。
 func (s *embeddingWikiSearcher) embedBatch(ctx context.Context, texts []string) ([][]float64, error) {
 	// 构建请求
 	reqBody := map[string]interface{}{
@@ -368,7 +436,8 @@ func cosineSimilarity(a, b []float64) float64 {
 // 构建向量索引
 // ================================================================
 
-// save 不加锁保存（调用方需持有 s.mu 读锁或写锁）
+// save 保存索引及其元数据（调用方需持有 s.mu 写锁）。
+// 维度以实际写入的向量长度为准，因此 dimensions 配置为 0 时也能记录模型原生维度。
 func (s *embeddingWikiSearcher) save() error {
 	if err := os.MkdirAll(s.embeddingDir, 0755); err != nil {
 		return fmt.Errorf("创建 embedding 目录失败: %w", err)
@@ -376,6 +445,14 @@ func (s *embeddingWikiSearcher) save() error {
 
 	metadataPath := filepath.Join(s.embeddingDir, "metadata.json")
 	embeddingsPath := filepath.Join(s.embeddingDir, "embeddings.json")
+	metaPath := filepath.Join(s.embeddingDir, embeddingIndexMetaFile)
+
+	s.meta = embeddingIndexMeta{
+		Model:      s.model,
+		Dimensions: s.indexDimensions(),
+		TotalDocs:  len(s.embeddings),
+		UpdatedAt:  time.Now().Format(time.RFC3339),
+	}
 
 	data, err := json.Marshal(s.metadata)
 	if err != nil {
@@ -391,6 +468,14 @@ func (s *embeddingWikiSearcher) save() error {
 	}
 	if err := os.WriteFile(embeddingsPath, data, 0644); err != nil {
 		return fmt.Errorf("保存 embeddings 失败: %w", err)
+	}
+
+	data, err = json.Marshal(s.meta)
+	if err != nil {
+		return fmt.Errorf("序列化索引元数据失败: %w", err)
+	}
+	if err := os.WriteFile(metaPath, data, 0644); err != nil {
+		return fmt.Errorf("保存索引元数据失败: %w", err)
 	}
 
 	return nil
@@ -427,6 +512,10 @@ func (s *embeddingWikiSearcher) buildIndex(ctx context.Context, force bool) erro
 
 	// 增量构建 vs 全量重建
 	if !force {
+		// 模型或维度变更后继续增量会写入与旧向量不可比的向量，必须全量重建。
+		if mismatch := s.configMismatch(); mismatch != "" {
+			return fmt.Errorf("已有向量索引与当前配置不一致（%s），请强制重建索引", mismatch)
+		}
 		var newFiles []string
 		for _, f := range mdFiles {
 			if _, ok := s.embeddings[filepath.Base(f)]; !ok {
@@ -442,16 +531,15 @@ func (s *embeddingWikiSearcher) buildIndex(ctx context.Context, force bool) erro
 	} else {
 		s.embeddings = make(map[string][]float64)
 		s.metadata = make(map[string]wikiMeta)
+		s.meta = embeddingIndexMeta{}
 	}
 
 	// 分批处理
-	currentBatchSize := embedBatchSize
-	batches, totalBatches := makeBatches(mdFiles, currentBatchSize)
+	batches, totalBatches := makeBatches(mdFiles, embedBatchSize)
 
-	logger.Logger.Infof("共 %d 篇文档，分 %d 批 (batch_size=%d)", len(mdFiles), totalBatches, currentBatchSize)
-	logger.Logger.Infof("API: %s  模型: %s", s.apiURL, s.model)
+	logger.Logger.Infof("共 %d 篇文档，分 %d 批 (batch_size=%d)", len(mdFiles), totalBatches, embedBatchSize)
+	logger.Logger.Infof("API: %s  模型: %s  dimensions: %s", s.apiURL, s.model, s.dimensionsLabel())
 
-	var failedFiles []string
 	batchIdx := 0
 
 	for batchIdx < totalBatches {
@@ -463,69 +551,46 @@ func (s *embeddingWikiSearcher) buildIndex(ctx context.Context, force bool) erro
 		// 准备这批的文本
 		texts, metas, prepErr := s.prepareBatch(batchFiles)
 		if prepErr != nil {
-			logger.Logger.Errorf("准备第 %d 批文档失败: %v", batchIdx+1, prepErr)
-			for _, f := range batchFiles {
-				failedFiles = append(failedFiles, filepath.Base(f))
-			}
-			batchIdx++
-			continue
+			return fmt.Errorf("准备第 %d/%d 批文档失败: %w", batchIdx+1, totalBatches, prepErr)
 		}
 
-		// 调用 API
+		// 调用 API。任何一批失败都直接终止构建，不做重试或批次降级，
+		// 避免留下与配置不符的部分索引。
 		vectors, apiErr := s.embedBatch(ctx, texts)
-
-		if apiErr == nil {
-			// 成功
-			for i, fp := range batchFiles {
-				s.embeddings[filepath.Base(fp)] = vectors[i]
-			}
-			for k, v := range metas {
-				s.metadata[k] = v
-			}
-
-			if saveErr := s.save(); saveErr != nil {
-				logger.Logger.Errorf("保存 embedding 失败: %v", saveErr)
-			}
-			logger.Logger.Infof("第 %d/%d 批完成 (%d 篇)", batchIdx+1, totalBatches, len(s.embeddings))
-
-			if batchIdx < totalBatches-1 {
-				timer := time.NewTimer(embedRequestInterval)
-				select {
-				case <-ctx.Done():
-					timer.Stop()
-					return ctx.Err()
-				case <-timer.C:
-				}
-			}
-			batchIdx++
-			continue
+		if apiErr != nil {
+			return fmt.Errorf("第 %d/%d 批 embedding 失败: %w", batchIdx+1, totalBatches, apiErr)
+		}
+		if len(vectors) != len(batchFiles) {
+			return fmt.Errorf("第 %d/%d 批返回 %d 个向量，期望 %d 个", batchIdx+1, totalBatches, len(vectors), len(batchFiles))
 		}
 
-		// API 调用失败时跳过当前批次，不再自动重试或调整批次大小。
-		logger.Logger.Errorf("第 %d/%d 批失败: %v", batchIdx+1, totalBatches, apiErr)
-		logger.Logger.Errorf("[跳过] 这 %d 篇 embed 失败", len(batchFiles))
-		for _, f := range batchFiles {
-			failedFiles = append(failedFiles, filepath.Base(f))
+		for i, fp := range batchFiles {
+			s.embeddings[filepath.Base(fp)] = vectors[i]
 		}
+		for k, v := range metas {
+			s.metadata[k] = v
+		}
+
 		if saveErr := s.save(); saveErr != nil {
 			logger.Logger.Errorf("保存 embedding 失败: %v", saveErr)
+		}
+		logger.Logger.Infof("第 %d/%d 批完成 (%d 篇)", batchIdx+1, totalBatches, len(s.embeddings))
+
+		if batchIdx < totalBatches-1 {
+			timer := time.NewTimer(embedRequestInterval)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
 		}
 		batchIdx++
 	}
 
 	// 完成
 	s.resetIdleTimer()
-	logger.Logger.Infof("索引构建完成! 共 %d 篇文档。", len(s.embeddings))
-	if len(failedFiles) > 0 {
-		logger.Logger.Warnf("跳过 %d 篇:", len(failedFiles))
-		for i, f := range failedFiles {
-			if i >= 10 {
-				logger.Logger.Warnf("... 等 %d 篇", len(failedFiles)-10)
-				break
-			}
-			logger.Logger.Warnf("  - %s", f)
-		}
-	}
+	logger.Logger.Infof("索引构建完成! 共 %d 篇文档，维度 %d。", len(s.embeddings), s.indexDimensions())
 
 	return nil
 }
@@ -627,15 +692,57 @@ func makeBatches(files []string, size int) (batches [][]string, total int) {
 	return batches, len(batches)
 }
 
-func rebuildBatches(allFiles []string, embedded map[string][]float64, size int) ([][]string, int) {
-	var remaining []string
-	for _, f := range allFiles {
-		if _, ok := embedded[filepath.Base(f)]; !ok {
-			remaining = append(remaining, f)
+// readEmbeddingIndexMeta 读取索引元数据文件。
+func readEmbeddingIndexMeta() (embeddingIndexMeta, error) {
+	var meta embeddingIndexMeta
+	data, err := os.ReadFile(filepath.Join(embeddingDir, embeddingIndexMetaFile))
+	if err != nil {
+		return meta, err
+	}
+	if err = json.Unmarshal(data, &meta); err != nil {
+		return meta, err
+	}
+	return meta, nil
+}
+
+// firstEmbeddingDimensions 读取 embeddings.json 中第一个向量的长度。
+// 使用流式解析，避免为了取维度而加载整个索引。没有索引时返回 0。
+func firstEmbeddingDimensions() int {
+	file, err := os.Open(filepath.Join(embeddingDir, "embeddings.json"))
+	if err != nil {
+		return 0
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	if _, err = decoder.Token(); err != nil { // 左花括号
+		return 0
+	}
+	for decoder.More() {
+		if _, err = decoder.Token(); err != nil { // 文件名
+			return 0
+		}
+		var vector []float64
+		if err = decoder.Decode(&vector); err != nil {
+			return 0
+		}
+		if len(vector) > 0 {
+			return len(vector)
 		}
 	}
-	logger.Logger.Infof("剩余 %d 篇，分为 %d 批", len(remaining), (len(remaining)+size-1)/size)
-	return makeBatches(remaining, size)
+	return 0
+}
+
+// embeddingIndexDimensions 返回已构建向量索引的维度，没有索引时返回 -1。
+// 优先使用索引元数据；旧版本索引没有元数据文件时回退到读取第一个向量的长度。
+func embeddingIndexDimensions() int {
+	if meta, err := readEmbeddingIndexMeta(); err == nil && meta.Dimensions > 0 {
+		return meta.Dimensions
+	}
+	if dim := firstEmbeddingDimensions(); dim > 0 {
+		return dim
+	}
+	return -1
 }
 
 // ================================================================

@@ -37,6 +37,13 @@ func validateModelConfig(config *models.AIModelConfig) error {
 			return fmt.Errorf("向量 API Key 过长")
 		}
 	}
+	// 0 表示不发送 dimensions 参数，由模型决定原生维度；非 0 时才校验范围。
+	if config.EmbeddingDimensions != 0 && (config.EmbeddingDimensions < 64 || config.EmbeddingDimensions > 8192) {
+		return fmt.Errorf("向量维度必须为 0（不指定）或 64 到 8192 之间")
+	}
+	if config.EmbeddingDimensions != 0 && config.EmbeddingModel == "" {
+		return fmt.Errorf("未配置向量模型时不能指定向量维度")
+	}
 	config.SystemPrompt = strings.TrimSpace(config.SystemPrompt)
 	if utf8.RuneCountInString(config.SystemPrompt) > 8000 {
 		return fmt.Errorf("系统提示词过长")

@@ -838,7 +838,16 @@ func (h *Handler) aiBaseSettingGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": setting})
+
+	// embeddingIndexDimensions 为磁盘上已有向量索引的维度，没有索引时为 -1。
+	response := struct {
+		models.AIBaseSetting
+		EmbeddingIndexDimensions int `json:"embeddingIndexDimensions"`
+	}{
+		AIBaseSetting:            *setting,
+		EmbeddingIndexDimensions: h.aiManager.GetEmbeddingIndexDimensions(),
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": response})
 }
 
 func (h *Handler) aiBaseSettingPut(c *gin.Context) {
@@ -900,7 +909,7 @@ func (h *Handler) aiEmbeddingIndexReBuild(c *gin.Context) {
 		APIURL:     baseURL,
 		APIKey:     setting.EmbeddingApiKey,
 		Model:      model,
-		Dimensions: 1024,
+		Dimensions: setting.EmbeddingDimensions,
 	}, true)
 	if err != nil {
 		logger.Logger.Errorf("重建 embedding 索引失败, err: %v", err)

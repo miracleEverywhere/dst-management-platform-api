@@ -106,6 +106,12 @@ func (m *Manager) GetEmbeddingStats(config EmbeddingConfig) EmbeddingStats {
 	return m.getEmbeddingStats(config)
 }
 
+// GetEmbeddingIndexDimensions 返回磁盘上已有向量索引的维度，没有索引时返回 -1。
+// 该值来自索引文件本身，与当前 Embedding 配置无关，用于判断是否需要重建索引。
+func (m *Manager) GetEmbeddingIndexDimensions() int {
+	return embeddingIndexDimensions()
+}
+
 // BuildKeywordIndex 手动构建关键词搜索索引。force 为 true 时强制重建。
 func (m *Manager) BuildKeywordIndex(force bool) error {
 	return m.buildKeywordIndex(force)
