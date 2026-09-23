@@ -16,8 +16,9 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 ## 目录职责
 
 - `app/<module>/`：HTTP 业务模块，通常包含 `handler.go`、`router.go`、`i18n.go` 和 `utils.go`。
-- `aichat/`：游戏内 AI 对话监听、关键词/向量索引及相关知识库能力。
+- `aichat/`：游戏内 AI 对话监听、关键词/向量索引、知识库（wiki）解析与向量模型配置。
 - `cache/`：进程级缓存初始化与访问。
+- `i18n/`：全局基础文案与 `BaseI18n`/`ExtendedI18n` 实现；各业务模块的 `i18n.go` 基于它合并本模块词条。
 - `database/models/`：GORM 模型；`database/dao/`：数据访问；`database/db/`：SQLite 初始化、迁移和缓存。
 - `dst/`：DST 房间、世界、模组、玩家、地图、日志和进程控制。
 - `scheduler/`：全局及房间级定时任务。
@@ -26,6 +27,7 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - `utils/`、`logger/`：共享工具与日志设施。
 - `embedFS/`：通过 `go:embed` 打包的前端、LuaJIT 库和安装脚本。
 - `docs/`：项目文档及图片资源。
+- `.agents/skills/`：本仓库的 agent 技能说明（`no-test`、`sandbox`、`frontend-project`、`zh-cn`），按任务类型加载。
 - `docker/`、`run.sh`：发布和最终用户部署，不是日常开发入口。
 
 ## 常用命令
@@ -42,7 +44,8 @@ go vet ./...
 # Linux 发布构建（无 CGO）
 CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
 
-# Make 构建后端；macOS 会按 Makefile 使用 CGO 并输出到 ~/dmp
+# Make 构建后端；所有平台均为 CGO_ENABLED=0
+# macOS 输出到 ~/dmp，Linux 输出到仓库根目录 ./dmp
 make backend-only
 
 # 查看 Makefile 提供的目标
@@ -50,6 +53,8 @@ make help
 ```
 
 `make all`、`make frontend-only`、`make frontend2backend` 和 `make copy-frontend` 假定前端仓库位于 `$(HOME)/WebstormProjects/dst-management-platform-web`，并可能清空或替换前端 `dist/` 及 `embedFS/dist/`。只有任务明确涉及前端构建产物、且该外部仓库存在时才运行；不要手工编辑 `embedFS/dist/` 中带哈希的资源。
+
+沙箱环境下若构建因无法写入系统 Go 缓存而失败，把缓存指向 `/tmp`，例如 `GOCACHE=/tmp/gocache go vet ./...`、`GOCACHE=/tmp/gocache go build ...`（见 `.agents/skills/sandbox/SKILL.md`）。
 
 如确需本地启动，使用非特权端口和隔离数据目录，例如：
 
@@ -69,7 +74,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 - 沿用现有包边界和构造方式。业务依赖通过模块 `Handler` 持有，并由 `server/server.go` 统一创建和注入。
 - 新增路由时使用 `utils.ApiVersion`，并按相邻路由应用 `middleware.TokenCheck()`、`middleware.AdminOnly()` 等中间件。
 - JSON API 保持现有响应形状：`{"code": ..., "message": ..., "data": ...}`。多数业务接口以 HTTP 200 返回，业务结果由响应体中的 `code` 表示；文件下载、流式响应和 WebSocket 等特殊接口沿用各自现有行为。
-- 面向用户的消息应接入对应模块的 `i18n.go`，同时维护 `zh`、`en` 文案，并通过现有 `BaseI18n`/`message.Get` 模式读取。
+- 面向用户的消息统一走 `i18n` 包：通用文案维护在 `i18n/i18n.go` 的全局 `I18n` 中，模块词条在 `app/<module>/i18n.go` 用 `i18n.NewExtendedI18n(map[string]i18n.Text{...})` 声明，读取使用模块内的 `message.Get(c, ...)` / `message.GetF(c, ...)`；`zh`、`en` 文案必须同时维护。
 - 使用已有 `logger`、DAO 和工具函数，不引入平行的日志、数据库或配置体系。
 - 错误必须被返回、转换为 API 响应或记录；不要静默吞掉对业务正确性有影响的错误。
 
@@ -79,6 +84,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 - 新增模型时同步新增 DAO，并将模型加入 `database/db/database.go` 的 `AllTables`，使 `AutoMigrate` 能创建表。
 - 不要在 Handler 中绕过 DAO 复制已有查询逻辑；跨实体操作参考 `database/dao/composite.go`。
 - 修改房间状态或配置时，检查是否需要同步更新 `scheduler/` 中的任务。任务名称和房间级任务生命周期应保持现有约定。
+- 修改 AI 模型配置（`database/models/roomAISetting.go`、`aichat/config.go`）时注意零值语义，例如 `EmbeddingDimensions` 为 `0` 表示不发送 `dimensions` 参数而非非法值；校验规则需与前端契约保持一致。
 
 ### 安全与外部操作
 
@@ -98,6 +104,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 ### 测试与验证
 
 - 当前仓库没有 `_test.go` 测试文件；遵循 `.agents/skills/no-test/SKILL.md`，不要为普通修改新增测试文件。
+- 按需加载 `.agents/skills/` 中的其他技能：涉及前端逻辑用 `frontend-project`（只读前端源码，不得修改），沙箱内构建失败用 `sandbox`，回复语言与文案用 `zh-cn`。
 - 优先执行与改动范围匹配的 `gofmt`、`go vet ./...` 或构建命令；需要 Linux、DST、网络或外部服务的行为无法验证时，在交付说明中明确指出。
 
 ## 验证要求
@@ -106,7 +113,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 
 1. 对所有修改过的 Go 文件运行 `gofmt`，并确认没有意外格式变化。
 2. 修改共享工具、中间件、数据库、调度器或 API 契约时，运行 `go vet ./...`。
-3. 修改入口、依赖、嵌入资源或发布相关代码时，在 Linux 上执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp`；macOS 使用 `make backend-only`，验证后不要提交生成的 `dmp`。
+3. 修改入口、依赖、嵌入资源或发布相关代码时，在 Linux 上执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp`；macOS 执行 `make backend-only`（产物输出到 `~/dmp`），验证后不要提交生成的 `dmp`。
 4. 无法执行依赖 Linux/DST/网络的验证时，在交付说明中明确列出未验证项和原因。
 
 ## Agent 工作方式
