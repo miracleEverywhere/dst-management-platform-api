@@ -306,6 +306,7 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModFalse", roomID))
 		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModTrue", roomID))
+		cache.ClearPlayerUpdateModChallenge(roomID)
 	}
 }
 

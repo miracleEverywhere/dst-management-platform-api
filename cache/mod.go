@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 var (
@@ -14,7 +15,17 @@ var (
 	// playerUpdateModStatus 玩家更新模组任务状态 (检查或更新中-true|空闲-false)
 	playerUpdateModStatus      = make(map[int]bool)
 	playerUpdateModStatusMutex sync.Mutex
+
+	playerUpdateModChallenges     = make(map[int]playerUpdateModChallenge)
+	playerUpdateModChallengeMutex sync.Mutex
 )
+
+type playerUpdateModChallenge struct {
+	ID        string
+	Warning   string
+	ExpiresAt time.Time
+	Consumed  bool
+}
 
 // TryStartPlayerUpdateMod 尝试占用指定房间的模组更新状态。
 // 返回 false 表示该房间已有检查或更新流程正在执行。
@@ -36,6 +47,74 @@ func FinishPlayerUpdateMod(roomID int) {
 	defer playerUpdateModStatusMutex.Unlock()
 
 	delete(playerUpdateModStatus, roomID)
+}
+
+// TryCreatePlayerUpdateModChallenge 为指定房间创建模组更新确认码。
+// 同一警告已有未过期确认码或已经成功确认时，不再重复创建。
+func TryCreatePlayerUpdateModChallenge(roomID int, warning, id string, expiresAt time.Time) bool {
+	now := time.Now()
+	if roomID <= 0 || warning == "" || id == "" || !expiresAt.After(now) {
+		return false
+	}
+
+	playerUpdateModChallengeMutex.Lock()
+	defer playerUpdateModChallengeMutex.Unlock()
+
+	challenge, exists := playerUpdateModChallenges[roomID]
+	if exists && challenge.Warning == warning {
+		if challenge.Consumed || now.Before(challenge.ExpiresAt) {
+			return false
+		}
+	}
+
+	playerUpdateModChallenges[roomID] = playerUpdateModChallenge{
+		ID:        id,
+		Warning:   warning,
+		ExpiresAt: expiresAt,
+	}
+
+	return true
+}
+
+// ConsumePlayerUpdateModChallenge 校验并消费指定房间的模组更新确认码。
+// 返回 true 后，同一确认码和同一警告均不能再次触发更新。
+func ConsumePlayerUpdateModChallenge(roomID int, id string) bool {
+	if roomID <= 0 || id == "" {
+		return false
+	}
+
+	playerUpdateModChallengeMutex.Lock()
+	defer playerUpdateModChallengeMutex.Unlock()
+
+	challenge, exists := playerUpdateModChallenges[roomID]
+	if !exists || challenge.Consumed || !time.Now().Before(challenge.ExpiresAt) || challenge.ID != id {
+		return false
+	}
+
+	challenge.ID = ""
+	challenge.Consumed = true
+	playerUpdateModChallenges[roomID] = challenge
+
+	return true
+}
+
+// CancelPlayerUpdateModChallenge 取消发送失败且尚未被替换的模组更新确认码。
+func CancelPlayerUpdateModChallenge(roomID int, id string) {
+	playerUpdateModChallengeMutex.Lock()
+	defer playerUpdateModChallengeMutex.Unlock()
+
+	challenge, exists := playerUpdateModChallenges[roomID]
+	if exists && !challenge.Consumed && challenge.ID == id {
+		delete(playerUpdateModChallenges, roomID)
+	}
+}
+
+// ClearPlayerUpdateModChallenge 清理指定房间的模组更新确认状态。
+func ClearPlayerUpdateModChallenge(roomID int) {
+	playerUpdateModChallengeMutex.Lock()
+	defer playerUpdateModChallengeMutex.Unlock()
+
+	delete(playerUpdateModChallenges, roomID)
 }
 
 type ModItem struct {

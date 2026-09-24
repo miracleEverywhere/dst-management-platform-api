@@ -271,6 +271,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 		for _, jobName := range jobNames {
 			scheduler.DeleteJob(jobName)
 		}
+		cache.ClearPlayerUpdateModChallenge(reqForm.RoomData.ID)
 	}
 	if err = h.aiManager.Reload(reqForm.RoomData.ID); err != nil {
 		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomData.ID, err)
@@ -897,6 +898,7 @@ func (h *Handler) deactivatePost(c *gin.Context) {
 	for _, jobName := range jobNames {
 		scheduler.DeleteJob(jobName)
 	}
+	cache.ClearPlayerUpdateModChallenge(reqForm.RoomID)
 	// 删除玩家统计
 	cache.PlayersStatisticMutex.Lock()
 	defer cache.PlayersStatisticMutex.Unlock()
@@ -1078,6 +1080,7 @@ func (h *Handler) roomDelete(c *gin.Context) {
 	for _, jobName := range jobNames {
 		scheduler.DeleteJob(jobName)
 	}
+	cache.ClearPlayerUpdateModChallenge(reqForm.RoomID)
 	// 删除玩家统计
 	cache.PlayersStatisticMutex.Lock()
 	delete(cache.PlayersStatistic, reqForm.RoomID)

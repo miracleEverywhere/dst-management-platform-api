@@ -12,7 +12,9 @@ import (
 	"time"
 )
 
-var rePlayerUpdateMod = regexp.MustCompile(`([A-Z0-9]{7})-LKGX`)
+const playerUpdateModChallengeTTL = 10 * time.Minute
+
+var rePlayerUpdateMod = regexp.MustCompile(`([A-Z0-9]{7})-LKGX$`)
 
 func Backup(game *dst.Game) {
 	logger.Logger.Info("[定时任务]：执行自动备份任务")
@@ -185,10 +187,10 @@ func PlayerUpdateMod(game *dst.Game, check bool) {
 
 	if check {
 		// 已发送更新ID，开始处理业务
-		for _, line := range logContent {
-			subMatches := rePlayerUpdateMod.FindStringSubmatch(line)
+		for i := len(logContent) - 1; i >= 0; i-- {
+			subMatches := rePlayerUpdateMod.FindStringSubmatch(strings.TrimSpace(logContent[i]))
 			if len(subMatches) > 1 {
-				if utils.VerifyUpdateModID(subMatches[1]) {
+				if cache.ConsumePlayerUpdateModChallenge(roomID, subMatches[1]) {
 					releaseStatus = false
 					runJobAsync(fmt.Sprintf("%d-PlayerUpdateMod", roomID), func() {
 						defer cache.FinishPlayerUpdateMod(roomID)
@@ -220,24 +222,31 @@ func PlayerUpdateMod(game *dst.Game, check bool) {
 	}
 
 	// 未发送更新ID，开始发送
-
-	sendTip := func() error {
-		updateModID := utils.GenerateUpdateModID()
-		if len(updateModID) == 0 {
-			return fmt.Errorf("更新ID生成异常")
+	var warning string
+	for i := len(logContent) - 1; i >= 0; i-- {
+		line := logContent[i]
+		if strings.Contains(line, "服务器需要从Steam创意工坊获得最新版本") || strings.Contains(line, "is out of date and needs to be updated for new users to be able to join the server") {
+			warning = line
+			break
 		}
-		updateTip := fmt.Sprintf("饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入 ID-LKGX 进行模组更新", updateModID)
-
-		return game.SystemMsg(updateTip)
+	}
+	if warning == "" {
+		return
 	}
 
-	for _, line := range logContent {
-		if strings.Contains(line, "服务器需要从Steam创意工坊获得最新版本") || strings.Contains(line, "is out of date and needs to be updated for new users to be able to join the server") {
-			if err := sendTip(); err != nil {
-				logger.Logger.Errorf("玩家更新模组定时任务异常，发送通知失败, err: %v", err)
-			}
+	updateModID := utils.GenerateUpdateModID()
+	if len(updateModID) == 0 {
+		logger.Logger.Error("玩家更新模组定时任务异常，更新ID生成异常")
+		return
+	}
+	if !cache.TryCreatePlayerUpdateModChallenge(roomID, warning, updateModID, time.Now().Add(playerUpdateModChallengeTTL)) {
+		return
+	}
 
-			return
-		}
+	validMinutes := int(playerUpdateModChallengeTTL / time.Minute)
+	updateTip := fmt.Sprintf("饥荒管理平台检测到模组需要更新，本次更新ID为%s，请输入 %s-LKGX 进行模组更新，验证码%d分钟内有效", updateModID, updateModID, validMinutes)
+	if err := game.SystemMsg(updateTip); err != nil {
+		cache.CancelPlayerUpdateModChallenge(roomID, updateModID)
+		logger.Logger.Errorf("玩家更新模组定时任务异常，发送通知失败, err: %v", err)
 	}
 }
