@@ -50,7 +50,7 @@ func FinishPlayerUpdateMod(roomID int) {
 }
 
 // TryCreatePlayerUpdateModChallenge 为指定房间创建模组更新确认码。
-// 同一警告已有未过期确认码或已经成功确认时，不再重复创建。
+// 已有未消费且未过期的确认码，或同一警告已经成功确认时，不再重复创建。
 func TryCreatePlayerUpdateModChallenge(roomID int, warning, id string, expiresAt time.Time) bool {
 	now := time.Now()
 	if roomID <= 0 || warning == "" || id == "" || !expiresAt.After(now) {
@@ -61,8 +61,11 @@ func TryCreatePlayerUpdateModChallenge(roomID int, warning, id string, expiresAt
 	defer playerUpdateModChallengeMutex.Unlock()
 
 	challenge, exists := playerUpdateModChallenges[roomID]
-	if exists && challenge.Warning == warning {
-		if challenge.Consumed || now.Before(challenge.ExpiresAt) {
+	if exists {
+		if !challenge.Consumed && now.Before(challenge.ExpiresAt) {
+			return false
+		}
+		if challenge.Consumed && challenge.Warning == warning {
 			return false
 		}
 	}
