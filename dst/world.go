@@ -18,6 +18,24 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
+// 启停时序常量
+const (
+	// stopGraceTimeout 等待分片优雅退出的最长时间。
+	// 游戏收到 c_shutdown() 后需要完成断开玩家、向Klei大厅注销房间(/lobby/delete)、
+	// 序列化存档等收尾工作，实测约 26~60 秒；提前强杀会导致房间行残留在大厅数据库中，
+	// 下次启动报 E_ROWID_EXIST 且整个运行期无法在服务器列表中被搜到
+	stopGraceTimeout = 150 * time.Second
+	// stopPollInterval 优雅退出状态轮询间隔
+	stopPollInterval = 2 * time.Second
+	// startSpawnTimeout 等待分片进程出现(screen会话已建立)的最长时间
+	startSpawnTimeout = 30 * time.Second
+	// startReadyTimeout 等待分片完成加载的最长时间。
+	// 以各分片日志出现"本局加载完成"标志为准（主世界: Starting master server；
+	// 从属世界: Sending secondary shard information to master），
+	// 带大量模组时加载需 60~120 秒，进程活着不代表已加载完成
+	startReadyTimeout = 240 * time.Second
+)
+
 type worldSaveData struct {
 	worldPath             string
 	serverIniPath         string
@@ -245,9 +263,17 @@ func (g *Game) startWorld(id int) error {
 		logger.Logger.Warnf("世界名 %s 可能存在注入风险", world.WorldName)
 		return fmt.Errorf("世界名 %s 可能存在注入风险", world.WorldName)
 	}
-	err = utils.BashCMD(world.startCmd)
+	// 记录启动前日志修改时间，用于区分本次运行的新日志
+	baseline := time.Time{}
+	if fi, err := os.Stat(fmt.Sprintf("%s/server_log.txt", world.worldPath)); err == nil {
+		baseline = fi.ModTime()
+	}
+	if err := utils.BashCMD(world.startCmd); err != nil {
+		return fmt.Errorf("世界 %s 启动失败: %w", world.WorldName, err)
+	}
 
-	return err
+	// 确认世界完成加载后才视为启动成功
+	return g.waitWorldsUp([]launchedWorld{{id: id, baseline: baseline}})
 }
 
 func (g *Game) startAllWorld() error {
@@ -268,6 +294,7 @@ func (g *Game) startAllWorld() error {
 		return err
 	}
 
+	launched := make([]launchedWorld, 0, len(g.worldSaveData))
 	for _, world := range g.worldSaveData {
 		// 如果正在运行，则跳过
 		if g.worldUpStatus(world.ID) {
@@ -276,10 +303,25 @@ func (g *Game) startAllWorld() error {
 		}
 
 		logger.Logger.Debug(world.startCmd)
-		err = utils.BashCMD(world.startCmd)
-		if err != nil {
-			return err
+		if !utils.IsSafeString(world.WorldName) {
+			logger.Logger.Warnf("世界名 %s 可能存在注入风险", world.WorldName)
+			return fmt.Errorf("世界名 %s 可能存在注入风险", world.WorldName)
 		}
+		// 记录启动前日志修改时间：游戏启动会截断重写 server_log.txt，
+		// 以此区分本次运行的新日志与上一次运行残留的内容
+		baseline := time.Time{}
+		if fi, err := os.Stat(fmt.Sprintf("%s/server_log.txt", world.worldPath)); err == nil {
+			baseline = fi.ModTime()
+		}
+		if err := utils.BashCMD(world.startCmd); err != nil {
+			return fmt.Errorf("世界 %s 启动失败: %w", world.WorldName, err)
+		}
+		launched = append(launched, launchedWorld{id: world.ID, baseline: baseline})
+	}
+
+	// 确认所有新启动的世界完成加载后才视为启动成功
+	if err := g.waitWorldsUp(launched); err != nil {
+		return err
 	}
 
 	webhook.Snd.Send(webhook.EventGameStart, g.room.ID, map[string]interface{}{
@@ -288,6 +330,128 @@ func (g *Game) startAllWorld() error {
 	})
 
 	return nil
+}
+
+// launchedWorld 记录本次启动的世界及其日志基线时间
+type launchedWorld struct {
+	id       int
+	baseline time.Time
+}
+
+// waitWorldsUp 等待指定的世界完成启动：
+// 1. 进程真实出现；2. 各分片日志出现本局"加载完成"标志。
+// 全部就绪才返回 nil；否则返回带具体世界名的错误
+func (g *Game) waitWorldsUp(launched []launchedWorld) error {
+	if len(launched) == 0 {
+		return nil
+	}
+
+	worldName := func(id int) string {
+		world, err := g.getWorldByID(id)
+		if err != nil {
+			return fmt.Sprintf("世界#%d", id)
+		}
+		return world.WorldName
+	}
+
+	// 1. 等待进程出现
+	deadline := time.Now().Add(startSpawnTimeout)
+	for {
+		allUp := true
+		for _, lw := range launched {
+			if !g.worldUpStatus(lw.id) {
+				allUp = false
+				break
+			}
+		}
+		if allUp {
+			break
+		}
+		if time.Now().After(deadline) {
+			var down []string
+			for _, lw := range launched {
+				if !g.worldUpStatus(lw.id) {
+					down = append(down, worldName(lw.id))
+				}
+			}
+			return fmt.Errorf("世界 %s 未能启动，请查看游戏日志", strings.Join(down, "、"))
+		}
+		time.Sleep(stopPollInterval)
+	}
+
+	// 2. 等待各分片完成加载（日志出现本局就绪标志）。
+	//    进程活着不代表加载完成，带大量模组时加载需要 60~120 秒；
+	//    等待期间任何进程退出都判定为启动失败
+	deadline = time.Now().Add(startReadyTimeout)
+	for {
+		var down, notReady []string
+		for _, lw := range launched {
+			if !g.worldUpStatus(lw.id) {
+				world, err := g.getWorldByID(lw.id)
+				if err != nil {
+					down = append(down, fmt.Sprintf("世界#%d", lw.id))
+				} else {
+					down = append(down, world.WorldName)
+				}
+				continue
+			}
+			world, err := g.getWorldByID(lw.id)
+			if err != nil {
+				continue
+			}
+			if !g.worldLogReady(world, lw.baseline) {
+				notReady = append(notReady, world.WorldName)
+			}
+		}
+		if len(down) > 0 {
+			return fmt.Errorf("世界 %s 启动后异常退出，请查看游戏日志", strings.Join(down, "、"))
+		}
+		if len(notReady) == 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("世界 %s 迟迟未完成加载(超过%d秒)，请查看游戏日志", strings.Join(notReady, "、"), int(startReadyTimeout.Seconds()))
+		}
+		time.Sleep(stopPollInterval)
+	}
+
+	logger.Logger.Info("所有世界已启动并完成加载")
+	return nil
+}
+
+// worldLogReady 检查世界日志是否出现本局"加载完成"标志行。
+// 主世界: [Shard] Starting master server
+// 从属世界: [Shard] Sending secondary shard information to master
+// baseline 为启动前日志文件的修改时间：游戏启动会截断重写 server_log.txt，
+// 文件修改时间晚于 baseline 才说明读到的是本次运行的日志而非上次残留
+func (g *Game) worldLogReady(world *worldSaveData, baseline time.Time) bool {
+	logPath := fmt.Sprintf("%s/server_log.txt", world.worldPath)
+	fi, err := os.Stat(logPath)
+	if err != nil || !fi.ModTime().After(baseline) {
+		return false
+	}
+
+	f, err := os.Open(logPath)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	const tailSize = 256 * 1024
+	if fi.Size() > tailSize {
+		if _, err := f.Seek(-tailSize, io.SeekEnd); err != nil {
+			return false
+		}
+	}
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return false
+	}
+
+	if world.IsMaster {
+		return strings.Contains(string(data), "Starting master server")
+	}
+	return strings.Contains(string(data), "Sending secondary shard information to master")
 }
 
 func (g *Game) stopWorld(id int) error {
@@ -301,23 +465,61 @@ func (g *Game) stopWorld(id int) error {
 		logger.Logger.Infof("执行ScreenCMD失败，可能是未运行，忽略: %v, cmd: c_shutdown()", err)
 	}
 
-	time.Sleep(1 * time.Second)
-
-	killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
-	err = utils.BashCMD(killCMD)
-	if err != nil {
-		logger.Logger.Infof("结束进程失败，可能是未运行，忽略: %v", err)
+	// 等待游戏优雅退出（完成存档并向Klei大厅注销房间），超时才强制结束
+	deadline := time.Now().Add(stopGraceTimeout)
+	for g.worldUpStatus(id) {
+		if time.Now().After(deadline) {
+			logger.Logger.Warnf("世界 %s 优雅退出超时(%s)，强制结束", world.WorldName, stopGraceTimeout)
+			killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
+			if err := utils.BashCMD(killCMD); err != nil {
+				logger.Logger.Infof("结束进程失败，可能是未运行，忽略: %v", err)
+			}
+			time.Sleep(2 * time.Second)
+			break
+		}
+		time.Sleep(stopPollInterval)
 	}
 
 	return nil
 }
 
 func (g *Game) stopAllWorld() error {
+	// 1. 同时向所有分片发送优雅关机指令（不等任何一个分片退出）
 	for _, world := range g.worldSaveData {
-		err := g.stopWorld(world.ID)
-		if err != nil {
-			return err
+		if err := utils.ScreenCMD("c_shutdown()", world.screenName); err != nil {
+			logger.Logger.Infof("执行ScreenCMD失败，可能是未运行，忽略: %v, 世界: %s, cmd: c_shutdown()", err, world.WorldName)
 		}
+	}
+
+	// 2. 轮询等待所有分片自行退出。
+	//    游戏需要时间完成存档并向Klei大厅注销房间，提前强杀会导致房间行
+	//    残留在大厅数据库中，下次启动报 E_ROWID_EXIST 且整个运行期无法被搜到
+	deadline := time.Now().Add(stopGraceTimeout)
+	for {
+		up := g.worldsUp()
+		if len(up) == 0 {
+			logger.Logger.Info("所有世界已优雅退出")
+			break
+		}
+		if time.Now().After(deadline) {
+			// 3. 超时兜底：对仍未退出的世界强制结束
+			logger.Logger.Warnf("部分世界优雅退出超时(%s)，强制结束: %s", stopGraceTimeout, strings.Join(up, "、"))
+			for _, world := range g.worldSaveData {
+				if g.worldUpStatus(world.ID) {
+					killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
+					if err := utils.BashCMD(killCMD); err != nil {
+						logger.Logger.Infof("结束进程失败，可能是未运行，忽略: %v", err)
+					}
+				}
+			}
+			// 给强制退出生效的时间，然后做最终确认
+			time.Sleep(3 * time.Second)
+			if up := g.worldsUp(); len(up) > 0 {
+				return fmt.Errorf("世界 %s 未能停止，请手动检查 screen 会话", strings.Join(up, "、"))
+			}
+			break
+		}
+		time.Sleep(stopPollInterval)
 	}
 
 	webhook.Snd.Send(webhook.EventGameStop, g.room.ID, map[string]interface{}{
@@ -326,6 +528,17 @@ func (g *Game) stopAllWorld() error {
 	})
 
 	return nil
+}
+
+// worldsUp 返回当前仍在运行的世界名列表
+func (g *Game) worldsUp() []string {
+	var up []string
+	for _, world := range g.worldSaveData {
+		if g.worldUpStatus(world.ID) {
+			up = append(up, world.WorldName)
+		}
+	}
+	return up
 }
 
 func (g *Game) deleteWorld(id int) error {

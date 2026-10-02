@@ -52,14 +52,14 @@ func (h *Handler) execGamePost(c *gin.Context) {
 			err = game.StartAllWorld()
 			if err != nil {
 				logger.Logger.Errorf("启动失败：%v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "startup game fail"), "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "startup game fail") + ": " + err.Error(), "data": nil})
 				return
 			}
 		} else {
 			err = game.StartWorld(reqForm.WorldID)
 			if err != nil {
 				logger.Logger.Errorf("启动失败: %v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "startup game fail"), "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "startup game fail") + ": " + err.Error(), "data": nil})
 				return
 			}
 		}
@@ -72,14 +72,14 @@ func (h *Handler) execGamePost(c *gin.Context) {
 			err = game.StopAllWorld()
 			if err != nil {
 				logger.Logger.Errorf("关闭失败: %v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "shutdown game fail"), "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "shutdown game fail") + ": " + err.Error(), "data": nil})
 				return
 			}
 		} else {
 			err = game.StopWorld(reqForm.WorldID)
 			if err != nil {
 				logger.Logger.Errorf("关闭失败: %v", err)
-				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "shutdown game fail"), "data": nil})
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "shutdown game fail") + ": " + err.Error(), "data": nil})
 				return
 			}
 		}
@@ -88,11 +88,13 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		return
 	case "restart":
 		// 重启
-		_ = game.StopAllWorld()
+		if err := game.StopAllWorld(); err != nil {
+			logger.Logger.Errorf("重启时关闭游戏失败: %v", err)
+		}
 		err = game.StartAllWorld()
 		if err != nil {
 			logger.Logger.Errorf("启动失败: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restart game fail"), "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restart game fail") + ": " + err.Error(), "data": nil})
 			return
 		}
 
