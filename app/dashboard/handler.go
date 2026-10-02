@@ -89,7 +89,10 @@ func (h *Handler) execGamePost(c *gin.Context) {
 	case "restart":
 		// 重启
 		if err := game.StopAllWorld(); err != nil {
+			// 关闭失败时不继续启动：启动会跳过仍在运行的世界并误报成功
 			logger.Logger.Errorf("重启时关闭游戏失败: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restart game fail") + ": " + err.Error(), "data": nil})
+			return
 		}
 		err = game.StartAllWorld()
 		if err != nil {

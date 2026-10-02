@@ -475,6 +475,10 @@ func (g *Game) stopWorld(id int) error {
 				logger.Logger.Infof("结束进程失败，可能是未运行，忽略: %v", err)
 			}
 			time.Sleep(2 * time.Second)
+			// 强制退出后复查，仍存活则如实报告失败
+			if g.worldUpStatus(id) {
+				return fmt.Errorf("世界 %s 未能停止，请手动检查 screen 会话", world.WorldName)
+			}
 			break
 		}
 		time.Sleep(stopPollInterval)
