@@ -14,6 +14,8 @@ type Game struct {
 	worlds  *[]models.World
 	setting *models.RoomSetting
 	lang    string
+	// 操作进度回调：由后台任务(opmgr)注入，启停流程在关键阶段调用以报告进度；可为 nil
+	Progress func(string)
 	roomSaveData
 	worldSaveData []worldSaveData
 	playerSaveData

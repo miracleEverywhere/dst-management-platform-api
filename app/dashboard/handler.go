@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/opmgr"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -22,6 +23,7 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		RoomID  int    `json:"roomID"`
 		WorldID int    `json:"worldID"`
 		Extra   string `json:"extra"`
+		Async   bool   `json:"async"`
 	}
 
 	var reqForm ReqForm
@@ -44,6 +46,124 @@ func (h *Handler) execGamePost(c *gin.Context) {
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+
+	// 异步模式：受理后立即返回任务号，实际执行进后台，
+	// 前端通过 GET /v3/dashboard/op 轮询进度与结果（刷新页面不丢失）
+	if reqForm.Async {
+		switch reqForm.Type {
+		case "startup", "shutdown", "restart":
+			t := opmgr.Type(reqForm.Type)
+			lang := c.Request.Header.Get("X-I18n-Lang")
+			by := c.GetString("username")
+			worldID := reqForm.WorldID
+			extra := reqForm.Extra
+			op, subErr := opmgr.Submit(reqForm.RoomID, t, by, func(progress opmgr.ProgressFunc) error {
+				g := dst.NewGameController(room, worlds, roomSetting, lang)
+				g.Progress = progress
+				switch t {
+				case opmgr.TypeStartup:
+					if extra == "all" {
+						return g.StartAllWorld()
+					}
+					return g.StartWorld(worldID)
+				case opmgr.TypeShutdown:
+					if extra == "all" {
+						return g.StopAllWorld()
+					}
+					return g.StopWorld(worldID)
+				default: // restart
+					if err := g.StopAllWorld(); err != nil {
+						return fmt.Errorf("关闭阶段失败: %w", err)
+					}
+					return g.StartAllWorld()
+				}
+			})
+			if subErr != nil {
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": subErr.Error(), "data": nil})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已受理，正在后台执行，完成后本页面会自动提示", "data": gin.H{"opID": op.ID}})
+			return
+		case "reset":
+			force := reqForm.Extra == "force"
+			lang := c.Request.Header.Get("X-I18n-Lang")
+			by := c.GetString("username")
+			op, subErr := opmgr.Submit(reqForm.RoomID, opmgr.TypeReset, by, func(progress opmgr.ProgressFunc) error {
+				g := dst.NewGameController(room, worlds, roomSetting, lang)
+				g.Progress = progress
+				return g.Reset(force)
+			})
+			if subErr != nil {
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": subErr.Error(), "data": nil})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已受理，正在后台重置世界（可能需要数分钟），完成后本页面会自动提示", "data": gin.H{"opID": op.ID}})
+			return
+		case "update":
+			role, _ := c.Get("role")
+			if role.(string) != "admin" {
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+				return
+			}
+			if cache.DstUpdating {
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": "已有游戏更新任务正在执行", "data": nil})
+				return
+			}
+			lang := c.Request.Header.Get("X-I18n-Lang")
+			by := c.GetString("username")
+			op, subErr := opmgr.Submit(reqForm.RoomID, opmgr.TypeUpdate, by, func(progress opmgr.ProgressFunc) error {
+				cache.DstUpdating = true
+				defer func() { cache.DstUpdating = false }()
+				progress("正在通过 steamcmd 更新游戏文件（可能需要数分钟）...")
+				updateCmd := "cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit"
+				if err := utils.BashCMD(updateCmd); err != nil {
+					progress("steamcmd 执行失败")
+					return fmt.Errorf("steamcmd 更新失败: %w", err)
+				}
+				progress("游戏文件更新完成")
+				var globalSettings models.GlobalSetting
+				if err := h.globalSettingDao.GetGlobalSetting(&globalSettings); err != nil {
+					progress("读取全局设置失败，跳过自动重启")
+					logger.Logger.Errorf("获取全局设置失败: %v", err)
+					return nil
+				}
+				if !globalSettings.AutoUpdateRestart {
+					progress("按全局设置，更新后不自动重启房间")
+					return nil
+				}
+				roomBasic, err := h.roomDao.GetRoomBasic()
+				if err != nil {
+					progress("读取房间列表失败，跳过自动重启")
+					logger.Logger.Errorf("获取全局房间信息失败: %v", err)
+					return nil
+				}
+				for _, rb := range *roomBasic {
+					if !rb.Status {
+						continue
+					}
+					r, ws, rs, ferr := dao.FetchGameInfo(rb.RoomID)
+					if ferr != nil {
+						logger.Logger.Errorf("获取基本信息失败: %v", ferr)
+						continue
+					}
+					progress(fmt.Sprintf("按设置重启激活的房间: %s", r.GameName))
+					g := dst.NewGameController(r, ws, rs, lang)
+					g.Progress = progress
+					_ = g.StopAllWorld()
+					_ = g.StartAllWorld()
+					time.Sleep(5 * time.Second)
+				}
+				return nil
+			})
+			if subErr != nil {
+				c.JSON(http.StatusOK, gin.H{"code": 201, "message": subErr.Error(), "data": nil})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已受理，正在后台更新游戏，完成后本页面会自动提示", "data": gin.H{"opID": op.ID}})
+			return
+		}
+		// 其余类型无异步实现，走下方原有同步逻辑
+	}
 
 	switch reqForm.Type {
 	case "startup":
@@ -235,6 +355,19 @@ func (h *Handler) execGamePost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
+}
+
+// opStatusGet 房间后台操作进度与历史，供前端轮询展示（刷新页面后可恢复）
+func (h *Handler) opStatusGet(c *gin.Context) {
+	roomID, _ := strconv.Atoi(c.Query("roomID"))
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "ok",
+		"data": gin.H{
+			"current": opmgr.Current(roomID),
+			"history": opmgr.History(roomID, 10),
+		},
+	})
 }
 
 func (h *Handler) infoBaseGet(c *gin.Context) {

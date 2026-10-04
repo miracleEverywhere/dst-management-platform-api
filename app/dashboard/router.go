@@ -14,6 +14,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		dashboard.Use(middleware.TokenCheck())
 		{
 			dashboard.POST("/exec/game", h.execGamePost)
+			dashboard.GET("/exec/op", h.opStatusGet)
 			dashboard.GET("/info/base", h.infoBaseGet)
 			dashboard.GET("/info/sys", h.infoSysGet)
 			dashboard.GET("/connection_code", h.connectionCodeGet)

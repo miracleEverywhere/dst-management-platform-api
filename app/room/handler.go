@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/opmgr"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
@@ -888,35 +889,42 @@ func (h *Handler) deactivatePost(c *gin.Context) {
 		return
 	}
 
-	// 关闭游戏进程
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	_ = game.StopAllWorld()
-	// 删除定时任务
-	jobNames := scheduler.GetJobsByRoomID(reqForm.RoomID)
-	logger.Logger.Debug(utils.StructToFlatString(jobNames))
-	for _, jobName := range jobNames {
-		scheduler.DeleteJob(jobName)
-	}
-	// 删除玩家统计
-	cache.PlayersStatisticMutex.Lock()
-	defer cache.PlayersStatisticMutex.Unlock()
-	delete(cache.PlayersStatistic, reqForm.RoomID)
-	// 更新数据库
-	room.Status = false
-	err = h.roomDao.UpdateRoom(room)
-	if err != nil {
-		logger.Logger.Errorf("写入数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+	// 后台执行：关闭游戏（含存档与大厅注销，最长 150 秒）并清理房间
+	lang := c.Request.Header.Get("X-I18n-Lang")
+	by := c.GetString("username")
+	if _, subErr := opmgr.Submit(reqForm.RoomID, opmgr.TypeDeactivate, by, func(progress opmgr.ProgressFunc) error {
+		progress("正在关闭游戏（含存档与大厅注销，最长 150 秒）...")
+		game := dst.NewGameController(room, worlds, roomSetting, lang)
+		game.Progress = progress
+		if err := game.StopAllWorld(); err != nil {
+			return err
+		}
+		progress("正在清理定时任务与房间状态...")
+		jobNames := scheduler.GetJobsByRoomID(reqForm.RoomID)
+		logger.Logger.Debug(utils.StructToFlatString(jobNames))
+		for _, jobName := range jobNames {
+			scheduler.DeleteJob(jobName)
+		}
+		cache.PlayersStatisticMutex.Lock()
+		delete(cache.PlayersStatistic, reqForm.RoomID)
+		cache.PlayersStatisticMutex.Unlock()
+		room.Status = false
+		if err := h.roomDao.UpdateRoom(room); err != nil {
+			return err
+		}
+		h.aiManager.StopRoom(reqForm.RoomID)
+
+		webhook.Snd.Send(webhook.EventRoomDeactivated, reqForm.RoomID, map[string]interface{}{
+			"gameID":   room.ID,
+			"gameName": room.GameName,
+		})
+		return nil
+	}); subErr != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": subErr.Error(), "data": nil})
 		return
 	}
-	h.aiManager.StopRoom(reqForm.RoomID)
 
-	webhook.Snd.Send(webhook.EventRoomDeactivated, reqForm.RoomID, map[string]interface{}{
-		"gameID":   room.ID,
-		"gameName": room.GameName,
-	})
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "deactivate success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已受理，正在后台停用房间（关闭游戏需 1~2 分钟），完成后本页面会自动提示", "data": nil})
 }
 
 func (h *Handler) activatePost(c *gin.Context) {
@@ -959,64 +967,69 @@ func (h *Handler) activatePost(c *gin.Context) {
 		return
 	}
 
-	// 启动游戏
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	_ = game.StartAllWorld()
-	// 更新数据库
-	room.Status = true
-	err = h.roomDao.UpdateRoom(room)
-	if err != nil {
-		logger.Logger.Errorf("写入数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-	// 添加定时任务
-	processJobs(game, reqForm.RoomID, *roomSetting)
-	// 添加定时通知
-	jobNames := scheduler.GetJobsByType(reqForm.RoomID, "Announce")
-	logger.Logger.Debug(utils.StructToFlatString(jobNames))
-	for _, jobName := range jobNames {
-		// 删除所有通知任务
-		scheduler.DeleteJob(jobName)
-	}
-	var announces []scheduler.AnnounceSetting
-	announceSetting := roomSetting.AnnounceSetting
-	if strings.TrimSpace(announceSetting) == "" {
-		announceSetting = "[]"
-	}
-	if err = json.Unmarshal([]byte(announceSetting), &announces); err != nil {
-		logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "activate fail"), "data": nil})
-		return
-	}
-	logger.Logger.Debug(utils.StructToFlatString(announces))
-	for _, announce := range announces {
-		// 创建通知任务
-		if announce.Status {
-			// 注意，-为分隔符，需要删除uuid中的-
-			err = scheduler.UpdateJob(&scheduler.JobConfig{
-				Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
-				Func:     scheduler.Announce,
-				Args:     []any{game, announce.Content},
-				TimeType: scheduler.SecondType,
-				Interval: announce.Interval,
-				DayAt:    "",
-			})
-			if err != nil {
-				logger.Logger.Errorf("定时通知定时任务处理失败, err: %v", err)
+	// 后台执行：启动游戏（等待各分片完成加载）并初始化房间
+	lang := c.Request.Header.Get("X-I18n-Lang")
+	by := c.GetString("username")
+	if _, subErr := opmgr.Submit(reqForm.RoomID, opmgr.TypeActivate, by, func(progress opmgr.ProgressFunc) error {
+		progress("正在启动游戏（每个分片完成加载约需 60~120 秒）...")
+		game := dst.NewGameController(room, worlds, roomSetting, lang)
+		game.Progress = progress
+		if err := game.StartAllWorld(); err != nil {
+			return err
+		}
+		progress("正在初始化房间定时任务...")
+		room.Status = true
+		if err := h.roomDao.UpdateRoom(room); err != nil {
+			return err
+		}
+		processJobs(game, reqForm.RoomID, *roomSetting)
+		jobNames := scheduler.GetJobsByType(reqForm.RoomID, "Announce")
+		logger.Logger.Debug(utils.StructToFlatString(jobNames))
+		for _, jobName := range jobNames {
+			// 删除所有通知任务
+			scheduler.DeleteJob(jobName)
+		}
+		var announces []scheduler.AnnounceSetting
+		announceSetting := roomSetting.AnnounceSetting
+		if strings.TrimSpace(announceSetting) == "" {
+			announceSetting = "[]"
+		}
+		if err := json.Unmarshal([]byte(announceSetting), &announces); err != nil {
+			return fmt.Errorf("获取定时通知设置失败: %w", err)
+		}
+		logger.Logger.Debug(utils.StructToFlatString(announces))
+		for _, announce := range announces {
+			// 创建通知任务
+			if announce.Status {
+				// 注意，-为分隔符，需要删除uuid中的-
+				err = scheduler.UpdateJob(&scheduler.JobConfig{
+					Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
+					Func:     scheduler.Announce,
+					Args:     []any{game, announce.Content},
+					TimeType: scheduler.SecondType,
+					Interval: announce.Interval,
+					DayAt:    "",
+				})
+				if err != nil {
+					logger.Logger.Errorf("定时通知定时任务处理失败, err: %v", err)
+				}
 			}
 		}
-	}
-	if err = h.aiManager.Reload(reqForm.RoomID); err != nil {
-		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomID, err)
+		if err := h.aiManager.Reload(reqForm.RoomID); err != nil {
+			logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomID, err)
+		}
+
+		webhook.Snd.Send(webhook.EventRoomActivated, reqForm.RoomID, map[string]interface{}{
+			"gameID":   room.ID,
+			"gameName": room.GameName,
+		})
+		return nil
+	}); subErr != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": subErr.Error(), "data": nil})
+		return
 	}
 
-	webhook.Snd.Send(webhook.EventRoomActivated, reqForm.RoomID, map[string]interface{}{
-		"gameID":   room.ID,
-		"gameName": room.GameName,
-	})
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "activate success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已受理，正在后台启动房间（需 1~2 分钟），完成后本页面会自动提示", "data": nil})
 }
 
 func (h *Handler) roomDelete(c *gin.Context) {

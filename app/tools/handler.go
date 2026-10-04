@@ -7,6 +7,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/opmgr"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
@@ -178,39 +179,35 @@ func (h *Handler) backupRestorePost(c *gin.Context) {
 		return
 	}
 
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	saveData, err := game.Restore(reqForm.Filename)
-	if err != nil {
-		logger.Logger.Errorf("恢复失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
+	lang := c.Request.Header.Get("X-I18n-Lang")
+	by := c.GetString("username")
+	if _, subErr := opmgr.Submit(reqForm.RoomID, opmgr.TypeRestore, by, func(progress opmgr.ProgressFunc) error {
+		progress("正在恢复备份（替换存档与房间配置）...")
+		game := dst.NewGameController(room, worlds, roomSetting, lang)
+		saveData, err := game.Restore(reqForm.Filename)
+		if err != nil {
+			return fmt.Errorf("恢复备份失败: %w", err)
+		}
+		progress("正在更新房间配置...")
+		if err := h.roomDao.UpdateRoom(&saveData.Room); err != nil {
+			return err
+		}
+		if err := h.worldDao.UpdateWorlds(&saveData.Worlds); err != nil {
+			return err
+		}
+		if err := h.roomSettingDao.UpdateRoomSetting(&saveData.RoomSetting); err != nil {
+			return err
+		}
+		if err := h.aiManager.Reload(reqForm.RoomID); err != nil {
+			logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomID, err)
+		}
+		return nil
+	}); subErr != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": subErr.Error(), "data": nil})
 		return
 	}
 
-	err = h.roomDao.UpdateRoom(&saveData.Room)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
-		return
-	}
-
-	err = h.worldDao.UpdateWorlds(&saveData.Worlds)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
-		return
-	}
-
-	err = h.roomSettingDao.UpdateRoomSetting(&saveData.RoomSetting)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "restore fail"), "data": nil})
-		return
-	}
-	if err = h.aiManager.Reload(reqForm.RoomID); err != nil {
-		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomID, err)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "restore success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已受理，正在后台恢复备份，完成后本页面会自动提示", "data": nil})
 }
 
 func (h *Handler) backupDownloadGet(c *gin.Context) {
@@ -597,29 +594,27 @@ func (h *Handler) snapshotDelete(c *gin.Context) {
 		return
 	}
 
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-
-	// 关闭游戏
-	err = game.StopAllWorld()
-	if err != nil {
-		logger.Logger.Warnf("关闭游戏失败：%v，可能是游戏未运行，跳过", err)
-	}
-
-	// 删除存档文件
-	err = game.DeleteSnapshot(reqForm.Name)
-	if err != nil {
-		logger.Logger.Errorf("删除游戏存档文件失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
+	lang := c.Request.Header.Get("X-I18n-Lang")
+	by := c.GetString("username")
+	if _, subErr := opmgr.Submit(reqForm.RoomID, opmgr.TypeDeleteSnapshot, by, func(progress opmgr.ProgressFunc) error {
+		game := dst.NewGameController(room, worlds, roomSetting, lang)
+		game.Progress = progress
+		progress("正在停止游戏（含存档与大厅注销，最长 150 秒）...")
+		if err := game.StopAllWorld(); err != nil {
+			return fmt.Errorf("停止游戏失败: %w", err)
+		}
+		progress("正在删除存档快照...")
+		if err := game.DeleteSnapshot(reqForm.Name); err != nil {
+			return fmt.Errorf("删除游戏存档文件失败: %w", err)
+		}
+		progress("正在重新启动游戏...")
+		return game.StartAllWorld()
+	}); subErr != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": subErr.Error(), "data": nil})
 		return
 	}
 
-	// 启动游戏
-	err = game.StartAllWorld()
-	if err != nil {
-		logger.Logger.Errorf("启动游戏失败：%v", err)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "已受理，正在后台删除快照并重启游戏，完成后本页面会自动提示", "data": nil})
 }
 
 func (h *Handler) categoryGet(c *gin.Context) {
@@ -838,16 +833,7 @@ func (h *Handler) aiBaseSettingGet(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 		return
 	}
-
-	// embeddingIndexDimensions 为磁盘上已有向量索引的维度，没有索引时为 -1。
-	response := struct {
-		models.AIBaseSetting
-		EmbeddingIndexDimensions int `json:"embeddingIndexDimensions"`
-	}{
-		AIBaseSetting:            *setting,
-		EmbeddingIndexDimensions: h.aiManager.GetEmbeddingIndexDimensions(),
-	}
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": response})
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": setting})
 }
 
 func (h *Handler) aiBaseSettingPut(c *gin.Context) {
@@ -909,7 +895,7 @@ func (h *Handler) aiEmbeddingIndexReBuild(c *gin.Context) {
 		APIURL:     baseURL,
 		APIKey:     setting.EmbeddingApiKey,
 		Model:      model,
-		Dimensions: setting.EmbeddingDimensions,
+		Dimensions: 1024,
 	}, true)
 	if err != nil {
 		logger.Logger.Errorf("重建 embedding 索引失败, err: %v", err)

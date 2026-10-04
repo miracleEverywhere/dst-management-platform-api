@@ -13,9 +13,11 @@ import (
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/embedFS"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/middleware"
+	"dst-management-platform-api/opmgr"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
@@ -50,6 +52,23 @@ func Run() {
 	// 初始化数据库
 	db.InitDB(dbPath)
 	db.AutoMigrate()
+	// 后台操作完成后落库（操作历史审计）
+	opmgr.SetPersist(func(op *opmgr.Operation) {
+		row := models.OperationLog{
+			OpID:      op.ID,
+			RoomID:    op.RoomID,
+			Type:      string(op.Type),
+			State:     string(op.State),
+			Stage:     op.Stage,
+			Error:     op.Error,
+			StartedAt: op.StartedAt,
+			EndedAt:   op.EndedAt,
+			By:        op.By,
+		}
+		if err := db.DB.Create(&row).Error; err != nil {
+			logger.Logger.Errorf("操作日志入库失败: %v", err)
+		}
+	})
 	userDao := dao.NewUserDAO(db.DB)
 	systemDao := dao.NewSystemDAO(db.DB)
 	roomDao := dao.NewRoomDAO(db.DB)

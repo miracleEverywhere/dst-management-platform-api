@@ -268,6 +268,7 @@ func (g *Game) startWorld(id int) error {
 	if fi, err := os.Stat(fmt.Sprintf("%s/server_log.txt", world.worldPath)); err == nil {
 		baseline = fi.ModTime()
 	}
+	g.progress(fmt.Sprintf("正在启动世界 %s", world.WorldName))
 	if err := utils.BashCMD(world.startCmd); err != nil {
 		return fmt.Errorf("世界 %s 启动失败: %w", world.WorldName, err)
 	}
@@ -295,6 +296,7 @@ func (g *Game) startAllWorld() error {
 	}
 
 	launched := make([]launchedWorld, 0, len(g.worldSaveData))
+	g.progress("正在启动各分片（每个分片完成加载约需 60~120 秒）...")
 	for _, world := range g.worldSaveData {
 		// 如果正在运行，则跳过
 		if g.worldUpStatus(world.ID) {
@@ -313,6 +315,7 @@ func (g *Game) startAllWorld() error {
 		if fi, err := os.Stat(fmt.Sprintf("%s/server_log.txt", world.worldPath)); err == nil {
 			baseline = fi.ModTime()
 		}
+		g.progress(fmt.Sprintf("正在启动世界 %s", world.WorldName))
 		if err := utils.BashCMD(world.startCmd); err != nil {
 			return fmt.Errorf("世界 %s 启动失败: %w", world.WorldName, err)
 		}
@@ -382,6 +385,7 @@ func (g *Game) waitWorldsUp(launched []launchedWorld) error {
 	// 2. 等待各分片完成加载（日志出现本局就绪标志）。
 	//    进程活着不代表加载完成，带大量模组时加载需要 60~120 秒；
 	//    等待期间任何进程退出都判定为启动失败
+	readyStart := time.Now()
 	deadline = time.Now().Add(startReadyTimeout)
 	for {
 		var down, notReady []string
@@ -409,6 +413,7 @@ func (g *Game) waitWorldsUp(launched []launchedWorld) error {
 		if len(notReady) == 0 {
 			break
 		}
+		g.progress(fmt.Sprintf("等待世界完成加载: %s（已等待 %d 秒）", strings.Join(notReady, "、"), int(time.Since(readyStart).Seconds())))
 		if time.Now().After(deadline) {
 			return fmt.Errorf("世界 %s 迟迟未完成加载(超过%d秒)，请查看游戏日志", strings.Join(notReady, "、"), int(startReadyTimeout.Seconds()))
 		}
@@ -467,7 +472,9 @@ func (g *Game) stopWorld(id int) error {
 
 	// 等待游戏优雅退出（完成存档并向Klei大厅注销房间），超时才强制结束
 	deadline := time.Now().Add(stopGraceTimeout)
+	start := time.Now()
 	for g.worldUpStatus(id) {
+		g.progress(fmt.Sprintf("正在等待世界 %s 优雅退出（已等待 %d 秒）", world.WorldName, int(time.Since(start).Seconds())))
 		if time.Now().After(deadline) {
 			logger.Logger.Warnf("世界 %s 优雅退出超时(%s)，强制结束", world.WorldName, stopGraceTimeout)
 			killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
@@ -489,6 +496,7 @@ func (g *Game) stopWorld(id int) error {
 
 func (g *Game) stopAllWorld() error {
 	// 1. 同时向所有分片发送优雅关机指令（不等任何一个分片退出）
+	g.progress("正在向所有分片发送关机指令...")
 	for _, world := range g.worldSaveData {
 		if err := utils.ScreenCMD("c_shutdown()", world.screenName); err != nil {
 			logger.Logger.Infof("执行ScreenCMD失败，可能是未运行，忽略: %v, 世界: %s, cmd: c_shutdown()", err, world.WorldName)
@@ -499,12 +507,14 @@ func (g *Game) stopAllWorld() error {
 	//    游戏需要时间完成存档并向Klei大厅注销房间，提前强杀会导致房间行
 	//    残留在大厅数据库中，下次启动报 E_ROWID_EXIST 且整个运行期无法被搜到
 	deadline := time.Now().Add(stopGraceTimeout)
+	start := time.Now()
 	for {
 		up := g.worldsUp()
 		if len(up) == 0 {
 			logger.Logger.Info("所有世界已优雅退出")
 			break
 		}
+		g.progress(fmt.Sprintf("正在等待世界优雅退出: %s（已等待 %d 秒）", strings.Join(up, "、"), int(time.Since(start).Seconds())))
 		if time.Now().After(deadline) {
 			// 3. 超时兜底：对仍未退出的世界强制结束
 			logger.Logger.Warnf("部分世界优雅退出超时(%s)，强制结束: %s", stopGraceTimeout, strings.Join(up, "、"))
@@ -543,6 +553,13 @@ func (g *Game) worldsUp() []string {
 		}
 	}
 	return up
+}
+
+// progress 上报操作进度（若调用方注入了回调，如 opmgr 后台任务）
+func (g *Game) progress(stage string) {
+	if g.Progress != nil {
+		g.Progress(stage)
+	}
 }
 
 func (g *Game) deleteWorld(id int) error {
