@@ -1,0 +1,1 @@
+import{Br as e,Sr as t}from"./index-CEI_0R1m.js";import n from"./singleLog-CO40pAl3.js";var r={__name:`access`,setup(r){return(r,i)=>(e(),t(n,{type:`access`}))}};export{r as default};

@@ -1,0 +1,1 @@
+import{Br as e,Dr as t,Wr as n,_ as r,wr as i}from"./index-CEI_0R1m.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(r,a){let s=n(`router-view`);return e(),i(`div`,o,[t(s)])}var c=r(a,[[`render`,s]]);export{c as default};
