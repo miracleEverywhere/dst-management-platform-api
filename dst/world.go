@@ -403,7 +403,7 @@ var (
 )
 
 func readPlayerListFromEnd(logPath string) ([]string, error) {
-	const bufferSize = 1024 * 4 // 4KB buffer
+	const bufferSize = 1024 * 64 // 64KB buffer
 
 	// 打开文件
 	file, err := os.Open(logPath)
