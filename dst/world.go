@@ -381,7 +381,7 @@ func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 		return []string{}, err
 	}
 
-	listScreenCmd := fmt.Sprintf("screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do  print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, v.userid, v.name, v.prefab )) end$(printf \\\\r)\"\n", world.screenName)
+	listScreenCmd := fmt.Sprintf("screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do local col = v.colour; local cstr = col and string.format('%%d,%%d,%%d,%%d', (col[1] or 0)*255, (col[2] or 0)*255, (col[3] or 0)*255, (col[4] or 1)*255) or 'nil'; print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, tostring(v.userid), tostring(v.name), tostring(v.prefab), tostring(v.netid), tostring(v.netscore), tostring(v.playerage), cstr)) end$(printf \\\\r)\"\n", world.screenName)
 	err = utils.BashCMD(listScreenCmd)
 	if err != nil {
 		return []string{}, err
@@ -398,7 +398,7 @@ func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 }
 
 var (
-	playerListPattern = regexp.MustCompile(`playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*) <-@dmp@-> (.+)?`)
+	playerListPattern = regexp.MustCompile(`playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*)`)
 	hostPattern       = regexp.MustCompile(`\[Host]`)
 )
 
@@ -475,11 +475,12 @@ func readPlayerListFromEnd(logPath string) ([]string, error) {
 		if matches := playerListPattern.FindStringSubmatch(line); matches != nil {
 			// 检查是否包含 [Host]
 			if !hostPattern.MatchString(line) {
-				uid := strings.ReplaceAll(matches[1], "\t", "")
-				nickName := strings.ReplaceAll(matches[2], "\t", "")
-				prefab := strings.ReplaceAll(matches[3], "\t", "")
-				player := uid + "<-@dmp@->" + nickName + "<-@dmp@->" + prefab
-				players = append(players, player)
+				// 捕获组依次为：uid、昵称、角色、netid、netscore、玩家存活天数、颜色
+				fields := make([]string, 0, len(matches)-1)
+				for _, match := range matches[1:] {
+					fields = append(fields, strings.ReplaceAll(match, "\t", ""))
+				}
+				players = append(players, strings.Join(fields, "<-@dmp@->"))
 			}
 		}
 	}

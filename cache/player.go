@@ -3,9 +3,13 @@ package cache
 import "sync"
 
 type PlayerInfo struct {
-	UID      string `json:"uid"`
-	Nickname string `json:"nickname"`
-	Prefab   string `json:"prefab"`
+	UID       string `json:"uid"`
+	Nickname  string `json:"nickname"`
+	Prefab    string `json:"prefab"`
+	NetID     string `json:"netID"`
+	NetScore  string `json:"netScore"`
+	PlayerAge string `json:"playerAge"`
+	Color     string `json:"color"`
 }
 
 type Players struct {

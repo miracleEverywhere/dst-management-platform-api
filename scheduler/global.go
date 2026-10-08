@@ -40,11 +40,20 @@ func OnlinePlayerGet(interval, saveTime int, uidMapEnable bool) {
 				if err == nil {
 					var ps []cache.PlayerInfo
 					for _, player := range players {
-						var playerInfo cache.PlayerInfo // 单个玩家
+						// 字段依次为：uid、昵称、角色、netid、netscore、玩家存活天数、颜色
 						uidNickName := strings.Split(player, "<-@dmp@->")
+						if len(uidNickName) < 7 {
+							logger.Logger.Warnf("玩家信息解析失败，跳过: %s", player)
+							continue
+						}
+						var playerInfo cache.PlayerInfo // 单个玩家
 						playerInfo.UID = uidNickName[0]
 						playerInfo.Nickname = uidNickName[1]
 						playerInfo.Prefab = uidNickName[2]
+						playerInfo.NetID = uidNickName[3]
+						playerInfo.NetScore = uidNickName[4]
+						playerInfo.PlayerAge = uidNickName[5]
+						playerInfo.Color = uidNickName[6]
 						ps = append(ps, playerInfo)
 
 						// 玩家在线时长统计
