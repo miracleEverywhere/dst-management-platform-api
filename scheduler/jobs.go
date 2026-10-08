@@ -14,10 +14,14 @@ var Jobs []JobConfig
 
 const (
 	SystemMetricsGetInInterval      = 1 // 1分钟
+	RoomMetricsGetInInterval        = 1 // 1分钟
 	InternetIPUpdateInterval        = 6 // 6小时
 	ModDownloadCleanInterval        = 1 // 1分钟
 	GameServerVersionUpdateInterval = 1 // 1小时
 )
+
+// 监控数据的默认保留时长（小时），与全局设置中的系统监控数据保留时长保持一致
+const defaultMetricsSaveHours = 6
 
 const (
 	PlayerUpdateModFalseInterval = 60 // 60秒
@@ -212,6 +216,17 @@ func initJobs() {
 				Args:     []any{game, room.ID},
 				TimeType: MinuteType,
 				Interval: roomSetting.KeepaliveSetting,
+				DayAt:    "",
+			})
+		}
+		// 房间资源监控
+		if roomSetting.RoomMetricsEnable {
+			Jobs = append(Jobs, JobConfig{
+				Name:     fmt.Sprintf("%d-RoomMetrics", room.ID),
+				Func:     RoomMetricsGet,
+				Args:     []any{game, room.ID},
+				TimeType: MinuteType,
+				Interval: RoomMetricsGetInInterval,
 				DayAt:    "",
 			})
 		}

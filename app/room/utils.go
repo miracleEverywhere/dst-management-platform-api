@@ -279,6 +279,22 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-Keepalive", roomID))
 	}
+	// 房间资源监控 //
+	if roomSetting.RoomMetricsEnable {
+		err := scheduler.UpdateJob(&scheduler.JobConfig{
+			Name:     fmt.Sprintf("%d-RoomMetrics", roomID),
+			Func:     scheduler.RoomMetricsGet,
+			Args:     []any{game, roomID},
+			TimeType: scheduler.MinuteType,
+			Interval: scheduler.RoomMetricsGetInInterval,
+			DayAt:    "",
+		})
+		if err != nil {
+			logger.Logger.Errorf("房间资源监控定时任务处理失败, err: %v", err)
+		}
+	} else {
+		scheduler.DeleteJob(fmt.Sprintf("%d-RoomMetrics", roomID))
+	}
 	// 玩家更新模组
 	if roomSetting.PlayerUpdateModEnable {
 		errFalse := scheduler.UpdateJob(&scheduler.JobConfig{
@@ -306,6 +322,54 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModFalse", roomID))
 		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModTrue", roomID))
+	}
+}
+
+// worldIDByName 世界名到世界ID的映射，世界名是房间内世界的唯一标识
+func worldIDByName(worlds []models.World) map[string]int {
+	worldIDs := make(map[string]int, len(worlds))
+	for _, world := range worlds {
+		worldIDs[world.WorldName] = world.ID
+	}
+	return worldIDs
+}
+
+// deleteWorldMetrics 删除世界监控数据
+func deleteWorldMetrics(worldIDMaps ...map[string]int) {
+	cache.WorldMetricsMutex.Lock()
+	defer cache.WorldMetricsMutex.Unlock()
+
+	for _, worldIDMap := range worldIDMaps {
+		for _, worldID := range worldIDMap {
+			delete(cache.WorldMetrics, worldID)
+		}
+	}
+}
+
+// migrateWorldMetrics 房间保存时按世界名迁移世界监控数据
+// 房间保存会删除并重建世界（世界ID发生变化），直接按ID清理会丢失已有的监控历史
+func migrateWorldMetrics(oldWorldIDMap, newWorldIDMap map[string]int) {
+	cache.WorldMetricsMutex.Lock()
+	defer cache.WorldMetricsMutex.Unlock()
+
+	// 先取出旧世界的数据，避免新旧世界ID交叉时互相覆盖
+	oldMetrics := make(map[string][]cache.WorldMetricsData, len(oldWorldIDMap))
+	for worldName, oldWorldID := range oldWorldIDMap {
+		if metrics, ok := cache.WorldMetrics[oldWorldID]; ok {
+			oldMetrics[worldName] = metrics
+		}
+	}
+
+	// 清理该房间全部旧世界的数据
+	for _, oldWorldID := range oldWorldIDMap {
+		delete(cache.WorldMetrics, oldWorldID)
+	}
+
+	// 按世界名写回到新的世界ID，已删除的世界不再写入
+	for worldName, newWorldID := range newWorldIDMap {
+		if metrics, ok := oldMetrics[worldName]; ok {
+			cache.WorldMetrics[newWorldID] = metrics
+		}
 	}
 }
 

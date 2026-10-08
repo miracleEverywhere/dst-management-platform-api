@@ -188,6 +188,16 @@ var tools = menuItem{
 			Icon:      "ri-chat-smile-ai-3-line",
 			Links:     nil,
 		},
+		{
+			ID:        608,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsRoomMetrics",
+			To:        "/tools/room_metrics",
+			Component: "tools/room_metrics",
+			Icon:      "ri-dashboard-2-line",
+			Links:     nil,
+		},
 	},
 }
 

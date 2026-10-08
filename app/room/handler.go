@@ -94,9 +94,9 @@ func (h *Handler) roomPost(c *gin.Context) {
 			return
 		}
 
-		for _, world := range reqForm.WorldData {
-			world.RoomID = room.ID
-			if errCreateWorld := h.worldDao.Create(&world); errCreateWorld != nil {
+		for i := range reqForm.WorldData {
+			reqForm.WorldData[i].RoomID = room.ID
+			if errCreateWorld := h.worldDao.Create(&reqForm.WorldData[i]); errCreateWorld != nil {
 				logger.Logger.Errorf("创建房间失败, err: %v", errCreateWorld)
 				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
 				return
@@ -189,19 +189,21 @@ func (h *Handler) roomPut(c *gin.Context) {
 		reqForm.WorldData[i].RoomID = roomID
 	}
 
+	// 保存会删除并重建世界（世界ID发生变化），先取出旧世界，用于同步世界监控数据
+	oldWorlds, err := h.worldDao.GetWorldsByRoomID(roomID)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
 	// CustomStartupCmd权限校验
 	// 该字段会被拼接进 bash -c 执行，只有管理员才能修改（专用接口同样仅限管理员）。
 	// 客户端保存时会丢弃世界ID，因此世界名才是世界在房间内的标识，不能用ID匹配，
 	// 非管理员提交的值一律丢弃，以数据库中的值为准，数据库中不存在的世界（新增世界）只能使用默认启动命令
 	if c.GetString("role") != "admin" {
-		dbWorlds, err := h.worldDao.GetWorldsByRoomID(roomID)
-		if err != nil {
-			logger.Logger.Errorf("查询数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-		dbCustomStartupCmds := make(map[string]string, len(*dbWorlds))
-		for _, dbWorld := range *dbWorlds {
+		dbCustomStartupCmds := make(map[string]string, len(*oldWorlds))
+		for _, dbWorld := range *oldWorlds {
 			if dbWorld.WorldName == "" {
 				continue
 			}
@@ -244,7 +246,7 @@ func (h *Handler) roomPut(c *gin.Context) {
 		return
 	}
 
-	err := h.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
+	err = h.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData)
 	if err != nil {
 		logger.Logger.Errorf("事务更新房间失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -271,6 +273,15 @@ func (h *Handler) roomPut(c *gin.Context) {
 		for _, jobName := range jobNames {
 			scheduler.DeleteJob(jobName)
 		}
+	}
+	// 同步世界监控数据：世界ID已在保存时重建，需要按世界名迁移历史数据
+	oldWorldIDMap := worldIDByName(*oldWorlds)
+	newWorldIDMap := worldIDByName(reqForm.WorldData)
+	if reqForm.RoomData.Status && reqForm.RoomSettingData.RoomMetricsEnable {
+		migrateWorldMetrics(oldWorldIDMap, newWorldIDMap)
+	} else {
+		// 关闭监控或房间未激活时，清理该房间已有的监控数据
+		deleteWorldMetrics(oldWorldIDMap, newWorldIDMap)
 	}
 	if err = h.aiManager.Reload(reqForm.RoomData.ID); err != nil {
 		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", reqForm.RoomData.ID, err)
@@ -439,6 +450,70 @@ func (h *Handler) roomGet(c *gin.Context) {
 	data.RoomSettingData = *roomSetting
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+// roomMetricsGet 获取房间内各世界的资源监控数据，数据来源于内存缓存
+func (h *Handler) roomMetricsGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID    int `json:"roomID" form:"roomID"`
+		TimeRange int `json:"timeRange" form:"timeRange"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if reqForm.RoomID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if !h.hasRoomPermission(c, strconv.Itoa(reqForm.RoomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	worlds, err := h.worldDao.GetWorldsByRoomID(reqForm.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	// 默认1小时
+	reqLength := reqForm.TimeRange * 60
+	if reqLength <= 0 {
+		reqLength = 60
+	}
+
+	type WorldMetrics struct {
+		WorldID   int                      `json:"worldID"`
+		WorldName string                   `json:"worldName"`
+		Metrics   []cache.WorldMetricsData `json:"metrics"`
+	}
+
+	worldMetricsData := make([]WorldMetrics, 0, len(*worlds))
+	cache.WorldMetricsMutex.RLock()
+	for _, world := range *worlds {
+		metrics := make([]cache.WorldMetricsData, 0)
+		if worldMetrics, ok := cache.WorldMetrics[world.ID]; ok {
+			if len(worldMetrics) > reqLength {
+				metrics = append(metrics, worldMetrics[len(worldMetrics)-reqLength:]...)
+			} else {
+				metrics = append(metrics, worldMetrics...)
+			}
+		}
+		worldMetricsData = append(worldMetricsData, WorldMetrics{
+			WorldID:   world.ID,
+			WorldName: world.WorldName,
+			Metrics:   metrics,
+		})
+	}
+	cache.WorldMetricsMutex.RUnlock()
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": worldMetricsData})
 }
 
 // factorGet 前端自动分配端口
@@ -901,6 +976,8 @@ func (h *Handler) deactivatePost(c *gin.Context) {
 	cache.PlayersStatisticMutex.Lock()
 	defer cache.PlayersStatisticMutex.Unlock()
 	delete(cache.PlayersStatistic, reqForm.RoomID)
+	// 删除房间内各世界的资源监控数据
+	deleteWorldMetrics(worldIDByName(*worlds))
 	// 更新数据库
 	room.Status = false
 	err = h.roomDao.UpdateRoom(room)
@@ -1089,6 +1166,8 @@ func (h *Handler) roomDelete(c *gin.Context) {
 	cache.RoomNoPlayersSecondsMutex.Lock()
 	delete(cache.RoomNoPlayersSeconds, reqForm.RoomID)
 	cache.RoomNoPlayersSecondsMutex.Unlock()
+	// 删除房间内各世界的资源监控数据
+	deleteWorldMetrics(worldIDByName(*worlds))
 	// 更新用户权限
 	roomIDStr := strconv.Itoa(reqForm.RoomID)
 	for _, user := range *nonAdminUsers {

@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -147,6 +148,38 @@ func Announce(game *dst.Game, content string) {
 	err := game.Announce(content)
 	if err != nil {
 		logger.Logger.Errorf("定时通知失败, err: %v", err)
+	}
+}
+
+// RoomMetricsGet 采集房间内各世界的资源使用数据，按世界分别保存在内存缓存中
+func RoomMetricsGet(game *dst.Game, roomID int) {
+	// 监控数据保留时长复用系统监控设置的保留时长
+	maxHour := defaultMetricsSaveHours
+	var globalSetting models.GlobalSetting
+	if err := DBHandler.globalSettingDao.GetGlobalSetting(&globalSetting); err != nil {
+		logger.Logger.Errorf("获取全局设置失败，房间监控数据保留时长使用默认值, err: %v", err)
+	} else if globalSetting.SysMetricsSetting > 0 {
+		maxHour = globalSetting.SysMetricsSetting
+	}
+
+	for _, world := range game.Worlds() {
+		performanceStatus := game.WorldPerformanceStatus(world.ID)
+		worldMetrics := cache.WorldMetricsData{
+			Timestamp: utils.GetTimestamp(),
+			Cpu:       performanceStatus.CPU,
+			Memory:    performanceStatus.Mem,
+			MemSize:   performanceStatus.MemSize,
+			Disk:      performanceStatus.Disk,
+		}
+
+		cache.WorldMetricsMutex.Lock()
+		if len(cache.WorldMetrics[world.ID]) > maxHour*60 {
+			cache.WorldMetrics[world.ID] = cache.WorldMetrics[world.ID][1:]
+		}
+		cache.WorldMetrics[world.ID] = append(cache.WorldMetrics[world.ID], worldMetrics)
+		cache.WorldMetricsMutex.Unlock()
+
+		logger.Logger.Debugf("世界资源监控数据采集完成, roomID: %d, worldID: %d, %s", roomID, world.ID, utils.StructToFlatString(worldMetrics))
 	}
 }
 

@@ -16,6 +16,7 @@ type RoomSetting struct {
 	ScheduledStartStopEnable  bool   `gorm:"column:scheduled_start_stop_enable" json:"scheduledStartStopEnable"`
 	ScheduledStartStopSetting string `gorm:"column:scheduled_start_stop_setting" json:"scheduledStartStopSetting"`
 	PlayerUpdateModEnable     bool   `gorm:"column:player_update_mod_enable" json:"playerUpdateModEnable"`
+	RoomMetricsEnable         bool   `gorm:"column:room_metrics_enable" json:"roomMetricsEnable"`
 	TickRate                  int    `gorm:"column:tick_rate" json:"tickRate"`
 	StartType                 string `gorm:"column:start_type" json:"startType"`
 	CustomIP                  string `gorm:"column:custom_ip" json:"customIP"`
