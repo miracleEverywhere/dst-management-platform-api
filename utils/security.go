@@ -6,27 +6,40 @@ import (
 	"strings"
 )
 
-// IsSafeString 判断字符串是否安全，主要适用于命令拼接的字符串，包含worldName screenName等
-func IsSafeString(s string) bool {
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-\.]+$`, s)
+var (
+	IsSafeStringRe          = regexp.MustCompile(`^[a-zA-Z0-9_\-.]+$`)
+	IsValidGameStartupCmdRe = regexp.MustCompile(`^[a-zA-Z0-9_\-./\\: ]+$`)
+)
 
-	return matched
+// IsSafeString 判断字符串是否安全，主要适用于命令拼接的字符串，包含worldName screenName等
+// 除字符集外，额外排除纯点号（如 ".."、"..."）和以 "-" 开头的字符串，
+// 避免拼接成路径时产生目录穿越、或被当成命令/程序参数
+func IsSafeString(s string) bool {
+	if !IsSafeStringRe.MatchString(s) {
+		return false
+	}
+	if strings.Trim(s, ".") == "" {
+		return false
+	}
+
+	return !strings.HasPrefix(s, "-")
+}
+
+// ShellQuote 将字符串包装成单引号形式的shell参数，用于必须拼接bash命令的场景，
+// 防止字符串中的shell元字符被解释执行
+func ShellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // IsValidGameMode 验证游戏模式字符串是否安全，防止XSS注入
 // DST 游戏模式可自定义，此处校验字符集而非枚举固定值，杜绝 eval() 注入
 func IsValidGameMode(mode string) bool {
-	if mode == "" {
-		return false
-	}
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-\.]+$`, mode)
-	return matched
+	return IsSafeStringRe.MatchString(mode)
 }
 
 // IsValidGameStartupCmd 判断自定义启动命令是否安全
 func IsValidGameStartupCmd(cmd string) bool {
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-\.\/\\: ]+$`, cmd)
-	return matched
+	return IsValidGameStartupCmdRe.MatchString(cmd)
 }
 
 // IsValidURL 判断 URL 是否为合法的 webhook URL，防止 SSRF 攻击

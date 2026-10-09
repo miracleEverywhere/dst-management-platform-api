@@ -549,7 +549,7 @@ func screenKillPost(c *gin.Context) {
 		}
 	}
 
-	cmd := fmt.Sprintf("screen -X -S %s quit", reqForm.ScreenName)
+	cmd := fmt.Sprintf("screen -X -S %s quit", utils.ShellQuote(reqForm.ScreenName))
 	err := utils.BashCMD(cmd)
 	if err != nil {
 		logger.Logger.Warnf("关闭Screen失败: %v", err)

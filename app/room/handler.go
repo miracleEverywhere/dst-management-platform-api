@@ -43,6 +43,13 @@ func (h *Handler) roomPost(c *gin.Context) {
 			return
 		}
 
+		// 世界名会被拼接进bash命令和文件路径，必须在入口处校验
+		if worldName, msgKey := validateWorldNames(reqForm.WorldData); msgKey != "" {
+			logger.Logger.Warnf("世界名校验失败已拦截, api: %s, username: %s, world: %s, reason: %s", c.Request.URL.Path, c.GetString("username"), worldName, msgKey)
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.GetF(c, msgKey, worldName), "data": nil})
+			return
+		}
+
 		for _, world := range reqForm.WorldData {
 			if world.CustomStartupCmd != "" {
 				logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
@@ -180,6 +187,12 @@ func (h *Handler) roomPut(c *gin.Context) {
 	}
 	if len(reqForm.WorldData) == 0 {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	// 世界名会被拼接进bash命令和文件路径，必须在入口处校验
+	if worldName, msgKey := validateWorldNames(reqForm.WorldData); msgKey != "" {
+		logger.Logger.Warnf("世界名校验失败已拦截, api: %s, username: %s, world: %s, reason: %s", c.Request.URL.Path, c.GetString("username"), worldName, msgKey)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.GetF(c, msgKey, worldName), "data": nil})
 		return
 	}
 	// 关联数据的房间归属由服务端确定，不能信任客户端提交的 RoomID。
@@ -907,7 +920,11 @@ func (h *Handler) uploadPost(c *gin.Context) {
 			logger.Logger.Errorf("删除旧存档数据失败, err: %v", err)
 			continue
 		}
-		cmd := fmt.Sprintf("cp -r %s/save %s", world.path, fmt.Sprintf("%s/%s/", clusterPath, world.name))
+		// world.path来自已校验的世界目录名，world.name已在导入时校验，
+		// 这里仍统一使用ShellQuote，避免任何字符串被bash解释
+		savePath := utils.ShellQuote(fmt.Sprintf("%s/save", world.path))
+		worldPath := utils.ShellQuote(fmt.Sprintf("%s/%s/", clusterPath, world.name))
+		cmd := fmt.Sprintf("cp -r %s %s", savePath, worldPath)
 		logger.Logger.Debug(cmd)
 		err = utils.BashCMD(cmd)
 		if err != nil {

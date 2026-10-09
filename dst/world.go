@@ -86,7 +86,7 @@ func (g *Game) createWorlds() error {
 				logger.Logger.Warnf("清理世界失败，删除文件失败: %v", err)
 			}
 			// 清理screen
-			cmd := fmt.Sprintf("screen -X -S DMP_Cluster_%d_%s quit", g.room.ID, fileSystemWorld)
+			cmd := fmt.Sprintf("screen -X -S %s quit", utils.ShellQuote(fmt.Sprintf("DMP_Cluster_%d_%s", g.room.ID, fileSystemWorld)))
 			err = utils.BashCMD(cmd)
 			if err != nil {
 				logger.Logger.Warnf("清理世界失败，清理SCREEN失败: %v", err)
@@ -109,7 +109,7 @@ func (g *Game) worldUpStatus(id int) bool {
 		return false
 	}
 
-	cmd := fmt.Sprintf("ps -ef | grep %s | grep -v grep", world.screenName)
+	cmd := fmt.Sprintf("ps -ef | grep %s | grep -v grep", utils.ShellQuote(world.screenName))
 	err = utils.BashCMD(cmd)
 	if err != nil {
 		stat = false
@@ -147,7 +147,7 @@ func (g *Game) worldPerformanceStatus(id int) PerformanceStatus {
 		return performanceStatus
 	}
 
-	cmd := fmt.Sprintf("ps -ef | grep dontstarve_dedicated_server_nullrenderer | grep Cluster_%d | grep %s | grep -v luajit | grep -vi screen | awk '{print $2}'", g.room.ID, world.WorldName)
+	cmd := fmt.Sprintf("ps -ef | grep dontstarve_dedicated_server_nullrenderer | grep Cluster_%d | grep %s | grep -v luajit | grep -vi screen | awk '{print $2}'", g.room.ID, utils.ShellQuote(world.WorldName))
 	logger.Logger.Debug(cmd)
 	out, _, _ := utils.BashCMDOutput(cmd)
 	logger.Logger.Debug(out)
@@ -303,7 +303,7 @@ func (g *Game) stopWorld(id int) error {
 
 	time.Sleep(1 * time.Second)
 
-	killCMD := fmt.Sprintf("screen -S %s -X quit", world.screenName)
+	killCMD := fmt.Sprintf("screen -S %s -X quit", utils.ShellQuote(world.screenName))
 	err = utils.BashCMD(killCMD)
 	if err != nil {
 		logger.Logger.Infof("结束进程失败，可能是未运行，忽略: %v", err)
@@ -381,7 +381,7 @@ func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 		return []string{}, err
 	}
 
-	listScreenCmd := fmt.Sprintf("screen -S \"%s\" -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do local col = v.colour; local cstr = col and string.format('%%d,%%d,%%d,%%d', (col[1] or 0)*255, (col[2] or 0)*255, (col[3] or 0)*255, (col[4] or 1)*255) or 'nil'; print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, tostring(v.userid), tostring(v.name), tostring(v.prefab), tostring(v.netid), tostring(v.netscore), tostring(v.playerage), cstr)) end$(printf \\\\r)\"\n", world.screenName)
+	listScreenCmd := fmt.Sprintf("screen -S %s -p 0 -X stuff \"for i, v in ipairs(TheNet:GetClientTable()) do local col = v.colour; local cstr = col and string.format('%%d,%%d,%%d,%%d', (col[1] or 0)*255, (col[2] or 0)*255, (col[3] or 0)*255, (col[4] or 1)*255) or 'nil'; print(string.format(\\\"playerlist %%s [%%d] %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s <-@dmp@-> %%s\\\", 99999999, i-1, tostring(v.userid), tostring(v.name), tostring(v.prefab), tostring(v.netid), tostring(v.netscore), tostring(v.playerage), cstr)) end$(printf \\\\r)\"\n", utils.ShellQuote(world.screenName))
 	err = utils.BashCMD(listScreenCmd)
 	if err != nil {
 		return []string{}, err

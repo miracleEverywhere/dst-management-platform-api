@@ -62,6 +62,26 @@ type XRoomTotalInfo struct {
 	RoomSettingData models.RoomSetting `json:"roomSettingData"`
 }
 
+// validateWorldNames 校验世界名是否合法
+// 世界名会被拼接进bash命令和文件路径，因此必须限定字符集；
+// 同时同一房间内世界名不能重复，否则多个世界会使用同一个目录、互相覆盖存档。
+// 返回第一个不合法的世界名和对应提示文案的i18n key，全部合法时返回空字符串
+func validateWorldNames(worlds []models.World) (string, string) {
+	seen := make(map[string]struct{}, len(worlds))
+	for _, world := range worlds {
+		name := world.WorldName
+		if !utils.IsSafeString(name) {
+			return name, "invalid world name"
+		}
+		if _, ok := seen[name]; ok {
+			return name, "duplicate world name"
+		}
+		seen[name] = struct{}{}
+	}
+
+	return "", ""
+}
+
 // 是否拥有房间创建权限
 func (h *Handler) hasCreatePermission(c *gin.Context) (bool, error) {
 	role, _ := c.Get("role")
@@ -566,20 +586,22 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 			return "read is_master from server.ini fail", err
 		}
 		world.IsMaster = isMaster
-		if serverIni["name"] == "" {
+		// 世界名会被拼接进bash命令和文件路径，必须使用校验后的值
+		worldName := serverIni["name"]
+		if worldName == "" {
+			// 兼容缺失name字段的存档，按主/从节点设置默认名
 			if isMaster {
 				logger.Logger.Info("世界名获取异常，设置为默认值Master")
-				world.WorldName = "Master"
-				worldPath.name = "Master"
+				worldName = "Master"
 			} else {
 				logger.Logger.Info("世界名获取异常，设置为默认值Caves")
-				world.WorldName = "Caves"
-				worldPath.name = "Caves"
+				worldName = "Caves"
 			}
-		} else {
-			world.WorldName = serverIni["name"]
-			worldPath.name = serverIni["name"]
 		}
+		world.WorldName = worldName
+		// worldPath.name用于拼接复制目标目录，而目标目录由world.WorldName创建，两者必须一致，
+		// 否则存档会被复制到错误的目录，甚至覆盖其他世界的存档
+		worldPath.name = worldName
 		encodeUserPath, err := strconv.ParseBool(serverIni["encode_user_path"])
 		if err != nil {
 			logger.Logger.Info("获取encode_user_path失败，设置为默认值true")
@@ -613,6 +635,15 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 
 		uploadExtraInfo.worldPath = append(uploadExtraInfo.worldPath, worldPath)
 		*worlds = append(*worlds, world)
+	}
+
+	// 7. 校验存档中的世界名，非法或重复时拒绝导入，避免命令注入和存档互相覆盖
+	if worldName, msgKey := validateWorldNames(*worlds); msgKey != "" {
+		logger.Logger.Warnf("存档世界名校验失败，拒绝导入, world: %s, reason: %s", worldName, msgKey)
+		if msgKey == "duplicate world name" {
+			return "duplicate world name in save", fmt.Errorf("存档中存在重复的世界名: %s", worldName)
+		}
+		return "invalid world name in save", fmt.Errorf("存档中存在非法的世界名: %s", worldName)
 	}
 
 	return "", nil

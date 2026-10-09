@@ -274,12 +274,12 @@ func (g *Game) generateModCopyCmd(id int) string {
 
 	var cmds []string
 
-	// 生成 复制 命令
+	// 生成 复制 命令，world.WorldName来自数据库或存档，使用ShellQuote避免被bash解释
 	for _, world := range g.worldSaveData {
 		gamePath := fmt.Sprintf("%s/%s/content/322330/%d", g.ugcPath, world.WorldName, id)
-		cmd := fmt.Sprintf("mkdir -p %s/%s/content/322330", g.ugcPath, world.WorldName)
+		cmd := fmt.Sprintf("mkdir -p %s", utils.ShellQuote(fmt.Sprintf("%s/%s/content/322330", g.ugcPath, world.WorldName)))
 		cmds = append(cmds, cmd)
-		cmd = fmt.Sprintf("cp -r %s %s", dmpPath, gamePath)
+		cmd = fmt.Sprintf("cp -r %s %s", utils.ShellQuote(dmpPath), utils.ShellQuote(gamePath))
 		cmds = append(cmds, cmd)
 	}
 

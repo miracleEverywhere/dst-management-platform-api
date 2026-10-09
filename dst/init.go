@@ -103,16 +103,20 @@ func (g *Game) initInfo() {
 func (g *Game) generateGameStartCmd(screenName, customGameStartupCmd, worldName string) string {
 	var startCmd string
 
+	// screenName和worldName来自数据库/存档，统一使用ShellQuote，避免被拼接进bash后解释执行
+	quotedScreenName := utils.ShellQuote(screenName)
+	quotedWorldName := utils.ShellQuote(worldName)
+
 	if cache.OsType == utils.Darwin {
-		startCmd = fmt.Sprintf("export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:%s/steamcmd && cd %s && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", cache.CurrentDir, utils.DarwinDstBinDir, screenName, customGameStartupCmd, g.clusterName, worldName)
+		startCmd = fmt.Sprintf("export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:%s/steamcmd && cd %s && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", cache.CurrentDir, utils.DarwinDstBinDir, quotedScreenName, customGameStartupCmd, g.clusterName, quotedWorldName)
 	} else {
 		switch g.setting.StartType {
 		case "32-bit":
-			startCmd = fmt.Sprintf("cd dst/bin/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, worldName)
+			startCmd = fmt.Sprintf("cd dst/bin/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", quotedScreenName, customGameStartupCmd, g.clusterName, quotedWorldName)
 		case "64-bit":
-			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, worldName)
+			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64 -console -cluster %s -shard %s", quotedScreenName, customGameStartupCmd, g.clusterName, quotedWorldName)
 		case "luajit":
-			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64_luajit -console -cluster %s -shard %s", screenName, customGameStartupCmd, g.clusterName, worldName)
+			startCmd = fmt.Sprintf("cd dst/bin64/ && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer_x64_luajit -console -cluster %s -shard %s", quotedScreenName, customGameStartupCmd, g.clusterName, quotedWorldName)
 		default:
 			startCmd = "exit 1"
 		}
