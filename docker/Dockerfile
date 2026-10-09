@@ -31,6 +31,7 @@ RUN dpkg --add-architecture i386 && \
     apt-get install -y lib32gcc-s1 && \
     apt-get install -y libcurl4-gnutls-dev:i386 && \
     apt-get install -y screen wget && \
+    apt-get install -y lib32stdc++6 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN chmod +x /root/dmp /root/entry-point.sh
