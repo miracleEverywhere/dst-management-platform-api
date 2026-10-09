@@ -1,5 +1,5 @@
 ---
-name: no-build
+name: no-test
 description: 该项目不需要_test.go测试
 ---
 

@@ -9,7 +9,7 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - Go 工具链：`go.mod` 指定 Go 1.25.4；模块路径为 `dst-management-platform-api`。
 - HTTP：Gin；数据访问：GORM + SQLite；任务调度：gocron；日志：Zap。
 - `main.go` 仅调用 `server.Run()`；初始化、依赖装配和路由注册位于 `server/`。
-- API 版本取自 `utils.ApiVersion`，平台版本取自 `utils.Version`。
+- API 版本取自 `utils.ApiVersion`，平台版本取自 `utils/constants.go` 中的 `utils.Version`；发版时更新该常量，推送 `v*` tag 会触发 `.github/workflows/go.yml` 构建二进制与镜像。
 - 运行环境主要面向 Linux，也支持 macOS；依赖 `screen`、SteamCMD、DST 文件与进程等外部资源。
 - 前端由独立仓库构建后复制到 `embedFS/dist/`，再通过 `go:embed` 嵌入后端二进制。
 
@@ -27,7 +27,8 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - `utils/`、`logger/`：共享工具与日志设施。
 - `embedFS/`：通过 `go:embed` 打包的前端、LuaJIT 库和安装脚本。
 - `docs/`：项目文档及图片资源。
-- `.agents/skills/`：本仓库的 agent 技能说明（`no-test`、`sandbox`、`frontend-project`、`zh-cn`），按任务类型加载。
+- `.agents/skills/`：本仓库的 agent 技能说明（`frontend-project`、`no-test`、`sandbox`、`zh-cn`），按任务类型加载。
+- `.github/`：Issue 模板与发布流水线；`workflows/go.yml` 在 `v*` tag 上构建 Linux/macOS 二进制并推送 Docker 镜像。
 - `docker/`、`run.sh`：发布和最终用户部署，不是日常开发入口。
 
 ## 常用命令
@@ -54,7 +55,7 @@ make help
 
 `make all`、`make frontend-only`、`make frontend2backend` 和 `make copy-frontend` 假定前端仓库位于 `$(HOME)/WebstormProjects/dst-management-platform-web`，并可能清空或替换前端 `dist/` 及 `embedFS/dist/`。只有任务明确涉及前端构建产物、且该外部仓库存在时才运行；不要手工编辑 `embedFS/dist/` 中带哈希的资源。
 
-沙箱环境下若构建因无法写入系统 Go 缓存而失败，把缓存指向 `/tmp`，例如 `GOCACHE=/tmp/gocache go vet ./...`、`GOCACHE=/tmp/gocache go build ...`（见 `.agents/skills/sandbox/SKILL.md`）。
+沙箱环境下若构建因无法写入系统 Go 缓存而失败，把缓存指向 `/tmp`，例如 `GOCACHE=/tmp/gocache go vet ./...`、`GOCACHE=/tmp/gocache go build ...`（见 `.agents/skills/sandbox/SKILL.md`）。Windows 下 `/tmp` 不可用，改为指向工作区内的临时目录（如 `.gocache`，验证完删除），因为沙箱只允许写工作区。
 
 如确需本地启动，使用非特权端口和隔离数据目录，例如：
 
@@ -84,14 +85,21 @@ go run . -bind 8080 -dbpath ./data -level debug
 - 新增模型时同步新增 DAO，并将模型加入 `database/db/database.go` 的 `AllTables`，使 `AutoMigrate` 能创建表。
 - 不要在 Handler 中绕过 DAO 复制已有查询逻辑；跨实体操作参考 `database/dao/composite.go`。
 - 修改房间状态或配置时，检查是否需要同步更新 `scheduler/` 中的任务。任务名称和房间级任务生命周期应保持现有约定。
+- `RoomDAO.UpdateConfiguration` 与 `WorldDAO.UpdateWorlds` 都是先删除该房间全部世界再插入。客户端提交或存档导入的世界不带 ID，重建后世界 ID 会变化；`cache.WorldMetrics` 按世界 ID 键控，改动这类调用点时要同步迁移或清理监控数据（参考 `app/room/utils.go` 的 `migrateWorldMetrics` / `deleteWorldMetrics`）。
 - 修改 AI 模型配置（`database/models/roomAISetting.go`、`aichat/config.go`）时注意零值语义，例如 `EmbeddingDimensions` 为 `0` 表示不发送 `dimensions` 参数而非非法值；校验规则需与前端契约保持一致。
 
 ### 安全与外部操作
 
 - 所有文件路径、命令参数、Webhook URL、上传内容和游戏配置都视为不可信输入，复用 `utils/` 中已有的路径、URL、XSS 和命令安全校验。
+- 拼接 shell 命令时，对每个来自数据库、存档或请求的字符串使用 `utils.ShellQuote`（或改用 `exec.Command` 的 argv 形式），不要把变量直接插进命令字符串；`utils.IsSafeString` 用于世界名这类会同时进入命令与文件路径的标识符。
 - 不削弱 JWT token 版本校验、管理员权限、登录限流或 Webhook HMAC 签名。
 - 涉及 shell、`screen`、SteamCMD、DST 存档或备份的改动，必须考虑路径转义、幂等性、部分失败和清理行为。
 - 测试不得依赖或修改真实的 `~/.klei/DoNotStarveTogether`、生产数据库、运行中的 `screen` 会话或真实 DST 安装；优先使用临时目录、临时 SQLite 数据库和可替换的边界。
+
+### DST 交互（命令、日志、存档）
+
+- 世界名（`World.WorldName`）同时是存档目录名、`-shard` 参数和 screen 会话名的一部分：同一房间内必须唯一，且只允许安全字符；改动存档导入或房间保存逻辑时要保持这一约束。
+- 在线玩家信息的采集依赖两处严格对应：`dst/world.go` 中写入游戏日志的 Lua `print` 格式（7 个字段，`<-@dmp@->` 分隔）与 `playerListPattern` 正则；`readPlayerListFromEnd` 的回读窗口必须能覆盖一次完整玩家列表的输出。
 
 ### 生成物与依赖
 
