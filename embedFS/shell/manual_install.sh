@@ -26,6 +26,7 @@ function install_ubuntu() {
     apt-get install -y lib32gcc-s1 || true
     apt-get install -y libcurl4-gnutls-dev:i386 || error_exit
     apt-get install -y libcurl4-gnutls-dev || true
+    apt-get install -y lib32stdc++6 || error_exit
 }
 
 function install_rhel() {
