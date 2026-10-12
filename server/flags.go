@@ -13,6 +13,7 @@ var (
 	cert              string
 	key               string
 	noHttpCompression bool
+	pprof             bool
 )
 
 func bindFlags() {
@@ -23,6 +24,7 @@ func bindFlags() {
 	flag.StringVar(&cert, "cert", "", "证书文件路径, 不填则启动http, 例如: /path/to/fullchain.pem")
 	flag.StringVar(&key, "key", "", "私钥文件路径, 不填则启动http, 例如: /path/to/privkey.pem")
 	flag.BoolVar(&versionShow, "v", false, "查看版本, 如: -v")
+	flag.BoolVar(&pprof, "pprof", false, "是否开启pprof")
 	flag.StringVar(&consoleCmd, "console", "", "控制台命令, 如: -console help")
 	flag.Parse()
 }

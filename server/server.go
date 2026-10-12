@@ -23,7 +23,7 @@ import (
 	"runtime"
 
 	"github.com/gin-contrib/gzip"
-	"github.com/gin-contrib/pprof"
+	ginPprof "github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	static "github.com/soulteary/gin-static"
 )
@@ -111,13 +111,13 @@ func Run() {
 			})))
 	}
 
-	// debug日志等级下，注册pprof路由
-	if logLevel == "debug" {
-		logger.Logger.Debug("debug模式已开启")
-		logger.Logger.Warn("debug模式会无条件暴露各种运行数据，请勿在生产环境开启debug")
-		pprof.Register(r)
-	} else {
-		// 设置生产环境
+	// 注册pprof路由
+	if pprof {
+		logger.Logger.Warn("pprof会暴露各种运行数据，请勿在生产环境开启pprof")
+		ginPprof.Register(r)
+	}
+
+	if logLevel != "debug" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
