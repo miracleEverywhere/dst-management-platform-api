@@ -318,6 +318,7 @@ function check_dmp() {
 	if pgrep dmp >/dev/null; then
 		echo_green "启动成功"
 	else
+		get_panic_logs
 		echo_red "启动失败"
 		exit 1
 	fi
@@ -483,6 +484,11 @@ function auto_start_dmp() {
 		) | crontab -
 		echo_green "已成功设置开机自启"
 	fi
+}
+
+# 获取panic日志
+function get_panic_logs() {
+    n=$(grep -nF '[ERROR]' logs/runtime.log | tail -n1 | cut -d: -f1); [ -n "$n" ] && tail -n +"$n" logs/runtime.log
 }
 
 # 使用无限循环让用户输入命令
