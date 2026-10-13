@@ -104,4 +104,7 @@ func InitLogger(level string) {
 
 	gin.DefaultWriter = io.Discard
 	gin.DefaultErrorWriter = io.Discard
+
+	// 接管运行时崩溃输出，把未被捕获的 panic 日志也写入 runtime 日志
+	initRuntimeCapture()
 }
