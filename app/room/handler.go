@@ -65,8 +65,8 @@ func (h *Handler) roomPost(c *gin.Context) {
 		}
 
 		// 端口冲突检测
+		// MasterPort（[SHARD] master_port）不参与检测，允许重复
 		var ports []int
-		ports = append(ports, reqForm.RoomData.MasterPort)
 		for _, world := range reqForm.WorldData {
 			ports = append(ports, world.ServerPort, world.MasterServerPort, world.AuthenticationPort)
 		}
@@ -233,8 +233,8 @@ func (h *Handler) roomPut(c *gin.Context) {
 	}
 
 	// 端口冲突检测
+	// 修改房间时 MasterPort 允许重复（[SHARD] master_port 在部分部署方式下可以与其它房间相同），因此不参与检测
 	var ports []int
-	ports = append(ports, reqForm.RoomData.MasterPort)
 	for _, world := range reqForm.WorldData {
 		ports = append(ports, world.ServerPort, world.MasterServerPort, world.AuthenticationPort)
 	}

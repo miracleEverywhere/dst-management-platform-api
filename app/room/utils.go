@@ -738,7 +738,8 @@ type UploadExtraInfo struct {
 }
 
 // checkGamePort 检测端口是否冲突，excludeRoomID 为 0 时不排除任何房间
-// 先检测入参内部是否重复，再检测与数据库中已有端口是否冲突
+// 先检测入参内部是否重复，再检测与数据库中已有的世界端口是否冲突
+// MasterPort（[SHARD] master_port）不参与检测，允许重复
 // 返回冲突的端口，0 表示无冲突
 func (h *Handler) checkGamePort(ports []int, excludeRoomID int) int {
 	// 1. 检测入参端口自身是否重复
@@ -750,27 +751,15 @@ func (h *Handler) checkGamePort(ports []int, excludeRoomID int) int {
 		seen[port] = true
 	}
 
-	// 2. 获取所有房间端口
-	rooms, err := h.roomDao.Query(1, 10000, nil)
-	if err != nil {
-		logger.Logger.Errorf("checkGamePort 查询房间失败, err: %v", err)
-		return 0
-	}
-
-	// 3. 获取所有世界端口
+	// 2. 获取所有世界端口
 	worlds, err := h.worldDao.Query(1, 10000, nil)
 	if err != nil {
 		logger.Logger.Errorf("checkGamePort 查询世界失败, err: %v", err)
 		return 0
 	}
 
-	// 4. 已使用的端口集合
+	// 3. 已使用的端口集合
 	usedPorts := make(map[int]bool)
-	for _, room := range rooms.Data {
-		if room.ID != excludeRoomID {
-			usedPorts[room.MasterPort] = true
-		}
-	}
 	for _, world := range worlds.Data {
 		if world.RoomID != excludeRoomID {
 			usedPorts[world.ServerPort] = true
@@ -779,7 +768,7 @@ func (h *Handler) checkGamePort(ports []int, excludeRoomID int) int {
 		}
 	}
 
-	// 5. 检查与已有端口是否冲突
+	// 4. 检查与已有端口是否冲突
 	for _, port := range ports {
 		if usedPorts[port] {
 			return port
