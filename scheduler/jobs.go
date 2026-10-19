@@ -48,14 +48,16 @@ func initJobs() {
 	})
 
 	// 系统监控
-	Jobs = append(Jobs, JobConfig{
-		Name:     "systemMetricsGet",
-		Func:     SystemMetricsGet,
-		Args:     []any{globalSetting.SysMetricsSetting},
-		TimeType: MinuteType,
-		Interval: SystemMetricsGetInInterval,
-		DayAt:    "",
-	})
+	if globalSetting.SysMetricsEnable {
+		Jobs = append(Jobs, JobConfig{
+			Name:     "systemMetricsGet",
+			Func:     SystemMetricsGet,
+			Args:     []any{globalSetting.SysMetricsSetting},
+			TimeType: MinuteType,
+			Interval: SystemMetricsGetInInterval,
+			DayAt:    "",
+		})
+	}
 
 	// 游戏更新
 	Jobs = append(Jobs, JobConfig{
