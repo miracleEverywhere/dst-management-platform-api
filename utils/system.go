@@ -747,7 +747,11 @@ func isSubPath(path, mountpoint string) bool {
 	return !strings.Contains(rel, "..")
 }
 
-// GetFileLastNLines 获取文件的最后N行，返回字符串切片
+// fileTailChunkSize 尾部读取时单次读取的字节数
+const fileTailChunkSize = 32 * 1024
+
+// GetFileLastNLines 获取文件的最后N行，返回字符串切片。
+// 从文件末尾按块反向读取，避免日志文件较大时每次都从文件头扫描整个文件。
 func GetFileLastNLines(filename string, n int) []string {
 	if n <= 0 {
 		return []string{}
@@ -759,21 +763,68 @@ func GetFileLastNLines(filename string, n int) []string {
 	}
 	defer file.Close()
 
-	lines := make([]string, 0, n)
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		if len(lines) >= n {
-			lines = lines[1:]
-		}
-		lines = append(lines, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
+	fileInfo, err := file.Stat()
+	if err != nil || fileInfo.Size() == 0 {
 		return []string{}
 	}
 
-	return lines
+	var (
+		chunks       [][]byte
+		pos          = fileInfo.Size()
+		newlineCount int
+		totalSize    int
+	)
+
+	// 从后往前读取，直到积累的换行数足够覆盖最后 N 行。
+	// 多读一个换行是为了保证缓冲区开头即使是一行的一部分，也不影响最后 N 行的完整性。
+	for pos > 0 {
+		readSize := int64(fileTailChunkSize)
+		if pos < readSize {
+			readSize = pos
+		}
+		pos -= readSize
+
+		chunk := make([]byte, readSize)
+		readN, readErr := file.ReadAt(chunk, pos)
+		if readErr != nil && readErr != io.EOF {
+			return []string{}
+		}
+		chunk = chunk[:readN]
+		chunks = append(chunks, chunk)
+		totalSize += readN
+
+		for _, b := range chunk {
+			if b == '\n' {
+				newlineCount++
+			}
+		}
+		if newlineCount > n {
+			break
+		}
+	}
+
+	// chunks 是按文件尾部到头部收集的，拼接时反转回来。
+	buf := make([]byte, 0, totalSize)
+	for i := len(chunks) - 1; i >= 0; i-- {
+		buf = append(buf, chunks[i]...)
+	}
+
+	lines := bytes.Split(buf, []byte{'\n'})
+	// 文件以换行结尾时，Split 会多出一个空字符串，与 bufio.Scanner 的行为保持一致。
+	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+
+	result := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = bytes.TrimSuffix(line, []byte{'\r'})
+		result = append(result, string(line))
+	}
+
+	return result
 }
 
 // GetFileFirstNLines 获取一个文件的前n行，返回字符串切片

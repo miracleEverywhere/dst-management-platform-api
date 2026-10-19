@@ -400,6 +400,7 @@ func (g *Game) getOnlinePlayerList(id int) ([]string, error) {
 var (
 	playerListPattern = regexp.MustCompile(`playerlist 99999999 \[[0-9]+\] (KU_.+) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*?) <-@dmp@-> (.*)`)
 	hostPattern       = regexp.MustCompile(`\[Host]`)
+	worldLogTimeRegex = regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}]`)
 )
 
 func readPlayerListFromEnd(logPath string) ([]string, error) {
@@ -503,7 +504,14 @@ func (g *Game) getLastAliveTime(id int) (string, error) {
 }
 
 func getWorldLastTime(logfile string) (string, error) {
-	// 获取日志文件中的list
+	// 正常情况下时间戳就在日志末尾附近，只读取最后若干行即可。
+	// 如果尾部窗口中没有时间戳，再回退到全文件扫描，保持原有行为。
+	const tailLines = 2048
+
+	if lastTime, ok := findLastWorldTime(utils.GetFileLastNLines(logfile, tailLines)); ok {
+		return lastTime, nil
+	}
+
 	file, err := os.Open(logfile)
 	if err != nil {
 		logger.Logger.Errorf("打开文件失败, err: %v, file: %v", err, logfile)
@@ -516,11 +524,8 @@ func getWorldLastTime(logfile string) (string, error) {
 		}
 	}(file)
 
-	// 逐行读取文件
 	scanner := bufio.NewScanner(file)
 	var lines []string
-	timeRegex := regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}]`)
-
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
@@ -528,17 +533,22 @@ func getWorldLastTime(logfile string) (string, error) {
 		logger.Logger.Errorf("文件scan失败, err: %v", err)
 		return "", err
 	}
-	// 反向遍历行
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := lines[i]
-		// 将行添加到结果切片
-		match := timeRegex.FindString(line)
-		if match != "" {
-			// 去掉方括号
-			lastTime := strings.Trim(match, "[]")
-			return lastTime, nil
-		}
+
+	if lastTime, ok := findLastWorldTime(lines); ok {
+		return lastTime, nil
 	}
 
 	return "", fmt.Errorf("没有找到日志时间戳")
+}
+
+// findLastWorldTime 从后往前查找最后一条带时间戳的日志行
+func findLastWorldTime(lines []string) (string, bool) {
+	for i := len(lines) - 1; i >= 0; i-- {
+		match := worldLogTimeRegex.FindString(lines[i])
+		if match != "" {
+			return strings.Trim(match, "[]"), true
+		}
+	}
+
+	return "", false
 }
