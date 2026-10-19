@@ -8,8 +8,8 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 
 - Go 工具链：`go.mod` 指定 Go 1.25.4；模块路径为 `dst-management-platform-api`。
 - HTTP：Gin；数据访问：GORM + SQLite；任务调度：gocron；日志：Zap。
-- `main.go` 仅调用 `server.Run()`；初始化、依赖装配和路由注册位于 `server/`。
-- API 版本取自 `utils.ApiVersion`，平台版本取自 `utils/constants.go` 中的 `utils.Version`；发版时更新该常量，推送 `v*` tag 会触发 `.github/workflows/go.yml` 构建二进制与镜像。
+- `main.go` 安装 panic 捕获与日志刷盘钩子（`logger.HandlePanic`、`logger.Sync`）后调用 `server.Run()`；启动参数在 `server/flags.go`，控制台命令在 `server/console.go`，初始化、依赖装配和路由注册位于 `server/`。
+- API 版本取自 `constant.ApiVersion`，平台版本取自 `constant/system.go` 中的 `constant.Version`；发版时更新该常量，推送 `v*` tag 会触发 `.github/workflows/go.yml` 构建二进制与镜像。
 - 运行环境主要面向 Linux，也支持 macOS；依赖 `screen`、SteamCMD、DST 文件与进程等外部资源。
 - 前端由独立仓库构建后复制到 `embedFS/dist/`，再通过 `go:embed` 嵌入后端二进制。
 
@@ -18,13 +18,14 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - `app/<module>/`：HTTP 业务模块，通常包含 `handler.go`、`router.go`、`i18n.go` 和 `utils.go`。
 - `aichat/`：游戏内 AI 对话监听、关键词/向量索引、知识库（wiki）解析与向量模型配置。
 - `cache/`：进程级缓存初始化与访问。
+- `constant/`：编译期常量；版本号、超时、JWT 与静态缓存等平台级常量在 `constant/system.go`，DST 路径、外部接口与插件目录在 `constant/dst.go`。
 - `i18n/`：全局基础文案与 `BaseI18n`/`ExtendedI18n` 实现；各业务模块的 `i18n.go` 基于它合并本模块词条。
 - `database/models/`：GORM 模型；`database/dao/`：数据访问；`database/db/`：SQLite 初始化、迁移和缓存。
 - `dst/`：DST 房间、世界、模组、玩家、地图、日志和进程控制。
 - `scheduler/`：全局及房间级定时任务。
 - `middleware/`：JWT、权限、缓存和限流中间件。
 - `webhook/`：Webhook 事件、签名和异步发送。
-- `utils/`、`logger/`：共享工具与日志设施。
+- `utils/`：共享工具函数（路径、命令、安全校验等）；`logger/`：Zap 日志、访问日志、panic 捕获与运行时崩溃输出。
 - `embedFS/`：通过 `go:embed` 打包的前端、LuaJIT 库和安装脚本。
 - `docs/`：项目文档及图片资源。
 - `.agents/skills/`：本仓库的 agent 技能说明（`frontend-project`、`no-test`、`sandbox`、`zh-cn`），按任务类型加载。
@@ -65,7 +66,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 
 启动服务会创建数据库、日志、`dmp_files/` 和手动安装脚本，并启动可能访问网络或操作 DST 进程的调度任务。不要把启动服务作为普通代码修改的默认验证步骤。
 
-可用启动参数包括 `-bind`、`-dbpath`、`-level`、`-cert`、`-key`、`-no-http-compress`、`-v` 和 `-console`。`-cert` 与 `-key` 同时提供时启动 HTTPS；`-level debug` 会注册 pprof 路由，不应在生产环境启用；`-console` 执行一次控制台命令后退出。
+可用启动参数包括 `-bind`、`-dbpath`、`-level`、`-cert`、`-key`、`-no-http-compress`、`-v`、`-pprof` 和 `-console`。`-cert` 与 `-key` 同时提供时启动 HTTPS；`-level debug` 只调整日志等级与 Gin 模式；`-pprof` 单独开启 pprof 路由，会暴露运行数据，不应在生产环境启用；`-console` 执行一次控制台命令（`reset_password`、`list_user`、`db_stats`、`help`）后退出。
 
 ## 修改规则
 
@@ -73,7 +74,8 @@ go run . -bind 8080 -dbpath ./data -level debug
 
 - 遵循 `.editorconfig`，Go 文件使用 UTF-8、LF 和 Tab；所有修改过的 Go 文件必须通过 `gofmt`。
 - 沿用现有包边界和构造方式。业务依赖通过模块 `Handler` 持有，并由 `server/server.go` 统一创建和注入。
-- 新增路由时使用 `utils.ApiVersion`，并按相邻路由应用 `middleware.TokenCheck()`、`middleware.AdminOnly()` 等中间件。
+- 编译期常量统一放在 `constant/`：DST 路径、外部接口地址与插件目录放 `constant/dst.go`，版本号、超时、JWT 与静态资源缓存等平台级常量放 `constant/system.go`；不要在 `utils/` 中新增常量。
+- 新增路由时使用 `constant.ApiVersion`，并按相邻路由应用 `middleware.TokenCheck()`、`middleware.AdminOnly()` 等中间件。
 - JSON API 保持现有响应形状：`{"code": ..., "message": ..., "data": ...}`。多数业务接口以 HTTP 200 返回，业务结果由响应体中的 `code` 表示；文件下载、流式响应和 WebSocket 等特殊接口沿用各自现有行为。
 - 面向用户的消息统一走 `i18n` 包：通用文案维护在 `i18n/i18n.go` 的全局 `I18n` 中，模块词条在 `app/<module>/i18n.go` 用 `i18n.NewExtendedI18n(map[string]i18n.Text{...})` 声明，读取使用模块内的 `message.Get(c, ...)` / `message.GetF(c, ...)`；`zh`、`en` 文案必须同时维护。
 - 使用已有 `logger`、DAO 和工具函数，不引入平行的日志、数据库或配置体系。
