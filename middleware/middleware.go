@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -61,7 +62,7 @@ func TokenCheck() gin.HandlerFunc {
 				Role:         claims.Role,
 				TokenVersion: claims.TokenVersion,
 			}
-			token, err = utils.GenerateJWT(user, []byte(cache.JwtSecret), utils.JwtExpirationHours)
+			token, err = utils.GenerateJWT(user, []byte(cache.JwtSecret), constant.JwtExpirationHours)
 			if err != nil {
 				logger.Logger.Errorf("刷新Token失败：%v", err)
 			} else {
@@ -97,7 +98,7 @@ func AdminOnly() gin.HandlerFunc {
 
 // CacheControl 缓存控制中间件
 func CacheControl() gin.HandlerFunc {
-	cacheDuration := utils.StaticCacheHours * time.Hour
+	cacheDuration := constant.StaticCacheHours * time.Hour
 	return func(c *gin.Context) {
 		// 只对静态资源文件设置缓存
 		if isStaticAsset(c.Request.URL.Path) {

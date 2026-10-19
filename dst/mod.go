@@ -2,6 +2,7 @@ package dst
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -74,10 +75,10 @@ func (g *Game) dsModsSetup() error {
 }
 
 func getGameModSettingPath() string {
-	if cache.OsType == utils.Darwin {
-		return utils.DarwinGameModSettingPath
+	if cache.OsType == constant.Darwin {
+		return constant.DarwinGameModSettingPath
 	} else {
-		return utils.GameModSettingPath
+		return constant.GameModSettingPath
 	}
 }
 
@@ -174,14 +175,14 @@ func (g *Game) downloadMod(id int, fileURL string) (error, int64) {
 }
 
 func (g *Game) generateModDownloadCmd(id int) string {
-	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/%s/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", cache.CurrentDir, utils.DmpFiles, g.clusterName, id)
+	return fmt.Sprintf("steamcmd/steamcmd.sh +force_install_dir %s/%s/mods/ugc/%s +login anonymous +workshop_download_item 322330 %d +quit", cache.CurrentDir, constant.DmpFiles, g.clusterName, id)
 }
 
 // ugcDownloadBytes 返回 SteamCMD 下载目录中模组当前占用的字节数。
 func (g *Game) ugcDownloadBytes(id int) int64 {
 	paths := []string{
-		fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/downloads/322330/%d", utils.DmpFiles, g.clusterName, id),
-		fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/temp/322330/%d", utils.DmpFiles, g.clusterName, id),
+		fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/downloads/322330/%d", constant.DmpFiles, g.clusterName, id),
+		fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/temp/322330/%d", constant.DmpFiles, g.clusterName, id),
 	}
 	var largest int64
 	for _, path := range paths {
@@ -270,7 +271,7 @@ func (g *Game) generateModCopyCmd(id int) string {
 		return ""
 	}
 
-	dmpPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/content/322330/%d", utils.DmpFiles, g.clusterName, id)
+	dmpPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/content/322330/%d", constant.DmpFiles, g.clusterName, id)
 
 	var cmds []string
 
@@ -289,7 +290,7 @@ func (g *Game) generateModCopyCmd(id int) string {
 func (g *Game) processAcf(id int) error {
 	acfModID := strconv.Itoa(id)
 
-	dmpAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", utils.DmpFiles, g.clusterName)
+	dmpAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", constant.DmpFiles, g.clusterName)
 	gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, g.worldSaveData[0].WorldName)
 
 	err := utils.EnsureFileExists(gameAcfPath)
@@ -813,7 +814,7 @@ func (g *Game) deleteAcf() error {
 		}
 	}
 
-	dmpModDownloadAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", utils.DmpFiles, g.clusterName)
+	dmpModDownloadAcfPath := fmt.Sprintf("%s/mods/ugc/%s/steamapps/workshop/appworkshop_322330.acf", constant.DmpFiles, g.clusterName)
 	_ = utils.RemoveFile(dmpModDownloadAcfPath)
 
 	return nil

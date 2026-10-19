@@ -1,14 +1,14 @@
 package player
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/middleware"
-	"dst-management-platform-api/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
-	v := r.Group(utils.ApiVersion)
+	v := r.Group(constant.ApiVersion)
 	{
 		player := v.Group("player")
 		player.Use(middleware.TokenCheck())

@@ -1,9 +1,9 @@
 package dashboard
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -78,7 +78,7 @@ func checkDstLobbyRoom(urls []string, clusterName string) ([]Room, error) {
 	)
 
 	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
+		Timeout: constant.HttpTimeout * time.Second,
 	}
 
 	for _, url := range urls {

@@ -2,9 +2,9 @@ package tools
 
 import (
 	"dst-management-platform-api/aichat"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -62,7 +62,7 @@ func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
 	return false
 }
 
-const gameImagesPath = utils.PluginTmiPath + "/dst_images"
+const gameImagesPath = constant.PluginTmiPath + "/dst_images"
 
 func pngToBase64(prefab string) (string, error) {
 	pngPath := filepath.Join(gameImagesPath, prefab+".png")

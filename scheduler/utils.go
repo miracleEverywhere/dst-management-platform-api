@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -46,7 +47,7 @@ const (
 )
 
 var client = &http.Client{
-	Timeout: utils.HttpTimeout * time.Second,
+	Timeout: constant.HttpTimeout * time.Second,
 }
 
 type Handler struct {
@@ -100,7 +101,7 @@ type DSTVersion struct {
 func GetDSTVersion() DSTVersion {
 	var dstVersion DSTVersion
 
-	if cache.OsType == utils.Darwin {
+	if cache.OsType == constant.Darwin {
 		dstVersion.Local = getLocalGameVersionDarwin()
 	} else {
 		dstVersion.Local = getLocalGameVersion()
@@ -121,7 +122,7 @@ func GetDSTVersion() DSTVersion {
 
 func getLocalGameVersion() int {
 	version := 0
-	file, err := os.Open(utils.DSTLocalVersionPath)
+	file, err := os.Open(constant.DSTLocalVersionPath)
 	if err != nil {
 		logger.Logger.Errorf("获取游戏版本失败, err: %v", err)
 		return version
@@ -163,7 +164,7 @@ func getLocalGameVersion() int {
 func getLocalGameVersionDarwin() int {
 	// strings dontstarve_dedicated_server_nullrenderer | grep -A1 "cfg:%s" | tail -1
 
-	binPath := filepath.Join(utils.DarwinDstBinDir, "dontstarve_dedicated_server_nullrenderer")
+	binPath := filepath.Join(constant.DarwinDstBinDir, "dontstarve_dedicated_server_nullrenderer")
 	cmd := fmt.Sprintf("strings %s | grep -A1 \"cfg:%%s\" | tail -1", binPath)
 
 	out, errSystem, errGo := utils.BashCMDOutput(cmd)
@@ -199,8 +200,8 @@ func getServerGameVersion() (int, error) {
 	}
 
 	apis := []string{
-		utils.DSTServerVersionApi1,
-		utils.DSTServerVersionApi2,
+		constant.DSTServerVersionApi1,
+		constant.DSTServerVersionApi2,
 	}
 	for _, api := range apis {
 		logger.Logger.Debugf("尝试从api: %s 获取游戏版本", api)
@@ -218,7 +219,7 @@ func getServerGameVersion() (int, error) {
 
 func getServerGameVersionFromKlei() (int, error) {
 	const (
-		versionPageURL     = utils.DSTServerVersionKlei
+		versionPageURL     = constant.DSTServerVersionKlei
 		maxVersionPageSize = 8 << 20
 		userAgent          = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 	)
@@ -232,7 +233,7 @@ func getServerGameVersionFromKlei() (int, error) {
 				NextProtos: []string{"http/1.1"},
 			},
 		},
-		Timeout: utils.HttpTimeout * time.Second,
+		Timeout: constant.HttpTimeout * time.Second,
 	}
 	versionPageURLs := []string{
 		versionPageURL,
@@ -379,7 +380,7 @@ func GetInternetIP1() (string, error) {
 		As          string  `json:"as"`
 		Query       string  `json:"query"`
 	}
-	httpResponse, err := client.Get(utils.InternetIPApi1)
+	httpResponse, err := client.Get(constant.InternetIPApi1)
 	if err != nil {
 		return "", err
 	}
@@ -403,7 +404,7 @@ func GetInternetIP1() (string, error) {
 }
 
 func GetInternetIP2() (string, error) {
-	response, err := client.Get(utils.InternetIPApi2)
+	response, err := client.Get(constant.InternetIPApi2)
 	if err != nil {
 		return "", err
 	}

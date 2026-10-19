@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
@@ -36,7 +37,7 @@ func NewSender(globalSettingDao *dao.GlobalSettingDAO, roomSettingDao *dao.RoomS
 		roomSettingDao:   roomSettingDao,
 		roomDao:          roomDao,
 		client: &http.Client{
-			Timeout: utils.HttpTimeout * time.Second,
+			Timeout: constant.HttpTimeout * time.Second,
 		},
 	}
 }
@@ -125,7 +126,7 @@ func (s *Sender) sendOne(url, secret string, body []byte) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", fmt.Sprintf("DMP-Webhook/%s", utils.Version))
+	req.Header.Set("User-Agent", fmt.Sprintf("DMP-Webhook/%s", constant.Version))
 
 	if secret != "" {
 		mac := hmac.New(sha256.New, []byte(secret))
@@ -170,7 +171,7 @@ func (s *Sender) SendTest(url, secret string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", fmt.Sprintf("DMP-Webhook/%s", utils.Version))
+	req.Header.Set("User-Agent", fmt.Sprintf("DMP-Webhook/%s", constant.Version))
 
 	if secret != "" {
 		mac := hmac.New(sha256.New, []byte(secret))

@@ -3,8 +3,8 @@ package aichat
 import (
 	"bytes"
 	"context"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,7 +22,7 @@ import (
 
 // ========== 配置 ==========
 
-const embeddingDir = utils.PluginAiChatSearchDataPath + "/embeddings"
+const embeddingDir = constant.PluginAiChatSearchDataPath + "/embeddings"
 
 // ========== 构建索引常量 ==========
 

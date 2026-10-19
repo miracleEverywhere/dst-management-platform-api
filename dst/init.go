@@ -2,6 +2,7 @@ package dst
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -90,12 +91,12 @@ func (g *Game) initInfo() {
 	g.blocklist = getPlayerList(g.blocklistPath)
 
 	// mods
-	if cache.OsType == utils.Darwin {
-		g.ugcPath = fmt.Sprintf("%s/%s/%s", cache.CurrentDir, utils.DarwinGameUgcPath, g.clusterName)
-		g.notUgcPath = utils.DarwinGameNotUgcPath
+	if cache.OsType == constant.Darwin {
+		g.ugcPath = fmt.Sprintf("%s/%s/%s", cache.CurrentDir, constant.DarwinGameUgcPath, g.clusterName)
+		g.notUgcPath = constant.DarwinGameNotUgcPath
 	} else {
-		g.ugcPath = fmt.Sprintf("%s/%s/%s", cache.CurrentDir, utils.GameUgcPath, g.clusterName)
-		g.notUgcPath = utils.GameNotUgcPath
+		g.ugcPath = fmt.Sprintf("%s/%s/%s", cache.CurrentDir, constant.GameUgcPath, g.clusterName)
+		g.notUgcPath = constant.GameNotUgcPath
 	}
 
 }
@@ -107,8 +108,8 @@ func (g *Game) generateGameStartCmd(screenName, customGameStartupCmd, worldName 
 	quotedScreenName := utils.ShellQuote(screenName)
 	quotedWorldName := utils.ShellQuote(worldName)
 
-	if cache.OsType == utils.Darwin {
-		startCmd = fmt.Sprintf("export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:%s/steamcmd && cd %s && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", cache.CurrentDir, utils.DarwinDstBinDir, quotedScreenName, customGameStartupCmd, g.clusterName, quotedWorldName)
+	if cache.OsType == constant.Darwin {
+		startCmd = fmt.Sprintf("export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:%s/steamcmd && cd %s && screen -d -h 200 -m -S %s %s ./dontstarve_dedicated_server_nullrenderer -console -cluster %s -shard %s", cache.CurrentDir, constant.DarwinDstBinDir, quotedScreenName, customGameStartupCmd, g.clusterName, quotedWorldName)
 	} else {
 		switch g.setting.StartType {
 		case "32-bit":

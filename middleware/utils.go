@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/i18n"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -61,7 +62,7 @@ func shouldRefreshToken(exp time.Time) bool {
 
 	//logger.Logger.Debugf("token剩余有效时间还剩: %.2f小时", remainingTime.Hours())
 
-	totalDuration := time.Duration(utils.JwtExpirationHours) * time.Hour
+	totalDuration := time.Duration(constant.JwtExpirationHours) * time.Hour
 
 	// 当剩余时间小于总有效期的 1/2 时刷新
 	return remainingTime > 0 && remainingTime < totalDuration/2

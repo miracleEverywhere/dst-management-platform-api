@@ -3,6 +3,7 @@ package dst
 import (
 	"bufio"
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -205,7 +206,7 @@ func (g *Game) startWorld(id int) error {
 	g.acfMutex.Lock()
 	defer g.acfMutex.Unlock()
 	defer func() {
-		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc/%s", utils.DmpFiles, g.clusterName))
+		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc/%s", constant.DmpFiles, g.clusterName))
 		if err != nil {
 			logger.Logger.Warnf("删除临时模组失败, err: %v", err)
 		}

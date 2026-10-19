@@ -2,6 +2,7 @@ package logs
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -61,10 +62,10 @@ func (h *Handler) contentGet(c *gin.Context) {
 		var logPath string
 		switch reqForm.LogType {
 		case "steam":
-			if cache.OsType == utils.Darwin {
-				logPath = utils.DarwinSteamLogPath
+			if cache.OsType == constant.Darwin {
+				logPath = constant.DarwinSteamLogPath
 			} else {
-				logPath = utils.SteamLogPath
+				logPath = constant.SteamLogPath
 			}
 		case "access":
 			logPath = "logs/access.log"
@@ -243,7 +244,7 @@ func (h *Handler) downloadGet(c *gin.Context) {
 	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
 
 	fileList := game.LogsList(role.(string) == "admin")
-	zipFilePath := fmt.Sprintf("%s/tmp/%d", utils.DmpFiles, reqForm.RoomID)
+	zipFilePath := fmt.Sprintf("%s/tmp/%d", constant.DmpFiles, reqForm.RoomID)
 
 	defer func(dirPath string) {
 		err := utils.RemoveDir(dirPath)

@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
@@ -261,7 +262,7 @@ func InternetIPUpdate() {
 
 func ModDownloadClean() {
 	if atomic.LoadInt32(&cache.ModDownloadExecuting) == 0 {
-		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc", utils.DmpFiles))
+		err := utils.RemoveDir(fmt.Sprintf("%s/mods/ugc", constant.DmpFiles))
 		if err != nil {
 			logger.Logger.Warnf("删除临时模组失败, err: %v", err)
 		}

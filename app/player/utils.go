@@ -1,9 +1,9 @@
 package player
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -59,11 +59,11 @@ func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
 }
 
 var client *http.Client = &http.Client{
-	Timeout: utils.HttpTimeout * time.Second,
+	Timeout: constant.HttpTimeout * time.Second,
 }
 
 func getPublicBlockList() ([]string, error) {
-	httpResponse, err := client.Get(utils.DstBlockList)
+	httpResponse, err := client.Get(constant.DstBlockList)
 	if err != nil {
 		return []string{}, err
 	}

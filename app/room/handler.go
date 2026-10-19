@@ -2,6 +2,7 @@ package room
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
@@ -691,7 +692,7 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	currentTS := utils.GetTimestamp()
 
 	// 创建上传文件保存目录
-	uploadPath := fmt.Sprintf("%s/upload/%d", utils.DmpFiles, currentTS)
+	uploadPath := fmt.Sprintf("%s/upload/%d", constant.DmpFiles, currentTS)
 	err = utils.EnsureDirExists(uploadPath)
 	if err != nil {
 		logger.Logger.Errorf("创建上传目录失败, err: %v", err)

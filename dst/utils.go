@@ -1,6 +1,7 @@
 package dst
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"fmt"
@@ -648,7 +649,7 @@ func downloadNotUGCMod(url string, id int, notUgcPath string) (error, int64) {
 	defer out.Close()
 
 	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
+		Timeout: constant.HttpTimeout * time.Second,
 	}
 
 	resp, err := client.Get(url)

@@ -2,6 +2,7 @@ package embedFS
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"embed"
@@ -57,7 +58,7 @@ func CopyEmbeddedFiles(sourceFS embed.FS, sourceRoot, targetDir, targetName stri
 func GenerateDefaultFile() {
 	var err error
 
-	if cache.OsType == utils.Darwin {
+	if cache.OsType == constant.Darwin {
 		// install create
 		err = CopyEmbeddedFiles(Shell, "shell", "./", "manual_install.sh", "manual_install_darwin.sh")
 		if err != nil {
@@ -71,12 +72,12 @@ func GenerateDefaultFile() {
 		}
 	} else {
 		// luajit create
-		err = utils.EnsureDirExists(fmt.Sprintf("%s/luajit", utils.DmpFiles))
+		err = utils.EnsureDirExists(fmt.Sprintf("%s/luajit", constant.DmpFiles))
 		if err != nil {
 			logger.Logger.Errorf("创建dmp_files/luajit失败, err: %v", err)
 			panic("创建dmp_files/luajit失败")
 		}
-		err = CopyEmbeddedFiles(LuaJit, "luajit", fmt.Sprintf("%s/luajit/", utils.DmpFiles), "", "liblua.so", "libluajit.so", "libpreload.so")
+		err = CopyEmbeddedFiles(LuaJit, "luajit", fmt.Sprintf("%s/luajit/", constant.DmpFiles), "", "liblua.so", "libluajit.so", "libpreload.so")
 		if err != nil {
 			logger.Logger.Errorf("生成luajit依赖失败, err: %v", err)
 			panic("生成luajit依赖失败")

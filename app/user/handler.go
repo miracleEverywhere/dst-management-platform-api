@@ -3,6 +3,7 @@ package user
 import (
 	"crypto/sha512"
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
@@ -161,7 +162,7 @@ func (h *Handler) loginPost(c *gin.Context) {
 		return
 	}
 
-	token, err := utils.GenerateJWT(*dbUser, []byte(cache.JwtSecret), utils.JwtExpirationHours)
+	token, err := utils.GenerateJWT(*dbUser, []byte(cache.JwtSecret), constant.JwtExpirationHours)
 	if err != nil {
 		logger.Logger.Errorf("生成jwt失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "login fail"), "data": nil})

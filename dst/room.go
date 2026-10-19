@@ -1,6 +1,7 @@
 package dst
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
@@ -61,7 +62,7 @@ func (g *Game) createRoom() error {
 	}
 
 	// 创建备份目录
-	_ = utils.EnsureDirExists(fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID))
+	_ = utils.EnsureDirExists(fmt.Sprintf("%s/backup/%d", constant.DmpFiles, g.room.ID))
 
 	return nil
 }
@@ -330,7 +331,7 @@ func (g *Game) backup() error {
 	fileName := fmt.Sprintf("%s<-@dmp@->%d<-@dmp@->%d", g.room.GameName, cycle, ts)
 	fileNameEncode := utils.Base64Encode(fileName) + ".zip"
 
-	zipPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID)
+	zipPath := fmt.Sprintf("%s/backup/%d", constant.DmpFiles, g.room.ID)
 	err = utils.EnsureDirExists(zipPath)
 	if err != nil {
 		return err
@@ -353,7 +354,7 @@ func (g *Game) backup() error {
 }
 
 func (g *Game) restore(filename string) (*SaveJson, error) {
-	zipPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID)
+	zipPath := fmt.Sprintf("%s/backup/%d", constant.DmpFiles, g.room.ID)
 	filePath := fmt.Sprintf("%s/%s", zipPath, filename)
 	err := utils.Unzip(filePath, zipPath)
 	if err != nil {
@@ -405,7 +406,7 @@ type BackupFile struct {
 }
 
 func (g *Game) getBackups() ([]BackupFile, error) {
-	zipPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID)
+	zipPath := fmt.Sprintf("%s/backup/%d", constant.DmpFiles, g.room.ID)
 	zipFiles, err := utils.GetFiles(zipPath)
 	if err != nil {
 		return []BackupFile{}, err
@@ -462,7 +463,7 @@ func (g *Game) getBackups() ([]BackupFile, error) {
 func (g *Game) deleteBackups(filenames []string) int {
 	s := 0
 	for _, filename := range filenames {
-		filePath := fmt.Sprintf("%s/backup/%d/%s", utils.DmpFiles, g.room.ID, filename)
+		filePath := fmt.Sprintf("%s/backup/%d/%s", constant.DmpFiles, g.room.ID, filename)
 		err := utils.RemoveFile(filePath)
 		if err != nil {
 			logger.Logger.Errorf("删除备份文件失败, err: %v", err)
@@ -559,7 +560,7 @@ func (g *Game) deleteRoom() error {
 		return err
 	}
 	// 删除备份
-	err = utils.RemoveDir(fmt.Sprintf("%s/backup/%d", utils.DmpFiles, g.room.ID))
+	err = utils.RemoveDir(fmt.Sprintf("%s/backup/%d", constant.DmpFiles, g.room.ID))
 	if err != nil {
 		return err
 	}

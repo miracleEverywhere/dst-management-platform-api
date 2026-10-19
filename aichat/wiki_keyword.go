@@ -1,8 +1,8 @@
 package aichat
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	wikiPagesDir              = utils.PluginAiChatWikiPath
-	wikiIndexFile             = utils.PluginAiChatSearchDataPath + "/search_index.json"
+	wikiPagesDir              = constant.PluginAiChatWikiPath
+	wikiIndexFile             = constant.PluginAiChatSearchDataPath + "/search_index.json"
 	keywordIndexIdleTimeout   = 5 * time.Minute
 	keywordIndexVersion       = 2
 	keywordNameWeight         = 8.0

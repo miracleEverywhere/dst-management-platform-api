@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
@@ -129,13 +130,13 @@ type Partition struct {
 	PageSize int `json:"pageSize" form:"pageSize"`
 }
 
-const stexDir = utils.PluginTmiPath + "/stex"
+const stexDir = constant.PluginTmiPath + "/stex"
 const StexBin = stexDir + "/bin/stex"
-const tmirID = utils.TmirID
-const gameImagesPath = utils.PluginTmiPath + "/dst_images"
+const tmirID = constant.TmirID
+const gameImagesPath = constant.PluginTmiPath + "/dst_images"
 const aiChatWikiURL = "https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/aichat/wiki/wiki.zip"
 
-var tmirPath = fmt.Sprintf("%s/tmir/steamapps/workshop/content/322330/%d/scripts/TMIR/itemlist/lists", utils.PluginTmiPath, utils.TmirID)
+var tmirPath = fmt.Sprintf("%s/tmir/steamapps/workshop/content/322330/%d/scripts/TMIR/itemlist/lists", constant.PluginTmiPath, constant.TmirID)
 
 func installAiChatWiki(proxy string) error {
 	downloadURL := aiChatWikiURL
@@ -146,16 +147,16 @@ func installAiChatWiki(proxy string) error {
 		downloadURL = proxy + aiChatWikiURL
 	}
 
-	if err := utils.EnsureDirExists(utils.PluginAiChatPath); err != nil {
+	if err := utils.EnsureDirExists(constant.PluginAiChatPath); err != nil {
 		return fmt.Errorf("创建 AI Chat 插件目录失败: %w", err)
 	}
-	temporaryDir, err := os.MkdirTemp(utils.PluginAiChatPath, ".wiki-install-")
+	temporaryDir, err := os.MkdirTemp(constant.PluginAiChatPath, ".wiki-install-")
 	if err != nil {
 		return fmt.Errorf("创建 Wiki 临时目录失败: %w", err)
 	}
 	defer os.RemoveAll(temporaryDir)
 
-	client := &http.Client{Timeout: utils.HttpTimeout * time.Second}
+	client := &http.Client{Timeout: constant.HttpTimeout * time.Second}
 	resp, err := client.Get(downloadURL)
 	if err != nil {
 		return fmt.Errorf("下载 Wiki 压缩包失败: %w", err)
@@ -187,10 +188,10 @@ func installAiChatWiki(proxy string) error {
 		return fmt.Errorf("清理 Wiki 压缩包失败: %w", err)
 	}
 
-	if err := utils.RemoveDir(utils.PluginAiChatWikiPath); err != nil {
+	if err := utils.RemoveDir(constant.PluginAiChatWikiPath); err != nil {
 		return fmt.Errorf("清理旧 Wiki 目录失败: %w", err)
 	}
-	if err := os.Rename(temporaryWikiDir, utils.PluginAiChatWikiPath); err != nil {
+	if err := os.Rename(temporaryWikiDir, constant.PluginAiChatWikiPath); err != nil {
 		return fmt.Errorf("替换 Wiki 目录失败: %w", err)
 	}
 	return nil
@@ -303,7 +304,7 @@ func installStex(proxy string) ([]models.DstImage, error) {
 		url = fmt.Sprintf("%s%s", proxy, url)
 	}
 	client := &http.Client{
-		Timeout: utils.HttpTimeout * time.Second,
+		Timeout: constant.HttpTimeout * time.Second,
 	}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -366,10 +367,10 @@ func unzipDstImages(string) ([]models.DstImage, error) {
 	_ = utils.EnsureDirExists(gameImagesPath)
 
 	var dstDataPath string
-	if cache.OsType == utils.Darwin {
-		dstDataPath = utils.DarwinDstContentsPath + "/data"
+	if cache.OsType == constant.Darwin {
+		dstDataPath = constant.DarwinDstContentsPath + "/data"
 	} else {
-		dstDataPath = utils.GameMainPath + "/data"
+		dstDataPath = constant.GameMainPath + "/data"
 	}
 
 	cmdArgs := []string{
@@ -434,7 +435,7 @@ func texToPng(string) ([]models.DstImage, error) {
 func installTMIR(string) ([]models.DstImage, error) {
 	var images []models.DstImage
 
-	modDir := filepath.Join(cache.CurrentDir, utils.PluginTmiPath, "tmir")
+	modDir := filepath.Join(cache.CurrentDir, constant.PluginTmiPath, "tmir")
 	cmdArgs := []string{
 		"+force_install_dir",
 		modDir,
@@ -453,14 +454,14 @@ func installTMIR(string) ([]models.DstImage, error) {
 	}
 
 	var dstDataPath string
-	if cache.OsType == utils.Darwin {
-		dstDataPath = utils.DarwinDstContentsPath + "/data"
+	if cache.OsType == constant.Darwin {
+		dstDataPath = constant.DarwinDstContentsPath + "/data"
 	} else {
-		dstDataPath = utils.GameMainPath + "/data"
+		dstDataPath = constant.GameMainPath + "/data"
 	}
 
 	scriptPath := filepath.Join(dstDataPath, "databundles", "scripts.zip")
-	tmpDir := filepath.Join(utils.PluginTmiPath, "tmp")
+	tmpDir := filepath.Join(constant.PluginTmiPath, "tmp")
 	gameChinesePo := filepath.Join(tmpDir, "scripts", "languages", "chinese_s.po")
 
 	_ = utils.RemoveDir(tmpDir)

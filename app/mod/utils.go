@@ -1,6 +1,7 @@
 package mod
 
 import (
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
@@ -72,7 +73,7 @@ type Data struct {
 const cacheModInfoMaxAgeMs = 10 * 60 * 1000
 
 var client *http.Client = &http.Client{
-	Timeout: utils.HttpTimeout * time.Second,
+	Timeout: constant.HttpTimeout * time.Second,
 }
 
 func SearchMod(page int, pageSize int, searchText string, lang string) (Data, error) {
@@ -85,7 +86,7 @@ func SearchMod(page int, pageSize int, searchText string, lang string) (Data, er
 		language = 0
 	}
 
-	req, err := http.NewRequest("GET", utils.SteamApiModSearch, nil)
+	req, err := http.NewRequest("GET", constant.SteamApiModSearch, nil)
 	if err != nil {
 		return Data{}, err
 	}
@@ -150,7 +151,7 @@ func SearchModById(id int, lang string) (Data, error) {
 		language = 0
 	}
 
-	req, err := http.NewRequest("GET", utils.SteamApiModDetail, nil)
+	req, err := http.NewRequest("GET", constant.SteamApiModDetail, nil)
 	if err != nil {
 		return Data{}, err
 	}
@@ -245,7 +246,7 @@ func (h *Handler) addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) e
 		language = 0
 	}
 
-	req, err := http.NewRequest("GET", utils.SteamApiModDetail, nil)
+	req, err := http.NewRequest("GET", constant.SteamApiModDetail, nil)
 	if err != nil {
 		return err
 	}

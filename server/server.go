@@ -11,13 +11,13 @@ import (
 	"dst-management-platform-api/app/tools"
 	"dst-management-platform-api/app/user"
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/embedFS"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/middleware"
 	"dst-management-platform-api/scheduler"
-	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
 	"fmt"
 	"runtime"
@@ -34,7 +34,7 @@ func Run() {
 
 	// 打印版本
 	if versionShow {
-		fmt.Println(utils.Version + "\n" + runtime.Version())
+		fmt.Println(constant.Version + "\n" + runtime.Version())
 		return
 	}
 
@@ -102,7 +102,7 @@ func Run() {
 			gzip.DefaultCompression,
 			gzip.WithMinLength(1024),
 			gzip.WithExcludedPaths([]string{
-				"/" + utils.ApiVersion + "/tools/backup/download",
+				"/" + constant.ApiVersion + "/tools/backup/download",
 			}),
 			gzip.WithExcludedExtensions([]string{
 				".woff", ".woff2", ".ttf",

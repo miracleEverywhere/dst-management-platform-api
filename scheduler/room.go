@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
@@ -25,7 +26,7 @@ func Backup(game *dst.Game) {
 }
 
 func BackupClean(roomID int, days int) {
-	backupPath := fmt.Sprintf("%s/backup/%d", utils.DmpFiles, roomID)
+	backupPath := fmt.Sprintf("%s/backup/%d", constant.DmpFiles, roomID)
 	count, err := utils.RemoveFilesOlderThan(backupPath, days)
 	if err != nil {
 		logger.Logger.Errorf("清理备份文件失败, err: %v", err)

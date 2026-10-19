@@ -3,8 +3,8 @@ package aichat
 import (
 	"bytes"
 	"context"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
-	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -75,7 +75,7 @@ func (c *aiClient) complete(ctx context.Context, config models.AIModelConfig, me
 		return "", fmt.Errorf("创建大模型请求失败: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", fmt.Sprintf("DMP-AI/%s", utils.Version))
+	req.Header.Set("User-Agent", fmt.Sprintf("DMP-AI/%s", constant.Version))
 	if config.ChatApiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+config.ChatApiKey)
 	}

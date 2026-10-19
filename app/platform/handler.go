@@ -3,6 +3,7 @@ package platform
 import (
 	"context"
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
@@ -639,7 +640,7 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 			return
 		}
 		imageParse := *reqForm.ImageParse
-		if cache.OsType == utils.Darwin {
+		if cache.OsType == constant.Darwin {
 			imageParse = false
 		}
 		h.installTmiPlugin(c, reqForm.Proxy, imageParse)
@@ -860,9 +861,9 @@ func (h *Handler) updateTmiPlugin(c *gin.Context) bool {
 func pluginDirectory(name string) string {
 	switch name {
 	case models.PluginTmi:
-		return utils.PluginTmiPath
+		return constant.PluginTmiPath
 	case models.PluginChat:
-		return utils.PluginAiChatPath
+		return constant.PluginAiChatPath
 	default:
 		return ""
 	}
