@@ -94,6 +94,7 @@ rm -rf "$DST_DIR/steamapps/appmanifest_343050.acf"
 cd "$WORK_DIR" || error_exit
 # 2026年10月09日 新版本dst不兼容steam自带的GNU Standard C++ Library
 # cp steamcmd/linux32/libstdc++.so.6 dst/bin/lib32/
+ln -sfn /usr/lib/i386-linux-gnu/libstdc++.so.6 "$DST_DIR/bin/lib32/libstdc++.so.6"
 if [[ "${OS}" == "ubuntu" || "${OS}" == "debian" ]]; then
 	[ ! -L "dst/bin64/lib64/libcurl-gnutls.so.4" ] && ln -sf /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4 dst/bin64/lib64/libcurl-gnutls.so.4
 	[ ! -L "dst/bin/lib32/libcurl-gnutls.so.4" ] && ln -sf /usr/lib/i386-linux-gnu/libcurl-gnutls.so.4 dst/bin/lib32/libcurl-gnutls.so.4
