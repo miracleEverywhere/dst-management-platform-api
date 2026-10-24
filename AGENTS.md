@@ -22,7 +22,7 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - `i18n/`：全局基础文案与 `BaseI18n`/`ExtendedI18n` 实现；各业务模块的 `i18n.go` 基于它合并本模块词条。
 - `database/models/`：GORM 模型；`database/dao/`：数据访问；`database/db/`：SQLite 初始化、迁移和缓存。
 - `dst/`：DST 房间、世界、模组、玩家、地图、日志和进程控制。
-- `tex/`：Klei TEX（KTEX）图集解包，供 `-console stex` 和 TMI 插件安装使用；只包含解包链路，不含打包/压缩。
+- `tex/`：Klei TEX（KTEX）图集解包，供 TMI 插件安装和地图资源提取使用；只包含解包链路，不含打包/压缩。
 - `scheduler/`：全局及房间级定时任务。
 - `middleware/`：JWT、权限、缓存和限流中间件。
 - `webhook/`：Webhook 事件、签名和异步发送。
@@ -67,7 +67,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 
 启动服务会创建数据库、日志、`dmp_files/` 和手动安装脚本，并启动可能访问网络或操作 DST 进程的调度任务。不要把启动服务作为普通代码修改的默认验证步骤。
 
-可用启动参数包括 `-bind`、`-dbpath`、`-level`、`-cert`、`-key`、`-no-http-compress`、`-v`、`-pprof` 和 `-console`。`-cert` 与 `-key` 同时提供时启动 HTTPS；`-level debug` 只调整日志等级与 Gin 模式；`-pprof` 单独开启 pprof 路由，会暴露运行数据，不应在生产环境启用；`-console` 执行一次控制台命令（`reset_password`、`list_user`、`db_stats`、`stex`、`help`）后退出；其中 `-console stex` 用 `-i`（可重复）指定 atlas key xml、`-o` 指定输出目录，解包 TEX 图集。
+可用启动参数包括 `-bind`、`-dbpath`、`-level`、`-cert`、`-key`、`-no-http-compress`、`-v`、`-pprof` 和 `-console`。`-cert` 与 `-key` 同时提供时启动 HTTPS；`-level debug` 只调整日志等级与 Gin 模式；`-pprof` 单独开启 pprof 路由，会暴露运行数据，不应在生产环境启用；`-console` 执行一次控制台命令（`reset_password`、`list_user`、`db_stats`、`help`）后退出。
 
 ## 修改规则
 
