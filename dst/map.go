@@ -66,7 +66,7 @@ const (
 	// maxMapAssetRefs 单次返回的资源引用上限。
 	maxMapAssetRefs = 4096
 	// maxMapPlayers 单世界返回的在线玩家上限。
-	maxMapPlayers = 32
+	maxMapPlayers = 64
 	// maxMapPlayerNameRunes 玩家名 rune 上限。
 	maxMapPlayerNameRunes = 48
 
