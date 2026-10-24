@@ -8,7 +8,6 @@ import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/tex"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"io"
@@ -298,7 +297,7 @@ func texToPng(string) ([]models.DstImage, error) {
 	}
 	for _, inventoryimage := range inventoryimages {
 		xmlPath := filepath.Join(gameImagesPath, "images", inventoryimage+".xml")
-		outputDir, _, err := tex.Unpack(xmlPath, gameImagesPath)
+		outputDir, _, err := utils.Unpack(xmlPath, gameImagesPath)
 		if err != nil {
 			cleanTexOutput(inventoryimages)
 			logger.Logger.Errorf("游戏tex: %s 转png失败: %v", inventoryimage, err)

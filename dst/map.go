@@ -9,7 +9,6 @@ import (
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/tex"
 	"dst-management-platform-api/utils"
 	"encoding/base64"
 	"encoding/binary"
@@ -2130,7 +2129,7 @@ func ExtractMapAssets(ctx context.Context, kind string, names []string) map[stri
 		if err != nil {
 			continue
 		}
-		outputDir, _, unpackErr := tex.Unpack(xmlPath, tempDir)
+		outputDir, _, unpackErr := utils.Unpack(xmlPath, tempDir)
 		if unpackErr != nil {
 			logger.Logger.Warnf("地图解包图集失败, atlas: %s, err: %v", xmlName, unpackErr)
 			_ = os.RemoveAll(tempDir)
@@ -2304,7 +2303,7 @@ func readStandaloneKTex(name string) ([]byte, int, int, error) {
 				continue
 			}
 
-			atlas, err := tex.ReadKTex(path)
+			atlas, err := utils.ReadKTex(path)
 			if err != nil {
 				return nil, 0, 0, err
 			}

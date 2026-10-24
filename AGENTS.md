@@ -22,11 +22,10 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - `i18n/`：全局基础文案与 `BaseI18n`/`ExtendedI18n` 实现；各业务模块的 `i18n.go` 基于它合并本模块词条。
 - `database/models/`：GORM 模型；`database/dao/`：数据访问；`database/db/`：SQLite 初始化、迁移和缓存。
 - `dst/`：DST 房间、世界、模组、玩家、地图、日志和进程控制。
-- `tex/`：Klei TEX（KTEX）图集解包，供 TMI 插件安装和地图资源提取使用；只包含解包链路，不含打包/压缩。
 - `scheduler/`：全局及房间级定时任务。
 - `middleware/`：JWT、权限、缓存和限流中间件。
 - `webhook/`：Webhook 事件、签名和异步发送。
-- `utils/`：共享工具函数（路径、命令、安全校验等）；`logger/`：Zap 日志、访问日志、panic 捕获与运行时崩溃输出。
+- `utils/`：共享工具函数（路径、命令、安全校验等）；Klei TEX（KTEX）图集解包在 `utils/tex.go`，供 TMI 插件安装和地图资源提取使用，只包含解包链路，不含打包/压缩；`logger/`：Zap 日志、访问日志、panic 捕获与运行时崩溃输出。
 - `embedFS/`：通过 `go:embed` 打包的前端、LuaJIT 库和安装脚本。
 - `docs/`：项目文档及图片资源。
 - `.agents/skills/`：本仓库的 agent 技能说明（`frontend-project`、`no-test`、`sandbox`、`zh-cn`），按任务类型加载。
