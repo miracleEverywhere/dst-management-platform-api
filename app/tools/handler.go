@@ -1078,7 +1078,7 @@ func (h *Handler) fillMapAssets(ctx context.Context, mapData *dst.MapFull) {
 		if len(names) == 0 {
 			continue
 		}
-		assets := dst.ExtractMapAssets(ctx, gameBuild, kind, names)
+		assets := dst.ExtractMapAssets(ctx, kind, names)
 		if len(assets) == 0 {
 			continue
 		}
@@ -1125,12 +1125,8 @@ func (h *Handler) fillMapAssets(ctx context.Context, mapData *dst.MapFull) {
 			}
 		}
 		terrain = append(terrain, dst.MapAssetRef{
-			Name:   name,
-			Kind:   "tile",
-			PNG:    row.Image,
-			Width:  row.Width,
-			Height: row.Height,
-			SHA256: row.SHA256,
+			Name: name,
+			PNG:  row.Image,
 		})
 	}
 	mapData.Assets = terrain
@@ -1162,146 +1158,4 @@ func mapImageKey(kind, name string) string {
 	return kind + "\x00" + strings.ToLower(name)
 }
 
-// mapAssetGet 按需返回地图图标/地形贴图。先查 map_images，不存在再用内置 TEX 解包生成并缓存。
 var mapAssetExtractMutex sync.Mutex
-
-func (h *Handler) mapAssetGet(c *gin.Context) {
-	type ReqForm struct {
-		Name string `form:"name"`
-		Kind string `form:"kind"`
-		V    string `form:"v"`
-	}
-	var reqForm ReqForm
-	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
-	name := strings.TrimSpace(reqForm.Name)
-	kind := strings.TrimSpace(reqForm.Kind)
-	gameBuild := strings.TrimSpace(reqForm.V)
-	if gameBuild == "" {
-		gameBuild = "unknown"
-	}
-	if !validMapAssetName(name) || (kind != "icon" && kind != "tile") || !validMapAssetBuild(gameBuild) {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-	if h.mapImageDao == nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	image, err := h.mapImageDao.Get(name, kind, gameBuild)
-	if err == nil && image != nil && image.Image != "" {
-		c.Header("Cache-Control", "no-store")
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mapImageData(image)})
-		return
-	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		logger.Logger.Errorf("地图资源查询失败, name: %s, kind: %s, build: %s, err: %v", name, kind, gameBuild, err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(c.Request.Context(), dst.MapAssetRequestTimeoutSeconds*time.Second)
-	defer cancel()
-
-	// 同一时刻只允许一个请求解包图集；拿到锁后重新查一次 DB，
-	// 避免前端并发请求同一个图集时重复解包。
-	mapAssetExtractMutex.Lock()
-	defer mapAssetExtractMutex.Unlock()
-
-	image, err = h.mapImageDao.Get(name, kind, gameBuild)
-	if err == nil && image != nil && image.Image != "" {
-		c.Header("Cache-Control", "no-store")
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mapImageData(image)})
-		return
-	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		logger.Logger.Errorf("地图资源查询失败, name: %s, kind: %s, build: %s, err: %v", name, kind, gameBuild, err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	assets := dst.ExtractMapAssets(ctx, gameBuild, kind, []string{name})
-	asset, ok := assets[name]
-	if !ok {
-		for key, value := range assets {
-			if strings.EqualFold(key, name) {
-				asset, ok = value, true
-				break
-			}
-		}
-	}
-	if !ok {
-		c.JSON(http.StatusOK, gin.H{"code": 404, "message": message.Get(c, "map asset not found"), "data": nil})
-		return
-	}
-
-	records := make([]models.MapImage, 0, len(assets))
-	for _, item := range assets {
-		records = append(records, models.MapImage{
-			Name:      item.Name,
-			Kind:      item.Kind,
-			GameBuild: gameBuild,
-			Version:   models.MapImageVersion,
-			Image:     item.ImageBase64,
-			Width:     item.Width,
-			Height:    item.Height,
-			SHA256:    item.SHA256,
-		})
-	}
-	if err := h.mapImageDao.UpsertMany(records); err != nil {
-		logger.Logger.Warnf("地图资源缓存失败, atlas item: %s, kind: %s, build: %s, err: %v", name, kind, gameBuild, err)
-	}
-
-	c.Header("Cache-Control", "no-store")
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mapImageData(&models.MapImage{
-		Name:   asset.Name,
-		Kind:   asset.Kind,
-		Image:  asset.ImageBase64,
-		Width:  asset.Width,
-		Height: asset.Height,
-		SHA256: asset.SHA256,
-	})})
-}
-
-func mapImageData(image *models.MapImage) gin.H {
-	return gin.H{
-		"name":   image.Name,
-		"kind":   image.Kind,
-		"image":  image.Image,
-		"width":  image.Width,
-		"height": image.Height,
-		"sha256": image.SHA256,
-	}
-}
-
-func validMapAssetName(name string) bool {
-	if len(name) < 1 || len(name) > 128 {
-		return false
-	}
-	for _, char := range name {
-		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
-			(char >= '0' && char <= '9') || char == '_' || char == '-' || char == '.' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
-func validMapAssetBuild(build string) bool {
-	if len(build) < 1 || len(build) > 32 {
-		return false
-	}
-	for _, char := range build {
-		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
-			(char >= '0' && char <= '9') || char == '_' || char == '-' || char == '.' {
-			continue
-		}
-		return false
-	}
-	return true
-}

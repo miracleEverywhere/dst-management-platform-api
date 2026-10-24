@@ -39,21 +39,6 @@ func (d *MapImageDAO) GetMany(kind, gameBuild string, names []string) (map[strin
 	return result, nil
 }
 
-func (d *MapImageDAO) Get(name, kind, gameBuild string) (*models.MapImage, error) {
-	var image models.MapImage
-	err := d.db.Where("name = ? AND kind = ? AND game_build = ? AND version = ?",
-		name, kind, gameBuild, models.MapImageVersion).First(&image).Error
-	if err != nil {
-		return nil, err
-	}
-	return &image, nil
-}
-
-// Upsert 写入或覆盖一张图片。图片内容由存档/游戏资源决定，重新生成时直接覆盖。
-func (d *MapImageDAO) Upsert(image *models.MapImage) error {
-	return d.UpsertMany([]models.MapImage{*image})
-}
-
 // UpsertMany 批量写入/覆盖图片，主要用于一次解包整个图集后的缓存。
 func (d *MapImageDAO) UpsertMany(images []models.MapImage) error {
 	if len(images) == 0 {
