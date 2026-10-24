@@ -1,8 +1,6 @@
 package server
 
-import (
-	"flag"
-)
+import "flag"
 
 var (
 	bindPort          int

@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"context"
+	"crypto/sha256"
 	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
@@ -10,6 +12,7 @@ import (
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +20,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -383,92 +387,6 @@ func (h *Handler) announcePut(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
-}
-
-func (h *Handler) mapGet(c *gin.Context) {
-	type ReqForm struct {
-		RoomID  int `form:"roomID"`
-		WorldID int `form:"worldID"`
-	}
-	var reqForm ReqForm
-	if err := c.ShouldBindQuery(&reqForm); err != nil {
-		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
-	if reqForm.RoomID == 0 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	mapData, err := game.GenerateBackgroundMap(reqForm.WorldID)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "generate map fail"), "data": nil})
-		return
-	}
-
-	type Prefab struct {
-		Name string `json:"name"`
-		X    int    `json:"x"`
-		Y    int    `json:"y"`
-	}
-	var Prefabs []Prefab
-
-	// 猪王 出生门 月台 岩浆池 绿洲 蚁狮 旋涡 巨大蜂窝
-	var prefabs = []string{
-		"pigking", "multiplayer_portal", "moonbase", "lava_pond",
-		"oasislake", "antlion", "oceanwhirlbigportal", "beequeenhivegrown",
-	}
-
-	for _, prefab := range prefabs {
-		cmd := fmt.Sprintf("print(c_findnext('%s').Transform:GetWorldPosition())", prefab)
-		x, y, err := game.GetCoordinate(cmd, reqForm.WorldID)
-		if err != nil {
-			logger.Logger.Warnf("坐标获取失败，跳过, err: %v, prefab: %s", err, prefab)
-			continue
-		}
-		X, Y := game.CoordinateToPx(mapData.Height, x, y)
-		Prefabs = append(Prefabs, Prefab{
-			Name: prefab,
-			X:    X,
-			Y:    Y,
-		})
-	}
-
-	count := game.CountPrefabs(reqForm.WorldID)
-
-	players := game.PlayerPosition(reqForm.WorldID)
-	for index := range players {
-		players[index].Coordinate.X, players[index].Coordinate.Y = game.CoordinateToPx(mapData.Height, players[index].Coordinate.X, players[index].Coordinate.Y)
-	}
-
-	type Data struct {
-		Image   dst.MapData          `json:"image"`
-		Prefabs []Prefab             `json:"prefabs"`
-		Count   []dst.PrefabItem     `json:"count"`
-		Players []dst.PlayerPosition `json:"players"`
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": Data{
-		Image:   mapData,
-		Prefabs: Prefabs,
-		Count:   count,
-		Players: players,
-	}})
 }
 
 func tokenPost(c *gin.Context) {
@@ -927,3 +845,317 @@ func (h *Handler) aiEmbeddingIndexCancel(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "embedding build cancel success"), "data": nil})
 }
+
+// mapWorldContext 统一地图接口的 roomID/worldID 校验：参数、房间权限、世界归属。
+// 校验失败时已经写好响应，调用方直接 return。
+func (h *Handler) mapWorldContext(c *gin.Context, roomID, worldID int) (*models.Room, *[]models.World, *models.RoomSetting, string, bool) {
+	if roomID <= 0 || worldID <= 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return nil, nil, nil, "", false
+	}
+	if !h.hasPermission(c, strconv.Itoa(roomID)) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return nil, nil, nil, "", false
+	}
+
+	room, worlds, roomSetting, err := dao.FetchGameInfo(roomID)
+	if err != nil {
+		logger.Logger.Errorf("地图获取房间信息失败, roomID: %d, err: %v", roomID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return nil, nil, nil, "", false
+	}
+
+	for _, world := range *worlds {
+		if world.ID == worldID {
+			return room, worlds, roomSetting, world.WorldName, true
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+	return nil, nil, nil, "", false
+}
+
+// mapGet 返回完整世界地图（实时从存档生成）以及可选的实时在线玩家。
+func (h *Handler) mapGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID  int    `form:"roomID"`
+		WorldID int    `form:"worldID"`
+		Players string `form:"players"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	probePlayers := true
+	if value := strings.TrimSpace(reqForm.Players); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || (parsed != 0 && parsed != 1) {
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+			return
+		}
+		probePlayers = parsed == 1
+	}
+
+	room, worlds, roomSetting, worldName, ok := h.mapWorldContext(c, reqForm.RoomID, reqForm.WorldID)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), dst.MapRequestTimeoutSeconds*time.Second)
+	defer cancel()
+
+	lockCtx, cancelLock := context.WithTimeout(ctx, dst.MapLockWaitSeconds*time.Second)
+	release, err := cache.AcquireMap(lockCtx, reqForm.RoomID, reqForm.WorldID)
+	cancelLock()
+	if err != nil {
+		logger.Logger.Warnf("地图等待生成锁超时, roomID: %d, worldID: %d, err: %v", reqForm.RoomID, reqForm.WorldID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "map busy"), "data": nil})
+		return
+	}
+	defer release()
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	mapData, err := game.GenerateFullMap(ctx, reqForm.WorldID)
+	if err != nil {
+		switch {
+		case errors.Is(err, dst.ErrMapSaveNotFound):
+			logger.Logger.Warnf("地图存档不存在, roomID: %d, worldID: %d, worldName: %s, err: %v", reqForm.RoomID, reqForm.WorldID, worldName, err)
+			c.JSON(http.StatusOK, gin.H{"code": 404, "message": message.Get(c, "map save not found"), "data": nil})
+		case errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(ctx.Err(), context.Canceled):
+			logger.Logger.Warnf("地图生成超时或被取消, roomID: %d, worldID: %d, worldName: %s", reqForm.RoomID, reqForm.WorldID, worldName)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "map busy"), "data": nil})
+		default:
+			logger.Logger.Errorf("地图生成失败, roomID: %d, worldID: %d, worldName: %s, err: %v", reqForm.RoomID, reqForm.WorldID, worldName, err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "map parse fail"), "data": nil})
+		}
+		return
+	}
+
+	assetCtx, cancelAssets := context.WithTimeout(ctx, dst.MapAssetFillTimeoutSeconds*time.Second)
+	h.fillMapAssets(assetCtx, &mapData)
+	cancelAssets()
+
+	if probePlayers {
+		mapData.Players = game.PlayerPositions(ctx, reqForm.WorldID)
+		if mapData.Players.Error != "" {
+			logger.Logger.Warnf("地图在线玩家获取失败, roomID: %d, worldID: %d, err: %s", reqForm.RoomID, reqForm.WorldID, mapData.Players.Error)
+		}
+	} else {
+		mapData.Players = dst.MapPlayers{
+			ProbedAt:     time.Now().UTC(),
+			WorldRunning: game.WorldUpStatus(reqForm.WorldID),
+			List:         []dst.MapPlayer{},
+		}
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mapData})
+}
+
+// mapPlayersGet 只刷新在线玩家位置，不重新解析地图。
+// 前端拿到地图后可以每 x 秒调用一次，只移动玩家图标。
+func (h *Handler) mapPlayersGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID  int `form:"roomID"`
+		WorldID int `form:"worldID"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	room, worlds, roomSetting, worldName, ok := h.mapWorldContext(c, reqForm.RoomID, reqForm.WorldID)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), dst.MapPlayersRequestTimeoutSeconds*time.Second)
+	defer cancel()
+
+	lockCtx, cancelLock := context.WithTimeout(ctx, dst.MapLockWaitSeconds*time.Second)
+	release, err := cache.AcquireMap(lockCtx, reqForm.RoomID, reqForm.WorldID)
+	cancelLock()
+	if err != nil {
+		logger.Logger.Warnf("地图玩家刷新等待锁超时, roomID: %d, worldID: %d, err: %v", reqForm.RoomID, reqForm.WorldID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "map busy"), "data": nil})
+		return
+	}
+	defer release()
+
+	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	players := game.PlayerPositions(ctx, reqForm.WorldID)
+	if players.Error != "" {
+		logger.Logger.Warnf("地图在线玩家刷新失败, roomID: %d, worldID: %d, worldName: %s, err: %s",
+			reqForm.RoomID, reqForm.WorldID, worldName, players.Error)
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": players})
+}
+
+// fillMapAssets 把地形贴图直接填进 assets，并把 minimap 图标打包进 iconAtlas。
+// 先查 map_images，缺失的再解包并回写；超时或资源缺失时保留空 PNG，由前端回退。
+func (h *Handler) fillMapAssets(ctx context.Context, mapData *dst.MapFull) {
+	if mapData == nil || h.mapImageDao == nil {
+		return
+	}
+
+	mapAssetExtractMutex.Lock()
+	defer mapAssetExtractMutex.Unlock()
+
+	gameBuild := strings.TrimSpace(mapData.GameBuild)
+	if gameBuild == "" {
+		gameBuild = "unknown"
+	}
+
+	icons := make([]string, 0, len(mapData.Prefabs))
+	tiles := make([]string, 0, len(mapData.Assets))
+	seen := make(map[string]struct{}, len(mapData.Prefabs)+len(mapData.Assets))
+	for _, prefab := range mapData.Prefabs {
+		name := prefab.Icon
+		if name == "" {
+			continue
+		}
+		if !strings.HasSuffix(name, ".png") {
+			name += ".png"
+		}
+		key := mapImageKey("icon", name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		icons = append(icons, name)
+	}
+	for _, ref := range mapData.Assets {
+		if ref.Name == "" {
+			continue
+		}
+		key := mapImageKey("tile", ref.Name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		tiles = append(tiles, ref.Name)
+	}
+
+	rows := make(map[string]models.MapImage, len(icons)+len(tiles))
+	load := func(kind string, names []string) bool {
+		if len(names) == 0 {
+			return true
+		}
+		got, err := h.mapImageDao.GetMany(kind, gameBuild, names)
+		if err != nil {
+			logger.Logger.Warnf("地图图片查询失败, kind: %s, build: %s, err: %v", kind, gameBuild, err)
+			return false
+		}
+		for _, row := range got {
+			rows[mapImageKey(kind, row.Name)] = row
+		}
+		return true
+	}
+	if !load("icon", icons) || !load("tile", tiles) {
+		return
+	}
+
+	missing := map[string][]string{"icon": {}, "tile": {}}
+	for _, name := range icons {
+		if row, ok := rows[mapImageKey("icon", name)]; !ok || row.Image == "" {
+			missing["icon"] = append(missing["icon"], name)
+		}
+	}
+	for _, name := range tiles {
+		if row, ok := rows[mapImageKey("tile", name)]; !ok || row.Image == "" {
+			missing["tile"] = append(missing["tile"], name)
+		}
+	}
+
+	for _, kind := range []string{"icon", "tile"} {
+		names := missing[kind]
+		if len(names) == 0 {
+			continue
+		}
+		assets := dst.ExtractMapAssets(ctx, kind, names)
+		if len(assets) == 0 {
+			continue
+		}
+		records := make([]models.MapImage, 0, len(assets))
+		for _, asset := range assets {
+			record := models.MapImage{
+				Name:      asset.Name,
+				Kind:      asset.Kind,
+				GameBuild: gameBuild,
+				Version:   models.MapImageVersion,
+				Image:     asset.ImageBase64,
+				Width:     asset.Width,
+				Height:    asset.Height,
+				SHA256:    asset.SHA256,
+			}
+			records = append(records, record)
+			rows[mapImageKey(kind, asset.Name)] = record
+		}
+		if err := h.mapImageDao.UpsertMany(records); err != nil {
+			logger.Logger.Warnf("地图图片缓存失败, kind: %s, build: %s, err: %v", kind, gameBuild, err)
+		}
+	}
+
+	terrain := make([]dst.MapAssetRef, 0, len(tiles))
+	normalizedRows := make([]models.MapImage, 0)
+	for _, name := range tiles {
+		key := mapImageKey("tile", name)
+		row, ok := rows[key]
+		if !ok || row.Image == "" {
+			continue
+		}
+		// 兼容旧缓存：如果仍是 256px，按当前策略重压后再返回。
+		if row.Width > dst.MapTileTextureSide || row.Height > dst.MapTileTextureSide || row.Width == 0 {
+			if png, width, height, ok := dst.NormalizeMapAssetBase64("tile", row.Image); ok {
+				row.Image = png
+				row.Width = width
+				row.Height = height
+				row.Version = models.MapImageVersion
+				if data, err := base64.StdEncoding.DecodeString(png); err == nil {
+					row.SHA256 = fmt.Sprintf("%x", sha256.Sum256(data))
+				}
+				rows[key] = row
+				normalizedRows = append(normalizedRows, row)
+			}
+		}
+		terrain = append(terrain, dst.MapAssetRef{
+			Name: name,
+			PNG:  row.Image,
+		})
+	}
+	mapData.Assets = terrain
+	if len(normalizedRows) > 0 {
+		if err := h.mapImageDao.UpsertMany(normalizedRows); err != nil {
+			logger.Logger.Warnf("地图旧图片重新压缩失败, build: %s, err: %v", gameBuild, err)
+		}
+	}
+
+	iconImages := make(map[string]dst.MapAssetData, len(icons))
+	for _, name := range icons {
+		row, ok := rows[mapImageKey("icon", name)]
+		if !ok || row.Image == "" {
+			continue
+		}
+		iconImages[name] = dst.MapAssetData{
+			Name:        name,
+			Kind:        "icon",
+			ImageBase64: row.Image,
+			Width:       row.Width,
+			Height:      row.Height,
+			SHA256:      row.SHA256,
+		}
+	}
+	mapData.IconAtlas = dst.BuildMapIconAtlas(iconImages)
+}
+
+func mapImageKey(kind, name string) string {
+	return kind + "\x00" + strings.ToLower(name)
+}
+
+var mapAssetExtractMutex sync.Mutex
