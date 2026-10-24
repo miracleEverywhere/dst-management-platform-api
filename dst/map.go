@@ -52,6 +52,8 @@ const (
 	maxMapWormholes = 1024
 	// maxMapPayloadBytes 单次响应的 JSON 上限。
 	maxMapPayloadBytes = 32 << 20
+	// maxMapAssetRefs 单次返回的资源引用上限。
+	maxMapAssetRefs = 4096
 	// maxMapPlayers 单世界返回的在线玩家上限。
 	maxMapPlayers = 32
 	// maxMapPlayerNameRunes 玩家名 rune 上限。
@@ -61,6 +63,10 @@ const (
 	MapRequestTimeoutSeconds = 20
 	// MapPlayersRequestTimeoutSeconds 仅刷新玩家位置的请求超时（秒）。
 	MapPlayersRequestTimeoutSeconds = 10
+	// MapAssetRequestTimeoutSeconds 按需解包地图资源的请求超时（秒）。
+	MapAssetRequestTimeoutSeconds = 30
+	// MapAssetFillTimeoutSeconds 地图主请求内预填图片的时间预算（秒）。
+	MapAssetFillTimeoutSeconds = 15
 	// MapLockWaitSeconds 同一世界等待生成锁的上限（秒）。
 	MapLockWaitSeconds = 10
 	// mapPlayersWaitMillis 等待玩家命令输出 marker 的上限（毫秒）。
@@ -167,14 +173,18 @@ type MapSkeleton struct {
 
 type MapAssetRef struct {
 	Name   string `json:"name"`
+	Kind   string `json:"kind,omitempty"`
+	PNG    string `json:"png,omitempty"`
+	Width  int    `json:"width,omitempty"`
+	Height int    `json:"height,omitempty"`
 	SHA256 string `json:"sha256,omitempty"`
 }
 
 type MapIconAtlas struct {
-	Name   string           `json:"name,omitempty"`
-	Width  int              `json:"width,omitempty"`
-	Height int              `json:"height,omitempty"`
-	Rects  map[string][]int `json:"rects,omitempty"`
+	Width  int              `json:"width"`
+	Height int              `json:"height"`
+	PNG    string           `json:"png"`
+	Rects  map[string][]int `json:"rects"`
 }
 
 type MapPlayers struct {
@@ -285,6 +295,8 @@ func buildMapFull(save *worldSave, world *worldSaveData) (MapFull, error) {
 	if err != nil {
 		return MapFull{}, err
 	}
+	tileSpecs := buildMapTileSpecs(save.TileNames, save.TileIDs)
+	assets := buildMapAssetRefs(tileSpecs)
 
 	fullMap := MapFull{
 		SchemaVersion: 1,
@@ -299,7 +311,7 @@ func buildMapFull(save *worldSave, world *worldSaveData) (MapFull, error) {
 		HasOcean:      save.HasOcean,
 		Clock:         save.Clock,
 		World:         save.World,
-		TileSpecs:     buildMapTileSpecs(save.TileNames, save.TileIDs),
+		TileSpecs:     tileSpecs,
 		Tiles:         tiles,
 		TileBytes:     2,
 		Prefabs:       prefabs,
@@ -309,8 +321,8 @@ func buildMapFull(save *worldSave, world *worldSaveData) (MapFull, error) {
 		Wormholes:     save.Wormholes,
 		Labels:        save.Labels,
 		Skeletons:     save.Skeletons,
-		Assets:        []MapAssetRef{},
-		IconAtlas:     MapIconAtlas{},
+		Assets:        assets,
+		IconAtlas:     MapIconAtlas{Rects: map[string][]int{}},
 		Players: MapPlayers{
 			List: []MapPlayer{},
 		},
@@ -362,10 +374,14 @@ func encodeMapObjects(entities []rawEntity) ([]MapPrefab, string, int, map[strin
 			}
 			index = uint16(len(prefabs))
 			prefabIndex[entity.Prefab] = index
+			icon := meta.Icon
+			if icon != "" && !strings.HasSuffix(icon, ".png") {
+				icon += ".png"
+			}
 			prefabs = append(prefabs, MapPrefab{
 				Name:  entity.Prefab,
 				Layer: meta.Layer,
-				Icon:  meta.Icon,
+				Icon:  icon,
 				EN:    meta.EN,
 				ZH:    meta.ZH,
 			})
@@ -410,14 +426,40 @@ func buildMapTileSpecs(tileNames map[int]string, tileIDs []uint16) []MapTileSpec
 	}
 
 	specs := make([]MapTileSpec, 0, len(ids))
+	defs := loadMapTileDefs()
 	for _, id := range ids {
 		name := tileNames[id]
 		if !isSafeMapTileName(name) {
 			name = fmt.Sprintf("TILE_%d", id)
 		}
-		specs = append(specs, MapTileSpec{ID: id, Name: name})
+		spec := MapTileSpec{ID: id, Name: name}
+		if def, ok := defs[name]; ok {
+			spec.Noise = def.Noise
+			spec.Tint = def.Tint
+		}
+		specs = append(specs, spec)
 	}
 	return specs
+}
+
+// buildMapAssetRefs 列出地图用到的地形贴图；PNG 在 mapGet 里补进 assets。
+// 图标不放在 assets，而是打包进 iconAtlas。
+func buildMapAssetRefs(tiles []MapTileSpec) []MapAssetRef {
+	refs := make([]MapAssetRef, 0, len(tiles))
+	seen := make(map[string]struct{}, len(tiles))
+	for _, tile := range tiles {
+		name := tile.Noise
+		if name == "" || len(refs) >= maxMapAssetRefs {
+			continue
+		}
+		key := strings.ToLower(name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		refs = append(refs, MapAssetRef{Name: name, Kind: "tile"})
+	}
+	return refs
 }
 
 func encodeMapBase64(raw []byte) (string, error) {
@@ -1373,15 +1415,20 @@ var mapItemPrefabs = map[string]bool{
 
 func mapPrefabMeta(name string) mapPrefabInfo {
 	lower := strings.ToLower(name)
+	iconOverride, hasIconOverride := mapPrefabIconName(lower)
 	if info, ok := mapCuratedPrefabs[lower]; ok {
-		if info.Icon == "" && isSafeMapToken(lower) {
+		if hasIconOverride {
+			info.Icon = iconOverride
+		} else if info.Icon == "" && isSafeMapToken(lower) {
 			info.Icon = lower
 		}
 		return info
 	}
 
 	info := mapPrefabInfo{Layer: "other"}
-	if isSafeMapToken(lower) {
+	if hasIconOverride {
+		info.Icon = iconOverride
+	} else if isSafeMapToken(lower) {
 		info.Icon = lower
 	}
 
@@ -1428,6 +1475,28 @@ func validMapLayer(layer string) bool {
 	default:
 		return false
 	}
+}
+
+// mapPrefabIconName 补齐游戏 minimap 图标名与 prefab 名不一致的情况：
+// deciduoustree 实际使用 tree_leaf，花没有独立 minimap 图标，退回通用花朵图标。
+func mapPrefabIconName(lower string) (string, bool) {
+	if strings.HasPrefix(lower, "deciduoustree") {
+		switch {
+		case strings.Contains(lower, "stump"):
+			return "tree_leaf_stump", true
+		case strings.Contains(lower, "burnt"):
+			return "tree_leaf_burnt", true
+		default:
+			return "tree_leaf", true
+		}
+	}
+	switch lower {
+	case "flower", "flower_evil", "flower_withered":
+		return "flowers", true
+	case "flower_cave":
+		return "bulb_plant", true
+	}
+	return "", false
 }
 
 func isSafeMapToken(value string) bool {

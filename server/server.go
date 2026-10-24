@@ -59,6 +59,7 @@ func Run() {
 	uidMapDao := dao.NewUidMapDAO(db.DB)
 	pluginDao := dao.NewPluginDAO(db.DB)
 	dstImageDao := dao.NewDstImageDAO(db.DB)
+	mapImageDao := dao.NewMapImageDAO(db.DB)
 	roomAISettingDao := dao.NewRoomAISettingDAO(db.DB)
 	modInfoDao := dao.NewModInfoDAO(db.DB)
 
@@ -128,7 +129,7 @@ func Run() {
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao, aiManager).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, systemDao, roomAISettingDao, aiManager).RegisterRoutes(r)
+	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, mapImageDao, systemDao, roomAISettingDao, aiManager).RegisterRoutes(r)
 	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao, globalSettingDao).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))

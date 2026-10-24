@@ -2,6 +2,7 @@ package server
 
 import (
 	"flag"
+	"strings"
 )
 
 var (
@@ -14,7 +15,19 @@ var (
 	key               string
 	noHttpCompression bool
 	pprof             bool
+	stexInput         stringList
+	stexOutput        string
 )
+
+// stringList 让同一个 flag 可以重复指定，用于 -console stex 的多份图集。
+type stringList []string
+
+func (l *stringList) String() string { return strings.Join(*l, ",") }
+
+func (l *stringList) Set(value string) error {
+	*l = append(*l, value)
+	return nil
+}
 
 func bindFlags() {
 	flag.IntVar(&bindPort, "bind", 80, "DMP端口, 如: -bind 8080")
@@ -26,5 +39,7 @@ func bindFlags() {
 	flag.BoolVar(&versionShow, "v", false, "查看版本, 如: -v")
 	flag.BoolVar(&pprof, "pprof", false, "是否开启pprof")
 	flag.StringVar(&consoleCmd, "console", "", "控制台命令, 如: -console help")
+	flag.Var(&stexInput, "i", "stex输入，可重复指定多个xml, 如: -i a.xml -i b.xml")
+	flag.StringVar(&stexOutput, "o", "", "stex输出目录, 如: -o dmp_files/dst_images")
 	flag.Parse()
 }

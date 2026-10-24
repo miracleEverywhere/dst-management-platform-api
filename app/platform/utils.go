@@ -8,13 +8,13 @@ import (
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/tex"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -130,8 +130,8 @@ type Partition struct {
 	PageSize int `json:"pageSize" form:"pageSize"`
 }
 
+// stexDir 是旧版本下载的 Stex 二进制目录，现在改用内置解包，仅保留用于升级清理
 const stexDir = constant.PluginTmiPath + "/stex"
-const StexBin = stexDir + "/bin/stex"
 const tmirID = constant.TmirID
 const gameImagesPath = constant.PluginTmiPath + "/dst_images"
 const aiChatWikiURL = "https://raw.githubusercontent.com/miracleEverywhere/dst-management-platform-api/master/aichat/wiki/wiki.zip"
@@ -198,13 +198,13 @@ func installAiChatWiki(proxy string) error {
 }
 
 // 初始化Tmi工具，仅支持ubuntu24及以上
-func initTmi(proxy string, step int) (int, []models.DstImage, error) {
+func initTmi(step int) (int, []models.DstImage, error) {
 	steps := []struct {
 		fn   func(string) ([]models.DstImage, error)
 		code int
 	}{
 		{installDependency, 1},
-		{installStex, 2},
+		{removeStex, 2},
 		{unzipDstImages, 3},
 		{texToPng, 4},
 		{installTMIR, 5},
@@ -224,7 +224,7 @@ func initTmi(proxy string, step int) (int, []models.DstImage, error) {
 	)
 
 	for i := startIndex; i < len(steps); i++ {
-		images, err = steps[i].fn(proxy)
+		images, err = steps[i].fn("")
 		if err != nil {
 			return steps[i].code, []models.DstImage{}, err
 		}
@@ -233,52 +233,11 @@ func initTmi(proxy string, step int) (int, []models.DstImage, error) {
 	return 100, images, nil
 }
 
-// 安装依赖
-func installDependency(less string) ([]models.DstImage, error) {
-	var (
-		images  []models.DstImage
-		cmdArgs []string
-	)
+// 安装依赖，使用内置 TEX 解包后只依赖 unzip
+func installDependency(string) ([]models.DstImage, error) {
+	var images []models.DstImage
 
-	if less == "1" {
-		cmdArgs = []string{
-			"install",
-			"-y",
-			"unzip",
-		}
-	} else {
-		cmdArgs = []string{
-			"install",
-			"-y",
-			"libxcb-glx0",
-			"libx11-xcb1",
-			"libxkbcommon-x11-0",
-			"libxcb-cursor0",
-			"libxcb-icccm4",
-			"libxcb-image0",
-			"libxcb-keysyms1",
-			"libxcb-randr0",
-			"libxcb-render-util0",
-			"libxcb-shm0",
-			"libxcb-sync1",
-			"libxcb-xfixes0",
-			"libxcb-render0",
-			"libxcb-shape0",
-			"libxcb-xkb1",
-			"libsm6",
-			"libice6",
-			"libwayland-egl1",
-			"libwayland-client0",
-			"libwayland-cursor0",
-			"libglx0",
-			"libopengl0",
-			"libegl1",
-			"libharfbuzz0b",
-			"libpcre2-16-0",
-			"unzip",
-		}
-	}
-	cmd := exec.Command("apt", cmdArgs...)
+	cmd := exec.Command("apt", "install", "-y", "unzip")
 	if _, err := cmd.CombinedOutput(); err != nil {
 		logger.Logger.Errorf("安装依赖失败: %v", err)
 		return images, fmt.Errorf("安装依赖失败: %v", err)
@@ -287,72 +246,11 @@ func installDependency(less string) ([]models.DstImage, error) {
 	return images, nil
 }
 
-// 安装stex
-func installStex(proxy string) ([]models.DstImage, error) {
+// 旧版本会下载安装 Stex 二进制，现在改用内置 TEX 解包，这里清理遗留的安装目录
+func removeStex(string) ([]models.DstImage, error) {
 	var images []models.DstImage
 
-	// 幂等
 	_ = utils.RemoveDir(stexDir)
-
-	_ = utils.EnsureDirExists(stexDir)
-	filename := "Stex_v0.6_Linux_Static_x64.24.04.g++-14.zip"
-	url := "https://github.com/oblivioncth/Stexatlaser/releases/download/v0.6/" + filename
-	if proxy != "" {
-		if proxy[len(proxy)-1] != '/' {
-			proxy += "/"
-		}
-		url = fmt.Sprintf("%s%s", proxy, url)
-	}
-	client := &http.Client{
-		Timeout: constant.HttpTimeout * time.Second,
-	}
-	resp, err := client.Get(url)
-	if err != nil {
-		logger.Logger.Errorf("下载Stex失败: %v", err)
-		return images, fmt.Errorf("下载Stex失败: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		logger.Logger.Errorf("下载Stex失败，HTTP代码: %d", resp.Status)
-		return images, fmt.Errorf("下载Stex失败，HTTP代码: %d", resp.StatusCode)
-	}
-	filePath := filepath.Join(stexDir, filename)
-	out, err := os.Create(filePath)
-	if err != nil {
-		_ = utils.RemoveDir(stexDir)
-		logger.Logger.Errorf("下载Stex失败: %v", err)
-		return images, fmt.Errorf("下载Stex失败: %v", err)
-	}
-	defer out.Close()
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		_ = utils.RemoveDir(stexDir)
-		logger.Logger.Errorf("下载Stex失败: %v", err)
-		return images, fmt.Errorf("下载Stex失败: %v", err)
-	}
-	cmdArgs := []string{
-		filePath,
-		"-d",
-		stexDir,
-	}
-	cmd := exec.Command("unzip", cmdArgs...)
-	if _, err := cmd.CombinedOutput(); err != nil {
-		_ = utils.RemoveDir(stexDir)
-		logger.Logger.Errorf("解压Stex失败: %v", err)
-		return images, fmt.Errorf("解压Stex失败: %v", err)
-	}
-	cmd = exec.Command("chmod", "+x", StexBin)
-	if _, err := cmd.CombinedOutput(); err != nil {
-		_ = utils.RemoveDir(stexDir)
-		logger.Logger.Errorf("添加Stex执行权限失败: %v", err)
-		return images, fmt.Errorf("添加Stex执行权限失败: %v", err)
-	}
-	cmd = exec.Command(StexBin, "-v")
-	if _, err := cmd.CombinedOutput(); err != nil {
-		_ = utils.RemoveDir(stexDir)
-		logger.Logger.Errorf("stex执行失败: %v", err)
-		return images, fmt.Errorf("stex执行失败: %v", err)
-	}
 
 	return images, nil
 }
@@ -388,7 +286,7 @@ func unzipDstImages(string) ([]models.DstImage, error) {
 	return images, nil
 }
 
-// 游戏tex文件转为png文件 dmp_files/stex/bin/stex unpack -i dmp_files/dst_images/images/inventoryimages[1 2 3 4].xml -o dmp_files/dst_images
+// 游戏tex文件转为png文件，使用内置 TEX 解包
 func texToPng(string) ([]models.DstImage, error) {
 	var images []models.DstImage
 
@@ -399,36 +297,60 @@ func texToPng(string) ([]models.DstImage, error) {
 		"inventoryimages4",
 	}
 	for _, inventoryimage := range inventoryimages {
-		cmdArgs := []string{
-			"unpack",
-			"-i",
-			fmt.Sprintf("%s/images/%s.xml", gameImagesPath, inventoryimage),
-			"-o",
-			gameImagesPath,
-		}
-		cmd := exec.Command(StexBin, cmdArgs...)
-		if _, err := cmd.CombinedOutput(); err != nil {
-			for _, dir := range inventoryimages {
-				_ = utils.RemoveDir(path.Join(gameImagesPath, dir))
-			}
-			_ = utils.BashCMD(fmt.Sprintf("rm -f %s/*.png", gameImagesPath))
+		xmlPath := filepath.Join(gameImagesPath, "images", inventoryimage+".xml")
+		outputDir, _, err := tex.Unpack(xmlPath, gameImagesPath)
+		if err != nil {
+			cleanTexOutput(inventoryimages)
 			logger.Logger.Errorf("游戏tex: %s 转png失败: %v", inventoryimage, err)
 			return images, fmt.Errorf("游戏tex: %s 转png失败: %v", inventoryimage, err)
 		}
-		err := utils.BashCMD(fmt.Sprintf("cp %s/%s/*.png %s/", gameImagesPath, inventoryimage, gameImagesPath))
-		if err != nil {
-			for _, dir := range inventoryimages {
-				_ = utils.RemoveDir(path.Join(gameImagesPath, dir))
-			}
-			_ = utils.BashCMD(fmt.Sprintf("rm -f %s/*.png", gameImagesPath))
+		if err := movePngFiles(outputDir, gameImagesPath); err != nil {
+			cleanTexOutput(inventoryimages)
 			logger.Logger.Errorf("整理png文件失败: %v", err)
 			return images, fmt.Errorf("整理png文件失败: %v", err)
 		}
-		_ = utils.RemoveDir(fmt.Sprintf("%s/%s/*", gameImagesPath, inventoryimage))
+		_ = utils.RemoveDir(outputDir)
 	}
-	_ = utils.RemoveDir(fmt.Sprintf("%s/images", gameImagesPath))
+	_ = utils.RemoveDir(filepath.Join(gameImagesPath, "images"))
 
 	return images, nil
+}
+
+// movePngFiles 把解包目录里的 png 移到图集根目录，前端按 <prefab>.png 读取
+func movePngFiles(srcDir, dstDir string) error {
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".png") {
+			continue
+		}
+		if err := os.Rename(filepath.Join(srcDir, entry.Name()), filepath.Join(dstDir, entry.Name())); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// cleanTexOutput 清理本次生成的部分产物，避免失败后留下残缺数据
+func cleanTexOutput(inventoryimages []string) {
+	entries, err := os.ReadDir(gameImagesPath)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".png") {
+			continue
+		}
+		_ = os.Remove(filepath.Join(gameImagesPath, entry.Name()))
+	}
+
+	for _, inventoryimage := range inventoryimages {
+		_ = utils.RemoveDir(filepath.Join(gameImagesPath, inventoryimage))
+	}
 }
 
 // 安装TMIR 与 获取 翻译文件

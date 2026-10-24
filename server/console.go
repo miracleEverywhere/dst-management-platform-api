@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/database/db"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/tex"
 	"dst-management-platform-api/utils"
 	"fmt"
 	"os"
@@ -29,6 +30,8 @@ func runConsole(cmd, dbPath string) {
 		listUser(dbPath)
 	case "db_stats":
 		dbStats(dbPath)
+	case "stex":
+		stexUnpack()
 	case "help":
 		consoleInfo(cmd)
 	default:
@@ -166,6 +169,28 @@ func dbStats(dbPath string) {
 	fmt.Printf("%-25s %10d\n", "合计", totalRows)
 }
 
+// stexUnpack 解包 TEX 图集，等价于 stex unpack -i <xml> -o <目录>
+func stexUnpack() {
+	if len(stexInput) == 0 || stexOutput == "" {
+		fmt.Println("用法: ./dmp -console stex -i <atlas key.xml> [-i ...] -o <输出目录>")
+		fmt.Println("示例: ./dmp -console stex -i dmp_files/dst_images/images/inventoryimages1.xml -o dmp_files/dst_images")
+		os.Exit(1)
+	}
+
+	total := 0
+	for _, input := range stexInput {
+		dir, count, err := tex.Unpack(input, stexOutput)
+		if err != nil {
+			fmt.Printf("解包失败: %s: %v\n", input, err)
+			os.Exit(1)
+		}
+		fmt.Printf("解包完成: %s -> %s（%d 张图片）\n", input, dir, count)
+		total += count
+	}
+
+	fmt.Printf("共生成 %d 张图片\n", total)
+}
+
 func formatSize(size int64) string {
 	const unit = 1024
 	if size < unit {
@@ -187,6 +212,7 @@ func consoleInfo(cmd string) {
 	fmt.Println("  reset_password    重置用户密码")
 	fmt.Println("  list_user         列出所有用户")
 	fmt.Println("  db_stats          查看数据库统计")
+	fmt.Println("  stex              解包 TEX 图集（等价 stex unpack）")
 	fmt.Println("  help              显示本信息")
 	fmt.Println()
 	os.Exit(1)

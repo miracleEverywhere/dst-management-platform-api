@@ -688,7 +688,7 @@ func (h *Handler) installTmiPlugin(c *gin.Context, proxy string, imageParse bool
 
 		step := plugin.Step
 
-		step, images, installErr = initTmi(proxy, step)
+		step, images, installErr = initTmi(step)
 		plugin.Step = step
 		if installErr != nil {
 			if !updateDb(plugin) {

@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"crypto/sha256"
 	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/database/dao"
@@ -11,6 +12,7 @@ import (
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +20,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -930,6 +933,10 @@ func (h *Handler) mapGet(c *gin.Context) {
 		return
 	}
 
+	assetCtx, cancelAssets := context.WithTimeout(ctx, dst.MapAssetFillTimeoutSeconds*time.Second)
+	h.fillMapAssets(assetCtx, &mapData)
+	cancelAssets()
+
 	if probePlayers {
 		mapData.Players = game.PlayerPositions(ctx, reqForm.WorldID)
 		if mapData.Players.Error != "" {
@@ -988,4 +995,313 @@ func (h *Handler) mapPlayersGet(c *gin.Context) {
 
 	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": players})
+}
+
+// fillMapAssets 把地形贴图直接填进 assets，并把 minimap 图标打包进 iconAtlas。
+// 先查 map_images，缺失的再解包并回写；超时或资源缺失时保留空 PNG，由前端回退。
+func (h *Handler) fillMapAssets(ctx context.Context, mapData *dst.MapFull) {
+	if mapData == nil || h.mapImageDao == nil {
+		return
+	}
+
+	mapAssetExtractMutex.Lock()
+	defer mapAssetExtractMutex.Unlock()
+
+	gameBuild := strings.TrimSpace(mapData.GameBuild)
+	if gameBuild == "" {
+		gameBuild = "unknown"
+	}
+
+	icons := make([]string, 0, len(mapData.Prefabs))
+	tiles := make([]string, 0, len(mapData.Assets))
+	seen := make(map[string]struct{}, len(mapData.Prefabs)+len(mapData.Assets))
+	for _, prefab := range mapData.Prefabs {
+		name := prefab.Icon
+		if name == "" {
+			continue
+		}
+		if !strings.HasSuffix(name, ".png") {
+			name += ".png"
+		}
+		key := mapImageKey("icon", name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		icons = append(icons, name)
+	}
+	for _, ref := range mapData.Assets {
+		if ref.Name == "" {
+			continue
+		}
+		key := mapImageKey("tile", ref.Name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		tiles = append(tiles, ref.Name)
+	}
+
+	rows := make(map[string]models.MapImage, len(icons)+len(tiles))
+	load := func(kind string, names []string) bool {
+		if len(names) == 0 {
+			return true
+		}
+		got, err := h.mapImageDao.GetMany(kind, gameBuild, names)
+		if err != nil {
+			logger.Logger.Warnf("地图图片查询失败, kind: %s, build: %s, err: %v", kind, gameBuild, err)
+			return false
+		}
+		for _, row := range got {
+			rows[mapImageKey(kind, row.Name)] = row
+		}
+		return true
+	}
+	if !load("icon", icons) || !load("tile", tiles) {
+		return
+	}
+
+	missing := map[string][]string{"icon": {}, "tile": {}}
+	for _, name := range icons {
+		if row, ok := rows[mapImageKey("icon", name)]; !ok || row.Image == "" {
+			missing["icon"] = append(missing["icon"], name)
+		}
+	}
+	for _, name := range tiles {
+		if row, ok := rows[mapImageKey("tile", name)]; !ok || row.Image == "" {
+			missing["tile"] = append(missing["tile"], name)
+		}
+	}
+
+	for _, kind := range []string{"icon", "tile"} {
+		names := missing[kind]
+		if len(names) == 0 {
+			continue
+		}
+		assets := dst.ExtractMapAssets(ctx, gameBuild, kind, names)
+		if len(assets) == 0 {
+			continue
+		}
+		records := make([]models.MapImage, 0, len(assets))
+		for _, asset := range assets {
+			record := models.MapImage{
+				Name:      asset.Name,
+				Kind:      asset.Kind,
+				GameBuild: gameBuild,
+				Version:   models.MapImageVersion,
+				Image:     asset.ImageBase64,
+				Width:     asset.Width,
+				Height:    asset.Height,
+				SHA256:    asset.SHA256,
+			}
+			records = append(records, record)
+			rows[mapImageKey(kind, asset.Name)] = record
+		}
+		if err := h.mapImageDao.UpsertMany(records); err != nil {
+			logger.Logger.Warnf("地图图片缓存失败, kind: %s, build: %s, err: %v", kind, gameBuild, err)
+		}
+	}
+
+	terrain := make([]dst.MapAssetRef, 0, len(tiles))
+	normalizedRows := make([]models.MapImage, 0)
+	for _, name := range tiles {
+		key := mapImageKey("tile", name)
+		row, ok := rows[key]
+		if !ok || row.Image == "" {
+			continue
+		}
+		// 兼容旧缓存：如果仍是 256px，按当前策略重压后再返回。
+		if row.Width > dst.MapTileTextureSide || row.Height > dst.MapTileTextureSide || row.Width == 0 {
+			if png, width, height, ok := dst.NormalizeMapAssetBase64("tile", row.Image); ok {
+				row.Image = png
+				row.Width = width
+				row.Height = height
+				row.Version = models.MapImageVersion
+				if data, err := base64.StdEncoding.DecodeString(png); err == nil {
+					row.SHA256 = fmt.Sprintf("%x", sha256.Sum256(data))
+				}
+				rows[key] = row
+				normalizedRows = append(normalizedRows, row)
+			}
+		}
+		terrain = append(terrain, dst.MapAssetRef{
+			Name:   name,
+			Kind:   "tile",
+			PNG:    row.Image,
+			Width:  row.Width,
+			Height: row.Height,
+			SHA256: row.SHA256,
+		})
+	}
+	mapData.Assets = terrain
+	if len(normalizedRows) > 0 {
+		if err := h.mapImageDao.UpsertMany(normalizedRows); err != nil {
+			logger.Logger.Warnf("地图旧图片重新压缩失败, build: %s, err: %v", gameBuild, err)
+		}
+	}
+
+	iconImages := make(map[string]dst.MapAssetData, len(icons))
+	for _, name := range icons {
+		row, ok := rows[mapImageKey("icon", name)]
+		if !ok || row.Image == "" {
+			continue
+		}
+		iconImages[name] = dst.MapAssetData{
+			Name:        name,
+			Kind:        "icon",
+			ImageBase64: row.Image,
+			Width:       row.Width,
+			Height:      row.Height,
+			SHA256:      row.SHA256,
+		}
+	}
+	mapData.IconAtlas = dst.BuildMapIconAtlas(iconImages)
+}
+
+func mapImageKey(kind, name string) string {
+	return kind + "\x00" + strings.ToLower(name)
+}
+
+// mapAssetGet 按需返回地图图标/地形贴图。先查 map_images，不存在再用内置 TEX 解包生成并缓存。
+var mapAssetExtractMutex sync.Mutex
+
+func (h *Handler) mapAssetGet(c *gin.Context) {
+	type ReqForm struct {
+		Name string `form:"name"`
+		Kind string `form:"kind"`
+		V    string `form:"v"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	name := strings.TrimSpace(reqForm.Name)
+	kind := strings.TrimSpace(reqForm.Kind)
+	gameBuild := strings.TrimSpace(reqForm.V)
+	if gameBuild == "" {
+		gameBuild = "unknown"
+	}
+	if !validMapAssetName(name) || (kind != "icon" && kind != "tile") || !validMapAssetBuild(gameBuild) {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+	if h.mapImageDao == nil {
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	image, err := h.mapImageDao.Get(name, kind, gameBuild)
+	if err == nil && image != nil && image.Image != "" {
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mapImageData(image)})
+		return
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.Logger.Errorf("地图资源查询失败, name: %s, kind: %s, build: %s, err: %v", name, kind, gameBuild, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), dst.MapAssetRequestTimeoutSeconds*time.Second)
+	defer cancel()
+
+	// 同一时刻只允许一个请求解包图集；拿到锁后重新查一次 DB，
+	// 避免前端并发请求同一个图集时重复解包。
+	mapAssetExtractMutex.Lock()
+	defer mapAssetExtractMutex.Unlock()
+
+	image, err = h.mapImageDao.Get(name, kind, gameBuild)
+	if err == nil && image != nil && image.Image != "" {
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mapImageData(image)})
+		return
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.Logger.Errorf("地图资源查询失败, name: %s, kind: %s, build: %s, err: %v", name, kind, gameBuild, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	assets := dst.ExtractMapAssets(ctx, gameBuild, kind, []string{name})
+	asset, ok := assets[name]
+	if !ok {
+		for key, value := range assets {
+			if strings.EqualFold(key, name) {
+				asset, ok = value, true
+				break
+			}
+		}
+	}
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"code": 404, "message": message.Get(c, "map asset not found"), "data": nil})
+		return
+	}
+
+	records := make([]models.MapImage, 0, len(assets))
+	for _, item := range assets {
+		records = append(records, models.MapImage{
+			Name:      item.Name,
+			Kind:      item.Kind,
+			GameBuild: gameBuild,
+			Version:   models.MapImageVersion,
+			Image:     item.ImageBase64,
+			Width:     item.Width,
+			Height:    item.Height,
+			SHA256:    item.SHA256,
+		})
+	}
+	if err := h.mapImageDao.UpsertMany(records); err != nil {
+		logger.Logger.Warnf("地图资源缓存失败, atlas item: %s, kind: %s, build: %s, err: %v", name, kind, gameBuild, err)
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mapImageData(&models.MapImage{
+		Name:   asset.Name,
+		Kind:   asset.Kind,
+		Image:  asset.ImageBase64,
+		Width:  asset.Width,
+		Height: asset.Height,
+		SHA256: asset.SHA256,
+	})})
+}
+
+func mapImageData(image *models.MapImage) gin.H {
+	return gin.H{
+		"name":   image.Name,
+		"kind":   image.Kind,
+		"image":  image.Image,
+		"width":  image.Width,
+		"height": image.Height,
+		"sha256": image.SHA256,
+	}
+}
+
+func validMapAssetName(name string) bool {
+	if len(name) < 1 || len(name) > 128 {
+		return false
+	}
+	for _, char := range name {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '_' || char == '-' || char == '.' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func validMapAssetBuild(build string) bool {
+	if len(build) < 1 || len(build) > 32 {
+		return false
+	}
+	for _, char := range build {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '_' || char == '-' || char == '.' {
+			continue
+		}
+		return false
+	}
+	return true
 }

@@ -20,18 +20,20 @@ type Handler struct {
 	worldDao         *dao.WorldDAO
 	roomSettingDao   *dao.RoomSettingDAO
 	dstImageDao      *dao.DstImageDAO
+	mapImageDao      *dao.MapImageDAO
 	systemDao        *dao.SystemDAO
 	roomAISettingDao *dao.RoomAISettingDAO
 	aiManager        *aichat.Manager
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, dstImageDao *dao.DstImageDAO, systemDao *dao.SystemDAO, roomAISettingDao *dao.RoomAISettingDAO, aiManager *aichat.Manager) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, dstImageDao *dao.DstImageDAO, mapImageDao *dao.MapImageDAO, systemDao *dao.SystemDAO, roomAISettingDao *dao.RoomAISettingDAO, aiManager *aichat.Manager) *Handler {
 	return &Handler{
 		roomDao:          roomDao,
 		userDao:          userDao,
 		worldDao:         worldDao,
 		roomSettingDao:   roomSettingDao,
 		dstImageDao:      dstImageDao,
+		mapImageDao:      mapImageDao,
 		systemDao:        systemDao,
 		roomAISettingDao: roomAISettingDao,
 		aiManager:        aiManager,
