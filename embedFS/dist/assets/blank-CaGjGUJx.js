@@ -1,0 +1,1 @@
+import{B as e,I as t,p as n,v as r}from"./runtime-core.esm-bundler-C1CWKYjf.js";import{D as i}from"./index-4lttKsEn.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(i,a){let s=e(`router-view`);return t(),n(`div`,o,[r(s)])}var c=i(a,[[`render`,s]]);export{c as default};
