@@ -84,6 +84,16 @@ var game = menuItem{
 			Icon:      "ri-ghost-line",
 			Links:     nil,
 		},
+		{
+			ID:        304,
+			Type:      "link",
+			Section:   "",
+			Title:     "gameFavorite",
+			To:        "/game/favorite",
+			Component: "game/favorite",
+			Icon:      "ri-bookmark-3-line",
+			Links:     nil,
+		},
 	},
 }
 

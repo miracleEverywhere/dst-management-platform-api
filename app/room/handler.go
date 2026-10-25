@@ -11,6 +11,7 @@ import (
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // createPost 创建房间
@@ -1360,4 +1362,372 @@ func (h *Handler) worldCustomStartupCmdPut(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
+}
+
+// favoritePost 收藏已有房间的 room/world/roomSetting 配置
+func (h *Handler) favoritePost(c *gin.Context) {
+	var req favoriteCreateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if req.RoomID <= 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	roomIDStr := strconv.Itoa(req.RoomID)
+	if !h.hasRoomPermission(c, roomIDStr) {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	room, err := h.roomDao.GetRoomByID(req.RoomID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "room not found"), "data": nil})
+			return
+		}
+		logger.Logger.Errorf("查询房间失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	worlds, err := h.worldDao.GetWorldsByRoomID(req.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("查询世界失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if len(*worlds) == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite no worlds"), "data": nil})
+		return
+	}
+
+	roomSetting, err := h.roomSettingDao.GetRoomSettingsByRoomID(req.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("查询房间设置失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	data := favoriteSnapshot(room, worlds, roomSetting)
+	raw, err := json.Marshal(data)
+	if err != nil {
+		logger.Logger.Errorf("序列化收藏数据失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	now := utils.GetTimestamp()
+	favorite := &models.Favorite{
+		Username:  c.GetString("username"),
+		Type:      FavoriteTypeDST,
+		Data:      string(raw),
+		Remark:    req.Remark,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	if err = h.favoriteDao.CreateFavorite(favorite); err != nil {
+		logger.Logger.Errorf("创建收藏失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	item := favoriteItemFromData(favorite, data)
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "favorite create success"), "data": item})
+}
+
+// favoriteGet 分页查询当前用户的 dst 收藏
+func (h *Handler) favoriteGet(c *gin.Context) {
+	var req favoriteListReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	username := c.GetString("username")
+	favorites, err := h.favoriteDao.ListFavorites(username, FavoriteTypeDST, req.Page, req.PageSize)
+	if err != nil {
+		logger.Logger.Errorf("查询收藏失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	items := make([]FavoriteItem, 0, len(favorites.Data))
+	for i := range favorites.Data {
+		item, err := favoriteItemFromModel(&favorites.Data[i])
+		if err != nil {
+			logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorites.Data[i].ID, err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "favorite data invalid"), "data": nil})
+			return
+		}
+		items = append(items, *item)
+	}
+
+	data := dao.PaginatedResult[FavoriteItem]{
+		Data:       items,
+		Page:       favorites.Page,
+		PageSize:   favorites.PageSize,
+		TotalCount: favorites.TotalCount,
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+}
+
+// favoriteDetailGet 查询当前用户的单条收藏
+func (h *Handler) favoriteDetailGet(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	favorite, err := h.favoriteDao.GetFavoriteByID(id, c.GetString("username"), FavoriteTypeDST)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite not found"), "data": nil})
+			return
+		}
+		logger.Logger.Errorf("查询收藏失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	item, err := favoriteItemFromModel(favorite)
+	if err != nil {
+		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorite.ID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "favorite data invalid"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": item})
+}
+
+// favoritePut 修改收藏备注
+func (h *Handler) favoritePut(c *gin.Context) {
+	var req favoriteUpdateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	if req.Remark == nil {
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	favorite, err := h.favoriteDao.GetFavoriteByID(req.ID, c.GetString("username"), FavoriteTypeDST)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite not found"), "data": nil})
+			return
+		}
+		logger.Logger.Errorf("查询收藏失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	favorite.Remark = *req.Remark
+	favorite.UpdatedAt = utils.GetTimestamp()
+
+	if err = h.favoriteDao.UpdateFavorite(favorite); err != nil {
+		logger.Logger.Errorf("更新收藏失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	item, err := favoriteItemFromModel(favorite)
+	if err != nil {
+		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorite.ID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "favorite data invalid"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "favorite update success"), "data": item})
+}
+
+// favoriteDelete 删除当前用户的收藏
+func (h *Handler) favoriteDelete(c *gin.Context) {
+	var req favoriteDeleteReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	rows, err := h.favoriteDao.DeleteFavorite(req.ID, c.GetString("username"), FavoriteTypeDST)
+	if err != nil {
+		logger.Logger.Errorf("删除收藏失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if rows == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite not found"), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "favorite delete success"), "data": nil})
+}
+
+// favoriteApplyPost 使用收藏创建新房间
+func (h *Handler) favoriteApplyPost(c *gin.Context) {
+	var req favoriteApplyReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	permission, err := h.hasCreatePermission(c)
+	if err != nil {
+		logger.Logger.Errorf("查询数据库失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	if !permission {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
+		return
+	}
+
+	favorite, err := h.favoriteDao.GetFavoriteByID(req.ID, c.GetString("username"), FavoriteTypeDST)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite not found"), "data": nil})
+			return
+		}
+		logger.Logger.Errorf("查询收藏失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	var data XRoomTotalInfo
+	if err = json.Unmarshal([]byte(favorite.Data), &data); err != nil {
+		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorite.ID, err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite data invalid"), "data": nil})
+		return
+	}
+	normalizeFavoriteData(&data)
+	if msgKey, arg := validateFavoriteData(&data); msgKey != "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": favoriteMessage(c, msgKey, arg), "data": nil})
+		return
+	}
+
+	// 与创建房间接口保持一致：创建房间时不携带自定义启动命令，避免命令注入。
+	// 如确实需要，可在房间创建后由管理员通过专用接口设置。
+	if clearFavoriteCustomStartupCmd(&data) {
+		logger.Logger.Warnf("应用收藏时已忽略自定义启动命令, favoriteID: %d, username: %s", favorite.ID, c.GetString("username"))
+	}
+
+	gameName := strings.TrimSpace(req.GameName)
+	if gameName == "" {
+		gameName = strings.TrimSpace(data.RoomData.GameName)
+	}
+	if gameName == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite room name required"), "data": nil})
+		return
+	}
+
+	room := data.RoomData
+	room.ID = 0
+	room.Status = true
+	room.GameName = gameName
+	if strings.TrimSpace(room.Token) == "" {
+		room.Token = utils.GetDstToken()
+	}
+	if strings.TrimSpace(room.ClusterKey) == "" {
+		room.ClusterKey = utils.RandomString(14)
+	}
+	if strings.TrimSpace(room.MasterIP) == "" {
+		room.MasterIP = "127.0.0.1"
+	}
+
+	roomCount, err := h.roomDao.Count(nil)
+	if err != nil {
+		logger.Logger.Errorf("查询房间数量失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+	worldCount, err := h.worldDao.Count(nil)
+	if err != nil {
+		logger.Logger.Errorf("查询世界数量失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	room.MasterPort = 21000 + int(roomCount) + 1
+	worlds := data.WorldData
+	for i := range worlds {
+		worlds[i].ID = 0
+		worlds[i].RoomID = 0
+		worlds[i].LastAliveTime = ""
+		worlds[i].ServerPort = 11000 + int(worldCount) + i + 1
+		worlds[i].MasterServerPort = 31000 + int(worldCount) + i + 1
+		worlds[i].AuthenticationPort = 41000 + int(worldCount) + i + 1
+	}
+
+	var ports []int
+	for _, world := range worlds {
+		ports = append(ports, world.ServerPort, world.MasterServerPort, world.AuthenticationPort)
+	}
+	if conflictPort := h.checkGamePort(ports, 0); conflictPort != 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "port conflict", conflictPort), "data": nil})
+		return
+	}
+
+	setting := data.RoomSettingData
+	setting.RoomID = 0
+
+	if err = h.roomDao.CreateConfiguration(&room, &worlds, &setting); err != nil {
+		logger.Logger.Errorf("创建房间失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+		return
+	}
+
+	game := dst.NewGameController(&room, &worlds, &setting, c.Request.Header.Get("X-I18n-Lang"))
+	if err = game.SaveAll(); err != nil {
+		logger.Logger.Errorf("配置写入磁盘失败, err: %v", err)
+		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "write file fail"), "data": nil})
+		return
+	}
+
+	processJobs(game, room.ID, setting)
+
+	if c.GetString("role") != "admin" {
+		if err = h.addRoomToUser(c.GetString("username"), strconv.Itoa(room.ID)); err != nil {
+			logger.Logger.Errorf("更新用户房间权限失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
+			return
+		}
+	}
+
+	webhook.Snd.Send(webhook.EventRoomCreated, room.ID, XRoomTotalInfo{
+		RoomData:        room,
+		WorldData:       worlds,
+		RoomSettingData: setting,
+	})
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "favorite apply success"), "data": room})
+}
+
+// addRoomToUser 将新房间加入非管理员用户的房间权限列表
+func (h *Handler) addRoomToUser(username, roomID string) error {
+	user, err := h.userDao.GetUserByUsername(username)
+	if err != nil {
+		return err
+	}
+
+	rooms := make([]string, 0)
+	if user.Rooms != "" {
+		rooms = strings.Split(user.Rooms, ",")
+	}
+	rooms = append(rooms, roomID)
+	user.Rooms = strings.Join(rooms, ",")
+
+	return h.userDao.UpdateUser(user)
 }

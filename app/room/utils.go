@@ -10,6 +10,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,18 +27,20 @@ type Handler struct {
 	userDao          *dao.UserDAO
 	worldDao         *dao.WorldDAO
 	roomSettingDao   *dao.RoomSettingDAO
+	favoriteDao      *dao.FavoriteDAO
 	globalSettingDao *dao.GlobalSettingDAO
 	uidMapDao        *dao.UidMapDAO
 	roomAISettingDao *dao.RoomAISettingDAO
 	aiManager        *aichat.Manager
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO, roomAISettingDao *dao.RoomAISettingDAO, aiManager *aichat.Manager) *Handler {
+func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, favoriteDao *dao.FavoriteDAO, globalSettingDao *dao.GlobalSettingDAO, uidMapDao *dao.UidMapDAO, roomAISettingDao *dao.RoomAISettingDAO, aiManager *aichat.Manager) *Handler {
 	return &Handler{
 		roomDao:          roomDao,
 		userDao:          userDao,
 		worldDao:         worldDao,
 		roomSettingDao:   roomSettingDao,
+		favoriteDao:      favoriteDao,
 		globalSettingDao: globalSettingDao,
 		uidMapDao:        uidMapDao,
 		roomAISettingDao: roomAISettingDao,
@@ -776,4 +779,149 @@ func (h *Handler) checkGamePort(ports []int, excludeRoomID int) int {
 	}
 
 	return 0
+}
+
+const FavoriteTypeDST = "dst"
+
+// FavoriteItem 收藏接口返回结构，Data 解析为 JSON 对象
+type FavoriteItem struct {
+	ID        int            `json:"id"`
+	Username  string         `json:"username"`
+	Type      string         `json:"type"`
+	Data      XRoomTotalInfo `json:"data"`
+	Remark    string         `json:"remark"`
+	CreatedAt int64          `json:"createdAt"`
+	UpdatedAt int64          `json:"updatedAt"`
+}
+
+type favoriteCreateReq struct {
+	RoomID int    `json:"roomID" binding:"required"`
+	Remark string `json:"remark"`
+}
+
+type favoriteUpdateReq struct {
+	ID     int     `json:"id" binding:"required"`
+	Remark *string `json:"remark" binding:"required"`
+}
+
+type favoriteDeleteReq struct {
+	ID int `json:"id" binding:"required"`
+}
+
+type favoriteListReq struct {
+	Partition
+}
+
+type favoriteApplyReq struct {
+	ID       int    `json:"id" binding:"required"`
+	GameName string `json:"gameName"`
+}
+
+// favoriteSnapshot 生成收藏快照，清空本地关联 ID，保留 token
+func favoriteSnapshot(room *models.Room, worlds *[]models.World, setting *models.RoomSetting) XRoomTotalInfo {
+	roomData := *room
+	roomData.ID = 0
+
+	worldData := make([]models.World, len(*worlds))
+	for i, world := range *worlds {
+		world.ID = 0
+		world.RoomID = 0
+		world.LastAliveTime = ""
+		worldData[i] = world
+	}
+
+	roomSetting := *setting
+	roomSetting.RoomID = 0
+
+	return XRoomTotalInfo{
+		RoomData:        roomData,
+		WorldData:       worldData,
+		RoomSettingData: roomSetting,
+	}
+}
+
+// normalizeFavoriteData 清空收藏数据中的本地关联 ID
+func normalizeFavoriteData(data *XRoomTotalInfo) {
+	data.RoomData.ID = 0
+	for i := range data.WorldData {
+		data.WorldData[i].ID = 0
+		data.WorldData[i].RoomID = 0
+		data.WorldData[i].LastAliveTime = ""
+	}
+	data.RoomSettingData.RoomID = 0
+}
+
+// validateFavoriteData 校验收藏数据，返回 i18n key 和格式化参数
+func validateFavoriteData(data *XRoomTotalInfo) (string, string) {
+	if len(data.WorldData) == 0 {
+		return "favorite no worlds", ""
+	}
+
+	if worldName, msgKey := validateWorldNames(data.WorldData); msgKey != "" {
+		return msgKey, worldName
+	}
+
+	if !utils.IsValidGameMode(data.RoomData.GameMode) {
+		return "favorite invalid game mode", ""
+	}
+	if data.RoomData.GameMode == "custom" && data.RoomData.CustomGameMode != "" && !utils.IsValidGameMode(data.RoomData.CustomGameMode) {
+		return "favorite invalid game mode", ""
+	}
+
+	if strings.TrimSpace(data.RoomSettingData.WebhookSetting) != "" {
+		var webhooks []webhook.WebhookItem
+		if err := json.Unmarshal([]byte(data.RoomSettingData.WebhookSetting), &webhooks); err != nil {
+			return "favorite invalid webhook", ""
+		}
+		for _, item := range webhooks {
+			if !utils.IsValidURL(item.URL) {
+				return "invalid url", ""
+			}
+		}
+	}
+
+	return "", ""
+}
+
+// clearFavoriteCustomStartupCmd 清空自定义启动命令，返回是否有内容被清空
+func clearFavoriteCustomStartupCmd(data *XRoomTotalInfo) bool {
+	cleared := false
+	for i := range data.WorldData {
+		if data.WorldData[i].CustomStartupCmd != "" {
+			data.WorldData[i].CustomStartupCmd = ""
+			cleared = true
+		}
+	}
+
+	return cleared
+}
+
+func favoriteItemFromModel(favorite *models.Favorite) (*FavoriteItem, error) {
+	var data XRoomTotalInfo
+	if err := json.Unmarshal([]byte(favorite.Data), &data); err != nil {
+		return nil, err
+	}
+
+	item := favoriteItemFromData(favorite, data)
+	return &item, nil
+}
+
+func favoriteItemFromData(favorite *models.Favorite, data XRoomTotalInfo) FavoriteItem {
+	return FavoriteItem{
+		ID:        favorite.ID,
+		Username:  favorite.Username,
+		Type:      favorite.Type,
+		Data:      data,
+		Remark:    favorite.Remark,
+		CreatedAt: favorite.CreatedAt,
+		UpdatedAt: favorite.UpdatedAt,
+	}
+}
+
+func favoriteMessage(c *gin.Context, msgKey, arg string) string {
+	if arg == "" {
+		return message.Get(c, msgKey)
+	}
+
+	return message.GetF(c, msgKey, arg)
 }

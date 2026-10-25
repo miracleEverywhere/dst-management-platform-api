@@ -29,6 +29,12 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			room.DELETE("", middleware.AdminOnly(), h.roomDelete)
 			room.POST("/webhook/test", middleware.TokenCheck(), webhookTestPost)
 			room.GET("/webhook/events", middleware.TokenCheck(), webhookEventsGet)
+			room.POST("/favorite", h.favoritePost)
+			room.GET("/favorite", h.favoriteGet)
+			room.GET("/favorite/:id", h.favoriteDetailGet)
+			room.PUT("/favorite", h.favoritePut)
+			room.DELETE("/favorite", h.favoriteDelete)
+			room.POST("/favorite/apply", h.favoriteApplyPost)
 		}
 	}
 }

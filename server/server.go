@@ -54,6 +54,7 @@ func Run() {
 	systemDao := dao.NewSystemDAO(db.DB)
 	roomDao := dao.NewRoomDAO(db.DB)
 	roomSettingDao := dao.NewRoomSettingDAO(db.DB)
+	favoriteDao := dao.NewFavoriteDAO(db.DB)
 	worldDao := dao.NewWorldDAO(db.DB)
 	globalSettingDao := dao.NewGlobalSettingDAO(db.DB)
 	uidMapDao := dao.NewUidMapDAO(db.DB)
@@ -124,7 +125,7 @@ func Run() {
 
 	// 初始化即注册路由
 	user.NewHandler(userDao).RegisterRoutes(r)
-	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager).RegisterRoutes(r)
+	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, favoriteDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager).RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao, userDao, modInfoDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao, aiManager).RegisterRoutes(r)
