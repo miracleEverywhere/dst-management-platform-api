@@ -1,1 +1,0 @@
-import{I as e,d as t}from"./runtime-core.esm-bundler-C1CWKYjf.js";import n from"./singleLog-TQ2vfD-7.js";var r={__name:`steam`,setup(r){return(r,i)=>(e(),t(n,{type:`steam`}))}};export{r as default};

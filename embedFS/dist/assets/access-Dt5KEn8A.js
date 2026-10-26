@@ -1,1 +1,0 @@
-import{I as e,d as t}from"./runtime-core.esm-bundler-C1CWKYjf.js";import n from"./singleLog-TQ2vfD-7.js";var r={__name:`access`,setup(r){return(r,i)=>(e(),t(n,{type:`access`}))}};export{r as default};
