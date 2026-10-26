@@ -54,6 +54,8 @@
 
 ## :cherries: 推广
 
+### 汉堡云
+
 [汉堡云服务器](https://hbyidc.com/recommend/OKkxTzgMP6k7)，专为饥荒打造！官方合作商「汉堡云」带来高性能游戏服务器，首月低至6折！
 
 - 云产品：NAT云（游戏云电脑）/ 云服务器ECS等多款上云产品
@@ -64,6 +66,19 @@
 **优惠码**：`DMPqd6666` [点我立即购买](https://hbyidc.com/recommend/OKkxTzgMP6k7)
 
 [![作者推荐](docs/images/zh/hbyun.png)](https://hbyidc.com/recommend/OKkxTzgMP6k7)
+
+### 星云工艺
+
+[星云工艺 · NebulaCraft](https://www.nebulacraft.cn/games/dst?utm_source=dmp-readme&utm_medium=referral&utm_campaign=readme-ad)，饥荒联机版游戏云面板服。**不用自己部署 DMP**：开通后直接使用房间管理面板，多世界 / 创意工坊模组 / 每日备份全部标配，**¥14/月起**！ <sub>DMP 合作推广</sub>
+
+- **机型分档**：E5-2680 v4 / Xeon 8272CL / Ryzen 9 7950X / 9950X 等，2 / 4 / 6 / 8 人档，预算优先或追求单核性能都能选
+- **多世界开服**：森林 + 洞穴开箱即用，可加购扩到最多 6 个世界，海难、火山、猪镇自由搭配
+- **模组与存档**：创意工坊模组一键启用（节点缓存加速）；ZIP 存档一键导入，配置 / 模组 / 地图一起迁移
+- **运维与保障**：镇江 / 宁波 BGP 三线 · 不限制核心，不限制内存 · SLA 99.95% · 开通 24 小时内如有不满意无理由全额退款
+
+**优惠码**：`DMPNEBULA`（首月6折） [点我立即开服](https://www.nebulacraft.cn/auth/register?aff=E288GU3C)
+
+[![星云工艺 - NebulaCraft 饥荒联机版游戏云](https://www.nebulacraft.cn/og-cover.jpg?v=20261026)](https://www.nebulacraft.cn/auth/register?aff=E288GU3C)
 
 ---
 
