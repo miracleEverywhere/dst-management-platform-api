@@ -55,6 +55,8 @@ Thanks to the following group members for their contributions to the AI chat kno
 
 ![Dashboard](images/en/dashboard.png)
 
+![Tool](images/en/map.png)
+
 ![Game](images/en/game.png)
 
 ![Mod](images/en/mod.png)

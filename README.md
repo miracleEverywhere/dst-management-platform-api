@@ -88,6 +88,8 @@
 
 ![控制面板](docs/images/zh/dashboard.png)
 
+![平台工具](docs/images/zh/map.png)
+
 ![游戏设置](docs/images/zh/game.png)
 
 ![模组设置](docs/images/zh/mod.png)
