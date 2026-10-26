@@ -4,9 +4,12 @@ import (
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
+	"dst-management-platform-api/i18n"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -114,35 +117,28 @@ func CacheControl() gin.HandlerFunc {
 	}
 }
 
-// LoginRateLimit 登录接口限速，同一IP 1秒内只能请求一次
+// LoginRateLimit 登录接口限速，同一用户名 1 秒内只能请求一次。
+// 以用户名为限流维度，避免伪造 X-Forwarded-For 绕过。
 func LoginRateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		now := time.Now()
+		username, err := extractLoginUsername(c)
 
-		loginRateLimiter.mu.Lock()
-
-		// 定期清理过期条目，防止内存泄漏
-		if loginRateLimiter.lastCleanup.Add(5 * time.Minute).Before(now) {
-			for k, v := range loginRateLimiter.items {
-				if now.Sub(v) > time.Second {
-					delete(loginRateLimiter.items, k)
-				}
-			}
-			loginRateLimiter.lastCleanup = now
-		}
-
-		lastTime, exists := loginRateLimiter.items[ip]
-		if exists && now.Sub(lastTime) < time.Second {
-			loginRateLimiter.mu.Unlock()
-			tooManyRequests(c, ip)
+		switch {
+		case errors.Is(err, errLoginBodyTooLarge):
+			logger.Logger.Warnf("登录请求体过大, ip: %s", c.ClientIP())
+			c.JSON(http.StatusOK, gin.H{"code": 400, "message": i18n.I18n.Get(c, "bad request"), "data": nil})
+			c.Abort()
+			return
+		case err != nil || username == "":
+			// 无法提取用户名，交给 loginPost 统一返回 400，该路径不会查库，也不会执行密码校验
+			c.Next()
 			return
 		}
-		if loginRateLimiter.items == nil {
-			loginRateLimiter.items = make(map[string]time.Time)
+
+		if !loginRateLimiter.allow(username, time.Now()) {
+			tooManyRequests(c, username)
+			return
 		}
-		loginRateLimiter.items[ip] = now
-		loginRateLimiter.mu.Unlock()
 
 		c.Next()
 	}
