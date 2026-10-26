@@ -569,6 +569,48 @@ func (h *Handler) getEnabledModsGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modsID})
 }
 
+func (h *Handler) modInfoPost(c *gin.Context) {
+	type ReqForm struct {
+		ModIDs []int `json:"modIDs"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		return
+	}
+
+	modIDs := make([]int, 0, len(reqForm.ModIDs))
+	seen := make(map[int]struct{}, len(reqForm.ModIDs))
+	for _, modID := range reqForm.ModIDs {
+		if modID <= 0 {
+			continue
+		}
+		if _, ok := seen[modID]; ok {
+			continue
+		}
+
+		seen[modID] = struct{}{}
+		modIDs = append(modIDs, modID)
+	}
+
+	mods := make([]dst.DownloadedMod, 0, len(modIDs))
+	for _, modID := range modIDs {
+		mods = append(mods, dst.DownloadedMod{ID: modID})
+	}
+
+	if len(mods) > 0 {
+		err := h.addDownloadedModInfo(&mods, c.Request.Header.Get("X-I18n-Lang"))
+		if err != nil {
+			logger.Logger.Errorf("获取模组信息失败, err: %v", err)
+			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "search fail"), "data": nil})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mods})
+}
+
 func (h *Handler) deletePost(c *gin.Context) {
 	type ReqForm struct {
 		RoomID  int    `json:"roomID"`

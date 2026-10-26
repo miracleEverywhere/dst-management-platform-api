@@ -14,6 +14,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		mod.Use(middleware.TokenCheck())
 		{
 			mod.GET("/search", h.modSearchGet)
+			mod.POST("/info", h.modInfoPost)
 			mod.POST("/download", h.downloadPost)
 			mod.GET("/download/status", h.downloadStatusGet)
 			mod.GET("/downloaded", h.downloadedModsGet)
