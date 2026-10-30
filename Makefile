@@ -8,6 +8,7 @@
 
 FRONTEND_DIR := $(HOME)/WebstormProjects/dst-management-platform-web
 EMBED_DIR := embedFS/dist
+LITE_ASSET := lite/dist-lite
 OUT_DIR := .
 RM := rm -rf
 CGO := CGO_ENABLED=0
@@ -30,7 +31,7 @@ else
     endif
 endif
 
-.PHONY: all frontend2backend backend-only frontend-only help
+.PHONY: all frontend2backend backend-only frontend-only lite help
 
 # 构建前端 构建后端
 all: frontend-only copy-frontend backend-only
@@ -38,6 +39,7 @@ all: frontend-only copy-frontend backend-only
 # 构建前端并将产物复制到后端
 frontend2backend: frontend-only copy-frontend
 
+lite-frontend2backend: lite-frontend-only lite-copy-frontend
 
 # 构建前端
 frontend-only:
@@ -57,8 +59,23 @@ copy-frontend:
 	$(RM) $(EMBED_DIR)/*
 	cp -r $(FRONTEND_DIR)/dist/* $(EMBED_DIR)/
 
+lite:
+	@echo "=== 正在编译后端(lite), 当前系统为: $(DETECTED_OS) ==="
+	$(CGO) go build -ldflags '-s -w' -v -tags=lite -o ~/dmp-lite
+
+lite-frontend-only:
+	@echo "=== 正在编译前端(lite), 当前系统为: $(DETECTED_OS) ==="
+	$(RM) $(FRONTEND_DIR)/dist-lite/*
+	cd $(FRONTEND_DIR); pnpm run build:lite
+
+lite-copy-frontend:
+	@echo "=== 正在复制前端(lite), 当前系统为: $(DETECTED_OS) ==="
+	$(RM) $(LITE_ASSET)/*
+	cp -r $(FRONTEND_DIR)/dist-lite/* $(LITE_ASSET)/
+
 help:
 	@echo "=== 正在打印帮助信息, 当前系统为: $(DETECTED_OS) ==="
 	@echo "make frontend2backend    构建前端并将产物复制到后端"
 	@echo "make backend-only        构建后端"
+	@echo "make lite                构建后端(lite)"
 	@echo "make all                 构建前端后构建后端"
