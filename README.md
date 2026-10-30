@@ -96,6 +96,12 @@
 
 ![平台总览](docs/images/zh/platform.png)
 
+### DMP Lite 精简版
+
+包含基本开服功能，仅占用8-10MB内存
+
+![控制面板-精简版](docs/images/zh/lite-dashboard.png)
+
 ---
 
 ## :sparkling_heart: 致谢
