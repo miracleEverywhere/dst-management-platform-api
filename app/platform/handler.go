@@ -70,7 +70,7 @@ func (h *Handler) overviewGet(c *gin.Context) {
 	// 运行时间
 	t := time.Since(utils.StartTime).Seconds()
 	// 内存占用
-	mem := getRES()
+	mem := utils.GetRES()
 	// 房间数
 	roomCount, err := h.roomDao.Count(nil)
 	if err != nil {

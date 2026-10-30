@@ -14,6 +14,9 @@ const HttpTimeout = 30
 // JwtExpirationHours 登录令牌过期时间
 const JwtExpirationHours = 24 * 3
 
+// JwtSecretBytes JWT 密钥随机字节数
+const JwtSecretBytes = 32
+
 // StaticCacheHours 静态资源缓存时间
 const StaticCacheHours = 24 * 7
 
