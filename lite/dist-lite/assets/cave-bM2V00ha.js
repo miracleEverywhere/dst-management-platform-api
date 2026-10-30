@@ -1,0 +1,1 @@
+import{F as e,f as t}from"./_plugin-vue_export-helper-5mGbvlCz.js";import n from"./WorldConfig-Dno2sVGd.js";var r={__name:`cave`,setup(r){return(r,i)=>(e(),t(n,{type:`cave`,title:`洞穴世界配置`}))}};export{r as default};

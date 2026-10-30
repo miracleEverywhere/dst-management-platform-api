@@ -1,0 +1,1 @@
+import{F as e,m as t,t as n,v as r,z as i}from"./_plugin-vue_export-helper-5mGbvlCz.js";var a={},o={class:`layout-wrapper layout-blank`,"data-allow-mismatch":``};function s(n,a){let s=i(`router-view`);return e(),t(`div`,o,[r(s)])}var c=n(a,[[`render`,s]]);export{c as default};
