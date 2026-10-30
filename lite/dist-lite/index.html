@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="饥荒管理平台(DMP)，满足一键开服、玩家管理、房间管理、数据统计、定时任务等功能">
+  <title>饥荒管理平台 DMP</title>
+  <link rel="stylesheet" type="text/css" href="/loader.css" />
+  <script type="module" crossorigin src="/assets/index-DCY8UPhr.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/_plugin-vue_export-helper-5mGbvlCz.js">
+  <link rel="modulepreload" crossorigin href="/assets/axios-DIpShK05.js">
+  <link rel="modulepreload" crossorigin href="/assets/VImg-CUcylIu_.js">
+  <link rel="modulepreload" crossorigin href="/assets/scopeId-DrSb3BQd.js">
+  <link rel="modulepreload" crossorigin href="/assets/display-08EoOIXr.js">
+  <link rel="modulepreload" crossorigin href="/assets/VOverlay-4M2pxjNL.js">
+  <link rel="modulepreload" crossorigin href="/assets/VAvatar-BkyhP3cY.js">
+  <link rel="stylesheet" crossorigin href="/assets/VImg-BH5AtLaC.css">
+  <link rel="stylesheet" crossorigin href="/assets/VOverlay-YfTteNzy.css">
+  <link rel="stylesheet" crossorigin href="/assets/VAvatar-C_t5T45P.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-C1NjtLIU.css">
+</head>
+
+<body>
+  <div id="app">
+    <div id="loading-bg">
+      <div class="loading-logo">
+        <!-- SVG Logo -->
+          <img
+            src="/dmp.svg"
+            alt="SVG Image"
+            style="width: 100px; height: auto;"
+          >
+      </div>
+      <div class="loading">
+        <div class="effect-1 effects"></div>
+        <div class="effect-2 effects"></div>
+        <div class="effect-3 effects"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const loaderColor = localStorage.getItem('materio-initial-loader-bg') || '#FFFFFF'
+      const primaryColor = localStorage.getItem('materio-initial-loader-color') || '#9155FD'
+
+      document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
+      document.documentElement.style.setProperty('--initial-loader-color', primaryColor)
+    })()
+  </script>
+</body>
+
+</html>

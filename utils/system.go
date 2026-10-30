@@ -18,6 +18,7 @@ import (
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/net"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
 var StartTime = time.Now()
@@ -619,6 +620,21 @@ func Unzip(zipFile, dest string) error {
 	}
 
 	return nil
+}
+
+// GetRES 获取dmp内存占用
+func GetRES() uint64 {
+	p, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		return 0
+	}
+
+	memoryInfo, err := p.MemoryInfo()
+	if err != nil {
+		return 0
+	}
+
+	return memoryInfo.RSS
 }
 
 // CpuUsage 获取cpu使用率

@@ -49,7 +49,10 @@ func (d *SystemDAO) initJWTSecret() {
 	jwtSecret, err := d.Get(models.JwtSecret)
 	if err != nil {
 		logger.Logger.Debug("没有发现jwt秘钥，创建中")
-		secret := utils.GenerateJWTSecret()
+		secret, genErr := utils.GenerateJWTSecret()
+		if genErr != nil {
+			panic("生成jwt秘钥失败: " + genErr.Error())
+		}
 		err = d.Set(models.JwtSecret, secret)
 		if err != nil {
 			panic("数据库初始化失败: " + err.Error())

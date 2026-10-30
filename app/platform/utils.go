@@ -23,7 +23,6 @@ import (
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
-	"github.com/shirou/gopsutil/v4/process"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -53,20 +52,6 @@ func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldD
 		dstImageDao:      dstImageDao,
 		aiManager:        aiManager,
 	}
-}
-
-func getRES() uint64 {
-	p, err := process.NewProcess(int32(os.Getpid()))
-	if err != nil {
-		return 0
-	}
-
-	memoryInfo, err := p.MemoryInfo()
-	if err != nil {
-		return 0
-	}
-
-	return memoryInfo.RSS
 }
 
 type OSInfo struct {
