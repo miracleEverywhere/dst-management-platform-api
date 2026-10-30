@@ -44,8 +44,9 @@ jobs:
           cp dmp-lite lite-package/
           cp -r lite/dist-lite lite-package/dist-lite
           cp embedFS/shell/manual_install.sh embedFS/shell/manual_update.sh lite-package/
-          chmod 755 lite-package/dmp-lite lite-package/manual_install.sh lite-package/manual_update.sh
-          tar zcf dmp-lite.tgz -C lite-package dmp-lite dist-lite manual_install.sh manual_update.sh
+          cp lite/run.sh lite-package/run.sh
+          chmod 755 lite-package/dmp-lite lite-package/manual_install.sh lite-package/manual_update.sh lite-package/run.sh
+          tar zcf dmp-lite.tgz -C lite-package dmp-lite dist-lite manual_install.sh manual_update.sh run.sh
           rm -rf lite-package
 
       - name: release
