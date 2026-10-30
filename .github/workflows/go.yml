@@ -19,10 +19,10 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v3
 
-      - name: Setup Go 1.25.4
+      - name: Setup Go 1.27.3
         uses: actions/setup-go@v5
         with:
-          go-version: 1.25.4
+          go-version: 1.27.3
 
       - name: build-linux
         env:
@@ -35,6 +35,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         if: matrix.os == 'macos-latest'
         run: CGO_ENABLED=0 go build -ldflags '-s -w' -v -o ./dmp && tar zcf dmp_darwin.tgz dmp
+
+      - name: build-lite
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          CGO_ENABLED=0 go build -ldflags '-s -w' -v -tags=lite -o ./dmp-lite
+          mkdir -p lite-package
+          cp dmp-lite lite-package/
+          cp -r lite/dist-lite lite-package/dist-lite
+          cp embedFS/shell/manual_install.sh embedFS/shell/manual_update.sh lite-package/
+          chmod 755 lite-package/dmp-lite lite-package/manual_install.sh lite-package/manual_update.sh
+          tar zcf dmp-lite.tgz -C lite-package .
+          rm -rf lite-package
 
       - name: release
         uses: softprops/action-gh-release@v1
