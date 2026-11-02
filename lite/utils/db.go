@@ -37,6 +37,9 @@ type User struct {
 	Password string `json:"password"`
 }
 
+const Bit64 string = "64-bit"
+const Bit32 string = "32-bit"
+
 type Room struct {
 	GameName    string `json:"gameName"`
 	Description string `json:"description"`
@@ -119,7 +122,7 @@ func (d *db) readLocked() error {
 					MasterIP:    "127.0.0.1",
 					MasterPort:  21001,
 					ClusterKey:  "",
-					StartType:   "32-bit",
+					StartType:   Bit64,
 				},
 				Ground: World{
 					ID:                 101,

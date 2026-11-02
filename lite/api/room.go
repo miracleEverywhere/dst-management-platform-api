@@ -17,6 +17,10 @@ func roomPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if room.StartType != utils.Bit64 && room.StartType != utils.Bit32 {
+		writeJSON(w, 201, "非法的启动类型: "+room.StartType, nil)
+	}
+
 	if err := utils.SaveRoomFile(room); err != nil {
 		msg := "保存文件失败, " + err.Error()
 		utils.Logger.Error(msg)
