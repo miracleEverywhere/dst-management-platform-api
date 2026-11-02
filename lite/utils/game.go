@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+const (
+	// worldScreenPrefix lite 世界对应的 screen 会话名前缀
+	worldScreenPrefix = "DMP_LITE_"
+)
+
 var (
 	gameModCfgPath = "dst/mods/dedicated_server_mods_setup.lua"
 	clusterPath    = mustResolveClusterPath()
@@ -63,12 +68,12 @@ func SaveWorldFile(world World) error {
 		return fmt.Errorf("无法创建目录：%v", err)
 	}
 
-	serverIni := filepath.Join(clusterPath, "server.ini")
+	serverIni := filepath.Join(worldDir, "server.ini")
 	if err := checkAndWriteFile(serverIni, getWorldIni(world)); err != nil {
 		return err
 	}
 
-	levelData := filepath.Join(clusterPath, "leveldataoverride.lua")
+	levelData := filepath.Join(worldDir, "leveldataoverride.lua")
 	if err := checkAndWriteFile(levelData, world.LevelData); err != nil {
 		return err
 	}
@@ -101,7 +106,7 @@ func SaveModFile(modContent string, worlds []World) error {
 }
 
 func GameExec(cmdType, worldName, startType string) error {
-	screenName := "DMP_LITE_" + worldName
+	screenName := worldScreenPrefix + worldName
 
 	switch cmdType {
 	case "start":

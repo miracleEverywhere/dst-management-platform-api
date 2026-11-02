@@ -25,6 +25,8 @@ const (
 	internetIPApi1 = "http://ip-api.com/json/?lang=zh-CN"
 	// internetIPApi2 公网IP查询接口2，返回纯文本
 	internetIPApi2 = "http://cip.cc"
+	// onlinePlayersInterval 在线玩家昵称采集间隔
+	onlinePlayersInterval = 120 * time.Second
 )
 
 var (
@@ -69,6 +71,7 @@ func Start() (stop func()) {
 
 	go runPeriodic(stopCh, gameVersionInterval, gameVersionServerGet)
 	go runPeriodic(stopCh, internetIPInterval, internetIPGet)
+	go runPeriodic(stopCh, onlinePlayersInterval, onlinePlayersRefresh)
 
 	return stop
 }

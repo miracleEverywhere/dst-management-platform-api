@@ -21,6 +21,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+apiPrefix+"/menu", tokenCheck(menuGet))
 	mux.HandleFunc("GET "+apiPrefix+"/log", tokenCheck(logGet))
 	mux.HandleFunc("GET "+apiPrefix+"/sys", tokenCheck(sysInfoGet))
+	mux.HandleFunc("GET "+apiPrefix+"/players", tokenCheck(playersGet))
 	mux.HandleFunc("GET "+apiPrefix+"/platform/game_version", tokenCheck(gameVersionGet))
 
 	// 需要 token 和 写db 的接口
