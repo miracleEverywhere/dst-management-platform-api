@@ -22,7 +22,6 @@ type CloudLink struct {
 	RefreshExpiresAt int64  `gorm:"column:refresh_expires_at;not null;default:0" json:"-"`
 	DeviceID         string `gorm:"column:device_id;not null;default:''" json:"deviceId"`
 	LastSyncAt       int64  `gorm:"column:last_sync_at;not null;default:0" json:"lastSyncAt"`
-	AutoSync         bool   `gorm:"column:auto_sync;not null;default:true" json:"autoSync"`
 	LinkedAt         int64  `gorm:"column:linked_at;not null;default:0" json:"linkedAt"`
 	UpdatedAt        int64  `gorm:"column:updated_at;not null;default:0" json:"updatedAt"`
 }

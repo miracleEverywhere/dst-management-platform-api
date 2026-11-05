@@ -27,13 +27,11 @@ func (r cloudLoginReq) identity() string {
 }
 
 type cloudLoginView struct {
-	Token         string           `json:"token"`
-	Username      string           `json:"username"`
-	Fallback      bool             `json:"fallback"`
-	Plan          string           `json:"plan"`
-	FavoriteQuota int              `json:"favoriteQuota"`
-	Sync          *syncSummaryView `json:"sync,omitempty"`
-	SyncError     string           `json:"syncError,omitempty"`
+	Token         string `json:"token"`
+	Username      string `json:"username"`
+	Fallback      bool   `json:"fallback"`
+	Plan          string `json:"plan"`
+	FavoriteQuota int    `json:"favoriteQuota"`
 }
 
 // loginPost 云账号登录。
@@ -110,6 +108,9 @@ func (h *Handler) loginPost(c *gin.Context) {
 		return
 	}
 
+	// 登录后只刷新套餐与配额，不再自动同步收藏。
+	h.refreshProfileQuietly(c, link)
+
 	token, err := h.issueLocalToken(c, user)
 	if err != nil {
 		fail(c, 500, message.Get(c, "cloud login fail"))
@@ -118,11 +119,6 @@ func (h *Handler) loginPost(c *gin.Context) {
 
 	view := cloudLoginView{
 		Token: token, Username: user.Username, Plan: link.Plan, FavoriteQuota: link.FavoriteQuota,
-	}
-	if link.AutoSync {
-		syncView, syncErr := h.autoSync(c, link)
-		view.Sync = syncView
-		view.SyncError = syncErr
 	}
 
 	ok(c, message.Get(c, "cloud login success"), view)
@@ -183,7 +179,7 @@ func (h *Handler) bootstrapCloudUser(c *gin.Context, result *AuthResult, passwor
 	}
 
 	if link == nil {
-		link = &models.CloudLink{Username: user.Username, AutoSync: true}
+		link = &models.CloudLink{Username: user.Username}
 	}
 	if err = h.applyAuthResult(link, result, password); err != nil {
 		if created {
@@ -202,6 +198,9 @@ func (h *Handler) bootstrapCloudUser(c *gin.Context, result *AuthResult, passwor
 		return
 	}
 
+	// 首次云登录只刷新套餐与配额，收藏由用户手动同步。
+	h.refreshProfileQuietly(c, link)
+
 	token, err := h.issueLocalToken(c, &user)
 	if err != nil {
 		fail(c, 500, message.Get(c, "cloud login fail"))
@@ -211,9 +210,6 @@ func (h *Handler) bootstrapCloudUser(c *gin.Context, result *AuthResult, passwor
 	view := cloudLoginView{
 		Token: token, Username: user.Username, Plan: link.Plan, FavoriteQuota: link.FavoriteQuota,
 	}
-	syncView, syncErr := h.autoSync(c, link)
-	view.Sync = syncView
-	view.SyncError = syncErr
 
 	ok(c, message.Get(c, "cloud login success"), view)
 }
@@ -275,7 +271,6 @@ func (h *Handler) fallbackLocalLogin(c *gin.Context, identity, password string) 
 	}
 	view := cloudLoginView{
 		Token: token, Username: user.Username, Fallback: true, Plan: plan, FavoriteQuota: favoriteQuota,
-		SyncError: message.Get(c, "cloud unavailable"),
 	}
 
 	ok(c, message.Get(c, "cloud local fallback success"), view)
@@ -345,7 +340,7 @@ func (h *Handler) linkPost(c *gin.Context) {
 		return
 	}
 	if link.ID == 0 {
-		link = &models.CloudLink{Username: username, AutoSync: true}
+		link = &models.CloudLink{Username: username}
 	} else if link.CloudAccountID != 0 && link.CloudAccountID != result.Account.ID {
 		// 切换云账号时清除旧账号的收藏映射，避免把新账号的收藏关联到旧映射。
 		if err = h.cloudMapDao.DeleteByUsername(username); err != nil {
@@ -564,16 +559,4 @@ func (h *Handler) syncPost(c *gin.Context) {
 	}
 
 	ok(c, message.Get(c, "cloud sync success"), newSyncSummaryView(direction, result, localCount))
-}
-
-// autoSync 在云账号登录后执行一次双向同步，失败不影响登录。
-func (h *Handler) autoSync(c *gin.Context, link *models.CloudLink) (*syncSummaryView, string) {
-	result, localCount, err := h.syncWithLink(c, link, "both")
-	if err != nil {
-		logger.Logger.Warnf("云账号登录后自动同步失败, username: %s, err: %v", link.Username, err)
-		return nil, message.Get(c, "cloud sync fail")
-	}
-	view := newSyncSummaryView("both", result, localCount)
-
-	return &view, ""
 }

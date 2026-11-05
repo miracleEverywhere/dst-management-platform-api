@@ -135,9 +135,6 @@ func (h *Handler) applyAuthResult(link *models.CloudLink, result *AuthResult, pa
 	link.GameAdminQuota = adminQuota
 	link.GameSlotQuota = slotQuota
 	link.ArchiveQuota = archiveQuota
-	if link.ID == 0 {
-		link.AutoSync = true
-	}
 	if link.LinkedAt == 0 {
 		link.LinkedAt = nowSeconds()
 	}
@@ -198,6 +195,13 @@ func validateCloudPassword(password, hash string) bool {
 	return utils.ValidatePassword(password, hash) || utils.ValidateBcryptSha256Password(password, hash)
 }
 
+// refreshProfileQuietly 在云登录后刷新套餐与配额；失败不阻塞登录。
+func (h *Handler) refreshProfileQuietly(c *gin.Context, link *models.CloudLink) {
+	if err := h.refreshProfile(c, link); err != nil {
+		logger.Logger.Warnf("刷新云套餐失败, username: %s, err: %v", link.Username, err)
+	}
+}
+
 func (h *Handler) issueLocalToken(c *gin.Context, user *models.User) (string, error) {
 	if user.Disabled {
 		return "", errors.New("disabled")
@@ -231,7 +235,6 @@ func linkView(link *models.CloudLink) gin.H {
 		"gameSlotQuota":  link.GameSlotQuota,
 		"archiveQuota":   link.ArchiveQuota,
 		"lastSyncAt":     link.LastSyncAt,
-		"autoSync":       link.AutoSync,
 		"linkedAt":       link.LinkedAt,
 		"updatedAt":      link.UpdatedAt,
 	}
