@@ -10,3 +10,4 @@ manual_install.sh
 manual_update.sh
 manual_install_darwin.sh
 manual_update_darwin.sh
+AGENTS_WORK.md
