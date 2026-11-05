@@ -574,7 +574,7 @@ func (c *Client) ListArchives(ctx context.Context, link *models.CloudLink) (*Arc
 	return &result, err
 }
 
-func (c *Client) UploadArchive(ctx context.Context, link *models.CloudLink, filePath, name, remark string) (*Archive, error) {
+func (c *Client) UploadArchive(ctx context.Context, link *models.CloudLink, filePath, name, remark, metadata string) (*Archive, error) {
 	build := func(accessToken string) (*http.Request, error) {
 		file, err := os.Open(filePath)
 		if err != nil {
@@ -599,6 +599,10 @@ func (c *Client) UploadArchive(ctx context.Context, link *models.CloudLink, file
 				return
 			}
 			if err = writer.WriteField("remark", remark); err != nil {
+				_ = pipeWriter.CloseWithError(err)
+				return
+			}
+			if err = writer.WriteField("metadata", metadata); err != nil {
 				_ = pipeWriter.CloseWithError(err)
 				return
 			}

@@ -1204,7 +1204,7 @@ func (h *Handler) favoritePost(c *gin.Context) {
 		return
 	}
 
-	data := favoriteSnapshot(room, worlds, roomSetting)
+	data := RoomSnapshot(room, worlds, roomSetting)
 	raw, err := json.Marshal(data)
 	if err != nil {
 		logger.Logger.Errorf("序列化收藏数据失败, err: %v", err)

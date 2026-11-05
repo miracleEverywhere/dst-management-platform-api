@@ -1,14 +1,15 @@
 package cloud
 
 import (
+	"dst-management-platform-api/app/room"
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
-	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -66,14 +67,20 @@ func (h *Handler) archiveUploadPost(c *gin.Context) {
 	}
 	defer cleanup()
 
-	roomInfo, _, _, err := dao.FetchGameInfo(req.RoomID)
+	roomInfo, worlds, roomSetting, err := dao.FetchGameInfo(req.RoomID)
 	if err != nil {
 		logger.Logger.Errorf("查询房间失败, roomID: %d, err: %v", req.RoomID, err)
 		fail(c, 500, message.Get(c, "database error"))
 		return
 	}
+	metadata, err := buildArchiveMetadata(roomInfo, worlds, roomSetting)
+	if err != nil {
+		logger.Logger.Errorf("生成云存档元数据失败, roomID: %d, err: %v", req.RoomID, err)
+		fail(c, 201, message.Get(c, "cloud archive build fail"))
+		return
+	}
 
-	archive, err := h.client.UploadArchive(c.Request.Context(), link, zipPath, roomInfo.GameName, remark)
+	archive, err := h.client.UploadArchive(c.Request.Context(), link, zipPath, roomInfo.GameName, remark, metadata)
 	if err != nil {
 		failCloud(c, err)
 		return
@@ -234,7 +241,7 @@ func (h *Handler) archiveImportPost(c *gin.Context) {
 
 // prepareArchive 复制当前存档，清理日志与旧快照后压缩，返回 zip 路径、remark 和清理函数。
 func (h *Handler) prepareArchive(c *gin.Context, roomID int) (string, string, func(), error) {
-	roomInfo, worlds, roomSetting, err := dao.FetchGameInfo(roomID)
+	_, worlds, _, err := dao.FetchGameInfo(roomID)
 	if err != nil {
 		return "", "", func() {}, err
 	}
@@ -292,30 +299,44 @@ func (h *Handler) prepareArchive(c *gin.Context, roomID int) (string, string, fu
 		return "", "", func() {}, errArchiveTooLarge
 	}
 
-	game := dst.NewGameController(roomInfo, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	remark := buildArchiveRemark(roomInfo, worlds, game.SessionInfo(), currentPublicIP())
+	//game := dst.NewGameController(roomInfo, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
+	remark := buildArchiveRemark(currentPublicIP())
 
 	return zipPath, truncateRunes(remark, 255), cleanup, nil
 }
 
-func buildArchiveRemark(room *models.Room, worlds *[]models.World, session *dst.RoomSessionInfo, publicIP string) string {
-	worldParts := make([]string, 0, len(*worlds))
-	for _, world := range *worlds {
-		master := ""
-		if world.IsMaster {
-			master = "，主世界"
-		}
-		worldParts = append(worldParts, fmt.Sprintf("%s(直连 %d%s)", world.WorldName, world.ServerPort, master))
+// buildArchiveMetadata 生成云存档元数据，内容是与房间收藏同结构的 XRoomTotalInfo。
+// 云端要求该字段必填，用于展示房间名称、世界与模组信息。
+func buildArchiveMetadata(roomInfo *models.Room, worlds *[]models.World, roomSetting *models.RoomSetting) (string, error) {
+	raw, err := json.Marshal(room.RoomSnapshot(roomInfo, worlds, roomSetting))
+	if err != nil {
+		return "", err
 	}
 
-	return fmt.Sprintf(
-		"房间：%s；模组：%d 个；天数：%d；公网IP：%s；世界：%s",
-		room.GameName,
-		countMods(room, worlds),
-		session.Cycles,
-		publicIP,
-		strings.Join(worldParts, "、"),
-	)
+	return string(raw), nil
+}
+
+// func buildArchiveRemark(room *models.Room, worlds *[]models.World, session *dst.RoomSessionInfo, publicIP string) string {
+func buildArchiveRemark(s string) string {
+	//worldParts := make([]string, 0, len(*worlds))
+	//for _, world := range *worlds {
+	//	master := ""
+	//	if world.IsMaster {
+	//		master = "，主世界"
+	//	}
+	//	worldParts = append(worldParts, fmt.Sprintf("%s(直连 %d%s)", world.WorldName, world.ServerPort, master))
+	//}
+	//
+	//return fmt.Sprintf(
+	//	"房间：%s；模组：%d 个；天数：%d；公网IP：%s；世界：%s",
+	//	room.GameName,
+	//	countMods(room, worlds),
+	//	session.Cycles,
+	//	publicIP,
+	//	strings.Join(worldParts, "、"),
+	//)
+
+	return fmt.Sprintf("DMP IP: %s", s)
 }
 
 func countMods(room *models.Room, worlds *[]models.World) int {

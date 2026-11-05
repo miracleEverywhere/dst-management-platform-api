@@ -817,8 +817,9 @@ type favoriteApplyReq struct {
 	GameName string `json:"gameName"`
 }
 
-// favoriteSnapshot 生成收藏快照，清空本地关联 ID，保留 token
-func favoriteSnapshot(room *models.Room, worlds *[]models.World, setting *models.RoomSetting) XRoomTotalInfo {
+// RoomSnapshot 生成 XRoomTotalInfo 房间快照，清空本地关联 ID，保留 token。
+// 收藏与云存档元数据共用该结构，保证云端看到的数据形状一致。
+func RoomSnapshot(room *models.Room, worlds *[]models.World, setting *models.RoomSetting) XRoomTotalInfo {
 	roomData := *room
 	roomData.ID = 0
 
