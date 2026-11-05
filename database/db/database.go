@@ -60,6 +60,8 @@ var AllTables = []any{
 	&models.ModInfo{},
 	&models.MapImage{},
 	&models.Favorite{},
+	&models.CloudLink{},
+	&models.CloudFavoriteMap{},
 }
 
 func AutoMigrate() {

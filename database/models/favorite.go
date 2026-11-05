@@ -8,6 +8,8 @@ type Favorite struct {
 	Remark    string `gorm:"column:remark" json:"remark"`
 	CreatedAt int64  `gorm:"column:created_at;not null;default:0;autoCreateTime:false" json:"createdAt"`
 	UpdatedAt int64  `gorm:"column:updated_at;not null;default:0;autoUpdateTime:false" json:"updatedAt"`
+	// DeletedAt 软删除时间戳，0 表示未删除；云同步需要把本地删除作为 tombstone 上传
+	DeletedAt int64 `gorm:"column:deleted_at;not null;default:0" json:"-"`
 }
 
 func (Favorite) TableName() string {

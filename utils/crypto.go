@@ -5,6 +5,7 @@ import (
 	cRand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base32"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -72,6 +73,21 @@ func ValidatePassword(formPassword, dbPassword string) bool {
 	}
 
 	return true
+}
+
+// GenerateBcryptSha256Password 先对密码做 SHA-256，再用 bcrypt 保存。
+// bcrypt 只接受 72 字节以内的密码，云账号允许最长 128 个字符，
+// 因此超长密码需要先用定长摘要压缩，避免合法云密码无法登录。
+func GenerateBcryptSha256Password(password string) (string, error) {
+	sum := sha256.Sum256([]byte(password))
+
+	return GenerateBcryptPassword(hex.EncodeToString(sum[:]))
+}
+
+func ValidateBcryptSha256Password(formPassword, dbPassword string) bool {
+	sum := sha256.Sum256([]byte(formPassword))
+
+	return ValidatePassword(hex.EncodeToString(sum[:]), dbPassword)
 }
 
 const (

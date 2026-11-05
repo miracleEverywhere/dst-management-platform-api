@@ -840,8 +840,9 @@ func favoriteSnapshot(room *models.Room, worlds *[]models.World, setting *models
 	}
 }
 
-// validateFavoriteData 校验收藏数据，返回 i18n key 和格式化参数
-func validateFavoriteData(data *XRoomTotalInfo) (string, string) {
+// ValidateFavoriteData 校验收藏数据，返回 i18n key 和格式化参数。
+// 云同步下载的快照同样必须经过该函数校验。
+func ValidateFavoriteData(data *XRoomTotalInfo) (string, string) {
 	if len(data.WorldData) == 0 {
 		return "favorite no worlds", ""
 	}
@@ -872,8 +873,8 @@ func validateFavoriteData(data *XRoomTotalInfo) (string, string) {
 	return "", ""
 }
 
-// clearFavoriteCustomStartupCmd 清空自定义启动命令，返回是否有内容被清空
-func clearFavoriteCustomStartupCmd(data *XRoomTotalInfo) bool {
+// ClearFavoriteCustomStartupCmd 清空自定义启动命令，返回是否有内容被清空。
+func ClearFavoriteCustomStartupCmd(data *XRoomTotalInfo) bool {
 	cleared := false
 	for i := range data.WorldData {
 		if data.WorldData[i].CustomStartupCmd != "" {

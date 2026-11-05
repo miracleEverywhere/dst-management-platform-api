@@ -21,6 +21,7 @@ func (User) TableName() string {
 }
 
 const (
-	PasswordVersionBcrypt string = "bcrypt"
-	PasswordVersionSha512 string = "sha512"
+	PasswordVersionBcrypt       string = "bcrypt"
+	PasswordVersionBcryptSha256 string = "bcrypt-sha256"
+	PasswordVersionSha512       string = "sha512"
 )

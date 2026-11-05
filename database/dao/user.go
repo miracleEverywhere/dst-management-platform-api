@@ -73,3 +73,8 @@ func (d *UserDAO) GetNonAdminUsers() (*[]models.User, error) {
 
 	return &users, err
 }
+
+// DeleteUser 删除本地用户，仅用于首次云登录创建账号失败后的补偿。
+func (d *UserDAO) DeleteUser(username string) error {
+	return d.db.Where("username = ?", username).Delete(&models.User{}).Error
+}

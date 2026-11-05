@@ -659,7 +659,6 @@ func (h *Handler) uploadPost(c *gin.Context) {
 	roomIDStr := c.PostForm("roomID")
 
 	roomID := 0
-	newRoom := false
 	if roomIDStr == "" {
 		// 新建房间，新建权限验证
 		permission, _ := h.hasCreatePermission(c)
@@ -667,7 +666,6 @@ func (h *Handler) uploadPost(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
 			return
 		}
-		newRoom = true
 	} else {
 		// 修改当前房间，修改权限验证
 		permission := h.hasRoomPermission(c, roomIDStr)
@@ -728,216 +726,14 @@ func (h *Handler) uploadPost(c *gin.Context) {
 		return
 	}
 
-	var (
-		room            models.Room
-		worlds          []models.World
-		roomSetting     models.RoomSetting
-		uploadExtraInfo UploadExtraInfo
-	)
-
-	errMsg, err := handleUpload(savePath, unzipPath, &room, &worlds, &roomSetting, &uploadExtraInfo)
+	_, code, msgKey, err := h.importRoomFromZip(c, savePath, unzipPath, roomID, roomIDStr == "")
 	if err != nil {
+		if msgKey == "" {
+			msgKey = "upload save fail"
+		}
 		logger.Logger.Errorf("处理上传文件失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": message.Get(c, errMsg),
-			"data":    nil,
-		})
+		c.JSON(http.StatusOK, gin.H{"code": code, "message": message.Get(c, msgKey), "data": nil})
 		return
-	}
-
-	if len(uploadExtraInfo.worldPath) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": message.Get(c, "no available worlds found"),
-			"data":    nil,
-		})
-		return
-	}
-
-	// 设置所有的port和roomSetting
-	if newRoom {
-		room.Status = true
-		// port
-		roomCount, err := h.roomDao.Count(nil)
-		if err != nil {
-			logger.Logger.Errorf("查询数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		worldCount, err := h.worldDao.Count(nil)
-		if err != nil {
-			logger.Logger.Errorf("查询数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		room.MasterPort = 21000 + int(roomCount) + 1
-		for index, world := range worlds {
-			worlds[index].ServerPort = 11000 + int(worldCount) + index + 1
-			logger.Logger.Debugf("正在设置ServerPort, world.ServerPort: %v", world.ServerPort)
-			worlds[index].MasterServerPort = 31000 + int(worldCount) + index + 1
-			logger.Logger.Debugf("正在设置MasterServerPort, world.MasterServerPort: %v", world.MasterServerPort)
-			worlds[index].AuthenticationPort = 41000 + int(worldCount) + index + 1
-			logger.Logger.Debugf("正在设置AuthenticationPort, world.AuthenticationPort: %v", world.AuthenticationPort)
-		}
-
-		// roomSetting
-		roomSetting.BackupEnable = true
-		roomSetting.BackupSetting = "[{\"time\":\"06:00:00\"}]"
-		roomSetting.BackupCleanEnable = false
-		roomSetting.BackupCleanSetting = 30
-		roomSetting.RestartEnable = false
-		roomSetting.RestartSetting = "06:30:00"
-		roomSetting.KeepaliveEnable = false
-		roomSetting.KeepaliveSetting = 30
-		roomSetting.ScheduledStartStopEnable = false
-		roomSetting.ScheduledStartStopSetting = "{\"start\":\"07:00:00\",\"stop\":\"01:00:00\"}"
-		roomSetting.AnnounceSetting = "[]"
-		roomSetting.StartType = "32-bit"
-	} else {
-		dbRoom, err := h.roomDao.GetRoomByID(roomID)
-		if err != nil {
-			logger.Logger.Errorf("查询数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-		room.MasterPort = dbRoom.MasterPort
-		// 设置roomID
-		room.ID = roomID
-
-		dbWorlds, err := h.worldDao.GetWorldsByRoomID(roomID)
-		if err != nil {
-			logger.Logger.Errorf("查询数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-		if len(worlds) != len(*dbWorlds) {
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "number of worlds does not match"), "data": nil})
-			return
-		}
-		for index := range worlds {
-			worlds[index].ServerPort = (*dbWorlds)[index].ServerPort
-			worlds[index].MasterServerPort = (*dbWorlds)[index].MasterServerPort
-			worlds[index].AuthenticationPort = (*dbWorlds)[index].AuthenticationPort
-			// 设置roomID
-			worlds[index].RoomID = roomID
-		}
-	}
-
-	// 判断是否为统一模组
-	if len(worlds) >= 2 {
-		if worlds[0].ModData == worlds[1].ModData {
-			// 当世界个数大于等于2，并且世界0和世界1的模组配置相同
-			// 则设置ModInOne
-			room.ModInOne = true
-			room.ModData = worlds[0].ModData
-			for index := range worlds {
-				worlds[index].ModData = ""
-			}
-		} else {
-			// 当世界个数大于等于2，并且世界0和世界1的模组配置不同
-			// 则设置Not ModInOne
-			room.ModInOne = false
-		}
-	} else {
-		// 当世界个数小于2，也就是只有一个世界
-		// 则设置ModInOne
-		room.ModInOne = true
-	}
-
-	// 写入数据库
-	if newRoom {
-		_, err = h.roomDao.CreateRoom(&room)
-		if err != nil {
-			logger.Logger.Errorf("创建房间失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-		for _, world := range worlds {
-			world.RoomID = room.ID
-			if errCreateWorld := h.worldDao.Create(&world); errCreateWorld != nil {
-				logger.Logger.Errorf("创建房间失败, err: %v", errCreateWorld)
-				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-				return
-			}
-		}
-
-		roomSetting.RoomID = room.ID
-		if errCreate := h.roomSettingDao.Create(&roomSetting); errCreate != nil {
-			logger.Logger.Errorf("创建房间失败, err: %v", errCreate)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-	} else {
-		err = h.roomDao.UpdateRoom(&room)
-		if err != nil {
-			logger.Logger.Errorf("更新房间失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		err = h.worldDao.UpdateWorlds(&worlds)
-		if err != nil {
-			logger.Logger.Errorf("更新房间失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-		//不更新roomSetting
-	}
-
-	game := dst.NewGameController(&room, &worlds, &roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	_ = game.StopAllWorld()
-	err = game.SaveAll()
-	if err != nil {
-		logger.Logger.Errorf("配置写入磁盘失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{
-			"code":    201,
-			"message": message.Get(c, "write file fail"),
-			"data":    nil,
-		})
-		return
-	}
-
-	clusterPath := fmt.Sprintf("%s/Cluster_%d", utils.ClusterPath, room.ID)
-
-	// 设置三个名单
-	err = utils.TruncAndWriteFile(fmt.Sprintf("%s/adminlist.txt", clusterPath), uploadExtraInfo.adminlist)
-	if err != nil {
-		logger.Logger.Errorf("设置管理员失败, err: %v", err)
-	}
-	err = utils.TruncAndWriteFile(fmt.Sprintf("%s/blocklist.txt", clusterPath), uploadExtraInfo.blocklist)
-	if err != nil {
-		logger.Logger.Errorf("设置黑名单失败, err: %v", err)
-	}
-	err = utils.TruncAndWriteFile(fmt.Sprintf("%s/whitelist.txt", clusterPath), uploadExtraInfo.whitelist)
-	if err != nil {
-		logger.Logger.Errorf("设置预留位失败, err: %v", err)
-	}
-
-	// 覆盖save目录
-	for _, world := range uploadExtraInfo.worldPath {
-		err = utils.RemoveDir(fmt.Sprintf("%s/%s/save", clusterPath, world.name))
-		if err != nil {
-			logger.Logger.Errorf("删除旧存档数据失败, err: %v", err)
-			continue
-		}
-		// world.path来自已校验的世界目录名，world.name已在导入时校验，
-		// 这里仍统一使用ShellQuote，避免任何字符串被bash解释
-		savePath := utils.ShellQuote(fmt.Sprintf("%s/save", world.path))
-		worldPath := utils.ShellQuote(fmt.Sprintf("%s/%s/", clusterPath, world.name))
-		cmd := fmt.Sprintf("cp -r %s %s", savePath, worldPath)
-		logger.Logger.Debug(cmd)
-		err = utils.BashCMD(cmd)
-		if err != nil {
-			logger.Logger.Errorf("复制存档数据失败, err: %v", err)
-		}
-	}
-	if !newRoom {
-		if err = h.aiManager.Reload(room.ID); err != nil {
-			logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", room.ID, err)
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "upload success"), "data": nil})
@@ -1547,7 +1343,7 @@ func (h *Handler) favoriteDelete(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.favoriteDao.DeleteFavorite(req.ID, c.GetString("username"), FavoriteTypeDST)
+	rows, err := h.favoriteDao.DeleteFavorite(req.ID, c.GetString("username"), FavoriteTypeDST, utils.GetTimestamp())
 	if err != nil {
 		logger.Logger.Errorf("删除收藏失败, err: %v", err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
@@ -1598,14 +1394,14 @@ func (h *Handler) favoriteApplyPost(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite data invalid"), "data": nil})
 		return
 	}
-	if msgKey, arg := validateFavoriteData(&data); msgKey != "" {
+	if msgKey, arg := ValidateFavoriteData(&data); msgKey != "" {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": favoriteMessage(c, msgKey, arg), "data": nil})
 		return
 	}
 
 	// 与创建房间接口保持一致：创建房间时不携带自定义启动命令，避免命令注入。
 	// 如确实需要，可在房间创建后由管理员通过专用接口设置。
-	if clearFavoriteCustomStartupCmd(&data) {
+	if ClearFavoriteCustomStartupCmd(&data) {
 		logger.Logger.Warnf("应用收藏时已忽略自定义启动命令, favoriteID: %s, username: %s", favorite.ID, c.GetString("username"))
 	}
 

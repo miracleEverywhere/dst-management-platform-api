@@ -120,6 +120,8 @@ func (h *Handler) loginPost(c *gin.Context) {
 	switch dbUser.PasswordVersion {
 	case models.PasswordVersionBcrypt:
 		validated = utils.ValidatePassword(user.Password, dbUser.Password)
+	case models.PasswordVersionBcryptSha256:
+		validated = utils.ValidateBcryptSha256Password(user.Password, dbUser.Password)
 	case models.PasswordVersionSha512:
 		hash := sha512.Sum512([]byte(user.Password))
 		password := hex.EncodeToString(hash[:])

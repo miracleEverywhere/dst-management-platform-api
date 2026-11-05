@@ -2,6 +2,7 @@ package server
 
 import (
 	"dst-management-platform-api/aichat"
+	"dst-management-platform-api/app/cloud"
 	"dst-management-platform-api/app/dashboard"
 	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/mod"
@@ -63,6 +64,8 @@ func Run() {
 	mapImageDao := dao.NewMapImageDAO(db.DB)
 	roomAISettingDao := dao.NewRoomAISettingDAO(db.DB)
 	modInfoDao := dao.NewModInfoDAO(db.DB)
+	cloudLinkDao := dao.NewCloudLinkDAO(db.DB)
+	cloudFavoriteMapDao := dao.NewCloudFavoriteMapDAO(db.DB)
 
 	// 初始化缓存
 	cache.InitCache()
@@ -105,6 +108,7 @@ func Run() {
 			gzip.WithMinLength(1024),
 			gzip.WithExcludedPaths([]string{
 				"/" + constant.ApiVersion + "/tools/backup/download",
+				"/" + constant.ApiVersion + "/cloud/archives",
 			}),
 			gzip.WithExcludedExtensions([]string{
 				".woff", ".woff2", ".ttf",
@@ -125,13 +129,15 @@ func Run() {
 
 	// 初始化即注册路由
 	user.NewHandler(userDao).RegisterRoutes(r)
-	room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, favoriteDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager).RegisterRoutes(r)
+	roomHandler := room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, favoriteDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager)
+	roomHandler.RegisterRoutes(r)
 	mod.NewHandler(roomDao, worldDao, roomSettingDao, userDao, modInfoDao).RegisterRoutes(r)
 	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
 	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao, aiManager).RegisterRoutes(r)
 	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
 	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, mapImageDao, systemDao, roomAISettingDao, aiManager).RegisterRoutes(r)
 	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao, globalSettingDao).RegisterRoutes(r)
+	cloud.NewHandler(userDao, cloudLinkDao, cloudFavoriteMapDao, favoriteDao, roomHandler).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 

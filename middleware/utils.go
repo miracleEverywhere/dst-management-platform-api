@@ -157,10 +157,15 @@ func extractLoginUsername(c *gin.Context) (string, error) {
 
 	var form struct {
 		Username string `json:"username"`
+		Identity string `json:"identity"`
 	}
 	if err = json.Unmarshal(body, &form); err != nil {
 		return "", err
 	}
 
-	return form.Username, nil
+	if form.Username != "" {
+		return form.Username, nil
+	}
+
+	return form.Identity, nil
 }
