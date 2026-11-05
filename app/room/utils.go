@@ -785,7 +785,7 @@ const FavoriteTypeDST = "dst"
 
 // FavoriteItem 收藏接口返回结构，Data 解析为 JSON 对象
 type FavoriteItem struct {
-	ID        int            `json:"id"`
+	ID        string         `json:"id"`
 	Username  string         `json:"username"`
 	Type      string         `json:"type"`
 	Data      XRoomTotalInfo `json:"data"`
@@ -800,12 +800,12 @@ type favoriteCreateReq struct {
 }
 
 type favoriteUpdateReq struct {
-	ID     int     `json:"id" binding:"required"`
+	ID     string  `json:"id" binding:"required"`
 	Remark *string `json:"remark" binding:"required"`
 }
 
 type favoriteDeleteReq struct {
-	ID int `json:"id" binding:"required"`
+	ID string `json:"id" binding:"required"`
 }
 
 type favoriteListReq struct {
@@ -813,7 +813,7 @@ type favoriteListReq struct {
 }
 
 type favoriteApplyReq struct {
-	ID       int    `json:"id" binding:"required"`
+	ID       string `json:"id" binding:"required"`
 	GameName string `json:"gameName"`
 }
 
@@ -838,17 +838,6 @@ func favoriteSnapshot(room *models.Room, worlds *[]models.World, setting *models
 		WorldData:       worldData,
 		RoomSettingData: roomSetting,
 	}
-}
-
-// normalizeFavoriteData 清空收藏数据中的本地关联 ID
-func normalizeFavoriteData(data *XRoomTotalInfo) {
-	data.RoomData.ID = 0
-	for i := range data.WorldData {
-		data.WorldData[i].ID = 0
-		data.WorldData[i].RoomID = 0
-		data.WorldData[i].LastAliveTime = ""
-	}
-	data.RoomSettingData.RoomID = 0
 }
 
 // validateFavoriteData 校验收藏数据，返回 i18n key 和格式化参数

@@ -1373,11 +1373,6 @@ func (h *Handler) favoritePost(c *gin.Context) {
 		return
 	}
 
-	if req.RoomID <= 0 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
 	roomIDStr := strconv.Itoa(req.RoomID)
 	if !h.hasRoomPermission(c, roomIDStr) {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
@@ -1462,7 +1457,7 @@ func (h *Handler) favoriteGet(c *gin.Context) {
 	for i := range favorites.Data {
 		item, err := favoriteItemFromModel(&favorites.Data[i])
 		if err != nil {
-			logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorites.Data[i].ID, err)
+			logger.Logger.Errorf("解析收藏数据失败, favoriteID: %s, err: %v", favorites.Data[i].ID, err)
 			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "favorite data invalid"), "data": nil})
 			return
 		}
@@ -1481,11 +1476,7 @@ func (h *Handler) favoriteGet(c *gin.Context) {
 
 // favoriteDetailGet 查询当前用户的单条收藏
 func (h *Handler) favoriteDetailGet(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil || id <= 0 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
+	id := c.Param("id")
 
 	favorite, err := h.favoriteDao.GetFavoriteByID(id, c.GetString("username"), FavoriteTypeDST)
 	if err != nil {
@@ -1500,7 +1491,7 @@ func (h *Handler) favoriteDetailGet(c *gin.Context) {
 
 	item, err := favoriteItemFromModel(favorite)
 	if err != nil {
-		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorite.ID, err)
+		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %s, err: %v", favorite.ID, err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "favorite data invalid"), "data": nil})
 		return
 	}
@@ -1513,11 +1504,6 @@ func (h *Handler) favoritePut(c *gin.Context) {
 	var req favoriteUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
-	if req.Remark == nil {
 		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
 		return
 	}
@@ -1544,7 +1530,7 @@ func (h *Handler) favoritePut(c *gin.Context) {
 
 	item, err := favoriteItemFromModel(favorite)
 	if err != nil {
-		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorite.ID, err)
+		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %s, err: %v", favorite.ID, err)
 		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "favorite data invalid"), "data": nil})
 		return
 	}
@@ -1608,11 +1594,10 @@ func (h *Handler) favoriteApplyPost(c *gin.Context) {
 
 	var data XRoomTotalInfo
 	if err = json.Unmarshal([]byte(favorite.Data), &data); err != nil {
-		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %d, err: %v", favorite.ID, err)
+		logger.Logger.Errorf("解析收藏数据失败, favoriteID: %s, err: %v", favorite.ID, err)
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "favorite data invalid"), "data": nil})
 		return
 	}
-	normalizeFavoriteData(&data)
 	if msgKey, arg := validateFavoriteData(&data); msgKey != "" {
 		c.JSON(http.StatusOK, gin.H{"code": 201, "message": favoriteMessage(c, msgKey, arg), "data": nil})
 		return
@@ -1621,7 +1606,7 @@ func (h *Handler) favoriteApplyPost(c *gin.Context) {
 	// 与创建房间接口保持一致：创建房间时不携带自定义启动命令，避免命令注入。
 	// 如确实需要，可在房间创建后由管理员通过专用接口设置。
 	if clearFavoriteCustomStartupCmd(&data) {
-		logger.Logger.Warnf("应用收藏时已忽略自定义启动命令, favoriteID: %d, username: %s", favorite.ID, c.GetString("username"))
+		logger.Logger.Warnf("应用收藏时已忽略自定义启动命令, favoriteID: %s, username: %s", favorite.ID, c.GetString("username"))
 	}
 
 	gameName := strings.TrimSpace(req.GameName)

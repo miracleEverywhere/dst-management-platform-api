@@ -3,6 +3,7 @@ package dao
 import (
 	"dst-management-platform-api/database/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -16,7 +17,12 @@ func NewFavoriteDAO(db *gorm.DB) *FavoriteDAO {
 	}
 }
 
+// CreateFavorite 创建收藏，未指定 ID 时生成 UUID
 func (d *FavoriteDAO) CreateFavorite(favorite *models.Favorite) error {
+	if favorite.ID == "" {
+		favorite.ID = uuid.NewString()
+	}
+
 	return d.db.Create(favorite).Error
 }
 
@@ -24,7 +30,7 @@ func (d *FavoriteDAO) UpdateFavorite(favorite *models.Favorite) error {
 	return d.db.Save(favorite).Error
 }
 
-func (d *FavoriteDAO) GetFavoriteByID(id int, username, favoriteType string) (*models.Favorite, error) {
+func (d *FavoriteDAO) GetFavoriteByID(id, username, favoriteType string) (*models.Favorite, error) {
 	var favorite models.Favorite
 	err := d.db.
 		Where("id = ? AND username = ? AND type = ?", id, username, favoriteType).
@@ -71,7 +77,7 @@ func (d *FavoriteDAO) ListFavorites(username, favoriteType string, page, pageSiz
 }
 
 // DeleteFavorite 删除指定用户的收藏，返回删除行数
-func (d *FavoriteDAO) DeleteFavorite(id int, username, favoriteType string) (int64, error) {
+func (d *FavoriteDAO) DeleteFavorite(id, username, favoriteType string) (int64, error) {
 	result := d.db.
 		Where("id = ? AND username = ? AND type = ?", id, username, favoriteType).
 		Delete(&models.Favorite{})

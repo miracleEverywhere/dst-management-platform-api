@@ -38,10 +38,8 @@ func (d *RoomDAO) CreateConfiguration(room *models.Room, worlds *[]models.World,
 		for i := range *worlds {
 			(*worlds)[i].RoomID = room.ID
 		}
-		if len(*worlds) > 0 {
-			if err := tx.Create(worlds).Error; err != nil {
-				return err
-			}
+		if err := tx.Create(worlds).Error; err != nil {
+			return err
 		}
 		setting.RoomID = room.ID
 		return tx.Create(setting).Error

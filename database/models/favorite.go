@@ -1,7 +1,7 @@
 package models
 
 type Favorite struct {
-	ID        int    `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	ID        string `gorm:"primaryKey;column:id" json:"id"`
 	Username  string `gorm:"column:username;not null;index:idx_favorites_username_type,priority:1" json:"username"`
 	Type      string `gorm:"column:type;not null;default:dst;index:idx_favorites_username_type,priority:2" json:"type"`
 	Data      string `gorm:"column:data;not null" json:"-"`
