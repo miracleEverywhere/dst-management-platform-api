@@ -30,6 +30,14 @@
 
 ---
 
+## :watermelon: DMP云账号
+
+饥荒管理平台云账号来啦，注册即开通基础版套餐，包含4个免费云端同步额度
+
+![dmp-cloud](docs/images/zh/dmp-cloud.png)
+
+---
+
 ## :love_letter: 代码贡献
 
 欢迎所有开发者贡献代码，以改善和扩展这个项目！
