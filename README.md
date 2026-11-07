@@ -34,6 +34,8 @@
 
 饥荒管理平台云账号来啦，注册即开通基础版套餐，包含4个免费云端同步额度
 
+详情请查看[文档](https://docs.miraclesses.top/cloud/)
+
 ![dmp-cloud](docs/images/zh/dmp-cloud.png)
 
 ---
