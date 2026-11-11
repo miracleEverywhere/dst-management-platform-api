@@ -353,9 +353,9 @@ function start_dmp() {
 
 # 关闭主程序
 function stop_dmp() {
-	pkill dmp 2>/dev/null
+	pkill -x dmp 2>/dev/null
 	sleep 1
-	pkill -9 dmp 2>/dev/null
+	pkill -9 -x dmp 2>/dev/null
 	sleep 1
 }
 
