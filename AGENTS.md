@@ -6,7 +6,7 @@
 
 DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务器管理平台。本仓库包含 Go 后端，以及由独立前端仓库构建后嵌入二进制的静态资源；同一份代码用 `lite` 构建标签还会产出精简版后端，其前端以磁盘目录分发。
 
-- Go 工具链：`go.mod` 指定 Go 1.27.3；模块路径为 `dst-management-platform-api`。升级 Go 版本时同步 `go.mod`、`.github/workflows/go.yml` 与 `docker/Dockerfile` 中的 `golang` 版本。
+- Go 工具链：`go.mod` 指定 Go 1.27.4；模块路径为 `dst-management-platform-api`。升级 Go 版本时同步 `go.mod`、`.github/workflows/go.yml` 与 `docker/Dockerfile` 中的 `golang` 版本。
 - 主程序技术栈：HTTP 用 Gin，数据访问用 GORM + SQLite，任务调度用 gocron，日志用 Zap。
 - 仓库用构建标签产出两个可执行文件：
   - 主程序 `main.go`（`//go:build !lite`）调用 `server.Run()`，功能完整。
@@ -18,7 +18,7 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 
 ## 目录职责
 
-- `app/<module>/`：HTTP 业务模块，通常包含 `handler.go`、`router.go`、`i18n.go` 和 `utils.go`。
+- `app/<module>/`：HTTP 业务模块，固定只包含 `handler.go`、`router.go`、`i18n.go`、`utils.go` 四个 Go 文件（四文件原则）。`handler.go` 放 HTTP handler 及请求/响应结构体；`router.go` 注册路由；`i18n.go` 声明模块词条；`utils.go` 放 `Handler`、构造器及全部辅助逻辑（云客户端、加密、同步、存档导入等）。不得再新增 `client.go`、`crypto.go`、`sync.go`、`archive.go`、`import.go` 之类的文件；内容变多时用文件内注释分区，而不是拆出新文件。
 - `lite/`：精简版独立实现；`lite/api/` 是 net/http 路由与 handler，`lite/utils/` 是 JSON 单文件数据库、DST 文件与进程控制、JWT、密码和日志。它不 import 主程序的 `app/`、`server/`、`database/`、`dst/`、`scheduler/`、`i18n/`、`logger/`、`middleware/`、`webhook/`。`lite/dist-lite/` 是外部前端产物，运行时从可执行文件同级目录读取，不通过 `go:embed` 打进二进制。
 - `aichat/`：游戏内 AI 对话监听、关键词/向量索引、知识库（wiki）解析与向量模型配置。
 - `cache/`：进程级缓存初始化与访问。
@@ -87,6 +87,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 
 - 遵循 `.editorconfig`，Go 文件使用 UTF-8、LF 和 Tab；所有修改过的 Go 文件必须通过 `gofmt`。
 - 沿用现有包边界和构造方式。业务依赖通过模块 `Handler` 持有，并由 `server/server.go` 统一创建和注入。
+- `app/<module>/` 必须遵守四文件原则：新增能力只能落在 `handler.go`（HTTP handler 与请求/响应结构体）、`router.go`（路由）、`i18n.go`（模块词条）、`utils.go`（`Handler`、构造器、客户端、加密、同步、导入等辅助逻辑）内，不要新增第五个 `.go` 文件。
 - 主程序的编译期常量统一放在 `constant/`：DST 路径、外部接口地址与插件目录放 `constant/dst.go`，版本号、超时、JWT 与静态资源缓存等平台级常量放 `constant/system.go`；不要在 `utils/` 中新增常量。精简版的常量留在 `lite/` 内，不回引主线常量。
 - 主程序新增路由时使用 `constant.ApiVersion`，并按相邻路由应用 `middleware.TokenCheck()`、`middleware.AdminOnly()` 等中间件；精简版路由使用 `lite/api/router.go` 的 `apiPrefix`。
 - JSON API 保持现有响应形状：`{"code": ..., "message": ..., "data": ...}`。多数业务接口以 HTTP 200 返回，业务结果由响应体中的 `code` 表示；文件下载、流式响应和 WebSocket 等特殊接口沿用各自现有行为。
