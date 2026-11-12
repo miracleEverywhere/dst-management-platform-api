@@ -5,7 +5,7 @@ deliverables
 dmp
 dmp_files
 data
-logs
+./logs/
 manual_install.sh
 manual_update.sh
 manual_install_darwin.sh
