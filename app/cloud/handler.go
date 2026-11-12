@@ -1,10 +1,15 @@
 package cloud
 
 import (
+	"dst-management-platform-api/constant"
+	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -523,6 +528,8 @@ func (h *Handler) requireLink(c *gin.Context) (*models.CloudLink, bool) {
 	return link, true
 }
 
+// ===== 云同步 =====
+
 type syncReq struct {
 	Direction string `json:"direction"`
 }
@@ -559,4 +566,218 @@ func (h *Handler) syncPost(c *gin.Context) {
 	}
 
 	ok(c, message.Get(c, "cloud sync success"), newSyncSummaryView(direction, result, localCount))
+}
+
+// ===== 云存档 =====
+
+type archiveUploadReq struct {
+	RoomID int `json:"roomID"`
+}
+
+func (h *Handler) archiveUploadPost(c *gin.Context) {
+	var req archiveUploadReq
+	if err := c.ShouldBindJSON(&req); err != nil || req.RoomID == 0 {
+		fail(c, 400, message.Get(c, "bad request"))
+		return
+	}
+	if !h.hasRoomPermission(c, req.RoomID) {
+		fail(c, 201, message.Get(c, "cloud archive permission"))
+		return
+	}
+
+	link, okLink := h.requireLink(c)
+	if !okLink {
+		return
+	}
+	if err := h.refreshProfile(c, link); err != nil {
+		failCloud(c, err)
+		return
+	}
+	if link.Plan != "ultimate" {
+		fail(c, 201, message.Get(c, "cloud archive ultimate only"))
+		return
+	}
+
+	zipPath, remark, cleanup, err := h.prepareArchive(c, req.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("打包云存档失败, roomID: %d, err: %v", req.RoomID, err)
+		if errors.Is(err, errArchiveTooLarge) {
+			fail(c, 201, message.Get(c, "cloud archive too large"))
+			return
+		}
+		fail(c, 201, message.Get(c, "cloud archive build fail"))
+		return
+	}
+	defer cleanup()
+
+	roomInfo, worlds, roomSetting, err := dao.FetchGameInfo(req.RoomID)
+	if err != nil {
+		logger.Logger.Errorf("查询房间失败, roomID: %d, err: %v", req.RoomID, err)
+		fail(c, 500, message.Get(c, "database error"))
+		return
+	}
+	metadata, err := buildArchiveMetadata(roomInfo, worlds, roomSetting)
+	if err != nil {
+		logger.Logger.Errorf("生成云存档元数据失败, roomID: %d, err: %v", req.RoomID, err)
+		fail(c, 201, message.Get(c, "cloud archive build fail"))
+		return
+	}
+
+	archive, err := h.client.UploadArchive(c.Request.Context(), link, zipPath, roomInfo.GameName, remark, metadata)
+	if err != nil {
+		failCloud(c, err)
+		return
+	}
+	if err = h.saveLink(link); err != nil {
+		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
+	}
+
+	ok(c, message.Get(c, "cloud archive upload success"), archive)
+}
+
+func (h *Handler) archivesGet(c *gin.Context) {
+	link, okLink := h.requireLink(c)
+	if !okLink {
+		return
+	}
+
+	result, err := h.client.ListArchives(c.Request.Context(), link)
+	if err != nil {
+		failCloud(c, err)
+		return
+	}
+	if err = h.saveLink(link); err != nil {
+		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
+	}
+
+	ok(c, "success", result)
+}
+
+func (h *Handler) archiveDownloadGet(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if !validCloudID(id) {
+		fail(c, 400, message.Get(c, "cloud archive id invalid"))
+		return
+	}
+
+	link, okLink := h.requireLink(c)
+	if !okLink {
+		return
+	}
+
+	body, fileName, size, err := h.client.DownloadArchive(c.Request.Context(), link, id)
+	if err != nil {
+		failCloud(c, err)
+		return
+	}
+	defer body.Close()
+
+	if err = h.saveLink(link); err != nil {
+		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
+	}
+
+	c.Header("Content-Disposition", attachmentHeader(fileName))
+	c.Header("X-Content-Type-Options", "nosniff")
+	if size <= 0 {
+		size = -1
+	}
+	c.DataFromReader(200, size, "application/zip", body, nil)
+}
+
+// archiveImportPost 下载云存档并导入为一个新房间。
+// 只有拥有创建房间权限（管理员或 roomCreation=true）的用户可以执行。
+func (h *Handler) archiveImportPost(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if !validCloudID(id) {
+		fail(c, 400, message.Get(c, "cloud archive id invalid"))
+		return
+	}
+	if !h.canCreateRoom(c) {
+		fail(c, 201, message.Get(c, "cloud archive create permission"))
+		return
+	}
+
+	link, okLink := h.requireLink(c)
+	if !okLink {
+		return
+	}
+
+	body, _, _, err := h.client.DownloadArchive(c.Request.Context(), link, id)
+	if err != nil {
+		failCloud(c, err)
+		return
+	}
+	defer body.Close()
+
+	if err = h.saveLink(link); err != nil {
+		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
+	}
+
+	if h.roomHandler == nil {
+		logger.Logger.Error("云存档导入失败：房间导入器未初始化")
+		fail(c, 500, message.Get(c, "cloud archive import fail"))
+		return
+	}
+
+	baseDir := filepath.Join(constant.CloudTempPath, "import")
+	if err = os.MkdirAll(baseDir, 0o700); err != nil {
+		logger.Logger.Errorf("创建云存档导入目录失败, err: %v", err)
+		fail(c, 500, message.Get(c, "cloud archive import fail"))
+		return
+	}
+	tempDir, err := os.MkdirTemp(baseDir, "import-*")
+	if err != nil {
+		logger.Logger.Errorf("创建云存档导入临时目录失败, err: %v", err)
+		fail(c, 500, message.Get(c, "cloud archive import fail"))
+		return
+	}
+	defer func() {
+		if removeErr := utils.RemoveDir(tempDir); removeErr != nil {
+			logger.Logger.Warnf("清理云存档导入临时目录失败, dir: %s, err: %v", tempDir, removeErr)
+		}
+	}()
+
+	savePath := filepath.Join(tempDir, "archive.zip")
+	file, err := os.OpenFile(savePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		logger.Logger.Errorf("保存云存档失败, err: %v", err)
+		fail(c, 500, message.Get(c, "cloud archive import fail"))
+		return
+	}
+	written, copyErr := io.Copy(file, io.LimitReader(body, constant.CloudArchiveMaxBytes+1))
+	closeErr := file.Close()
+	if copyErr != nil {
+		logger.Logger.Errorf("下载云存档失败, err: %v", copyErr)
+		fail(c, 201, message.Get(c, "cloud archive download fail"))
+		return
+	}
+	if closeErr != nil {
+		logger.Logger.Errorf("保存云存档失败, err: %v", closeErr)
+		fail(c, 500, message.Get(c, "cloud archive import fail"))
+		return
+	}
+	if written > constant.CloudArchiveMaxBytes {
+		fail(c, 201, message.Get(c, "cloud archive too large"))
+		return
+	}
+	if written == 0 {
+		fail(c, 201, message.Get(c, "cloud archive download fail"))
+		return
+	}
+
+	unzipPath := filepath.Join(tempDir, "unzip") + string(os.PathSeparator)
+	roomInfo, code, msgKey, err := h.roomHandler.ImportNewRoomFromZip(c, savePath, unzipPath)
+	if err != nil {
+		logger.Logger.Errorf("导入云存档失败, archiveID: %s, err: %v", id, err)
+		if msgKey == "" {
+			msgKey = "cloud archive import fail"
+		}
+		if code == 0 {
+			code = 201
+		}
+		fail(c, code, message.Get(c, msgKey))
+		return
+	}
+
+	ok(c, message.Get(c, "cloud archive import success"), roomInfo)
 }
