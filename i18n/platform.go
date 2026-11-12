@@ -1,10 +1,7 @@
-package platform
+package i18n
 
-import (
-	"dst-management-platform-api/i18n"
-)
-
-var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+// Platform 是平台模块的词条表：基础文案 + 本模块词条。
+var Platform = NewExtendedI18n(map[string]Text{
 	"get os info fail":     {ZH: "获取系统信息失败", EN: "Get OS Info Fail"},
 	"get screens fail":     {ZH: "获取Screens失败", EN: "Get Screens Fail"},
 	"kill screen fail":     {ZH: "关闭Screens失败", EN: "Kill Screens Fail"},

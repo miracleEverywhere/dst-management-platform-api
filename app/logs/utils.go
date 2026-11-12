@@ -1,49 +1,21 @@
 package logs
 
 import (
-	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/logger"
-	"strings"
-
-	"github.com/gin-gonic/gin"
+	"dst-management-platform-api/i18n"
+	logssvc "dst-management-platform-api/service/logs"
 )
 
+// message 是本模块词条表；文案数据集中在 i18n 包，这里只做包内作用域引用，
+// 避免在 handler 里写错成其他模块的表。
+var message = i18n.Logs
+
+// Handler 日志模块 HTTP 层，业务逻辑全部由 service 承担。
+// 统一响应用 message.Respond，身份提取用 middleware.Actor。
 type Handler struct {
-	userDao        *dao.UserDAO
-	roomDao        *dao.RoomDAO
-	worldDao       *dao.WorldDAO
-	roomSettingDao *dao.RoomSettingDAO
+	svc *logssvc.Service
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO) *Handler {
-	return &Handler{
-		userDao:        userDao,
-		roomDao:        roomDao,
-		worldDao:       worldDao,
-		roomSettingDao: roomSettingDao,
-	}
-}
-
-func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
-	role, _ := c.Get("role")
-	username, _ := c.Get("username")
-
-	// 管理员直接返回true
-	if role.(string) == "admin" {
-		return true
-	} else {
-		dbUser, err := h.userDao.GetUserByUsername(username.(string))
-		if err != nil {
-			logger.Logger.Error("查询数据库失败")
-			return false
-		}
-		roomIDs := strings.Split(dbUser.Rooms, ",")
-		for _, id := range roomIDs {
-			if id == roomID {
-				return true
-			}
-		}
-	}
-
-	return false
+// NewHandler 创建日志模块 handler
+func NewHandler(svc *logssvc.Service) *Handler {
+	return &Handler{svc: svc}
 }

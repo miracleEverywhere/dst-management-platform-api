@@ -1,89 +1,21 @@
 package player
 
 import (
-	"dst-management-platform-api/constant"
-	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/logger"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"strings"
-	"time"
-
-	"github.com/gin-gonic/gin"
+	"dst-management-platform-api/i18n"
+	playersvc "dst-management-platform-api/service/player"
 )
 
+// message 是本模块词条表；文案数据集中在 i18n 包，这里只做包内作用域引用，
+// 避免在 handler 里写错成其他模块的表。
+var message = i18n.Player
+
+// Handler 玩家模块 HTTP 层，业务逻辑全部由 service 承担。
+// 统一响应用 message.Respond，身份提取用 middleware.Actor。
 type Handler struct {
-	userDao          *dao.UserDAO
-	roomDao          *dao.RoomDAO
-	worldDao         *dao.WorldDAO
-	roomSettingDao   *dao.RoomSettingDAO
-	uidMapDao        *dao.UidMapDAO
-	globalSettingDao *dao.GlobalSettingDAO
+	svc *playersvc.Service
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, uidMapDao *dao.UidMapDAO, globalSettingDao *dao.GlobalSettingDAO) *Handler {
-	return &Handler{
-		userDao:          userDao,
-		roomDao:          roomDao,
-		worldDao:         worldDao,
-		roomSettingDao:   roomSettingDao,
-		uidMapDao:        uidMapDao,
-		globalSettingDao: globalSettingDao,
-	}
-}
-
-func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
-	role, _ := c.Get("role")
-	username, _ := c.Get("username")
-
-	// 管理员直接返回true
-	if role.(string) == "admin" {
-		return true
-	} else {
-		dbUser, err := h.userDao.GetUserByUsername(username.(string))
-		if err != nil {
-			logger.Logger.Error("查询数据库失败")
-			return false
-		}
-		roomIDs := strings.Split(dbUser.Rooms, ",")
-		for _, id := range roomIDs {
-			if id == roomID {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-var client *http.Client = &http.Client{
-	Timeout: constant.HttpTimeout * time.Second,
-}
-
-func getPublicBlockList() ([]string, error) {
-	httpResponse, err := client.Get(constant.DstBlockList)
-	if err != nil {
-		return []string{}, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			logger.Logger.Errorf("请求关闭失败, err: %v", err)
-		}
-	}(httpResponse.Body) // 确保在函数结束时关闭响应体
-	// 检查 HTTP 状态码
-	if httpResponse.StatusCode != http.StatusOK {
-		return []string{}, fmt.Errorf("获取饥荒黑名单列表失败，HTTP Code: %d", httpResponse.StatusCode)
-	}
-
-	var responseData struct {
-		Uids []string `json:"uids"`
-	}
-	if err = json.NewDecoder(httpResponse.Body).Decode(&responseData); err != nil {
-		return []string{}, fmt.Errorf("解析饥荒黑名单失败, err: %v", err)
-	}
-
-	return responseData.Uids, nil
+// NewHandler 创建玩家模块 handler
+func NewHandler(svc *playersvc.Service) *Handler {
+	return &Handler{svc: svc}
 }

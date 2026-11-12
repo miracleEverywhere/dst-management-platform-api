@@ -6,12 +6,12 @@ import (
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/i18n"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/service"
 	"dst-management-platform-api/utils"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -20,27 +20,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Actor 从 gin 上下文提取 JWT 中间件写入的身份信息，供 service 层使用。
+// 写入这些 key 的代码也在本包（TokenCheck / AdminOnly），读写放在一起避免 key 名漂移。
+func Actor(c *gin.Context) service.Actor {
+	return service.Actor{
+		Username: c.GetString("username"),
+		Nickname: c.GetString("nickname"),
+		Role:     c.GetString("role"),
+		Lang:     c.Request.Header.Get("X-I18n-Lang"),
+		Path:     c.Request.URL.Path,
+	}
+}
+
 func tokenMissing(c *gin.Context) {
 	logger.Logger.Warnf("未授权的访问, DMP已拦截, ip为: %s", c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{"code": 420, "message": i18n.I18n.Get(c, "token fail"), "data": nil})
+	i18n.I18n.Respond(c, service.Fail(constant.CodeAuthTokenInvalid))
 	c.Abort()
 }
 
 func tokenRevoked(c *gin.Context, claims utils.Claims) {
 	logger.Logger.Warnf("token已被撤销, username: %s, ip: %s", claims.Username, c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{"code": 420, "message": i18n.I18n.Get(c, "token revoked"), "data": nil})
+	i18n.I18n.Respond(c, service.FailKey(constant.CodeAuthTokenInvalid, "token revoked"))
 	c.Abort()
 }
 
 func tokenNoPermission(c *gin.Context, username, nickname string) {
 	logger.Logger.Warnf("越权请求, ip: %v, user: %v, nickname: %v", c.ClientIP(), username, nickname)
-	c.JSON(http.StatusOK, gin.H{"code": 201, "message": i18n.I18n.Get(c, "permission needed"), "data": nil})
+	i18n.I18n.Respond(c, service.Fail(constant.CodeFrameworkNoPermission))
 	c.Abort()
 }
 
 func tooManyRequests(c *gin.Context, username string) {
 	logger.Logger.Warnf("登录频率过高, user: %s, ip: %s", truncateUsername(username), c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{"code": 429, "message": i18n.I18n.Get(c, "too many requests"), "data": nil})
+	i18n.I18n.Respond(c, service.Fail(constant.CodeTooManyRequests))
 	c.Abort()
 }
 

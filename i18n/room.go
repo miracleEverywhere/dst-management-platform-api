@@ -1,16 +1,14 @@
-package room
+package i18n
 
-import (
-	"dst-management-platform-api/i18n"
-)
-
-var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+// Room 是房间模块的词条表：基础文案 + 本模块词条。
+var Room = NewExtendedI18n(map[string]Text{
 	"upload save fail":                    {ZH: "上传文件保存失败", EN: "file save fail"},
 	"unzip fail":                          {ZH: "解压失败", EN: "unzip file fail"},
 	"find cluster home fail":              {ZH: "查询存档主目录失败", EN: "find DST main path fail"},
 	"cluster.ini file not found":          {ZH: "cluster.ini文件不存在", EN: "cluster.ini file not found"},
 	"read cluster.ini file fail":          {ZH: "读取cluster.ini文件失败", EN: "read cluster.ini file fail"},
 	"cluster.ini cluster_name not found":  {ZH: "cluster.ini中未发现[cluster_name]字段", EN: "cluster_name not found in cluster.ini"},
+	"cluster.ini game_mode invalid":       {ZH: "cluster.ini的[game_mode]取值非法", EN: "invalid game_mode in cluster.ini"},
 	"cluster.ini game_mode not found":     {ZH: "cluster.ini中未发现[game_mode]字段", EN: "game_mode not found in cluster.ini"},
 	"get worlds path fail":                {ZH: "获取世界目录失败", EN: "get worlds path fail"},
 	"server.ini file not found":           {ZH: "server.ini文件不存在", EN: "server.ini file not found"},

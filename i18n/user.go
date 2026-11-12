@@ -1,10 +1,7 @@
-package user
+package i18n
 
-import (
-	"dst-management-platform-api/i18n"
-)
-
-var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+// User 是用户模块的词条表：基础文案 + 本模块词条。
+var User = NewExtendedI18n(map[string]Text{
 	"register success":      {ZH: "注册成功", EN: "Register Success"},
 	"user exist":            {ZH: "请勿重复注册", EN: "User Existed"},
 	"login fail":            {ZH: "登录失败", EN: "Login Fail"},

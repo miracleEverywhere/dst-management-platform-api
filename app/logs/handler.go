@@ -1,15 +1,12 @@
 package logs
 
 import (
-	"dst-management-platform-api/cache"
 	"dst-management-platform-api/constant"
-	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
-	"fmt"
-	"net/http"
-	"strconv"
+	"dst-management-platform-api/middleware"
+	"dst-management-platform-api/service"
+	nethttp "net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,58 +21,11 @@ func (h *Handler) contentGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeLogsBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	if reqForm.LogType == "game" || reqForm.LogType == "chat" {
-		if reqForm.RoomID == 0 {
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return
-		}
-
-		room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-		if err != nil {
-			logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-
-		logContent := game.LogContent(reqForm.LogType, reqForm.WorldID, reqForm.Lines)
-
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logContent})
-	} else {
-		// 系统级日志（steam、access、runtime）仅允许管理员查看
-		role, _ := c.Get("role")
-		if role.(string) != "admin" {
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-			return
-		}
-
-		var logPath string
-		switch reqForm.LogType {
-		case "steam":
-			if cache.OsType == constant.Darwin {
-				logPath = constant.DarwinSteamLogPath
-			} else {
-				logPath = constant.SteamLogPath
-			}
-		case "access":
-			logPath = "logs/access.log"
-		case "runtime":
-			logPath = "logs/runtime.log"
-		}
-
-		logContent := utils.GetFileLastNLines(logPath, reqForm.Lines)
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": logContent})
-	}
+	message.Respond(c, h.svc.Content(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.LogType, reqForm.Lines))
 }
 
 func (h *Handler) historyListGet(c *gin.Context) {
@@ -87,26 +37,11 @@ func (h *Handler) historyListGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeLogsBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	list := game.HistoryFileList(reqForm.LogType, reqForm.WorldID)
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": list})
+	message.Respond(c, h.svc.HistoryList(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.LogType))
 }
 
 func (h *Handler) historyContentGet(c *gin.Context) {
@@ -119,26 +54,11 @@ func (h *Handler) historyContentGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeLogsBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	content := game.HistoryFileContent(reqForm.LogType, reqForm.LogFile, reqForm.WorldID)
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": content})
+	message.Respond(c, h.svc.HistoryContent(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.LogType, reqForm.LogFile))
 }
 
 func (h *Handler) cleanInfoGet(c *gin.Context) {
@@ -148,25 +68,11 @@ func (h *Handler) cleanInfoGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeLogsBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": game.LogsInfo()})
+	message.Respond(c, h.svc.CleanInfo(middleware.Actor(c), reqForm.RoomID))
 }
 
 func (h *Handler) cleanDelete(c *gin.Context) {
@@ -177,43 +83,18 @@ func (h *Handler) cleanDelete(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeLogsBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	// 系统级日志（steam、access、runtime）仅允许管理员清理
-	role, _ := c.Get("role")
-	if (reqForm.Steam || reqForm.Access || reqForm.Runtime) && role.(string) != "admin" {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	cl := dst.CleanLogs{
+	clean := dst.CleanLogs{
 		Game:    reqForm.Game,
 		Chat:    reqForm.Chat,
 		Steam:   reqForm.Steam,
 		Access:  reqForm.Access,
 		Runtime: reqForm.Runtime,
 	}
-
-	if game.LogsClean(&cl) {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
-	} else {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
-	}
+	message.Respond(c, h.svc.Clean(middleware.Actor(c), reqForm.RoomID, clean))
 }
 
 func (h *Handler) downloadGet(c *gin.Context) {
@@ -223,48 +104,15 @@ func (h *Handler) downloadGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Result{Code: 400, Status: nethttp.StatusBadRequest, MsgKey: "bad request"})
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
+	zipFile, cleanup, result := h.svc.Download(middleware.Actor(c), reqForm.RoomID)
+	defer cleanup()
 
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	role, _ := c.Get("role")
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-
-	fileList := game.LogsList(role.(string) == "admin")
-	zipFilePath := fmt.Sprintf("%s/tmp/%d", constant.DmpFiles, reqForm.RoomID)
-
-	defer func(dirPath string) {
-		err := utils.RemoveDir(dirPath)
-		if err != nil {
-			logger.Logger.Error(err.Error())
-		}
-	}(zipFilePath)
-
-	err = utils.EnsureDirExists(zipFilePath)
-	if err != nil {
-		logger.Logger.Errorf("创建目录失败, err: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": message.Get(c, "download fail"), "data": nil})
-		return
-	}
-	zipFile := fmt.Sprintf("%s/logs.zip", zipFilePath)
-
-	err = utils.ZipFiles(fileList, zipFile)
-	if err != nil {
-		logger.Logger.Errorf("创建压缩文件失败, err: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": message.Get(c, "download fail"), "data": nil})
+	if result.Code != 200 {
+		message.Respond(c, result)
 		return
 	}
 

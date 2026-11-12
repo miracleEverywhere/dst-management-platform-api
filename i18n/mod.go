@@ -1,10 +1,7 @@
-package mod
+package i18n
 
-import (
-	"dst-management-platform-api/i18n"
-)
-
-var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+// Mod 是模组模块的词条表：基础文案 + 本模块词条。
+var Mod = NewExtendedI18n(map[string]Text{
 	"downloading":                             {ZH: "%s 正在下载中", EN: "Downloading %s"},
 	"downloaded":                              {ZH: "%s 下载完成", EN: "%s Downloaded"},
 	"server error":                            {ZH: "服务器内部错误", EN: "Internal Server Error"},

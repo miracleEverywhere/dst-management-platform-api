@@ -6,10 +6,10 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/i18n"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/service"
 	"dst-management-platform-api/utils"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -126,7 +126,7 @@ func LoginRateLimit() gin.HandlerFunc {
 		switch {
 		case errors.Is(err, errLoginBodyTooLarge):
 			logger.Logger.Warnf("登录请求体过大, ip: %s", c.ClientIP())
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": i18n.I18n.Get(c, "bad request"), "data": nil})
+			i18n.I18n.Respond(c, service.Fail(constant.CodeFrameworkBadRequest))
 			c.Abort()
 			return
 		case err != nil || username == "":

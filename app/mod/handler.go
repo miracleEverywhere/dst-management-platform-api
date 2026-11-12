@@ -1,22 +1,18 @@
 package mod
 
 import (
-	"dst-management-platform-api/cache"
-	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/models"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/middleware"
+	"dst-management-platform-api/service"
 	"dst-management-platform-api/utils"
 	"net/http"
-	"sort"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) modSearchGet(c *gin.Context) {
-	langStr := normalizeModLanguage(c.Request.Header.Get("X-I18n-Lang"))
-
 	type SearchForm struct {
 		SearchType string `form:"searchType" json:"searchType"`
 		SearchText string `form:"searchText" json:"searchText"`
@@ -26,65 +22,18 @@ func (h *Handler) modSearchGet(c *gin.Context) {
 	var searchForm SearchForm
 	if err := c.ShouldBindQuery(&searchForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 	logger.Logger.Debug(utils.StructToFlatString(searchForm))
 
-	if searchForm.SearchType == "id" {
-		id, err := strconv.Atoi(searchForm.SearchText)
-		if err != nil || id <= 0 {
-			logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return
-		}
-
-		var cachedModInfo *models.ModInfo
-		if h.modInfoDao != nil {
-			cachedModInfo, err = h.modInfoDao.GetModInfoByID(id, langStr)
-		}
-		if err == nil && cachedModInfo != nil && checkCacheValidity(cachedModInfo.CacheTimestamp) {
-			data := Data{
-				Total:    1,
-				Page:     1,
-				PageSize: 1,
-				Rows: []models.ModInfo{
-					*cachedModInfo,
-				},
-			}
-			c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
-			return
-		}
-
-		data, err := SearchModById(id, langStr)
-		if err != nil {
-			logger.Logger.Errorf("获取mod信息失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "search fail"), "data": nil})
-			return
-		}
-		if len(data.Rows) > 0 && h.modInfoDao != nil {
-			data.Rows[0].CacheTimestamp = utils.GetTimestamp()
-			if cacheErr := h.modInfoDao.UpdateModInfo(&data.Rows[0]); cacheErr != nil {
-				logger.Logger.Errorf("更新模组缓存信息失败, err: %v", cacheErr)
-			}
-		}
-
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
-		return
-	}
-	if searchForm.SearchType == "text" {
-		data, err := SearchMod(searchForm.Page, searchForm.PageSize, searchForm.SearchText, langStr)
-		if err != nil {
-			logger.Logger.Errorf("获取mod信息失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "search fail"), "data": nil})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	// 非法的搜索类型保留原有响应形状，与业务返回结构不同，故留在 handler 处理
+	if searchForm.SearchType != "id" && searchForm.SearchType != "text" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+	message.Respond(c, h.svc.ModSearch(middleware.Actor(c), searchForm.SearchType, searchForm.SearchText, searchForm.Page, searchForm.PageSize))
 }
 
 func (h *Handler) downloadPost(c *gin.Context) {
@@ -100,87 +49,11 @@ func (h *Handler) downloadPost(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	// url https://cdn.steamusercontent.com/ugc/1466437966115152320/8A3E11F0B32FCBFBF308DEB0B5C98A702215374B/
-	if ok := checkNotUgcUrl(reqForm.FileURL); !ok {
-		logger.Logger.Warnf("异常模组下载请求已拦截: %s, api: %s", reqForm.FileURL, c.Request.URL.Path)
-		logger.Logger.Warn("疑似攻击请求，请立即修改用户名密码及重置jwt-secret")
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	reqSize, err := strconv.Atoi(reqForm.Size)
-	if err != nil || reqSize <= 0 || reqForm.RoomID <= 0 || reqForm.ID <= 0 {
-		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
-	reqSize64 := int64(reqSize)
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	if cache.ModDownloadStatus == nil {
-		logger.Logger.Error("模组下载状态缓存未初始化")
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "server error"), "data": nil})
-		return
-	}
-
-	if item, err := cache.ModDownloadStatus.Get(reqForm.RoomID, reqForm.ID); err == nil && item.CurrentSize < item.Size {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": reqForm.Name + " " + message.Get(c, "downloading"), "data": nil})
-		return
-	}
-
-	if err := cache.ModDownloadStatus.Set(reqForm.RoomID, &cache.ModItem{
-		ID:          reqForm.ID,
-		Size:        reqSize,
-		CurrentSize: 0,
-	}); err != nil {
-		logger.Logger.Errorf("写入模组下载状态失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "server error"), "data": nil})
-		return
-	}
-
-	dl := func() {
-		err, modSize := game.DownloadMod(reqForm.ID, reqForm.FileURL)
-		if err != nil || modSize != reqSize64 {
-			logger.Logger.Debugf("模组大小与预期不符, %d, %d, err: %v", modSize, reqSize64, err)
-			if deleteErr := cache.ModDownloadStatus.Delete(reqForm.RoomID, reqForm.ID); deleteErr != nil {
-				logger.Logger.Debugf("删除模组下载状态失败, err: %v", deleteErr)
-			}
-			return
-		}
-
-		if setErr := cache.ModDownloadStatus.Set(reqForm.RoomID, &cache.ModItem{
-			ID:          reqForm.ID,
-			Size:        reqSize,
-			CurrentSize: reqSize,
-		}); setErr != nil {
-			logger.Logger.Errorf("更新模组下载状态失败, err: %v", setErr)
-		}
-	}
-
-	if reqForm.Sync {
-		dl()
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.GetF(c, "downloaded", reqForm.Name), "data": nil})
-	} else {
-		go dl()
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.GetF(c, "downloading", reqForm.Name), "data": nil})
-	}
+	message.Respond(c, h.svc.ModDownload(middleware.Actor(c), reqForm.RoomID, reqForm.ID, reqForm.FileURL, reqForm.Size, reqForm.Name, reqForm.Sync))
 }
 
 func (h *Handler) downloadStatusGet(c *gin.Context) {
@@ -192,33 +65,14 @@ func (h *Handler) downloadStatusGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil || reqForm.RoomID <= 0 || (reqForm.ID <= 0 && reqForm.ModID <= 0) {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": 0})
+		message.Respond(c, service.Result{Code: constant.CodeModBadRequest, Data: 0})
 		return
 	}
 	if reqForm.ID <= 0 {
 		reqForm.ID = reqForm.ModID
 	}
 
-	progress := 0
-	if cache.ModDownloadStatus != nil {
-		if item, err := cache.ModDownloadStatus.Get(reqForm.RoomID, reqForm.ID); err == nil {
-			if item.Size > 0 && item.CurrentSize >= item.Size {
-				progress = 100
-			} else if item.Size > 0 && item.CurrentSize > 0 {
-				progress = int(float64(item.CurrentSize) / float64(item.Size) * 100)
-			} else if item.CurrentSize > 0 {
-				progress = 100
-			}
-			if progress < 0 {
-				progress = 0
-			}
-			if progress > 100 {
-				progress = 100
-			}
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": progress})
+	message.Respond(c, h.svc.ModDownloadStatus(middleware.Actor(c), reqForm.RoomID, reqForm.ID))
 }
 
 func (h *Handler) downloadedModsGet(c *gin.Context) {
@@ -228,31 +82,11 @@ func (h *Handler) downloadedModsGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	downloadedMods := game.GetDownloadedMods()
-
-	err = h.addDownloadedModInfo(downloadedMods, c.Request.Header.Get("X-I18n-Lang"))
-	if err != nil {
-		logger.Logger.Error("添加模组额外信息失败")
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": downloadedMods})
+	message.Respond(c, h.svc.DownloadedMods(middleware.Actor(c), reqForm.RoomID))
 }
 
 func (h *Handler) downloadedModIDsGet(c *gin.Context) {
@@ -262,45 +96,11 @@ func (h *Handler) downloadedModIDsGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": []int{}})
+		message.Respond(c, service.Result{Code: constant.CodeModBadRequest, Data: []int{}})
 		return
 	}
 
-	if reqForm.RoomID == 0 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": []int{}})
-		return
-	}
-
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": []int{}})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": []int{}})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	downloadedMods := game.GetDownloadedMods()
-	modIDs := make([]int, 0, len(*downloadedMods))
-	seen := make(map[int]struct{}, len(*downloadedMods))
-	for _, downloadedMod := range *downloadedMods {
-		if downloadedMod.ID <= 0 {
-			continue
-		}
-		if _, exists := seen[downloadedMod.ID]; exists {
-			continue
-		}
-
-		seen[downloadedMod.ID] = struct{}{}
-		modIDs = append(modIDs, downloadedMod.ID)
-	}
-	sort.Ints(modIDs)
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modIDs})
+	message.Respond(c, h.svc.DownloadedModIDs(middleware.Actor(c), reqForm.RoomID))
 }
 
 func (h *Handler) settingModConfigStructGet(c *gin.Context) {
@@ -313,31 +113,11 @@ func (h *Handler) settingModConfigStructGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	options, err := game.GetModConfigureOptions(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
-	if err != nil {
-		logger.Logger.Error("获取模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod configuration options error"), "data": options})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": options})
+	message.Respond(c, h.svc.SettingModConfigStruct(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.ID, reqForm.FileURL))
 }
 
 func (h *Handler) settingModConfigValueGet(c *gin.Context) {
@@ -350,31 +130,11 @@ func (h *Handler) settingModConfigValueGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	options, err := game.GetModConfigureOptionsValues(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
-	if err != nil {
-		logger.Logger.Error("获取模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod configuration values error"), "data": options})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": options})
+	message.Respond(c, h.svc.SettingModConfigValue(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.ID, reqForm.FileURL))
 }
 
 func (h *Handler) settingModConfigValuePut(c *gin.Context) {
@@ -387,45 +147,11 @@ func (h *Handler) settingModConfigValuePut(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	err = game.ModConfigureOptionsValuesChange(reqForm.WorldID, reqForm.ID, &reqForm.ModORConfig)
-	if err != nil {
-		logger.Logger.Error("修改模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "modify mod configuration values error"), "data": nil})
-		return
-	}
-
-	err = h.roomDao.UpdateRoom(room)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	err = h.worldDao.UpdateWorlds(worlds)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "modify mod configuration values success"), "data": nil})
+	message.Respond(c, h.svc.SettingModConfigValuePut(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.ID, reqForm.ModORConfig))
 }
 
 func (h *Handler) addEnablePost(c *gin.Context) {
@@ -438,45 +164,11 @@ func (h *Handler) addEnablePost(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	err = game.ModEnable(reqForm.WorldID, reqForm.ID, reqForm.FileURL == "")
-	if err != nil {
-		logger.Logger.Errorf("模组启用失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod enable fail"), "data": nil})
-		return
-	}
-
-	err = h.roomDao.UpdateRoom(room)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	err = h.worldDao.UpdateWorlds(worlds)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "mod enable success"), "data": nil})
+	message.Respond(c, h.svc.AddEnable(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.ID, reqForm.FileURL))
 }
 
 func (h *Handler) addDisablePost(c *gin.Context) {
@@ -488,45 +180,11 @@ func (h *Handler) addDisablePost(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	err = game.ModDisable(reqForm.ID)
-	if err != nil {
-		logger.Logger.Errorf("模组禁用失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "mod disable fail"), "data": nil})
-		return
-	}
-
-	err = h.roomDao.UpdateRoom(room)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	err = h.worldDao.UpdateWorlds(worlds)
-	if err != nil {
-		logger.Logger.Errorf("更新房间失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "mod disable success"), "data": nil})
+	message.Respond(c, h.svc.AddDisable(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.ID))
 }
 
 func (h *Handler) getEnabledModsGet(c *gin.Context) {
@@ -537,36 +195,11 @@ func (h *Handler) getEnabledModsGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	modsID, err := game.GetEnabledMods(reqForm.WorldID)
-	if err != nil {
-		logger.Logger.Error("获取模组设置失败")
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get enabled mod fail"), "data": modsID})
-		return
-	}
-
-	err = h.addDownloadedModInfo(&modsID, c.Request.Header.Get("X-I18n-Lang"))
-	if err != nil {
-		logger.Logger.Error("添加模组额外信息失败")
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": modsID})
+	message.Respond(c, h.svc.EnabledMods(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID))
 }
 
 func (h *Handler) modInfoPost(c *gin.Context) {
@@ -576,39 +209,11 @@ func (h *Handler) modInfoPost(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	modIDs := make([]int, 0, len(reqForm.ModIDs))
-	seen := make(map[int]struct{}, len(reqForm.ModIDs))
-	for _, modID := range reqForm.ModIDs {
-		if modID <= 0 {
-			continue
-		}
-		if _, ok := seen[modID]; ok {
-			continue
-		}
-
-		seen[modID] = struct{}{}
-		modIDs = append(modIDs, modID)
-	}
-
-	mods := make([]dst.DownloadedMod, 0, len(modIDs))
-	for _, modID := range modIDs {
-		mods = append(mods, dst.DownloadedMod{ID: modID})
-	}
-
-	if len(mods) > 0 {
-		err := h.addDownloadedModInfo(&mods, c.Request.Header.Get("X-I18n-Lang"))
-		if err != nil {
-			logger.Logger.Errorf("获取模组信息失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "search fail"), "data": nil})
-			return
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": mods})
+	message.Respond(c, h.svc.ModInfo(middleware.Actor(c), reqForm.ModIDs))
 }
 
 func (h *Handler) deletePost(c *gin.Context) {
@@ -620,36 +225,11 @@ func (h *Handler) deletePost(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	err = game.ModDelete(reqForm.ID, reqForm.FileURL)
-	if err != nil {
-		logger.Logger.Errorf("删除模组失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
-		return
-	}
-
-	err = cache.ModDownloadStatus.Delete(reqForm.RoomID, reqForm.ID)
-	if err != nil {
-		logger.Logger.Errorf("删除模组下载状态缓存失败: %v", err)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+	message.Respond(c, h.svc.Delete(middleware.Actor(c), reqForm.RoomID, reqForm.ID, reqForm.FileURL))
 }
 
 func (h *Handler) deletePostMulti(c *gin.Context) {
@@ -659,38 +239,11 @@ func (h *Handler) deletePostMulti(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	err = game.ModDeleteMulti(reqForm.Mods)
-	if err != nil {
-		logger.Logger.Errorf("删除模组失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
-		return
-	}
-
-	for _, mod := range reqForm.Mods {
-		err = cache.ModDownloadStatus.Delete(reqForm.RoomID, mod.ID)
-		if err != nil {
-			logger.Logger.Errorf("删除模组下载状态缓存失败: %v", err)
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+	message.Respond(c, h.svc.DeleteMulti(middleware.Actor(c), reqForm.RoomID, reqForm.Mods))
 }
 
 func (h *Handler) acfDelete(c *gin.Context) {
@@ -700,34 +253,9 @@ func (h *Handler) acfDelete(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
 		return
 	}
 
-	if !h.hasPermission(c, strconv.Itoa(reqForm.RoomID)) {
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "permission needed"), "data": nil})
-		return
-	}
-
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	err = game.DeleteAcf()
-	if err != nil {
-		logger.Logger.Errorf("删除acf文件失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "delete fail"), "data": nil})
-		return
-	}
-
-	err = cache.ModDownloadStatus.DeleteByRoomID(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("删除模组下载状态缓存失败: %v", err)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "delete success"), "data": nil})
+	message.Respond(c, h.svc.DeleteAcf(middleware.Actor(c), reqForm.RoomID))
 }

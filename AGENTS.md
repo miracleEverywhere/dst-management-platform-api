@@ -18,21 +18,23 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 
 ## 目录职责
 
-- `app/<module>/`：HTTP 业务模块，固定只包含 `handler.go`、`router.go`、`i18n.go`、`utils.go` 四个 Go 文件（四文件原则）。`handler.go` 放 HTTP handler 及请求/响应结构体；`router.go` 注册路由；`i18n.go` 声明模块词条；`utils.go` 放 `Handler`、构造器及全部辅助逻辑（云客户端、加密、同步、存档导入等）。不得再新增 `client.go`、`crypto.go`、`sync.go`、`archive.go`、`import.go` 之类的文件；内容变多时用文件内注释分区，而不是拆出新文件。
+- `app/<module>/`：HTTP 业务模块，固定只包含 `handler.go`、`router.go`、`utils.go` **三个** Go 文件。`handler.go` 只放 HTTP handler、请求/响应结构体、参数绑定与流式响应的响应头/写 body；`router.go` 注册路由；`utils.go` 放模块级装配——`Handler`、`NewHandler`，以及一行 `var message = i18n.<Module>` 把本模块词条表引入包内作用域（词条数据本身在 `i18n/`，见下）。写响应用 `message.Respond`（由 `i18n` 提供），提取身份用 `middleware.Actor`，不要在模块内重复实现。具体业务逻辑不再写在这里，见下一条。
+- `service/`：业务层，与 `app/<module>/` 一一对应为 `service/<module>/`。service 层可自由拆成多个文件（`service.go`、`client.go`、`crypto.go`、`sync.go`、`archive.go`、`jobs.go` 等），不受 app 层三文件约定约束。service 层不依赖 gin、不出现 `*gin.Context`、不写 `c.JSON`、不 import 任何 `app/` 包；`i18n` 与 `middleware` 会 import `service` 以消费 `Result`/`Actor`（表现层依赖用例契约），但 `service` 绝不反向 import `i18n`/`middleware`/gin（`service` 根包只放类型，无任何 import）；业务结果统一返回 `service.Result`。错误一律返回 `constant` 里的唯一错误码（一个原因一个码），**不传文案 key**；只有成功文案（`Msg`/`MsgF`）和极少数必须覆盖措辞的场景（`FailMsg`/`FailKey`）才带文案。handler 用 `message.Respond` 翻译成 `{"code","message","data"}`。DAO、`aichat.Manager`、云客户端等依赖由该层的 `Service` 持有。
 - `lite/`：精简版独立实现；`lite/api/` 是 net/http 路由与 handler，`lite/utils/` 是 JSON 单文件数据库、DST 文件与进程控制、JWT、密码和日志。它不 import 主程序的 `app/`、`server/`、`database/`、`dst/`、`scheduler/`、`i18n/`、`logger/`、`middleware/`、`webhook/`。`lite/dist-lite/` 是外部前端产物，运行时从可执行文件同级目录读取，不通过 `go:embed` 打进二进制。
 - `aichat/`：游戏内 AI 对话监听、关键词/向量索引、知识库（wiki）解析与向量模型配置。
 - `cache/`：进程级缓存初始化与访问。
-- `constant/`：编译期常量；版本号、超时、JWT 与静态缓存等平台级常量在 `constant/system.go`，DST 路径、外部接口与插件目录在 `constant/dst.go`。
-- `i18n/`：全局基础文案与 `BaseI18n`/`ExtendedI18n` 实现；各业务模块的 `i18n.go` 基于它合并本模块词条。
+- `constant/`：编译期常量；版本号、超时、JWT 与静态缓存等平台级常量在 `constant/system.go`，DST 路径、外部接口与插件目录在 `constant/dst.go`。业务错误码在 `constant/codes.go`（`CodeXxx` 常量）与 `constant/code_registry.go`（`Registry`：码 → 文案词条 + 排查建议 + 级别），号段与类别见文件头注释，文档 `docs/error-codes.md` 由 `go run ./cmd/codedoc` 生成。
+- `i18n/`：全部面向用户的文案与响应写出集中在这里。`i18n.go` 放 `BaseI18n`/`ExtendedI18n`、`Respond`（把 `service.Result` 的 code + 文案 + data 按词条表翻译后写成 `{"code","message","data"}`；`MsgKey` 为空时用 `constant.LookupCode(code)` 反查词条，未注册的码回退到 `unknown error`）与基础文案 `I18n`；`user.go`/`room.go`/`mod.go`/`dashboard.go`/`platform.go`/`logs.go`/`tools.go`/`player.go`/`cloud.go` 各放一个模块词条表（`i18n.User`、`i18n.Room` …），由 `NewExtendedI18n` 在基础文案上叠加本模块词条。新增文案统一加在这里，`zh`、`en` 必须同时维护。
 - `database/models/`：GORM 模型；`database/dao/`：数据访问；`database/db/`：SQLite 初始化、迁移和缓存。
 - `dst/`：DST 房间、世界、模组、玩家、地图、日志和进程控制。
 - `scheduler/`：全局及房间级定时任务。
-- `middleware/`：JWT、权限、缓存和限流中间件。
+- `middleware/`：JWT、权限、缓存和限流中间件；`middleware.Actor(c)` 负责把 JWT 中间件写入的 username/nickname/role 与请求头语言/路径收成 `service.Actor`，与写入上下文 key 的代码放在同一包，避免 key 名漂移。
 - `webhook/`：Webhook 事件、签名和异步发送。
 - `utils/`：共享工具函数（路径、命令、安全校验、进程内存 `GetRES` 等）；Klei TEX（KTEX）图集解包在 `utils/tex.go`，供 TMI 插件安装和地图资源提取使用，只包含解包链路，不含打包/压缩。
 - `logger/`：Zap 日志、访问日志、panic 捕获与运行时崩溃输出。
 - `embedFS/`：通过 `go:embed` 打包的前端、LuaJIT 库和安装脚本。
-- `docs/`：项目文档及图片资源。
+- `docs/`：项目文档及图片资源；`docs/error-codes.md` 是业务错误码表，由 `cmd/codedoc` 生成，不要手工编辑。
+- `cmd/codedoc/`：错误码文档生成器兼校验器。通过 `make codes` / `make codes-verify` 调用（等价于 `go run ./cmd/codedoc [-verify]`）；`-verify` 校验码唯一、号段正确、词条存在、无死码，并检查 `docs/error-codes.md` 是否已同步。
 - `.agents/skills/`：本仓库的 agent 技能说明（`frontend-project`、`no-test`、`sandbox`、`zh-cn`），按任务类型加载。
 - `.github/`：Issue 模板与发布流水线；`workflows/go.yml` 在 `v*` tag 上构建 Linux/macOS 主程序与 `dmp-lite.tgz`（含 `dmp-lite`、`lite/dist-lite`、手动安装/更新脚本），并推送 Docker 镜像（镜像只包含主程序）。
 - `docker/`、`run.sh`：发布和最终用户部署，不是日常开发入口。
@@ -61,6 +63,16 @@ make lite
 # 直接构建精简版
 CGO_ENABLED=0 go build -tags=lite -ldflags '-s -w' -v -o dmp-lite
 
+# 重新生成业务错误码文档（改动 constant/code_registry.go 后必须执行）
+make codes
+
+# 校验错误码表：码唯一、号段正确、词条存在、无死码、docs/error-codes.md 已同步
+# 注意：make backend-only 与 make lite 会先执行这一步，校验失败则构建失败
+make codes-verify
+
+# 提交前检查：codes-verify + gofmt(全仓) + go vet ./... + go vet -tags=lite ./...
+make check
+
 # 查看 Makefile 提供的目标
 make help
 ```
@@ -86,12 +98,16 @@ go run . -bind 8080 -dbpath ./data -level debug
 ### Go 代码
 
 - 遵循 `.editorconfig`，Go 文件使用 UTF-8、LF 和 Tab；所有修改过的 Go 文件必须通过 `gofmt`。
-- 沿用现有包边界和构造方式。业务依赖通过模块 `Handler` 持有，并由 `server/server.go` 统一创建和注入。
-- `app/<module>/` 必须遵守四文件原则：新增能力只能落在 `handler.go`（HTTP handler 与请求/响应结构体）、`router.go`（路由）、`i18n.go`（模块词条）、`utils.go`（`Handler`、构造器、客户端、加密、同步、导入等辅助逻辑）内，不要新增第五个 `.go` 文件。
+- 沿用现有包边界和构造方式。业务依赖由 `service/<module>/` 的 `Service` 持有，`Service` 在 `server/server.go` 统一创建后注入对应的 `Handler`（`NewHandler(svc)`）；`app/` 层的 `Handler` 不再直接持有 DAO。`lite/` 不引用 `service/`，保持独立实现。
+- `app/<module>/` 只允许 `handler.go`、`router.go`、`utils.go` 三个文件，不要新增第四个 `.go` 文件（原「四文件原则」的 `i18n.go` 已并入 `i18n/` 包和 `utils.go`）。业务实现写进 `service/<module>/`：handler 只做参数绑定、用 `middleware.Actor(c)` 提取 `service.Actor`、调用 service、用 `message.Respond(c, result)` 翻译并写响应（`message` 是 `utils.go` 里引入的本模块词条表）。禁止在模块内再写一份 `respond`/`actorOf`，也不要绕过 `message.Respond` 手写 `gin.H{"code": ...}`（`middleware` 同样适用）。
+- 新增一个错误响应时：先在 `constant/code_registry.go` 的 `Registry` 加一条（并同步 `constant/codes.go` 的 `CodeXxx` 常量，号段见文件头），再在 service 里 `return service.Fail(constant.CodeXxx)`（带参数用 `FailF`，带 data 用 `FailData`），最后跑 `make codes` 重新生成文档并确认 `make codes-verify` 通过。**不要**再用裸数字 code 或字符串文案 key。
+- 业务码约定：成功固定 `200`；认证失效固定 `420`（前端据此清登录态跳登录页）；其余错误码按「错误原因」唯一，同一个原因在不同接口复用同一个码。
+- service 层的错误与成功都用 `service.Result` 表达：成功用 `service.Success(data)`（字面量 `success`）、`service.Msg(msgKey, data)`、`service.MsgF(msgKey, args, data)`；错误用 `service.Fail(code)`、`service.FailF(code, args...)`、`service.FailData(code, data)`，需要字面文案用 `service.FailMsg(code, msg)`，需要覆盖措辞用 `service.FailKey(code, msgKey)`。需要非 200 HTTP 状态码时设 `Result.Status`，需要「文案与其他字符串拼接」时用 `Result.MsgBuilder`。
+- service 层返回的 i18n key 必须复用模块内已有词条，不得为了拆分新增/改名 key；日志里的请求路径用 `actor.Path`，语言用 `actor.Lang`，保证与原实现输出一致。
 - 主程序的编译期常量统一放在 `constant/`：DST 路径、外部接口地址与插件目录放 `constant/dst.go`，版本号、超时、JWT 与静态资源缓存等平台级常量放 `constant/system.go`；不要在 `utils/` 中新增常量。精简版的常量留在 `lite/` 内，不回引主线常量。
 - 主程序新增路由时使用 `constant.ApiVersion`，并按相邻路由应用 `middleware.TokenCheck()`、`middleware.AdminOnly()` 等中间件；精简版路由使用 `lite/api/router.go` 的 `apiPrefix`。
 - JSON API 保持现有响应形状：`{"code": ..., "message": ..., "data": ...}`。多数业务接口以 HTTP 200 返回，业务结果由响应体中的 `code` 表示；文件下载、流式响应和 WebSocket 等特殊接口沿用各自现有行为。
-- 主程序面向用户的消息统一走 `i18n` 包：通用文案维护在 `i18n/i18n.go` 的全局 `I18n` 中，模块词条在 `app/<module>/i18n.go` 用 `i18n.NewExtendedI18n(map[string]i18n.Text{...})` 声明，读取使用模块内的 `message.Get(c, ...)` / `message.GetF(c, ...)`；`zh`、`en` 文案必须同时维护。精简版只有中文常量文案，见下节。
+- 主程序面向用户的消息统一走 `i18n` 包：通用文案维护在 `i18n/i18n.go` 的 `I18n` 中，模块词条维护在 `i18n/<module>.go` 的 `i18n.<Module>` 表里；`app/<module>/utils.go` 用一行 `var message = i18n.<Module>` 引入包内作用域，handler 依然写 `message.Respond(...)`，从而既有集中文案、又保留「本模块只能用本模块词条表」的编译期约束。`zh`、`en` 文案必须同时维护。精简版只有中文常量文案，见下节。
 - 主程序使用已有 `logger`、DAO 和工具函数，不引入平行的日志、数据库或配置体系；精简版按 `lite/` 内的独立实现，不要反向把它接回主程序栈。
 - 错误必须被返回、转换为 API 响应或记录；不要静默吞掉对业务正确性有影响的错误。
 
@@ -113,7 +129,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 - 新增模型时同步新增 DAO，并将模型加入 `database/db/database.go` 的 `AllTables`，使 `AutoMigrate` 能创建表。
 - 不要在 Handler 中绕过 DAO 复制已有查询逻辑；跨实体操作参考 `database/dao/composite.go`。
 - 修改房间状态或配置时，检查是否需要同步更新 `scheduler/` 中的任务。任务名称和房间级任务生命周期应保持现有约定。
-- `RoomDAO.UpdateConfiguration` 与 `WorldDAO.UpdateWorlds` 都是先删除该房间全部世界再插入。客户端提交或存档导入的世界不带 ID，重建后世界 ID 会变化；`cache.WorldMetrics` 按世界 ID 键控，改动这类调用点时要同步迁移或清理监控数据（参考 `app/room/utils.go` 的 `migrateWorldMetrics` / `deleteWorldMetrics`）。
+- `RoomDAO.UpdateConfiguration` 与 `WorldDAO.UpdateWorlds` 都是先删除该房间全部世界再插入。客户端提交或存档导入的世界不带 ID，重建后世界 ID 会变化；`cache.WorldMetrics` 按世界 ID 键控，改动这类调用点时要同步迁移或清理监控数据（参考 `service/room/jobs.go` 的 `migrateWorldMetrics` / `deleteWorldMetrics`）。
 - 修改 AI 模型配置（`database/models/roomAISetting.go`、`aichat/config.go`）时注意零值语义，例如 `EmbeddingDimensions` 为 `0` 表示不发送 `dimensions` 参数而非非法值；校验规则需与前端契约保持一致。
 
 ### 安全与外部操作
@@ -148,10 +164,11 @@ go run . -bind 8080 -dbpath ./data -level debug
 
 按改动范围执行最小充分验证：
 
-1. 对所有修改过的 Go 文件运行 `gofmt`，并确认没有意外格式变化。
+1. 对所有修改过的 Go 文件运行 `gofmt`，并确认没有意外格式变化（`make check` 会一次性覆盖 gofmt、vet 与错误码校验）。
 2. 修改共享工具、中间件、数据库、调度器或 API 契约时，运行 `go vet ./...`；涉及 `lite.go` 的构建标签时用 `go vet -tags=lite ./...` 才能覆盖该入口。
-3. 修改入口、依赖、嵌入资源或发布相关代码时，在 Linux 上执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp`；macOS 执行 `make backend-only`（产物输出到 `~/dmp`）。涉及 `lite/`、构建标签或发布流水线时，再执行 `CGO_ENABLED=0 go build -tags=lite -ldflags '-s -w' -v -o dmp-lite`（或 `make lite`），并确认 `build-lite` 打包仍包含 `dmp-lite`、`dist-lite` 与脚本。验证后不要提交生成的 `dmp`/`dmp-lite`。
-4. 无法执行依赖 Linux/DST/网络的验证时，在交付说明中明确列出未验证项和原因。
+3. 改动 `constant/codes.go` 或 `constant/code_registry.go` 后必须运行 `make codes` 重新生成文档，并确认 `make codes-verify` 通过（`backend-only` / `lite` 已把它作为前置依赖）。
+4. 修改入口、依赖、嵌入资源或发布相关代码时，在 Linux 上执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp`；macOS 执行 `make backend-only`（产物输出到 `~/dmp`）。涉及 `lite/`、构建标签或发布流水线时，再执行 `CGO_ENABLED=0 go build -tags=lite -ldflags '-s -w' -v -o dmp-lite`（或 `make lite`），并确认 `build-lite` 打包仍包含 `dmp-lite`、`dist-lite` 与脚本。验证后不要提交生成的 `dmp`/`dmp-lite`。
+5. 无法执行依赖 Linux/DST/网络的验证时，在交付说明中明确列出未验证项和原因。
 
 ## Agent 工作方式
 

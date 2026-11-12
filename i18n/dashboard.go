@@ -1,10 +1,7 @@
-package dashboard
+package i18n
 
-import (
-	"dst-management-platform-api/i18n"
-)
-
-var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+// Dashboard 是控制台模块的词条表：基础文案 + 本模块词条。
+var Dashboard = NewExtendedI18n(map[string]Text{
 	"startup game fail":     {ZH: "启动失败", EN: "Startup Fail"},
 	"startup game success":  {ZH: "启动成功", EN: "Startup Success"},
 	"shutdown game fail":    {ZH: "关闭失败", EN: "Shutdown Fail"},
