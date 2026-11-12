@@ -175,14 +175,18 @@ func (s *Service) ModDownload(actor service.Actor, roomID, id int, fileURL, size
 		return service.Fail(constant.CodeModServerError)
 	}
 
-	dl := func() {
+	dl := func() error {
 		err, modSize := game.DownloadMod(id, fileURL)
 		if err != nil || modSize != reqSize64 {
 			logger.Logger.Debugf("模组大小与预期不符, %d, %d, err: %v", modSize, reqSize64, err)
 			if deleteErr := cache.ModDownloadStatus.Delete(roomID, id); deleteErr != nil {
 				logger.Logger.Debugf("删除模组下载状态失败, err: %v", deleteErr)
 			}
-			return
+			if err == nil {
+				err = fmt.Errorf("模组大小与预期不符: 实际 %d, 预期 %d", modSize, reqSize64)
+			}
+			logger.Logger.Warnf("模组下载失败, roomID: %d, modID: %d, err: %v", roomID, id, err)
+			return err
 		}
 
 		if setErr := cache.ModDownloadStatus.Set(roomID, &cache.ModItem{
@@ -192,14 +196,18 @@ func (s *Service) ModDownload(actor service.Actor, roomID, id int, fileURL, size
 		}); setErr != nil {
 			logger.Logger.Errorf("更新模组下载状态失败, err: %v", setErr)
 		}
+
+		return nil
 	}
 
 	if sync {
-		dl()
+		if err := dl(); err != nil {
+			return service.Fail(constant.CodeModDownloadFail)
+		}
 		return service.MsgF("downloaded", []any{name}, nil)
 	}
 
-	go dl()
+	go func() { _ = dl() }()
 	return service.MsgF("downloading", []any{name}, nil)
 }
 

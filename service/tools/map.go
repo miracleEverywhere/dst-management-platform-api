@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -157,8 +156,15 @@ func (s *Service) fillMapAssets(ctx context.Context, mapData *dst.MapFull) {
 		return
 	}
 
-	mapAssetExtractMutex.Lock()
-	defer mapAssetExtractMutex.Unlock()
+	select {
+	case mapAssetExtractSem <- struct{}{}:
+		defer func() { <-mapAssetExtractSem }()
+	case <-ctx.Done():
+		return
+	}
+	if ctx.Err() != nil {
+		return
+	}
 
 	gameBuild := strings.TrimSpace(mapData.GameBuild)
 	if gameBuild == "" {
@@ -311,4 +317,6 @@ func mapImageKey(kind, name string) string {
 	return kind + "\x00" + strings.ToLower(name)
 }
 
-var mapAssetExtractMutex sync.Mutex
+// mapAssetExtractSem 串行化图集解包（全局一次只解一个图集）。
+// 用带缓冲 channel 而不是 sync.Mutex，等待时才能响应请求取消。
+var mapAssetExtractSem = make(chan struct{}, 1)

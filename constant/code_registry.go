@@ -105,6 +105,7 @@ var Registry = []Entry{
 	{Code: 3066, Const: "CodeModDisableFail", Module: "mod", TextKey: "mod disable fail", Level: LevelWarn, Hint: "禁用模组失败。查看 logs/runtime.log 中的具体错误。"},
 	{Code: 3067, Const: "CodeModGetEnabledFail", Module: "mod", TextKey: "get enabled mod fail", Level: LevelWarn, Hint: "读取已启用模组列表失败。确认 modoverrides.lua 存在且格式正确。"},
 	{Code: 3068, Const: "CodeModDeleteFail", Module: "mod", TextKey: "delete fail", Level: LevelWarn, Hint: "删除失败，可能是资源仍被占用（进程未退出、文件被锁）或数据库写入异常。"},
+	{Code: 3069, Const: "CodeModDownloadFail", Module: "mod", TextKey: "download fail", Level: LevelWarn, Hint: "模组下载失败或下载大小与预期不符。检查网络、下载地址与模组文件是否完整，查看 logs/runtime.log 中的具体错误。"},
 	{Code: 3091, Const: "CodeModDBError", Module: "mod", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 	{Code: 3092, Const: "CodeModServerError", Module: "mod", TextKey: "server error", Level: LevelFatal, Hint: "服务端内部异常，通常是被其他请求触发的空指针或未初始化状态。查看 logs/runtime.log。"},
 
@@ -161,6 +162,7 @@ var Registry = []Entry{
 	{Code: 7068, Const: "CodeToolsGetSnapshotFail", Module: "tools", TextKey: "get snapshot fail", Level: LevelWarn, Hint: "读取快照列表失败。检查存档目录与 DST 快照文件。"},
 	{Code: 7069, Const: "CodeToolsMapBusy", Module: "tools", TextKey: "map busy", Level: LevelFatal, Hint: "地图正在生成中，请等当前任务结束后再试。"},
 	{Code: 7070, Const: "CodeToolsMapParseFail", Module: "tools", TextKey: "map parse fail", Level: LevelWarn, Hint: "解析地图数据失败。存档可能损坏或版本不兼容。"},
+	{Code: 7071, Const: "CodeToolsSnapshotStartFail", Module: "tools", TextKey: "snapshot start fail", Level: LevelWarn, Hint: "快照已删除，但房间世界重新启动失败。检查 DST 安装、screen 会话与端口占用，确认世界进程是否恢复运行。"},
 	{Code: 7091, Const: "CodeToolsDBError", Module: "tools", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 
 	// player

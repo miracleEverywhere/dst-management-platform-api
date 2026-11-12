@@ -23,16 +23,10 @@ func Start(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.Roo
 }
 
 // UpdateJob 更新指定任务
+// 先创建新任务，成功后再移除旧任务：创建失败时保留旧任务，避免任务被删掉却没有替代。
 func UpdateJob(jobConfig *JobConfig) error {
 	jobMutex.Lock()
 	defer jobMutex.Unlock()
-
-	// 移除现有任务
-	if job, exists := currentJobs[jobConfig.Name]; exists {
-		Scheduler.RemoveByReference(job)
-		delete(currentJobs, jobConfig.Name)
-		logger.Logger.Debug(fmt.Sprintf("发现已存在定时任务[%s]，移除", jobConfig.Name))
-	}
 
 	// 添加新任务
 	var job *gocron.Job
@@ -55,6 +49,13 @@ func UpdateJob(jobConfig *JobConfig) error {
 
 	if err != nil {
 		return err
+	}
+
+	// 移除现有任务，必须在创建成功之后，保留旧任务作为失败回退
+	if oldJob, exists := currentJobs[jobConfig.Name]; exists {
+		Scheduler.RemoveByReference(oldJob)
+		delete(currentJobs, jobConfig.Name)
+		logger.Logger.Debug(fmt.Sprintf("发现已存在定时任务[%s]，移除", jobConfig.Name))
 	}
 
 	currentJobs[jobConfig.Name] = job

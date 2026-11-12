@@ -10,6 +10,8 @@ import (
 	"dst-management-platform-api/utils"
 	"fmt"
 	nethttp "net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -181,22 +183,32 @@ func (s *Service) Download(actor service.Actor, roomID int) (zipFile string, cle
 
 	game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
 	fileList := game.LogsList(actor.IsAdmin())
-	zipDir := fmt.Sprintf("%s/tmp/%d", constant.DmpFiles, roomID)
+
+	// 每次下载使用独立临时目录：同房间并发下载时不能共用 logs.zip，
+	// 否则会互相覆盖/删除，甚至把管理员日志发给普通用户。
+	baseDir := fmt.Sprintf("%s/tmp", constant.DmpFiles)
+	if errEnsure := utils.EnsureDirExists(baseDir); errEnsure != nil {
+		logger.Logger.Errorf("创建目录失败, err: %v", errEnsure)
+		return "", noop, service.Result{
+			Code:   constant.CodeLogsDownloadFail,
+			Status: nethttp.StatusInternalServerError,
+		}
+	}
+	zipDir, errTemp := os.MkdirTemp(baseDir, fmt.Sprintf("%d-*", roomID))
+	if errTemp != nil {
+		logger.Logger.Errorf("创建临时目录失败, err: %v", errTemp)
+		return "", noop, service.Result{
+			Code:   constant.CodeLogsDownloadFail,
+			Status: nethttp.StatusInternalServerError,
+		}
+	}
 	cleanup = func() {
 		if errRemove := utils.RemoveDir(zipDir); errRemove != nil {
 			logger.Logger.Error(errRemove.Error())
 		}
 	}
 
-	if errEnsure := utils.EnsureDirExists(zipDir); errEnsure != nil {
-		logger.Logger.Errorf("创建目录失败, err: %v", errEnsure)
-		return "", cleanup, service.Result{
-			Code:   constant.CodeLogsDownloadFail,
-			Status: nethttp.StatusInternalServerError,
-		}
-	}
-
-	zipFile = fmt.Sprintf("%s/logs.zip", zipDir)
+	zipFile = filepath.Join(zipDir, "logs.zip")
 	if errZip := utils.ZipFiles(fileList, zipFile); errZip != nil {
 		logger.Logger.Errorf("创建压缩文件失败, err: %v", errZip)
 		return "", cleanup, service.Result{

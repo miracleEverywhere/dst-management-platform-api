@@ -22,39 +22,27 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 		logger.Logger.Errorf("获取房间备份设置失败, err: %v", err)
 	} else {
 		if roomSetting.BackupEnable {
-			if len(backupSettings) >= len(backupNames) {
-				// 新设置长度大于旧设置，直接更新
-				for i, s := range backupSettings {
-					err := scheduler.UpdateJob(&scheduler.JobConfig{
-						Name:     fmt.Sprintf("%d-%d-Backup", roomID, i),
-						Func:     scheduler.Backup,
-						Args:     []any{game},
-						TimeType: scheduler.DayType,
-						Interval: 0,
-						DayAt:    s.Time,
-					})
-					if err != nil {
-						logger.Logger.Errorf("备份定时任务处理失败, err: %v", err)
-					}
+			// 任务名按序号生成，必须按序号更新，不能依赖 GetJobsByType 的返回顺序
+			keep := make(map[string]struct{}, len(backupSettings))
+			for i, s := range backupSettings {
+				jobName := fmt.Sprintf("%d-%d-Backup", roomID, i)
+				keep[jobName] = struct{}{}
+				err := scheduler.UpdateJob(&scheduler.JobConfig{
+					Name:     jobName,
+					Func:     scheduler.Backup,
+					Args:     []any{game},
+					TimeType: scheduler.DayType,
+					Interval: 0,
+					DayAt:    s.Time,
+				})
+				if err != nil {
+					logger.Logger.Errorf("备份定时任务处理失败, err: %v", err)
 				}
-			} else {
-				// 新设置长度小于旧设置，超出的删除
-				for i, jobName := range backupNames {
-					if i >= len(backupSettings) {
-						scheduler.DeleteJob(jobName)
-					} else {
-						err := scheduler.UpdateJob(&scheduler.JobConfig{
-							Name:     fmt.Sprintf("%d-%d-Backup", roomID, i),
-							Func:     scheduler.Backup,
-							Args:     []any{game},
-							TimeType: scheduler.DayType,
-							Interval: 0,
-							DayAt:    backupSettings[i].Time,
-						})
-						if err != nil {
-							logger.Logger.Errorf("备份定时任务处理失败, err: %v", err)
-						}
-					}
+			}
+			// 删除新设置之外的旧任务，避免缩减备份时按 map 顺序删掉刚更新的任务
+			for _, jobName := range backupNames {
+				if _, ok := keep[jobName]; !ok {
+					scheduler.DeleteJob(jobName)
 				}
 			}
 		} else {

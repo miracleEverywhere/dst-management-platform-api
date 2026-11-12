@@ -324,7 +324,18 @@ func (s *Service) StatisticsOnlineTime(actor service.Actor, roomID int) service.
 	cache.PlayersOnlineTimeMutex.Lock()
 	defer cache.PlayersOnlineTimeMutex.Unlock()
 
-	return service.Success(cache.PlayersOnlineTime[roomID])
+	// 返回副本：锁在函数返回时释放，而响应的 JSON 编码发生在锁外，
+	// 调度器会持锁原地写这个内层 map，直接返回共享引用会触发并发 map 读写。
+	source := cache.PlayersOnlineTime[roomID]
+	if len(source) == 0 {
+		return service.Success(nil)
+	}
+	copied := make(map[string]int, len(source))
+	for nickname, seconds := range source {
+		copied[nickname] = seconds
+	}
+
+	return service.Success(copied)
 }
 
 // StatisticsPlayerCount 玩家数量折线图数据
@@ -357,13 +368,20 @@ func (s *Service) StatisticsPlayerCount(actor service.Actor, roomID, timeRange i
 	}
 
 	dataCount := int(timeRange / globalSettings.PlayerGetFrequency) // 返回多少个数据
-	dataLength := len(cache.PlayersStatistic[roomID])               // 当前房间统计数据的个数
-
-	if dataLength > dataCount {
-		return service.Success(cache.PlayersStatistic[roomID][dataLength-dataCount:])
+	statistics := cache.PlayersStatistic[roomID]
+	if statistics == nil {
+		return service.Success(nil)
+	}
+	if len(statistics) > dataCount {
+		statistics = statistics[len(statistics)-dataCount:]
 	}
 
-	return service.Success(cache.PlayersStatistic[roomID])
+	// 调度器会持锁对统计切片做 [1:] 和 append，锁释放后直接返回子切片会与
+	// append 写入同一块内存；这里在锁内复制一份再返回。
+	copied := make([]cache.Players, len(statistics))
+	copy(copied, statistics)
+
+	return service.Success(copied)
 }
 
 // StatisticsPlayerCountV2 玩家数量折线图数据（接口优化版）

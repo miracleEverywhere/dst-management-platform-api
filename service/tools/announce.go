@@ -7,7 +7,6 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/service"
-	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -51,48 +50,115 @@ func (s *Service) AnnouncePut(actor service.Actor, roomID int, setting string) s
 
 	game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
 
+	// 先解析并校验，校验失败时不能写库、不能删旧任务
+	setting, announces, err := parseAnnounceSetting(setting)
+	if err != nil {
+		logger.Logger.Infof("通知设置校验失败, roomID: %d, err: %v", roomID, err)
+		return service.Fail(constant.CodeToolsBadRequest)
+	}
+
+	oldSetting := roomSetting.AnnounceSetting
+	_, oldAnnounces, oldErr := parseAnnounceSetting(oldSetting)
+	if oldErr != nil {
+		logger.Logger.Warnf("旧通知设置无法解析，更新失败时无法恢复旧任务, roomID: %d, err: %v", roomID, oldErr)
+	}
+
+	if room.Status {
+		if err = replaceAnnounceJobs(game, room.ID, announces); err != nil {
+			logger.Logger.Errorf("定时通知定时任务处理失败, roomID: %d, err: %v", roomID, err)
+			if oldErr == nil {
+				if restoreErr := replaceAnnounceJobs(game, room.ID, oldAnnounces); restoreErr != nil {
+					logger.Logger.Errorf("恢复旧通知定时任务失败, roomID: %d, err: %v", roomID, restoreErr)
+				}
+			}
+			return service.Fail(constant.CodeToolsUpdateFail)
+		}
+	}
+
 	roomSetting.AnnounceSetting = setting
 
 	err = s.roomSettingDao.UpdateRoomSetting(roomSetting)
 	if err != nil {
 		logger.Logger.Errorf("更新通知设置失败, err: %v", err)
+		if room.Status && oldErr == nil {
+			if restoreErr := replaceAnnounceJobs(game, room.ID, oldAnnounces); restoreErr != nil {
+				logger.Logger.Errorf("恢复旧通知定时任务失败, roomID: %d, err: %v", roomID, restoreErr)
+			}
+		}
 		return service.Fail(constant.CodeToolsUpdateFail)
 	}
 
-	if room.Status {
-		// 更新定时任务
-		jobNames := scheduler.GetJobsByType(roomID, "Announce")
-		logger.Logger.Debug(utils.StructToFlatString(jobNames))
-		for _, jobName := range jobNames {
-			// 删除所有通知任务
-			scheduler.DeleteJob(jobName)
-		}
-		var announces []scheduler.AnnounceSetting
-		if err = json.Unmarshal([]byte(roomSetting.AnnounceSetting), &announces); err != nil {
-			logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
-			return service.Fail(constant.CodeToolsUpdateFail)
-		}
+	return service.Msg("update success", nil)
+}
 
-		logger.Logger.Debug(utils.StructToFlatString(announces))
+// parseAnnounceSetting 解析并校验通知配置，空配置按 [] 处理。
+// 只有启用中的通知需要 ID 与大于 0 的间隔，否则无法注册定时任务。
+func parseAnnounceSetting(raw string) (string, []scheduler.AnnounceSetting, error) {
+	setting := strings.TrimSpace(raw)
+	if setting == "" {
+		setting = "[]"
+	}
 
-		for _, announce := range announces {
-			// 创建通知任务
-			if announce.Status {
-				// 注意，-为分隔符，需要删除uuid中的-
-				err = scheduler.UpdateJob(&scheduler.JobConfig{
-					Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
-					Func:     scheduler.Announce,
-					Args:     []any{game, announce.Content},
-					TimeType: scheduler.SecondType,
-					Interval: announce.Interval,
-					DayAt:    "",
-				})
-				if err != nil {
-					logger.Logger.Errorf("定时通知定时任务处理失败, err: %v", err)
-				}
-			}
+	var announces []scheduler.AnnounceSetting
+	if err := json.Unmarshal([]byte(setting), &announces); err != nil {
+		return "", nil, err
+	}
+	if announces == nil {
+		// JSON null 按空列表处理，避免前端拿到 null 后无法操作列表
+		announces = []scheduler.AnnounceSetting{}
+		setting = "[]"
+	}
+
+	for _, announce := range announces {
+		if !announce.Status {
+			continue
+		}
+		if strings.TrimSpace(announce.ID) == "" {
+			return "", nil, fmt.Errorf("启用中的通知缺少 ID")
+		}
+		if announce.Interval <= 0 {
+			return "", nil, fmt.Errorf("启用中的通知间隔必须大于 0")
 		}
 	}
 
-	return service.Msg("update success", nil)
+	return setting, announces, nil
+}
+
+// replaceAnnounceJobs 用新的通知列表替换房间的定时通知任务。
+// 先注册启用的通知，全部成功后再删除新列表之外的任务；注册失败时旧任务保持不变。
+func replaceAnnounceJobs(game *dst.Game, roomID int, announces []scheduler.AnnounceSetting) error {
+	jobNames := scheduler.GetJobsByType(roomID, "Announce")
+	keep := make(map[string]struct{}, len(announces))
+
+	for _, announce := range announces {
+		if !announce.Status {
+			continue
+		}
+		// 注意，-为分隔符，需要删除uuid中的-
+		name := fmt.Sprintf("%d-%s-Announce", roomID, strings.ReplaceAll(announce.ID, "-", ""))
+		if _, exists := keep[name]; exists {
+			continue
+		}
+		keep[name] = struct{}{}
+
+		err := scheduler.UpdateJob(&scheduler.JobConfig{
+			Name:     name,
+			Func:     scheduler.Announce,
+			Args:     []any{game, announce.Content},
+			TimeType: scheduler.SecondType,
+			Interval: announce.Interval,
+			DayAt:    "",
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, jobName := range jobNames {
+		if _, ok := keep[jobName]; !ok {
+			scheduler.DeleteJob(jobName)
+		}
+	}
+
+	return nil
 }

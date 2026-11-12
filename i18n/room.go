@@ -25,7 +25,7 @@ var Room = NewExtendedI18n(map[string]Text{
 	"write file fail":                     {ZH: "写入文件失败", EN: "write file fail"},
 	"upload success":                      {ZH: "上传成功", EN: "upload success"},
 	"deactivate success":                  {ZH: "关闭成功", EN: "Deactivate Success"},
-	"activate fail":                       {ZH: "激活成功", EN: "Activate Fail"},
+	"activate fail":                       {ZH: "激活失败", EN: "Activate Fail"},
 	"activate success":                    {ZH: "激活成功", EN: "Activate Success"},
 	"port conflict":                       {ZH: "端口 [%d] 冲突", EN: "Port [%d] Conflict"},
 	"webhook test fail":                   {ZH: "Webhook 测试失败: %s", EN: "Webhook Test Failed: %s"},

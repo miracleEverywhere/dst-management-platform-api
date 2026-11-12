@@ -11,6 +11,7 @@ var Tools = NewExtendedI18n(map[string]Text{
 	"map parse fail":                 {ZH: "解析存档失败", EN: "parse save fail"},
 	"map busy":                       {ZH: "地图生成繁忙，请稍后重试", EN: "map generation is busy"},
 	"get snapshot fail":              {ZH: "获取游戏存档失败", EN: "Get Snapshot Fail"},
+	"snapshot start fail":            {ZH: "快照已删除，但重新启动游戏失败", EN: "Snapshot deleted, but restarting the game failed"},
 	"embedding config invalid":       {ZH: "向量模型配置不合法", EN: "embedding config invalid"},
 	"embedding config incomplete":    {ZH: "嵌入模型配置不完整", EN: "Embedding model configuration is incomplete"},
 	"embedding base url invalid":     {ZH: "嵌入模型 Base URL 不合法", EN: "Embedding model Base URL is invalid"},

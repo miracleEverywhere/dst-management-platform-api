@@ -53,6 +53,8 @@ func (d *CloudLinkDAO) GetByIdentity(identity string) (*models.CloudLink, error)
 }
 
 // SaveLink 新增或更新绑定关系，以本地用户名为唯一键。
+// 已存在的绑定只做 UPDATE：绑定被并发解绑删除时 UPDATE 影响 0 行即忽略，
+// 避免 GORM Save 在影响 0 行时回落为 INSERT，把旧 token 与云账号凭据重新写回。
 func (d *CloudLinkDAO) SaveLink(link *models.CloudLink) error {
 	if link.ID == 0 {
 		existing, err := d.GetByUsername(link.Username)
@@ -65,7 +67,12 @@ func (d *CloudLinkDAO) SaveLink(link *models.CloudLink) error {
 	}
 
 	if link.ID != 0 {
-		return d.db.Save(link).Error
+		return d.db.
+			Model(&models.CloudLink{}).
+			Where("id = ?", link.ID).
+			Select("*").
+			Omit("id").
+			Updates(link).Error
 	}
 
 	return d.db.Create(link).Error

@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -291,6 +292,29 @@ func (s *Service) GlobalSettingsPost(actor service.Actor, reqForm models.GlobalS
 		return service.Fail(constant.CodePlatformBadRequest)
 	}
 
+	// 先完成全部参数校验，再产生副作用：任务更新、缓存裁剪和数据库写入都放在校验之后。
+	rawWebhookSetting := strings.TrimSpace(reqForm.WebhookSetting)
+	webhookSetting := rawWebhookSetting
+	if webhookSetting == "" {
+		webhookSetting = "[]"
+	}
+	var webhooks []webhook.GlobalWebhookItem
+	if err := json.Unmarshal([]byte(webhookSetting), &webhooks); err != nil {
+		logger.Logger.Infof("webhook参数错误, api: %s", actor.Path)
+		return service.Fail(constant.CodePlatformBadRequest)
+	}
+	for _, w := range webhooks {
+		if !utils.IsValidURL(w.URL) {
+			logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", actor.Path, actor.Username)
+			return service.Fail(constant.CodePlatformInvalidURL)
+		}
+	}
+	// 自动更新使用 Day 类型 + At，时间格式非法时 UpdateJob 会失败，必须提前校验。
+	if reqForm.AutoUpdateEnable && !validDayAt(reqForm.AutoUpdateSetting) {
+		logger.Logger.Infof("自动更新时间参数错误, api: %s", actor.Path)
+		return service.Fail(constant.CodePlatformBadRequest)
+	}
+
 	var dbGlobalSettings models.GlobalSetting
 
 	err := s.globalSettingDao.GetGlobalSetting(&dbGlobalSettings)
@@ -311,7 +335,12 @@ func (s *Service) GlobalSettingsPost(actor service.Actor, reqForm models.GlobalS
 			Interval: reqForm.PlayerGetFrequency,
 			DayAt:    "",
 		})
+		if err != nil {
+			logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "onlinePlayerGet")
+			return service.Fail(constant.CodePlatformUpdateFail)
+		}
 
+		// 任务更新成功后再裁剪缓存，避免任务没生效却已经丢掉统计历史
 		cache.PlayersStatisticMutex.Lock()
 		for roomID := range cache.PlayersStatistic {
 			if len(cache.PlayersStatistic[roomID])*reqForm.PlayerGetFrequency > scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) {
@@ -320,11 +349,6 @@ func (s *Service) GlobalSettingsPost(actor service.Actor, reqForm models.GlobalS
 			}
 		}
 		cache.PlayersStatisticMutex.Unlock()
-
-		if err != nil {
-			logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "onlinePlayerGet")
-			return service.Fail(constant.CodePlatformUpdateFail)
-		}
 	}
 
 	if dbGlobalSettings.SysMetricsEnable != reqForm.SysMetricsEnable || dbGlobalSettings.SysMetricsSetting != reqForm.SysMetricsSetting {
@@ -370,22 +394,11 @@ func (s *Service) GlobalSettingsPost(actor service.Actor, reqForm models.GlobalS
 		}
 	}
 
-	// 放在最后
-	if dbGlobalSettings.WebhookSetting != reqForm.WebhookSetting {
-		var webhooks []webhook.GlobalWebhookItem
-		if json.Unmarshal([]byte(reqForm.WebhookSetting), &webhooks) == nil {
-			for _, w := range webhooks {
-				if !utils.IsValidURL(w.URL) {
-					logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", actor.Path, actor.Username)
-					return service.Fail(constant.CodePlatformInvalidURL)
-				}
-			}
-			needUpdateDB = true
-		} else {
-			// 无法解析json，说明配置异常，丢弃所有数据，不写入数据库
-			needUpdateDB = false
-		}
+	// webhook 已在入口校验，这里只判断是否需要写库；空值按 [] 写入
+	if strings.TrimSpace(dbGlobalSettings.WebhookSetting) != rawWebhookSetting {
+		needUpdateDB = true
 	}
+	reqForm.WebhookSetting = webhookSetting
 
 	if needUpdateDB {
 		err = s.globalSettingDao.UpdateGlobalSetting(&reqForm)
@@ -402,6 +415,31 @@ func (s *Service) GlobalSettingsPost(actor service.Actor, reqForm models.GlobalS
 	}
 
 	return service.Fail(constant.CodePlatformBadRequest)
+}
+
+// dayAtPattern 与 gocron 的 At 时间格式保持一致，避免校验通过但任务注册失败。
+var dayAtPattern = regexp.MustCompile(`^\d{1,2}:\d{2}(:\d{2})?$`)
+
+// validDayAt 校验定时任务的 At 时间，支持 HH:MM、HH:MM:SS 以及用 ; 分隔的多个时间。
+func validDayAt(value string) bool {
+	if strings.TrimSpace(value) == "" {
+		return false
+	}
+	for _, item := range strings.Split(value, ";") {
+		item = strings.TrimSpace(item)
+		if !dayAtPattern.MatchString(item) {
+			return false
+		}
+		layout := "15:04"
+		if strings.Count(item, ":") == 2 {
+			layout = "15:04:05"
+		}
+		if _, err := time.Parse(layout, item); err != nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 // ScreenRunning 查询房间正在运行的 screen
@@ -605,6 +643,10 @@ func (s *Service) PluginAction(actor service.Actor, name, action string) service
 		return service.Fail(constant.CodePlatformDBError)
 	}
 
+	// 保存动作前的状态，运行时动作失败时用于回滚数据库与运行时
+	original := *plugin
+	wasEnabled := plugin.Status
+
 	if result, ok := s.preparePluginAction(actor, plugin, name, action); !ok {
 		return result
 	}
@@ -615,6 +657,15 @@ func (s *Service) PluginAction(actor service.Actor, name, action string) service
 	}
 
 	if result, ok := s.applyPluginRuntimeAction(name, action); !ok {
+		// 启用失败时 Start 可能已经启动了部分房间的监听，仅在原先未启用时停掉
+		if name == models.PluginChat && action == "enable" && !wasEnabled {
+			s.aiManager.StopAll()
+		}
+		plugin.Status = original.Status
+		plugin.Step = original.Step
+		if restoreErr := s.pluginDao.UpdatePlugin(plugin); restoreErr != nil {
+			logger.Logger.Errorf("恢复插件状态失败, plugin: %s, err: %v", name, restoreErr)
+		}
 		return result
 	}
 

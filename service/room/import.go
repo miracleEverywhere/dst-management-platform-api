@@ -276,7 +276,7 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 	// 5. 读取cluster.ini
 	clusterIniPath := fmt.Sprintf("%s/cluster.ini", clusterDir)
 	if !utils.FileDirectoryExists(clusterIniPath) {
-		return constant.CodeRoomClusterIniNotFound, err
+		return constant.CodeRoomClusterIniNotFound, fmt.Errorf("未发现 cluster.ini: %s", clusterIniPath)
 	}
 	clusterIni, err := parseIniToMap(clusterIniPath)
 	if err != nil {
@@ -399,7 +399,7 @@ func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]model
 		// 读取server.ini
 		serverIniPath := fmt.Sprintf("%s/%s/server.ini", clusterDir, i)
 		if !utils.FileDirectoryExists(serverIniPath) {
-			return constant.CodeRoomServerIniNotFound, err
+			return constant.CodeRoomServerIniNotFound, fmt.Errorf("未发现 server.ini: %s", serverIniPath)
 		}
 		serverIni, err := parseIniToMap(serverIniPath)
 		if err != nil {

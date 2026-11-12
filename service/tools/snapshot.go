@@ -7,6 +7,8 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/service"
 	"dst-management-platform-api/utils"
+	"dst-management-platform-api/webhook"
+	"errors"
 	"strconv"
 )
 
@@ -58,6 +60,23 @@ func (s *Service) SnapshotDelete(actor service.Actor, roomID int, name string) s
 
 	game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
 
+	// 记录操作前正在运行的世界：无论删除成功还是失败，都恢复到该状态
+	runningWorlds := make([]int, 0, len(*worlds))
+	for _, world := range *worlds {
+		if game.WorldUpStatus(world.ID) {
+			runningWorlds = append(runningWorlds, world.ID)
+		}
+	}
+	restoreWorlds := func() error {
+		var errs []error
+		for _, worldID := range runningWorlds {
+			if startErr := game.StartWorld(worldID); startErr != nil {
+				errs = append(errs, startErr)
+			}
+		}
+		return errors.Join(errs...)
+	}
+
 	// 关闭游戏
 	err = game.StopAllWorld()
 	if err != nil {
@@ -65,16 +84,25 @@ func (s *Service) SnapshotDelete(actor service.Actor, roomID int, name string) s
 	}
 
 	// 删除存档文件
-	err = game.DeleteSnapshot(name)
-	if err != nil {
-		logger.Logger.Errorf("删除游戏存档文件失败, err: %v", err)
+	deleteErr := game.DeleteSnapshot(name)
+	startErr := restoreWorlds()
+	if startErr == nil && len(runningWorlds) > 0 {
+		// 用 StartWorld 逐个恢复时不会触发 StartAllWorld 内的 webhook，这里补发
+		webhook.Snd.Send(webhook.EventGameStart, room.ID, map[string]interface{}{
+			"gameID":   room.ID,
+			"gameName": room.GameName,
+		})
+	}
+	if deleteErr != nil {
+		logger.Logger.Errorf("删除游戏存档文件失败, err: %v", deleteErr)
+		if startErr != nil {
+			logger.Logger.Errorf("删除失败后恢复游戏运行失败, err: %v", startErr)
+		}
 		return service.Fail(constant.CodeToolsDeleteFail)
 	}
-
-	// 启动游戏
-	err = game.StartAllWorld()
-	if err != nil {
-		logger.Logger.Errorf("启动游戏失败：%v", err)
+	if startErr != nil {
+		logger.Logger.Errorf("快照已删除，但重新启动游戏失败, err: %v", startErr)
+		return service.Fail(constant.CodeToolsSnapshotStartFail)
 	}
 
 	return service.Msg("delete success", nil)

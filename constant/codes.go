@@ -89,6 +89,7 @@ const (
 	CodeModDisableFail        = 3066
 	CodeModGetEnabledFail     = 3067
 	CodeModDeleteFail         = 3068
+	CodeModDownloadFail       = 3069
 	CodeModDBError            = 3091
 	CodeModServerError        = 3092
 
@@ -145,6 +146,7 @@ const (
 	CodeToolsGetSnapshotFail           = 7068
 	CodeToolsMapBusy                   = 7069
 	CodeToolsMapParseFail              = 7070
+	CodeToolsSnapshotStartFail         = 7071
 	CodeToolsDBError                   = 7091
 
 	// 玩家模块

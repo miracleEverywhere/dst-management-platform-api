@@ -455,6 +455,13 @@ func (s *Service) List(actor service.Actor, gameName string, page, pageSize int)
 	data.PageSize = rooms.PageSize
 	data.TotalCount = rooms.TotalCount
 
+	// 统计窗口按全局采集间隔换算，间隔异常时按默认 60 秒处理，避免除零
+	playerGetFrequency := globalSetting.PlayerGetFrequency
+	if playerGetFrequency <= 0 {
+		playerGetFrequency = 60
+	}
+	dataLength := 3600 / playerGetFrequency
+
 	// 为房间加上世界信息
 	for _, room := range rooms.Data {
 		xRoomWorld := XRoomWorld{
@@ -467,18 +474,21 @@ func (s *Service) List(actor service.Actor, gameName string, page, pageSize int)
 			return service.Result{Code: constant.CodeRoomDBError, Data: data}
 		}
 		xRoomWorld.Worlds = worlds.Data
-		if len(cache.PlayersStatistic[room.ID]) > 0 {
-			dataLength := 3600 / globalSetting.PlayerGetFrequency
+		// 统计缓存由调度器持锁写入，这里在锁内复制切片，避免响应编码期间
+		// 与调度器的 append/裁剪并发读写同一块内存。
+		cache.PlayersStatisticMutex.Lock()
+		statistics := cache.PlayersStatistic[room.ID]
+		if len(statistics) > 0 {
 			// 返回最近一个小时的数据
-			if len(cache.PlayersStatistic[room.ID]) > dataLength {
-				xRoomWorld.Players = cache.PlayersStatistic[room.ID][len(cache.PlayersStatistic[room.ID])-dataLength:]
-			} else {
-				xRoomWorld.Players = cache.PlayersStatistic[room.ID]
+			if len(statistics) > dataLength {
+				statistics = statistics[len(statistics)-dataLength:]
 			}
-
+			xRoomWorld.Players = make([]cache.Players, len(statistics))
+			copy(xRoomWorld.Players, statistics)
 		} else {
 			xRoomWorld.Players = []cache.Players{}
 		}
+		cache.PlayersStatisticMutex.Unlock()
 		data.Data = append(data.Data, xRoomWorld)
 	}
 
@@ -748,6 +758,17 @@ func (s *Service) Activate(actor service.Actor, roomID int) service.Result {
 		return service.Fail(constant.CodeRoomDBError)
 	}
 
+	// 先解析定时通知配置，避免启动游戏、写库、删任务之后才发现配置非法
+	announceSetting := strings.TrimSpace(roomSetting.AnnounceSetting)
+	if announceSetting == "" {
+		announceSetting = "[]"
+	}
+	var announces []scheduler.AnnounceSetting
+	if err = json.Unmarshal([]byte(announceSetting), &announces); err != nil {
+		logger.Logger.Errorf("获取定时通知设置失败, roomID: %d, err: %v", roomID, err)
+		return service.Fail(constant.CodeRoomActivateFail)
+	}
+
 	// 启动游戏
 	game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
 	_ = game.StartAllWorld()
@@ -763,17 +784,8 @@ func (s *Service) Activate(actor service.Actor, roomID int) service.Result {
 	jobNames := scheduler.GetJobsByType(roomID, "Announce")
 	logger.Logger.Debug(utils.StructToFlatString(jobNames))
 	for _, jobName := range jobNames {
-		// 删除所有通知任务
+		// 删除旧通知任务
 		scheduler.DeleteJob(jobName)
-	}
-	var announces []scheduler.AnnounceSetting
-	announceSetting := roomSetting.AnnounceSetting
-	if strings.TrimSpace(announceSetting) == "" {
-		announceSetting = "[]"
-	}
-	if err = json.Unmarshal([]byte(announceSetting), &announces); err != nil {
-		logger.Logger.Errorf("获取定时通知设置失败, err: %v", err)
-		return service.Fail(constant.CodeRoomActivateFail)
 	}
 	logger.Logger.Debug(utils.StructToFlatString(announces))
 	for _, announce := range announces {
