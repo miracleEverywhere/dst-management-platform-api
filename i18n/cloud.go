@@ -1,8 +1,7 @@
-package cloud
+package i18n
 
-import "dst-management-platform-api/i18n"
-
-var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+// Cloud 是云服务模块的词条表：基础文案 + 本模块词条。
+var Cloud = NewExtendedI18n(map[string]Text{
 	"cloud login fail":                {ZH: "云账号登录失败", EN: "Cloud login failed"},
 	"cloud unavailable":               {ZH: "云服务暂时不可用，请稍后重试", EN: "Cloud service is temporarily unavailable"},
 	"cloud login success":             {ZH: "云账号登录成功", EN: "Cloud login successful"},
@@ -35,6 +34,7 @@ var message = i18n.NewExtendedI18n(map[string]i18n.Text{
 	"cloud archive create permission": {ZH: "没有创建房间的权限", EN: "No permission to create rooms"},
 	"cloud archive upload fail":       {ZH: "云存档上传失败", EN: "Cloud archive upload failed"},
 	"cloud archive list fail":         {ZH: "获取云存档列表失败", EN: "Failed to fetch cloud archives"},
+	"cloud remote error":              {ZH: "云服务返回错误", EN: "Cloud service error"},
 	"cloud archive download fail":     {ZH: "下载云存档失败", EN: "Failed to download cloud archive"},
 	"cloud archive id invalid":        {ZH: "云存档 ID 非法", EN: "Invalid cloud archive ID"},
 	"cloud archive temp fail":         {ZH: "创建云存档临时目录失败", EN: "Failed to create cloud archive temp directory"},

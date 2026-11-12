@@ -2,148 +2,47 @@ package platform
 
 import (
 	"context"
-	"dst-management-platform-api/cache"
 	"dst-management-platform-api/constant"
-	"dst-management-platform-api/database/dao"
 	"dst-management-platform-api/database/models"
-	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/scheduler"
-	"dst-management-platform-api/utils"
+	"dst-management-platform-api/middleware"
+	"dst-management-platform-api/service"
 	"dst-management-platform-api/webhook"
 	"encoding/json"
-	"fmt"
 	"io"
-	"net/http"
+	nethttp "net/http"
 	"os"
 	"os/exec"
-	"strconv"
-	"time"
 
 	"github.com/creack/pty"
 	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
 )
 
+// Partition 分页请求参数
+type Partition struct {
+	Page     int `json:"page" form:"page"`
+	PageSize int `json:"pageSize" form:"pageSize"`
+}
+
 func (h *Handler) readmeGet(c *gin.Context) {
-	readme, err := h.systemDao.Get(models.ReadmeKey)
-	if err != nil {
-		logger.Logger.Errorf("获取README阅读状态失败: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	value, err := strconv.ParseBool(readme.Value)
-	if err != nil {
-		logger.Logger.Errorf("README阅读状态无效: %q", readme.Value)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": value})
+	message.Respond(c, h.svc.ReadmeGet())
 }
 
 func (h *Handler) readmePost(c *gin.Context) {
-	if err := h.systemDao.Set(models.ReadmeKey, "true"); err != nil {
-		logger.Logger.Errorf("更新README阅读状态失败: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": true})
+	message.Respond(c, h.svc.ReadmePost())
 }
 
 func (h *Handler) overviewGet(c *gin.Context) {
-	type Data struct {
-		RunningTime int64   `json:"runningTime"`
-		Memory      uint64  `json:"memory"`
-		RoomCount   int64   `json:"roomCount"`
-		WorldCount  int64   `json:"worldCount"`
-		UserCount   int64   `json:"userCount"`
-		UidCount    int64   `json:"uidCount"`
-		MaxCpu      float64 `json:"maxCpu"`
-		MaxMemory   float64 `json:"maxMemory"`
-		MaxNetUp    float64 `json:"maxNetUp"`
-		MaxNetDown  float64 `json:"maxNetDown"`
-	}
-
-	// 运行时间
-	t := time.Since(utils.StartTime).Seconds()
-	// 内存占用
-	mem := utils.GetRES()
-	// 房间数
-	roomCount, err := h.roomDao.Count(nil)
-	if err != nil {
-		logger.Logger.Error("统计房间数失败")
-		roomCount = 0
-	}
-	// 世界数
-	worldCount, err := h.worldDao.Count(nil)
-	if err != nil {
-		logger.Logger.Error("统计世界数失败")
-		worldCount = 0
-	}
-	// 用户数
-	userCount, err := h.userDao.Count(nil)
-	if err != nil {
-		logger.Logger.Error("统计用户数失败")
-		userCount = 0
-	}
-	// uid数
-	uidCount, err := h.uidMapDao.Count(nil)
-	if err != nil {
-		logger.Logger.Error("统计用户数失败")
-		uidCount = 0
-	}
-	// 1小时cpu内存网络最大值
-	cache.SystemMetricsMutex.RLock()
-	systemMetricsLength := len(cache.SystemMetrics)
-	reqLength := 60
-	var systemMetricsData []cache.SysMetrics
-	if systemMetricsLength > reqLength {
-		systemMetricsData = cache.SystemMetrics[systemMetricsLength-reqLength:]
-	} else {
-		systemMetricsData = cache.SystemMetrics
-	}
-	cache.SystemMetricsMutex.RUnlock()
-	var maxCpu, maxMemory, maxNetUp, maxNetDown float64
-	for _, m := range systemMetricsData {
-		if m.Cpu > maxCpu {
-			maxCpu = m.Cpu
-		}
-		if m.Memory > maxMemory {
-			maxMemory = m.Memory
-		}
-		if m.NetUplink > maxNetUp {
-			maxNetUp = m.NetUplink
-		}
-		if m.NetDownlink > maxNetDown {
-			maxNetDown = m.NetDownlink
-		}
-	}
-
-	// TODO 玩家数最多的的房间Top3
-
-	data := Data{
-		RunningTime: int64(t),
-		Memory:      mem,
-		RoomCount:   roomCount,
-		WorldCount:  worldCount,
-		UserCount:   userCount,
-		UidCount:    uidCount,
-		MaxCpu:      maxCpu,
-		MaxMemory:   maxMemory,
-		MaxNetUp:    maxNetUp,
-		MaxNetDown:  maxNetDown,
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	message.Respond(c, h.svc.Overview())
 }
 
-func gameVersionGet(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": scheduler.GetDSTVersion()})
+func (h *Handler) gameVersionGet(c *gin.Context) {
+	message.Respond(c, h.svc.GameVersion())
 }
 
+// websshWS 是 WebSocket 双向流，直接绑定 c.Writer / c.Request 做协议升级与 PTY 转发，
+// 无法用 service.Result 表达，故传输层保留在 handler，PTY 之外不含业务规则。
 func (h *Handler) websshWS(c *gin.Context) {
 	// JWT 认证
 	//token := c.Query("token")
@@ -191,7 +90,7 @@ func (h *Handler) websshWS(c *gin.Context) {
 	})
 	if err != nil {
 		logger.Logger.Errorf("创建PTY失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "终端创建失败"})
+		c.JSON(nethttp.StatusInternalServerError, gin.H{"error": "终端创建失败"})
 		return
 	}
 	defer func() {
@@ -305,190 +204,37 @@ func (h *Handler) websshWS(c *gin.Context) {
 	logger.Logger.Infof("WebSSH会话结束, 用户: %s", c.GetString("username"))
 }
 
-func osInfoGet(c *gin.Context) {
-	osInfo, err := getOSInfo()
-	if err != nil {
-		logger.Logger.Errorf("获取系统信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get os info fail"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": osInfo})
+func (h *Handler) osInfoGet(c *gin.Context) {
+	message.Respond(c, h.svc.OSInfoGet())
 }
 
-func metricsGet(c *gin.Context) {
+func (h *Handler) metricsGet(c *gin.Context) {
 	type ReqForm struct {
 		TimeRange int `json:"timeRange" form:"timeRange"`
 	}
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	cache.SystemMetricsMutex.RLock()
-	systemMetricsLength := len(cache.SystemMetrics)
-	reqLength := reqForm.TimeRange * 60
-	if reqLength <= 0 {
-		reqLength = 60 // 默认1小时
-	}
-
-	if systemMetricsLength > reqLength {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.SystemMetrics[systemMetricsLength-reqLength:]})
-	} else {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": cache.SystemMetrics})
-	}
-	cache.SystemMetricsMutex.RUnlock()
+	message.Respond(c, h.svc.Metrics(reqForm.TimeRange))
 }
 
 func (h *Handler) globalSettingsGet(c *gin.Context) {
-	var globalSettings models.GlobalSetting
-
-	err := h.globalSettingDao.GetGlobalSetting(&globalSettings)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": globalSettings})
+	message.Respond(c, h.svc.GlobalSettingsGet())
 }
 
 func (h *Handler) globalSettingsPost(c *gin.Context) {
 	var reqForm models.GlobalSetting
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-	// PlayerGetFrequency 秒
-	// PlayerInfoSaveTime 天
-	if reqForm.PlayerGetFrequency <= 0 || reqForm.PlayerGetFrequency > 86400 ||
-		reqForm.PlayerInfoSaveTime <= 0 || reqForm.PlayerInfoSaveTime > 3650 ||
-		(reqForm.SysMetricsEnable && (reqForm.SysMetricsSetting <= 0 || reqForm.SysMetricsSetting > 86400)) {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	var dbGlobalSettings models.GlobalSetting
-
-	err := h.globalSettingDao.GetGlobalSetting(&dbGlobalSettings)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	needUpdateDB := false
-
-	if dbGlobalSettings.PlayerGetFrequency != reqForm.PlayerGetFrequency || dbGlobalSettings.PlayerInfoSaveTime != reqForm.PlayerInfoSaveTime || dbGlobalSettings.UIDMaintainEnable != reqForm.UIDMaintainEnable {
-		needUpdateDB = true
-		err = scheduler.UpdateJob(&scheduler.JobConfig{
-			Name:     "onlinePlayerGet",
-			Func:     scheduler.OnlinePlayerGet,
-			Args:     []any{reqForm.PlayerGetFrequency, reqForm.PlayerInfoSaveTime, reqForm.UIDMaintainEnable},
-			TimeType: scheduler.SecondType,
-			Interval: reqForm.PlayerGetFrequency,
-			DayAt:    "",
-		})
-
-		cache.PlayersStatisticMutex.Lock()
-		for roomID := range cache.PlayersStatistic {
-			if len(cache.PlayersStatistic[roomID])*reqForm.PlayerGetFrequency > scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) {
-				n := int(scheduler.ParsePlayerInfoSaveTime(reqForm.PlayerInfoSaveTime) / reqForm.PlayerGetFrequency)
-				cache.PlayersStatistic[roomID] = utils.GetLastNElements(cache.PlayersStatistic[roomID], n)
-			}
-		}
-		cache.PlayersStatisticMutex.Unlock()
-
-		if err != nil {
-			logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "onlinePlayerGet")
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
-			return
-		}
-	}
-
-	if dbGlobalSettings.SysMetricsEnable != reqForm.SysMetricsEnable || dbGlobalSettings.SysMetricsSetting != reqForm.SysMetricsSetting {
-		needUpdateDB = true
-		if reqForm.SysMetricsEnable {
-			err = scheduler.UpdateJob(&scheduler.JobConfig{
-				Name:     "systemMetricsGet",
-				Func:     scheduler.SystemMetricsGet,
-				Args:     []any{reqForm.SysMetricsSetting},
-				TimeType: scheduler.MinuteType,
-				Interval: scheduler.SystemMetricsGetInInterval,
-				DayAt:    "",
-			})
-			if err != nil {
-				logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "systemMetricsGet")
-				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
-				return
-			}
-		} else {
-			scheduler.DeleteJob("systemMetricsGet")
-			cache.SystemMetricsMutex.Lock()
-			cache.SystemMetrics = []cache.SysMetrics{}
-			cache.SystemMetricsMutex.Unlock()
-		}
-	}
-
-	if dbGlobalSettings.AutoUpdateEnable != reqForm.AutoUpdateEnable || dbGlobalSettings.AutoUpdateSetting != reqForm.AutoUpdateSetting || dbGlobalSettings.AutoUpdateRestart != reqForm.AutoUpdateRestart {
-		needUpdateDB = true
-		if reqForm.AutoUpdateEnable {
-			err = scheduler.UpdateJob(&scheduler.JobConfig{
-				Name:     "gameUpdate",
-				Func:     scheduler.GameUpdate,
-				Args:     []any{reqForm.AutoUpdateEnable, reqForm.AutoUpdateRestart},
-				TimeType: scheduler.DayType,
-				Interval: 0,
-				DayAt:    reqForm.AutoUpdateSetting,
-			})
-			if err != nil {
-				logger.Logger.Errorf("定时任务设置失败, err: %v, name: %v", err, "gameUpdate")
-				c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "update fail"), "data": nil})
-				return
-			}
-		} else {
-			scheduler.DeleteJob("gameUpdate")
-		}
-	}
-
-	// 放在最后
-	if dbGlobalSettings.WebhookSetting != reqForm.WebhookSetting {
-		var webhooks []webhook.GlobalWebhookItem
-		if json.Unmarshal([]byte(reqForm.WebhookSetting), &webhooks) == nil {
-			for _, w := range webhooks {
-				if !utils.IsValidURL(w.URL) {
-					logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
-					c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
-					return
-				}
-			}
-			needUpdateDB = true
-		} else {
-			// 无法解析json，说明配置异常，丢弃所有数据，不写入数据库
-			needUpdateDB = false
-		}
-	}
-
-	if needUpdateDB {
-		err = h.globalSettingDao.UpdateGlobalSetting(&reqForm)
-		if err != nil {
-			logger.Logger.Errorf("更新数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return
-		}
-
-		webhook.Snd.Send(webhook.EventGlobalSettingUpdated, 0, map[string]interface{}{
-			"dbUpdated": needUpdateDB,
-		})
-
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "update success"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "bad request"), "data": nil})
+	message.Respond(c, h.svc.GlobalSettingsPost(middleware.Actor(c), reqForm))
 }
 
 func (h *Handler) screenRunningGet(c *gin.Context) {
@@ -498,33 +244,14 @@ func (h *Handler) screenRunningGet(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	if reqForm.RoomID == 0 {
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-	room, worlds, roomSetting, err := dao.FetchGameInfo(reqForm.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	game := dst.NewGameController(room, worlds, roomSetting, c.Request.Header.Get("X-I18n-Lang"))
-	screens, err := game.RunningScreens()
-	if err != nil {
-		logger.Logger.Errorf("获取正在运行的screen失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "get screens fail"), "data": []string{}})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": screens})
+	message.Respond(c, h.svc.ScreenRunning(middleware.Actor(c), reqForm.RoomID))
 }
 
-func screenKillPost(c *gin.Context) {
+func (h *Handler) screenKillPost(c *gin.Context) {
 	type ReqForm struct {
 		ScreenName string `json:"screenName"`
 	}
@@ -532,65 +259,29 @@ func screenKillPost(c *gin.Context) {
 	var reqForm ReqForm
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-	if reqForm.ScreenName == "" {
-		logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	// 校验 ScreenName 只允许字母、数字、下划线和连字符，防止命令注入
-	for _, ch := range reqForm.ScreenName {
-		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-') {
-			logger.Logger.Infof("ScreenName包含非法字符, api: %s", c.Request.URL.Path)
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return
-		}
-	}
-
-	cmd := fmt.Sprintf("screen -X -S %s quit", utils.ShellQuote(reqForm.ScreenName))
-	err := utils.BashCMD(cmd)
-	if err != nil {
-		logger.Logger.Warnf("关闭Screen失败: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "kill screen fail"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "kill screen success"), "data": nil})
+	message.Respond(c, h.svc.KillScreen(middleware.Actor(c), reqForm.ScreenName))
 }
 
-func webhookTestPost(c *gin.Context) {
+func (h *Handler) webhookTestPost(c *gin.Context) {
 	var reqForm struct {
 		URL    string `json:"url" binding:"required"`
 		Secret string `json:"secret"`
 	}
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	// webhook url 安全检测
-	if !utils.IsValidURL(reqForm.URL) {
-		logger.Logger.Warnf("非法请求已拦截, api: %s, username: %s", c.Request.URL.Path, c.GetString("username"))
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "invalid url"), "data": nil})
-		return
-	}
-
-	err := webhook.Snd.SendTest(reqForm.URL, reqForm.Secret)
-	if err != nil {
-		logger.Logger.Warnf("webhook 测试失败, url: %s, err: %v", reqForm.URL, err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "webhook test fail", err.Error()), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "webhook test success"), "data": nil})
+	message.Respond(c, h.svc.WebhookTest(middleware.Actor(c), reqForm.URL, reqForm.Secret))
 }
 
-func webhookEventsGet(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": webhook.AllEventTypes})
+func (h *Handler) webhookEventsGet(c *gin.Context) {
+	message.Respond(c, h.svc.WebhookEvents())
 }
 
 func (h *Handler) pluginListGet(c *gin.Context) {
@@ -598,26 +289,14 @@ func (h *Handler) pluginListGet(c *gin.Context) {
 		Partition
 		Q string `json:"q" form:"q"`
 	}
-	var (
-		reqForm ReqForm
-		data    dao.PaginatedResult[models.Plugin]
-	)
+	var reqForm ReqForm
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	plugins, err := h.pluginDao.ListPlugins(reqForm.Q, reqForm.Page, reqForm.PageSize)
-	if err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	data = *plugins
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": data})
+	message.Respond(c, h.svc.PluginList(reqForm.Page, reqForm.PageSize, reqForm.Q))
 }
 
 func (h *Handler) pluginInstallPost(c *gin.Context) {
@@ -628,140 +307,11 @@ func (h *Handler) pluginInstallPost(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	switch reqForm.Name {
-	case models.PluginTmi:
-		if reqForm.ImageParse == nil {
-			logger.Logger.Infof("请求参数缺少imageParse, api: %s", c.Request.URL.Path)
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return
-		}
-		imageParse := *reqForm.ImageParse
-		if cache.OsType == constant.Darwin {
-			imageParse = false
-		}
-		h.installTmiPlugin(c, reqForm.Proxy, imageParse)
-	case models.PluginChat:
-		h.installAiChatPlugin(c, reqForm.Proxy)
-	default:
-		logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-	}
-}
-
-func (h *Handler) installTmiPlugin(c *gin.Context, proxy string, imageParse bool) {
-	plugin, err := h.pluginDao.GetPluginByPluginName(models.PluginTmi)
-	if err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	if plugin.Step == 100 {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
-		return
-	}
-
-	updateDb := func(plugin *models.Plugin) bool {
-		if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
-			logger.Logger.Errorf("更新数据库失败, err: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-			return false
-		}
-		return true
-	}
-
-	var (
-		images     []models.DstImage
-		installErr error
-	)
-
-	if imageParse {
-		if !utils.IsValidURL(proxy) && proxy != "" {
-			logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, proxy)
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return
-		}
-
-		step := plugin.Step
-
-		step, images, installErr = initTmi(step)
-		plugin.Step = step
-		if installErr != nil {
-			if !updateDb(plugin) {
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
-			return
-		}
-	} else {
-		images, installErr = installTMIR("")
-		if installErr != nil {
-			plugin.Step = 5
-			if !updateDb(plugin) {
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", installErr.Error()), "data": nil})
-			return
-		}
-		plugin.Step = 100
-	}
-
-	if err := h.dstImageDao.InitImages(images); err != nil {
-		logger.Logger.Errorf("更新数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	plugin.Status = true
-	if !updateDb(plugin) {
-		return
-	}
-
-	if err := h.dstImageDao.DeleteNoName(); err != nil {
-		logger.Logger.Warnf("清理异常图片失败: %v", err)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
-}
-
-func (h *Handler) installAiChatPlugin(c *gin.Context, proxy string) {
-	if proxy != "" && !utils.IsValidURL(proxy) {
-		logger.Logger.Warnf("非法代理url已拦截, api: %s, proxy: %s", c.Request.URL.Path, proxy)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return
-	}
-
-	plugin, err := h.pluginDao.GetPluginByPluginName(models.PluginChat)
-	if err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	if plugin.Step == 100 {
-		c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
-		return
-	}
-
-	if err := installAiChatWiki(proxy); err != nil {
-		logger.Logger.Errorf("安装 AI Chat 插件失败: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.GetF(c, "install fail", err.Error()), "data": nil})
-		return
-	}
-
-	plugin.Step = 100
-	plugin.Status = true
-	if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
-		logger.Logger.Errorf("更新数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "install success"), "data": nil})
+	message.Respond(c, h.svc.PluginInstall(middleware.Actor(c), reqForm.Name, reqForm.Proxy, reqForm.ImageParse))
 }
 
 func (h *Handler) pluginActionPost(c *gin.Context) {
@@ -771,129 +321,11 @@ func (h *Handler) pluginActionPost(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	plugin, err := h.pluginDao.GetPluginByPluginName(reqForm.Name)
-	if err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	if !h.preparePluginAction(c, plugin, reqForm.Name, reqForm.Type) {
-		return
-	}
-
-	if err := h.pluginDao.UpdatePlugin(plugin); err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	if !h.applyPluginRuntimeAction(c, reqForm.Name, reqForm.Type) {
-		return
-	}
-
-	h.notifyPluginAction(c, reqForm.Name, reqForm.Type)
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": message.Get(c, "exec success"), "data": nil})
-}
-
-func (h *Handler) preparePluginAction(c *gin.Context, plugin *models.Plugin, name, action string) bool {
-	switch action {
-	case "enable":
-		plugin.Status = true
-	case "disable":
-		plugin.Status = false
-	case "update":
-		if name == models.PluginChat {
-			logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return false
-		}
-		if name == models.PluginTmi {
-			if !h.updateTmiPlugin(c) {
-				return false
-			}
-			plugin.Status = true
-		}
-	case "uninstall":
-		pluginDir := pluginDirectory(name)
-		if pluginDir == "" {
-			c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-			return false
-		}
-		if err := utils.RemoveDir(pluginDir); err != nil {
-			logger.Logger.Errorf("卸载插件失败: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "uninstall fail"), "data": nil})
-			return false
-		}
-		plugin.Step = 0
-		plugin.Status = false
-	default:
-		logger.Logger.Infof("请求参数错误, api: %s", c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
-		return false
-	}
-	return true
-}
-
-func (h *Handler) updateTmiPlugin(c *gin.Context) bool {
-	images, err := installTMIR("")
-	if err != nil {
-		logger.Logger.Errorf("更新插件失败: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
-		return false
-	}
-	if err = h.dstImageDao.InitImages(images); err != nil {
-		logger.Logger.Errorf("更新数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return false
-	}
-	if err = h.dstImageDao.DeleteNoName(); err != nil {
-		logger.Logger.Warnf("清理异常图片失败: %v", err)
-	}
-	return true
-}
-
-func pluginDirectory(name string) string {
-	switch name {
-	case models.PluginTmi:
-		return constant.PluginTmiPath
-	case models.PluginChat:
-		return constant.PluginAiChatPath
-	default:
-		return ""
-	}
-}
-
-func (h *Handler) applyPluginRuntimeAction(c *gin.Context, name, action string) bool {
-	if name != models.PluginChat {
-		return true
-	}
-
-	switch action {
-	case "enable":
-		if err := h.aiManager.Start(); err != nil {
-			logger.Logger.Errorf("启动 AI 对话服务失败: %v", err)
-			c.JSON(http.StatusOK, gin.H{"code": 201, "message": message.Get(c, "update fail"), "data": nil})
-			return false
-		}
-	case "disable", "uninstall":
-		h.aiManager.StopAll()
-	}
-	return true
-}
-
-func (h *Handler) notifyPluginAction(c *gin.Context, name, action string) {
-	// webhook 通知
-	webhook.Snd.Send(webhook.EventPluginUpdated, 0, map[string]interface{}{
-		"username":    c.GetString("username"),
-		"plugin_name": name,
-		"action":      action,
-	})
+	message.Respond(c, h.svc.PluginAction(middleware.Actor(c), reqForm.Name, reqForm.Type))
 }
 
 func (h *Handler) pluginStatusGet(c *gin.Context) {
@@ -902,16 +334,9 @@ func (h *Handler) pluginStatusGet(c *gin.Context) {
 	}
 	if err := c.ShouldBindQuery(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
-		c.JSON(http.StatusOK, gin.H{"code": 400, "message": message.Get(c, "bad request"), "data": nil})
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
 		return
 	}
 
-	plugin, err := h.pluginDao.GetPluginByPluginName(reqForm.Name)
-	if err != nil {
-		logger.Logger.Errorf("查询数据库失败, err: %v", err)
-		c.JSON(http.StatusOK, gin.H{"code": 500, "message": message.Get(c, "database error"), "data": nil})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"code": 200, "message": "success", "data": plugin.Status})
+	message.Respond(c, h.svc.PluginStatus(reqForm.Name))
 }

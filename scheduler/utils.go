@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -45,6 +46,32 @@ const (
 	HourType   = "hour"
 	DayType    = "day"
 )
+
+// MaxIntervalSeconds 秒级任务间隔上限，保证 time.Duration(interval) * time.Second 不溢出。
+const MaxIntervalSeconds int64 = math.MaxInt64 / int64(time.Second)
+
+// ValidateInterval 校验任务间隔，避免间隔过大时 time.Duration 溢出为零导致任务被零间隔调度。
+func ValidateInterval(timeType string, interval int) error {
+	var maxInterval int64
+	switch timeType {
+	case SecondType:
+		maxInterval = MaxIntervalSeconds
+	case MinuteType:
+		maxInterval = math.MaxInt64 / int64(time.Minute)
+	case HourType:
+		maxInterval = math.MaxInt64 / int64(time.Hour)
+	default:
+		return nil
+	}
+	if interval <= 0 {
+		return fmt.Errorf("定时任务间隔必须大于 0")
+	}
+	if int64(interval) > maxInterval {
+		return fmt.Errorf("定时任务间隔过大: %d", interval)
+	}
+
+	return nil
+}
 
 var client = &http.Client{
 	Timeout: constant.HttpTimeout * time.Second,

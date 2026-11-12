@@ -2,13 +2,10 @@ package cloud
 
 import (
 	"dst-management-platform-api/constant"
-	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/database/models"
-	"dst-management-platform-api/logger"
-	"dst-management-platform-api/utils"
-	"errors"
-	"io"
-	"os"
+	"dst-management-platform-api/middleware"
+	"dst-management-platform-api/service"
+	"fmt"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,254 +28,17 @@ func (r cloudLoginReq) identity() string {
 	return identity
 }
 
-type cloudLoginView struct {
-	Token         string `json:"token"`
-	Username      string `json:"username"`
-	Fallback      bool   `json:"fallback"`
-	Plan          string `json:"plan"`
-	FavoriteQuota int    `json:"favoriteQuota"`
-}
-
 // loginPost 云账号登录。
 // 数据库无用户时创建首个本地管理员；已有用户时必须先绑定云账号。
 // 云服务网络错误/超时/5xx 时回退到本地账号校验。
 func (h *Handler) loginPost(c *gin.Context) {
 	var req cloudLoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, 400, message.Get(c, "bad request"))
-		return
-	}
-	identity := req.identity()
-	if identity == "" || req.Password == "" {
-		fail(c, 400, message.Get(c, "bad request"))
+		message.Respond(c, service.Fail(constant.CodeCloudBadRequest))
 		return
 	}
 
-	userCount, err := h.userDao.Count(nil)
-	if err != nil {
-		logger.Logger.Errorf("查询用户数量失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-
-	result, err := h.client.Login(c.Request.Context(), identity, req.Password)
-	if err != nil {
-		if IsUnavailable(err) {
-			h.fallbackLocalLogin(c, identity, req.Password)
-			return
-		}
-		failCloud(c, err)
-		return
-	}
-
-	if userCount == 0 {
-		h.bootstrapCloudUser(c, result, req.Password)
-		return
-	}
-
-	link, err := h.cloudLinkDao.GetByCloudAccountID(result.Account.ID)
-	if err != nil {
-		logger.Logger.Errorf("查询云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if link.ID == 0 {
-		fail(c, 201, message.Get(c, "cloud not linked"))
-		return
-	}
-
-	user, err := h.getLocalUser(link.Username)
-	if err != nil {
-		logger.Logger.Errorf("查询本地用户失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if user.Username == "" {
-		fail(c, 201, message.Get(c, "cloud local user missing"))
-		return
-	}
-	if user.Disabled {
-		fail(c, 201, message.Get(c, "cloud local user disabled"))
-		return
-	}
-
-	if err = h.applyAuthResult(link, result, req.Password); err != nil {
-		logger.Logger.Errorf("保存云账号信息失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-
-	// 登录后只刷新套餐与配额，不再自动同步收藏。
-	h.refreshProfileQuietly(c, link)
-
-	token, err := h.issueLocalToken(c, user)
-	if err != nil {
-		fail(c, 500, message.Get(c, "cloud login fail"))
-		return
-	}
-
-	view := cloudLoginView{
-		Token: token, Username: user.Username, Plan: link.Plan, FavoriteQuota: link.FavoriteQuota,
-	}
-
-	ok(c, message.Get(c, "cloud login success"), view)
-}
-
-// bootstrapCloudUser 数据库无用户时，用云账号创建首个本地管理员。
-func (h *Handler) bootstrapCloudUser(c *gin.Context, result *AuthResult, password string) {
-	username := result.User.Username
-	if username == "" {
-		username = result.Account.Username
-	}
-	if username == "" {
-		fail(c, 201, message.Get(c, "cloud login fail"))
-		return
-	}
-
-	passwordHash, passwordVersion, err := hashCloudPassword(password)
-	if err != nil {
-		logger.Logger.Errorf("创建bcrypt密码失败, err: %v", err)
-		fail(c, 500, message.Get(c, "create fail"))
-		return
-	}
-
-	user := models.User{
-		Username:        username,
-		Nickname:        username,
-		Role:            "admin",
-		Avatar:          "1",
-		Password:        passwordHash,
-		PasswordVersion: passwordVersion,
-		Disabled:        false,
-		RoomCreation:    true,
-	}
-	created := true
-	var link *models.CloudLink
-	if err = h.userDao.Create(&user); err != nil {
-		// 并发首次登录时可能已被另一个请求创建，重新读取并确认云账号归属。
-		existing, getErr := h.getLocalUser(username)
-		if getErr != nil || existing.Username == "" {
-			logger.Logger.Errorf("创建本地用户失败, err: %v", err)
-			fail(c, 500, message.Get(c, "create fail"))
-			return
-		}
-		existingLink, linkErr := h.cloudLinkDao.GetByCloudAccountID(result.Account.ID)
-		if linkErr != nil {
-			logger.Logger.Errorf("查询云账号绑定失败, err: %v", linkErr)
-			fail(c, 500, message.Get(c, "database error"))
-			return
-		}
-		if existingLink.ID == 0 || existingLink.Username != existing.Username {
-			// 本地账号已被另一个云账号或本地注册占用，必须走绑定流程。
-			fail(c, 201, message.Get(c, "cloud not linked"))
-			return
-		}
-		user = *existing
-		link = existingLink
-		created = false
-	}
-
-	if link == nil {
-		link = &models.CloudLink{Username: user.Username}
-	}
-	if err = h.applyAuthResult(link, result, password); err != nil {
-		if created {
-			_ = h.userDao.DeleteUser(user.Username)
-		}
-		logger.Logger.Errorf("保存云账号信息失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		if created {
-			_ = h.userDao.DeleteUser(user.Username)
-		}
-		logger.Logger.Errorf("保存云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-
-	// 首次云登录只刷新套餐与配额，收藏由用户手动同步。
-	h.refreshProfileQuietly(c, link)
-
-	token, err := h.issueLocalToken(c, &user)
-	if err != nil {
-		fail(c, 500, message.Get(c, "cloud login fail"))
-		return
-	}
-
-	view := cloudLoginView{
-		Token: token, Username: user.Username, Plan: link.Plan, FavoriteQuota: link.FavoriteQuota,
-	}
-
-	ok(c, message.Get(c, "cloud login success"), view)
-}
-
-// fallbackLocalLogin 云服务不可用时，按云用户名/邮箱或本地用户名回退到本地校验。
-func (h *Handler) fallbackLocalLogin(c *gin.Context, identity, password string) {
-	link, err := h.cloudLinkDao.GetByIdentity(identity)
-	if err != nil {
-		logger.Logger.Errorf("查询云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-
-	var user *models.User
-	if link.ID != 0 {
-		user, err = h.getLocalUser(link.Username)
-		if err != nil {
-			logger.Logger.Errorf("查询本地用户失败, err: %v", err)
-			fail(c, 500, message.Get(c, "database error"))
-			return
-		}
-		if user.Username == "" {
-			fail(c, 201, message.Get(c, "cloud local user missing"))
-			return
-		}
-		if !validateCloudPassword(password, link.CloudPassword) && !utils.ValidatePassword(password, user.Password) {
-			fail(c, 201, message.Get(c, "cloud password wrong"))
-			return
-		}
-	} else {
-		user, err = h.getLocalUser(identity)
-		if err != nil {
-			logger.Logger.Errorf("查询本地用户失败, err: %v", err)
-			fail(c, 500, message.Get(c, "database error"))
-			return
-		}
-		if user.Username == "" || !utils.ValidatePassword(password, user.Password) {
-			fail(c, 201, message.Get(c, "cloud unavailable"))
-			return
-		}
-	}
-
-	if user.Disabled {
-		fail(c, 201, message.Get(c, "cloud local user disabled"))
-		return
-	}
-
-	token, err := h.issueLocalToken(c, user)
-	if err != nil {
-		fail(c, 500, message.Get(c, "cloud login fail"))
-		return
-	}
-
-	plan := "basic"
-	favoriteQuota := 1
-	if link.ID != 0 {
-		plan = link.Plan
-		favoriteQuota = link.FavoriteQuota
-	}
-	view := cloudLoginView{
-		Token: token, Username: user.Username, Fallback: true, Plan: plan, FavoriteQuota: favoriteQuota,
-	}
-
-	ok(c, message.Get(c, "cloud local fallback success"), view)
+	message.Respond(c, h.svc.Login(c.Request.Context(), middleware.Actor(c), req.identity(), req.Password))
 }
 
 type linkReq struct {
@@ -300,75 +60,11 @@ func (r linkReq) identity() string {
 func (h *Handler) linkPost(c *gin.Context) {
 	var req linkReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, 400, message.Get(c, "bad request"))
-		return
-	}
-	identity := req.identity()
-	if identity == "" || req.Password == "" {
-		fail(c, 400, message.Get(c, "bad request"))
+		message.Respond(c, service.Fail(constant.CodeCloudBadRequest))
 		return
 	}
 
-	username := currentUsername(c)
-	user, err := h.getLocalUser(username)
-	if err != nil {
-		logger.Logger.Errorf("查询本地用户失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if user.Username == "" {
-		fail(c, 201, message.Get(c, "cloud local user missing"))
-		return
-	}
-
-	result, err := h.client.Login(c.Request.Context(), identity, req.Password)
-	if err != nil {
-		failCloud(c, err)
-		return
-	}
-
-	existing, err := h.cloudLinkDao.GetByCloudAccountID(result.Account.ID)
-	if err != nil {
-		logger.Logger.Errorf("查询云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if existing.ID != 0 && existing.Username != username {
-		fail(c, 201, message.Get(c, "cloud already linked"))
-		return
-	}
-
-	link, err := h.cloudLinkDao.GetByUsername(username)
-	if err != nil {
-		logger.Logger.Errorf("查询云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if link.ID == 0 {
-		link = &models.CloudLink{Username: username}
-	} else if link.CloudAccountID != 0 && link.CloudAccountID != result.Account.ID {
-		// 切换云账号时清除旧账号的收藏映射，避免把新账号的收藏关联到旧映射。
-		if err = h.cloudMapDao.DeleteByUsername(username); err != nil {
-			logger.Logger.Errorf("清理云收藏映射失败, err: %v", err)
-			fail(c, 500, message.Get(c, "database error"))
-			return
-		}
-	}
-
-	if err = h.applyAuthResult(link, result, req.Password); err != nil {
-		logger.Logger.Errorf("保存云账号信息失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-
-	view := linkView(link)
-	view["favoriteCount"] = h.localFavoriteCount(username)
-	ok(c, message.Get(c, "cloud link success"), view)
+	message.Respond(c, h.svc.Link(c.Request.Context(), middleware.Actor(c), req.identity(), req.Password))
 }
 
 type unlinkReq struct {
@@ -379,72 +75,19 @@ type unlinkReq struct {
 func (h *Handler) unlinkPost(c *gin.Context) {
 	var req unlinkReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, 400, message.Get(c, "bad request"))
+		message.Respond(c, service.Fail(constant.CodeCloudBadRequest))
 		return
 	}
 
-	username := currentUsername(c)
-	unlock := lockUserSync(username)
-	defer unlock()
-
-	user, err := h.getLocalUser(username)
-	if err != nil {
-		logger.Logger.Errorf("查询本地用户失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	link, err := h.cloudLinkDao.GetByUsername(username)
-	if err != nil {
-		logger.Logger.Errorf("查询云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if link.ID == 0 {
-		fail(c, 201, message.Get(c, "cloud link not found"))
-		return
-	}
-
-	passwordOK := validateCloudPassword(req.Password, link.CloudPassword)
-	if user.Username != "" {
-		passwordOK = passwordOK || utils.ValidatePassword(req.Password, user.Password)
-	}
-	if !passwordOK {
-		fail(c, 201, message.Get(c, "cloud password wrong"))
-		return
-	}
-
-	if err = h.cloudLinkDao.DeleteByUsername(username); err != nil {
-		logger.Logger.Errorf("解除云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	if err = h.cloudMapDao.DeleteByUsername(username); err != nil {
-		logger.Logger.Errorf("清理云收藏映射失败, err: %v", err)
-	}
-
-	ok(c, message.Get(c, "cloud unlink success"), gin.H{"linked": false})
+	message.Respond(c, h.svc.Unlink(middleware.Actor(c), req.Password))
 }
 
 // statusGet 返回当前本地账号的云绑定状态。
 func (h *Handler) statusGet(c *gin.Context) {
-	link, err := h.getLink(currentUsername(c))
-	if err != nil {
-		logger.Logger.Errorf("查询云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-
-	view := linkView(link)
-	view["favoriteCount"] = h.localFavoriteCount(currentUsername(c))
-	ok(c, "success", view)
+	message.Respond(c, h.svc.Status(middleware.Actor(c)))
 }
 
 func (h *Handler) favoritesGet(c *gin.Context) {
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
-	}
-
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
 	if page < 1 {
@@ -457,52 +100,15 @@ func (h *Handler) favoritesGet(c *gin.Context) {
 		pageSize = 100
 	}
 
-	result, err := h.client.ListFavorites(c.Request.Context(), link, page, pageSize, c.Query("keyword"))
-	if err != nil {
-		failCloud(c, err)
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
-	}
-
-	ok(c, "success", result)
+	message.Respond(c, h.svc.Favorites(c.Request.Context(), middleware.Actor(c), page, pageSize, c.Query("keyword")))
 }
 
 func (h *Handler) tokensGet(c *gin.Context) {
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
-	}
-
-	result, err := h.client.ListTokens(c.Request.Context(), link)
-	if err != nil {
-		failCloud(c, err)
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
-	}
-
-	ok(c, "success", result)
+	message.Respond(c, h.svc.Tokens(c.Request.Context(), middleware.Actor(c)))
 }
 
 func (h *Handler) gameEntriesGet(c *gin.Context, kind string) {
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
-	}
-
-	result, err := h.client.ListGameEntries(c.Request.Context(), link, kind)
-	if err != nil {
-		failCloud(c, err)
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
-	}
-
-	ok(c, "success", result)
+	message.Respond(c, h.svc.GameEntries(c.Request.Context(), middleware.Actor(c), kind))
 }
 
 func (h *Handler) gameAdminsGet(c *gin.Context) {
@@ -511,21 +117,6 @@ func (h *Handler) gameAdminsGet(c *gin.Context) {
 
 func (h *Handler) gameSlotsGet(c *gin.Context) {
 	h.gameEntriesGet(c, "slot")
-}
-
-func (h *Handler) requireLink(c *gin.Context) (*models.CloudLink, bool) {
-	link, err := h.getLink(currentUsername(c))
-	if err != nil {
-		logger.Logger.Errorf("查询云账号绑定失败, err: %v", err)
-		fail(c, 500, message.Get(c, "database error"))
-		return nil, false
-	}
-	if link.ID == 0 {
-		fail(c, 201, message.Get(c, "cloud link not found"))
-		return nil, false
-	}
-
-	return link, true
 }
 
 // ===== 云同步 =====
@@ -537,35 +128,11 @@ type syncReq struct {
 func (h *Handler) syncPost(c *gin.Context) {
 	var req syncReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, 400, message.Get(c, "bad request"))
-		return
-	}
-	direction := strings.TrimSpace(req.Direction)
-	if direction == "" {
-		direction = "both"
-	}
-	if direction != "both" && direction != "upload" && direction != "download" {
-		fail(c, 201, message.Get(c, "cloud sync invalid direction"))
+		message.Respond(c, service.Fail(constant.CodeCloudBadRequest))
 		return
 	}
 
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
-	}
-
-	result, localCount, err := h.syncWithLink(c, link, direction)
-	if err != nil {
-		if errors.Is(err, ErrRelink) || IsUnavailable(err) || MessageOf(err) != "" {
-			failCloud(c, err)
-			return
-		}
-		logger.Logger.Errorf("云同步失败, username: %s, err: %v", link.Username, err)
-		fail(c, 201, message.Get(c, "cloud sync fail"))
-		return
-	}
-
-	ok(c, message.Get(c, "cloud sync success"), newSyncSummaryView(direction, result, localCount))
+	message.Respond(c, h.svc.Sync(c.Request.Context(), middleware.Actor(c), req.Direction))
 }
 
 // ===== 云存档 =====
@@ -577,103 +144,27 @@ type archiveUploadReq struct {
 func (h *Handler) archiveUploadPost(c *gin.Context) {
 	var req archiveUploadReq
 	if err := c.ShouldBindJSON(&req); err != nil || req.RoomID == 0 {
-		fail(c, 400, message.Get(c, "bad request"))
-		return
-	}
-	if !h.hasRoomPermission(c, req.RoomID) {
-		fail(c, 201, message.Get(c, "cloud archive permission"))
+		message.Respond(c, service.Fail(constant.CodeCloudBadRequest))
 		return
 	}
 
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
-	}
-	if err := h.refreshProfile(c, link); err != nil {
-		failCloud(c, err)
-		return
-	}
-	if link.Plan != "ultimate" {
-		fail(c, 201, message.Get(c, "cloud archive ultimate only"))
-		return
-	}
-
-	zipPath, remark, cleanup, err := h.prepareArchive(c, req.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("打包云存档失败, roomID: %d, err: %v", req.RoomID, err)
-		if errors.Is(err, errArchiveTooLarge) {
-			fail(c, 201, message.Get(c, "cloud archive too large"))
-			return
-		}
-		fail(c, 201, message.Get(c, "cloud archive build fail"))
-		return
-	}
-	defer cleanup()
-
-	roomInfo, worlds, roomSetting, err := dao.FetchGameInfo(req.RoomID)
-	if err != nil {
-		logger.Logger.Errorf("查询房间失败, roomID: %d, err: %v", req.RoomID, err)
-		fail(c, 500, message.Get(c, "database error"))
-		return
-	}
-	metadata, err := buildArchiveMetadata(roomInfo, worlds, roomSetting)
-	if err != nil {
-		logger.Logger.Errorf("生成云存档元数据失败, roomID: %d, err: %v", req.RoomID, err)
-		fail(c, 201, message.Get(c, "cloud archive build fail"))
-		return
-	}
-
-	archive, err := h.client.UploadArchive(c.Request.Context(), link, zipPath, roomInfo.GameName, remark, metadata)
-	if err != nil {
-		failCloud(c, err)
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
-	}
-
-	ok(c, message.Get(c, "cloud archive upload success"), archive)
+	message.Respond(c, h.svc.ArchiveUpload(c.Request.Context(), middleware.Actor(c), req.RoomID))
 }
 
 func (h *Handler) archivesGet(c *gin.Context) {
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
-	}
-
-	result, err := h.client.ListArchives(c.Request.Context(), link)
-	if err != nil {
-		failCloud(c, err)
-		return
-	}
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
-	}
-
-	ok(c, "success", result)
+	message.Respond(c, h.svc.Archives(c.Request.Context(), middleware.Actor(c)))
 }
 
 func (h *Handler) archiveDownloadGet(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
-	if !validCloudID(id) {
-		fail(c, 400, message.Get(c, "cloud archive id invalid"))
-		return
-	}
 
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
+	body, fileName, size, result := h.svc.ArchiveDownload(c.Request.Context(), middleware.Actor(c), id)
+	if body != nil {
+		defer body.Close()
 	}
-
-	body, fileName, size, err := h.client.DownloadArchive(c.Request.Context(), link, id)
-	if err != nil {
-		failCloud(c, err)
+	if result.Code != 200 {
+		message.Respond(c, result)
 		return
-	}
-	defer body.Close()
-
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
 	}
 
 	c.Header("Content-Disposition", attachmentHeader(fileName))
@@ -688,96 +179,34 @@ func (h *Handler) archiveDownloadGet(c *gin.Context) {
 // 只有拥有创建房间权限（管理员或 roomCreation=true）的用户可以执行。
 func (h *Handler) archiveImportPost(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
-	if !validCloudID(id) {
-		fail(c, 400, message.Get(c, "cloud archive id invalid"))
-		return
-	}
-	if !h.canCreateRoom(c) {
-		fail(c, 201, message.Get(c, "cloud archive create permission"))
-		return
-	}
+	message.Respond(c, h.svc.ArchiveImport(c.Request.Context(), middleware.Actor(c), id))
+}
 
-	link, okLink := h.requireLink(c)
-	if !okLink {
-		return
+// attachmentHeader 生成兼容中文文件名的下载头。
+func attachmentHeader(fileName string) string {
+	name := strings.TrimSpace(fileName)
+	if name == "" {
+		name = "archive.zip"
 	}
-
-	body, _, _, err := h.client.DownloadArchive(c.Request.Context(), link, id)
-	if err != nil {
-		failCloud(c, err)
-		return
-	}
-	defer body.Close()
-
-	if err = h.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
-	}
-
-	if h.roomHandler == nil {
-		logger.Logger.Error("云存档导入失败：房间导入器未初始化")
-		fail(c, 500, message.Get(c, "cloud archive import fail"))
-		return
-	}
-
-	baseDir := filepath.Join(constant.CloudTempPath, "import")
-	if err = os.MkdirAll(baseDir, 0o700); err != nil {
-		logger.Logger.Errorf("创建云存档导入目录失败, err: %v", err)
-		fail(c, 500, message.Get(c, "cloud archive import fail"))
-		return
-	}
-	tempDir, err := os.MkdirTemp(baseDir, "import-*")
-	if err != nil {
-		logger.Logger.Errorf("创建云存档导入临时目录失败, err: %v", err)
-		fail(c, 500, message.Get(c, "cloud archive import fail"))
-		return
-	}
-	defer func() {
-		if removeErr := utils.RemoveDir(tempDir); removeErr != nil {
-			logger.Logger.Warnf("清理云存档导入临时目录失败, dir: %s, err: %v", tempDir, removeErr)
+	name = strings.ReplaceAll(name, "\\", "_")
+	name = strings.ReplaceAll(name, `"`, "_")
+	name = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return '_'
 		}
-	}()
-
-	savePath := filepath.Join(tempDir, "archive.zip")
-	file, err := os.OpenFile(savePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		logger.Logger.Errorf("保存云存档失败, err: %v", err)
-		fail(c, 500, message.Get(c, "cloud archive import fail"))
-		return
+		return r
+	}, name)
+	if filepath.Ext(name) == "" {
+		name += ".zip"
 	}
-	written, copyErr := io.Copy(file, io.LimitReader(body, constant.CloudArchiveMaxBytes+1))
-	closeErr := file.Close()
-	if copyErr != nil {
-		logger.Logger.Errorf("下载云存档失败, err: %v", copyErr)
-		fail(c, 201, message.Get(c, "cloud archive download fail"))
-		return
-	}
-	if closeErr != nil {
-		logger.Logger.Errorf("保存云存档失败, err: %v", closeErr)
-		fail(c, 500, message.Get(c, "cloud archive import fail"))
-		return
-	}
-	if written > constant.CloudArchiveMaxBytes {
-		fail(c, 201, message.Get(c, "cloud archive too large"))
-		return
-	}
-	if written == 0 {
-		fail(c, 201, message.Get(c, "cloud archive download fail"))
-		return
-	}
-
-	unzipPath := filepath.Join(tempDir, "unzip") + string(os.PathSeparator)
-	roomInfo, code, msgKey, err := h.roomHandler.ImportNewRoomFromZip(c, savePath, unzipPath)
-	if err != nil {
-		logger.Logger.Errorf("导入云存档失败, archiveID: %s, err: %v", id, err)
-		if msgKey == "" {
-			msgKey = "cloud archive import fail"
+	fallback := make([]rune, 0, len(name))
+	for _, r := range name {
+		if r < 0x20 || r > 0x7e || r == '"' || r == '\\' {
+			fallback = append(fallback, '_')
+		} else {
+			fallback = append(fallback, r)
 		}
-		if code == 0 {
-			code = 201
-		}
-		fail(c, code, message.Get(c, msgKey))
-		return
 	}
 
-	ok(c, message.Get(c, "cloud archive import success"), roomInfo)
+	return fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, string(fallback), url.PathEscape(name))
 }

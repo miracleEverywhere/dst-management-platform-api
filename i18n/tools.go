@@ -1,10 +1,7 @@
-package tools
+package i18n
 
-import (
-	"dst-management-platform-api/i18n"
-)
-
-var message = i18n.NewExtendedI18n(map[string]i18n.Text{
+// Tools 是工具模块的词条表：基础文案 + 本模块词条。
+var Tools = NewExtendedI18n(map[string]Text{
 	"get backup fail":                {ZH: "获取备份文件失败", EN: "get backup fail"},
 	"create backup fail":             {ZH: "创建备份文件失败", EN: "create backup fail"},
 	"create backup success":          {ZH: "创建成功", EN: "create success"},
@@ -14,6 +11,8 @@ var message = i18n.NewExtendedI18n(map[string]i18n.Text{
 	"map parse fail":                 {ZH: "解析存档失败", EN: "parse save fail"},
 	"map busy":                       {ZH: "地图生成繁忙，请稍后重试", EN: "map generation is busy"},
 	"get snapshot fail":              {ZH: "获取游戏存档失败", EN: "Get Snapshot Fail"},
+	"snapshot start fail":            {ZH: "快照已删除，但重新启动游戏失败", EN: "Snapshot deleted, but restarting the game failed"},
+	"embedding config invalid":       {ZH: "向量模型配置不合法", EN: "embedding config invalid"},
 	"embedding config incomplete":    {ZH: "嵌入模型配置不完整", EN: "Embedding model configuration is incomplete"},
 	"embedding base url invalid":     {ZH: "嵌入模型 Base URL 不合法", EN: "Embedding model Base URL is invalid"},
 	"embedding build not running":    {ZH: "当前没有正在进行的嵌入索引构建", EN: "No embedding index build is running"},

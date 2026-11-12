@@ -1,106 +1,21 @@
 package tools
 
 import (
-	"dst-management-platform-api/aichat"
-	"dst-management-platform-api/constant"
-	"dst-management-platform-api/database/dao"
-	"dst-management-platform-api/logger"
-	"encoding/base64"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
-
-	"github.com/gin-gonic/gin"
+	"dst-management-platform-api/i18n"
+	toolssvc "dst-management-platform-api/service/tools"
 )
 
+// message 是本模块词条表；文案数据集中在 i18n 包，这里只做包内作用域引用，
+// 避免在 handler 里写错成其他模块的表。
+var message = i18n.Tools
+
+// Handler 工具模块 HTTP 层，业务逻辑全部由 service 承担。
+// 统一响应用 message.Respond，身份提取用 middleware.Actor。
 type Handler struct {
-	roomDao          *dao.RoomDAO
-	userDao          *dao.UserDAO
-	worldDao         *dao.WorldDAO
-	roomSettingDao   *dao.RoomSettingDAO
-	dstImageDao      *dao.DstImageDAO
-	mapImageDao      *dao.MapImageDAO
-	systemDao        *dao.SystemDAO
-	roomAISettingDao *dao.RoomAISettingDAO
-	aiManager        *aichat.Manager
+	svc *toolssvc.Service
 }
 
-func NewHandler(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roomSettingDao *dao.RoomSettingDAO, dstImageDao *dao.DstImageDAO, mapImageDao *dao.MapImageDAO, systemDao *dao.SystemDAO, roomAISettingDao *dao.RoomAISettingDAO, aiManager *aichat.Manager) *Handler {
-	return &Handler{
-		roomDao:          roomDao,
-		userDao:          userDao,
-		worldDao:         worldDao,
-		roomSettingDao:   roomSettingDao,
-		dstImageDao:      dstImageDao,
-		mapImageDao:      mapImageDao,
-		systemDao:        systemDao,
-		roomAISettingDao: roomAISettingDao,
-		aiManager:        aiManager,
-	}
-}
-
-func (h *Handler) hasPermission(c *gin.Context, roomID string) bool {
-	role, _ := c.Get("role")
-	username, _ := c.Get("username")
-
-	// 管理员直接返回true
-	if role.(string) == "admin" {
-		return true
-	} else {
-		dbUser, err := h.userDao.GetUserByUsername(username.(string))
-		if err != nil {
-			logger.Logger.Error("查询数据库失败")
-			return false
-		}
-		roomIDs := strings.Split(dbUser.Rooms, ",")
-		for _, id := range roomIDs {
-			if id == roomID {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-const gameImagesPath = constant.PluginTmiPath + "/dst_images"
-
-func pngToBase64(prefab string) (string, error) {
-	pngPath := filepath.Join(gameImagesPath, prefab+".png")
-	data, err := os.ReadFile(pngPath)
-	if err != nil {
-		logger.Logger.Errorf("读取图片失败: %v", err)
-		return "pic_not_found", err
-	}
-	return base64.StdEncoding.EncodeToString(data), nil
-}
-
-func pngsToBase64(prefabs []string, maxConcurrency int) map[string]string {
-	if maxConcurrency <= 0 {
-		maxConcurrency = 10
-	}
-
-	var mu sync.Mutex
-	results := make(map[string]string, len(prefabs))
-	sem := make(chan struct{}, maxConcurrency)
-	var wg sync.WaitGroup
-
-	for _, p := range prefabs {
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(prefab string) {
-			defer func() { <-sem }()
-			defer wg.Done()
-
-			b64, _ := pngToBase64(prefab)
-
-			mu.Lock()
-			results[prefab] = b64
-			mu.Unlock()
-		}(p)
-	}
-
-	wg.Wait()
-	return results
+// NewHandler 创建工具模块 handler
+func NewHandler(svc *toolssvc.Service) *Handler {
+	return &Handler{svc: svc}
 }

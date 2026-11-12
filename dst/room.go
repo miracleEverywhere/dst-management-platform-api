@@ -6,6 +6,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -580,23 +581,27 @@ func (g *Game) getSnapshot() ([]SnapshotFile, error) {
 }
 
 func (g *Game) deleteSnapshot(filename string) error {
+	var errs []error
 	for _, world := range g.worldSaveData {
 		sessionID, err := getSessionID(world.savePath)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
-		sessionFile := fmt.Sprintf("%s/%s/%s", world.sessionPath, sessionID, filename)
-		err = utils.RemoveFile(sessionFile)
-		if err != nil {
-			return err
+		for _, path := range []string{
+			fmt.Sprintf("%s/%s/%s", world.sessionPath, sessionID, filename),
+			fmt.Sprintf("%s/%s/%s.meta", world.sessionPath, sessionID, filename),
+		} {
+			// 已不存在的文件视为删除成功，保证某个世界失败后重试仍然幂等
+			if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
+				errs = append(errs, err)
+			}
 		}
+	}
 
-		sessionFileMeta := fmt.Sprintf("%s/%s/%s.meta", world.sessionPath, sessionID, filename)
-		err = utils.RemoveFile(sessionFileMeta)
-		if err != nil {
-			return err
-		}
+	if err := errors.Join(errs...); err != nil {
+		return err
 	}
 
 	webhook.Snd.Send(webhook.EventGameBackup, g.room.ID, map[string]interface{}{

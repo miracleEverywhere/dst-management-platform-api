@@ -2,6 +2,10 @@ package i18n
 
 import (
 	"fmt"
+	"net/http"
+
+	"dst-management-platform-api/constant"
+	"dst-management-platform-api/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +31,45 @@ func (b *BaseI18n) Get(c *gin.Context, message string) string {
 func (b *BaseI18n) GetF(c *gin.Context, message string, args ...interface{}) string {
 	msg := b.Get(c, message)
 	return fmt.Sprintf(msg, args...)
+}
+
+// Respond 把 service 层的业务结果翻译成本地化响应，保持 {"code","message","data"} 结构。
+// 它是 app/ 与 middleware 写响应的唯一入口：
+//   - 文案优先级：Result.Msg（已是最终文案，不再翻译）> Result.MsgBuilder（需要与其他字符串拼接）
+//     > MsgKey/MsgArgs（显式词条）> 错误码注册表反查出的词条
+//   - Result.Status 为 0 时使用 HTTP 200
+func (b *BaseI18n) Respond(c *gin.Context, r service.Result) {
+	status := r.Status
+	if status == 0 {
+		status = http.StatusOK
+	}
+
+	translate := func(msgKey string, args ...any) string {
+		if len(args) > 0 {
+			return b.GetF(c, msgKey, args...)
+		}
+		return b.Get(c, msgKey)
+	}
+
+	msg := r.Msg
+	if msg == "" && r.MsgBuilder != nil {
+		msg = r.MsgBuilder(translate)
+	}
+	if msg == "" {
+		msgKey := r.MsgKey
+		if msgKey == "" {
+			// 错误码是唯一标识，文案由注册表反查；未注册的码回退到通用文案，
+			// 避免因为漏配让用户看到空 message。
+			if entry, ok := constant.LookupCode(r.Code); ok {
+				msgKey = entry.TextKey
+			} else {
+				msgKey = "unknown error"
+			}
+		}
+		msg = translate(msgKey, r.MsgArgs...)
+	}
+
+	c.JSON(status, gin.H{"code": r.Code, "message": msg, "data": r.Data})
 }
 
 // Text 一条 i18n 词条的中英文案
@@ -86,6 +129,7 @@ var I18n = BaseI18n{
 		"token revoked":     "Token已被撤销",
 		"too many requests": "请求过于频繁，请稍后再试",
 		"invalid url":       "非法URL",
+		"unknown error":     "服务器内部错误",
 	},
 	EN: map[string]string{
 		"bad request":       "Bad Request",
@@ -107,5 +151,6 @@ var I18n = BaseI18n{
 		"token revoked":     "Token Revoked",
 		"too many requests": "Too Many Requests",
 		"invalid url":       "Invalid URL",
+		"unknown error":     "Internal Server Error",
 	},
 }

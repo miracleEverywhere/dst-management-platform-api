@@ -19,6 +19,15 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/middleware"
 	"dst-management-platform-api/scheduler"
+	cloudsvc "dst-management-platform-api/service/cloud"
+	dashboardsvc "dst-management-platform-api/service/dashboard"
+	logssvc "dst-management-platform-api/service/logs"
+	modsvc "dst-management-platform-api/service/mod"
+	platformsvc "dst-management-platform-api/service/platform"
+	playersvc "dst-management-platform-api/service/player"
+	roomsvc "dst-management-platform-api/service/room"
+	toolssvc "dst-management-platform-api/service/tools"
+	usersvc "dst-management-platform-api/service/user"
 	"dst-management-platform-api/webhook"
 	"fmt"
 	"runtime"
@@ -128,16 +137,18 @@ func Run() {
 	}
 
 	// 初始化即注册路由
-	user.NewHandler(userDao).RegisterRoutes(r)
-	roomHandler := room.NewHandler(userDao, roomDao, worldDao, roomSettingDao, favoriteDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager)
-	roomHandler.RegisterRoutes(r)
-	mod.NewHandler(roomDao, worldDao, roomSettingDao, userDao, modInfoDao).RegisterRoutes(r)
-	dashboard.NewHandler(userDao, roomDao, worldDao, roomSettingDao, globalSettingDao).RegisterRoutes(r)
-	platform.NewHandler(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, roomSettingDao, pluginDao, dstImageDao, aiManager).RegisterRoutes(r)
-	logs.NewHandler(userDao, roomDao, worldDao, roomSettingDao).RegisterRoutes(r)
-	tools.NewHandler(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, mapImageDao, systemDao, roomAISettingDao, aiManager).RegisterRoutes(r)
-	player.NewHandler(userDao, roomDao, worldDao, roomSettingDao, uidMapDao, globalSettingDao).RegisterRoutes(r)
-	cloud.NewHandler(userDao, cloudLinkDao, cloudFavoriteMapDao, favoriteDao, roomHandler).RegisterRoutes(r)
+	// 业务依赖统一在 service 层构造，app 层 handler 只接收 service
+	roomSvc := roomsvc.New(userDao, roomDao, worldDao, roomSettingDao, favoriteDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager)
+
+	user.NewHandler(usersvc.New(userDao)).RegisterRoutes(r)
+	room.NewHandler(roomSvc).RegisterRoutes(r)
+	mod.NewHandler(modsvc.New(roomDao, worldDao, userDao, modInfoDao)).RegisterRoutes(r)
+	dashboard.NewHandler(dashboardsvc.New(userDao, roomDao, roomSettingDao, globalSettingDao)).RegisterRoutes(r)
+	platform.NewHandler(platformsvc.New(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, pluginDao, dstImageDao, aiManager)).RegisterRoutes(r)
+	logs.NewHandler(logssvc.New(userDao)).RegisterRoutes(r)
+	tools.NewHandler(toolssvc.New(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, mapImageDao, systemDao, roomAISettingDao, aiManager)).RegisterRoutes(r)
+	player.NewHandler(playersvc.New(userDao, uidMapDao, globalSettingDao)).RegisterRoutes(r)
+	cloud.NewHandler(cloudsvc.New(userDao, cloudLinkDao, cloudFavoriteMapDao, favoriteDao, roomSvc)).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 

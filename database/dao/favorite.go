@@ -26,6 +26,26 @@ func (d *FavoriteDAO) CreateFavorite(favorite *models.Favorite) error {
 	return d.db.Create(favorite).Error
 }
 
+// CreateFavoriteWithMapping 在同一事务中创建收藏并写入云收藏映射，
+// 避免收藏已落库但映射写入失败，导致后续同步无法回连并重复创建收藏。
+func (d *FavoriteDAO) CreateFavoriteWithMapping(favorite *models.Favorite, mapping *models.CloudFavoriteMap) error {
+	if favorite.ID == "" {
+		favorite.ID = uuid.NewString()
+	}
+
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(favorite).Error; err != nil {
+			return err
+		}
+		if mapping == nil {
+			return nil
+		}
+		mapping.LocalFavoriteID = favorite.ID
+
+		return upsertCloudFavoriteMap(tx, mapping)
+	})
+}
+
 func (d *FavoriteDAO) UpdateFavorite(favorite *models.Favorite) error {
 	return d.db.Save(favorite).Error
 }
@@ -131,6 +151,32 @@ func (d *FavoriteDAO) UpdateFavoriteFromCloud(id, username, data, remark string,
 	}
 
 	return nil
+}
+
+// UpdateFavoriteFromCloudWithMapping 在同一事务中用云端快照更新本地收藏并写入映射。
+func (d *FavoriteDAO) UpdateFavoriteFromCloudWithMapping(id, username, data, remark string, updatedAt int64, mapping *models.CloudFavoriteMap) error {
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&models.Favorite{}).
+			Where("id = ? AND username = ?", id, username).
+			Updates(map[string]any{
+				"data":       data,
+				"remark":     remark,
+				"updated_at": updatedAt,
+				"deleted_at": 0,
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		if mapping == nil {
+			return nil
+		}
+		mapping.LocalFavoriteID = id
+
+		return upsertCloudFavoriteMap(tx, mapping)
+	})
 }
 
 // SoftDeleteFavoriteAt 按云端 tombstone 的时间戳软删除本地收藏。
