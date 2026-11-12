@@ -116,8 +116,8 @@ func parseAnnounceSetting(raw string) (string, []scheduler.AnnounceSetting, erro
 		if strings.TrimSpace(announce.ID) == "" {
 			return "", nil, fmt.Errorf("启用中的通知缺少 ID")
 		}
-		if announce.Interval <= 0 {
-			return "", nil, fmt.Errorf("启用中的通知间隔必须大于 0")
+		if err := scheduler.ValidateInterval(scheduler.SecondType, announce.Interval); err != nil {
+			return "", nil, fmt.Errorf("启用中的通知间隔无效: %w", err)
 		}
 	}
 

@@ -621,6 +621,8 @@ func (s *Service) installAiChatPlugin(actor service.Actor, proxy string) service
 		return service.Msg("install success", nil)
 	}
 
+	original := *plugin
+
 	if err := installAiChatWiki(proxy); err != nil {
 		logger.Logger.Errorf("安装 AI Chat 插件失败: %v", err)
 		return service.FailF(constant.CodePlatformInstallFail, err.Error())
@@ -630,6 +632,20 @@ func (s *Service) installAiChatPlugin(actor service.Actor, proxy string) service
 	plugin.Status = true
 	if result, ok := s.updatePlugin(plugin); !ok {
 		return result
+	}
+
+	// 卸载会调用 StopAll，重新安装后必须像启用流程一样恢复房间监听。
+	if err := s.aiManager.Start(); err != nil {
+		if !original.Status {
+			s.aiManager.StopAll()
+		}
+		plugin.Status = original.Status
+		plugin.Step = original.Step
+		if restoreErr := s.pluginDao.UpdatePlugin(plugin); restoreErr != nil {
+			logger.Logger.Errorf("恢复插件状态失败, plugin: %s, err: %v", models.PluginChat, restoreErr)
+		}
+		logger.Logger.Errorf("启动 AI 对话服务失败: %v", err)
+		return service.FailF(constant.CodePlatformInstallFail, err.Error())
 	}
 
 	return service.Msg("install success", nil)
@@ -657,7 +673,8 @@ func (s *Service) PluginAction(actor service.Actor, name, action string) service
 	}
 
 	if result, ok := s.applyPluginRuntimeAction(name, action); !ok {
-		// 启用失败时 Start 可能已经启动了部分房间的监听，仅在原先未启用时停掉
+		// Start 在已激活时是幂等的，ListEnabled 失败也不会停止现有监听；
+		// 仅在原先未启用、可能已启动部分房间时清理运行时。
 		if name == models.PluginChat && action == "enable" && !wasEnabled {
 			s.aiManager.StopAll()
 		}

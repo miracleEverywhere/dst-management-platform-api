@@ -32,6 +32,10 @@ func UpdateJob(jobConfig *JobConfig) error {
 	var job *gocron.Job
 	var err error
 
+	if err = ValidateInterval(jobConfig.TimeType, jobConfig.Interval); err != nil {
+		return fmt.Errorf("%w, 任务名: %s", err, jobConfig.Name)
+	}
+
 	switch jobConfig.TimeType {
 	case SecondType:
 		job, err = Scheduler.Every(jobConfig.Interval).Seconds().Do(jobConfig.Func, jobConfig.Args...)

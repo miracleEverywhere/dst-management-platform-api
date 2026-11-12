@@ -10,6 +10,20 @@ import (
 	"fmt"
 )
 
+// validateAnnounceIntervals 校验启用的通知间隔，避免注册任务时 time.Duration 溢出。
+func validateAnnounceIntervals(announces []scheduler.AnnounceSetting) error {
+	for _, announce := range announces {
+		if !announce.Status {
+			continue
+		}
+		if err := scheduler.ValidateInterval(scheduler.SecondType, announce.Interval); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // processJobs 处理定时任务
 func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	// 备份 //

@@ -64,11 +64,19 @@ func (m *Manager) start() error {
 		m.lifecycle.Unlock()
 		return context.Canceled
 	}
+	if m.active {
+		// 已激活时重复 Start 作为幂等操作处理：不再查询配置，也不重建监听。
+		// 否则 ListEnabled 失败会把原本正常工作的监听全部停掉。
+		m.lifecycle.Unlock()
+		return nil
+	}
 	m.active = true
 	m.lifecycle.Unlock()
 
 	settings, err := m.roomAISettingDao.ListEnabled()
 	if err != nil {
+		// 能走到这里说明调用前未激活；此时没有原有监听需要保留，
+		// 清理并发 Reload 可能已启动的 worker，保持“失败即未激活”。
 		m.stopAll()
 		return err
 	}

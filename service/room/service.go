@@ -354,6 +354,19 @@ func (s *Service) Update(actor service.Actor, reqForm XRoomTotalInfo) service.Re
 		return service.Fail(constant.CodeRoomBadRequest)
 	}
 
+	// 房间保存也可能携带通知设置，写库前先校验间隔，避免非法值进入数据库。
+	if announceSetting := strings.TrimSpace(reqForm.RoomSettingData.AnnounceSetting); announceSetting != "" {
+		var announces []scheduler.AnnounceSetting
+		if err = json.Unmarshal([]byte(announceSetting), &announces); err != nil {
+			logger.Logger.Infof("通知设置解析失败, roomID: %d, err: %v", reqForm.RoomData.ID, err)
+			return service.Fail(constant.CodeRoomBadRequest)
+		}
+		if err = validateAnnounceIntervals(announces); err != nil {
+			logger.Logger.Infof("通知间隔校验失败, roomID: %d, err: %v", reqForm.RoomData.ID, err)
+			return service.Fail(constant.CodeRoomBadRequest)
+		}
+	}
+
 	if err = s.roomDao.UpdateConfiguration(&reqForm.RoomData, &reqForm.WorldData, &reqForm.RoomSettingData); err != nil {
 		logger.Logger.Errorf("事务更新房间失败, err: %v", err)
 		return service.Fail(constant.CodeRoomDBError)
@@ -766,6 +779,10 @@ func (s *Service) Activate(actor service.Actor, roomID int) service.Result {
 	var announces []scheduler.AnnounceSetting
 	if err = json.Unmarshal([]byte(announceSetting), &announces); err != nil {
 		logger.Logger.Errorf("获取定时通知设置失败, roomID: %d, err: %v", roomID, err)
+		return service.Fail(constant.CodeRoomActivateFail)
+	}
+	if err = validateAnnounceIntervals(announces); err != nil {
+		logger.Logger.Errorf("定时通知间隔无效, roomID: %d, err: %v", roomID, err)
 		return service.Fail(constant.CodeRoomActivateFail)
 	}
 
