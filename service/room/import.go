@@ -103,6 +103,12 @@ func (s *Service) importRoomFromZip(actor service.Actor, savePath, unzipPath str
 		}
 		room.MasterPort = dbRoom.MasterPort
 		room.ID = roomID
+		// Status 是运行时状态，Lan/Offline/CustomGameMode 当前不由 handleUpload
+		// 从存档解析；保留数据库中的值，避免 UpdateRoom 的 Save 用零值覆盖。
+		room.Status = dbRoom.Status
+		room.Lan = dbRoom.Lan
+		room.Offline = dbRoom.Offline
+		room.CustomGameMode = dbRoom.CustomGameMode
 
 		dbWorlds, errWorlds := s.worldDao.GetWorldsByRoomID(roomID)
 		if errWorlds != nil {

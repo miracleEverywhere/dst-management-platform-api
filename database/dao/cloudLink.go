@@ -78,6 +78,68 @@ func (d *CloudLinkDAO) SaveLink(link *models.CloudLink) error {
 	return d.db.Create(link).Error
 }
 
+// updateIfAccount 按绑定 ID 和预期云账号做条件更新，只写指定字段。
+// 查询接口在等待云端响应期间绑定可能已被切换，用预期 CloudAccountID
+// 可以阻止旧请求把整个绑定（包括凭据和云账号 ID）写回旧值。
+func (d *CloudLinkDAO) updateIfAccount(link *models.CloudLink, fields map[string]any) (int64, error) {
+	if link == nil || link.ID == 0 {
+		return 0, nil
+	}
+	result := d.db.
+		Model(&models.CloudLink{}).
+		Where("id = ? AND cloud_account_id = ?", link.ID, link.CloudAccountID).
+		Updates(fields)
+
+	return result.RowsAffected, result.Error
+}
+
+// UpdateTokensIfAccount 只更新 token 相关字段，供云查询接口回写刷新后的 token。
+func (d *CloudLinkDAO) UpdateTokensIfAccount(link *models.CloudLink) (int64, error) {
+	return d.updateIfAccount(link, map[string]any{
+		"access_token":       link.AccessToken,
+		"refresh_token":      link.RefreshToken,
+		"access_expires_at":  link.AccessExpiresAt,
+		"refresh_expires_at": link.RefreshExpiresAt,
+		"updated_at":         link.UpdatedAt,
+	})
+}
+
+// UpdateProfileIfAccount 更新套餐、配额与 token，供 /auth/me 刷新使用。
+func (d *CloudLinkDAO) UpdateProfileIfAccount(link *models.CloudLink) (int64, error) {
+	return d.updateIfAccount(link, map[string]any{
+		"plan":               link.Plan,
+		"favorite_quota":     link.FavoriteQuota,
+		"token_quota":        link.TokenQuota,
+		"game_admin_quota":   link.GameAdminQuota,
+		"game_slot_quota":    link.GameSlotQuota,
+		"archive_quota":      link.ArchiveQuota,
+		"access_token":       link.AccessToken,
+		"refresh_token":      link.RefreshToken,
+		"access_expires_at":  link.AccessExpiresAt,
+		"refresh_expires_at": link.RefreshExpiresAt,
+		"updated_at":         link.UpdatedAt,
+	})
+}
+
+// UpdateSyncStateIfAccount 更新同步状态、套餐、配额与 token。
+func (d *CloudLinkDAO) UpdateSyncStateIfAccount(link *models.CloudLink) (int64, error) {
+	return d.updateIfAccount(link, map[string]any{
+		"device_id":          link.DeviceID,
+		"last_sync_at":       link.LastSyncAt,
+		"plan":               link.Plan,
+		"favorite_quota":     link.FavoriteQuota,
+		"token_quota":        link.TokenQuota,
+		"game_admin_quota":   link.GameAdminQuota,
+		"game_slot_quota":    link.GameSlotQuota,
+		"archive_quota":      link.ArchiveQuota,
+		"access_token":       link.AccessToken,
+		"refresh_token":      link.RefreshToken,
+		"access_expires_at":  link.AccessExpiresAt,
+		"refresh_expires_at": link.RefreshExpiresAt,
+		"updated_at":         link.UpdatedAt,
+	})
+}
+
 func (d *CloudLinkDAO) DeleteByUsername(username string) error {
 	return d.db.Where("username = ?", username).Delete(&models.CloudLink{}).Error
 }

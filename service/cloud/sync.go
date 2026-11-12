@@ -52,6 +52,11 @@ func (s *Service) Sync(ctx context.Context, actor service.Actor, direction strin
 		return service.Fail(constant.CodeCloudSyncInvalidDirection)
 	}
 
+	// 先取得用户锁，再读取绑定。Unlink/Link/其它同步都必须经过同一把锁，
+	// 避免解绑或切换账号后仍拿旧 link 上传收藏、重建映射。
+	unlock := lockUserSync(actor.Username)
+	defer unlock()
+
 	link, failed := s.requireLink(actor)
 	if failed != nil {
 		return *failed
@@ -59,6 +64,9 @@ func (s *Service) Sync(ctx context.Context, actor service.Actor, direction strin
 
 	result, localCount, err := s.syncWithLink(ctx, link, direction)
 	if err != nil {
+		if errors.Is(err, errLinkChanged) {
+			return service.Fail(constant.CodeCloudLinkNotFound)
+		}
 		if errors.Is(err, ErrRelink) || IsUnavailable(err) || MessageOf(err) != "" {
 			return failCloud(actor, err)
 		}
@@ -69,11 +77,8 @@ func (s *Service) Sync(ctx context.Context, actor service.Actor, direction strin
 	return service.Msg("cloud sync success", newSyncSummaryView(direction, result, localCount))
 }
 
-// syncWithLink 执行一次云同步。同一用户的同步串行执行，避免多个请求互相覆盖。
+// syncWithLink 执行一次云同步；调用方必须已经持有该用户的同步锁并重新读取绑定。
 func (s *Service) syncWithLink(ctx context.Context, link *models.CloudLink, direction string) (*SyncResult, int64, error) {
-	unlock := lockUserSync(link.Username)
-	defer unlock()
-
 	if link.DeviceID == "" {
 		link.DeviceID = uuid.NewString()
 	}
@@ -123,7 +128,9 @@ func (s *Service) syncWithLink(ctx context.Context, link *models.CloudLink, dire
 			return nil, 0, err
 		}
 	} else {
-		s.ensureUploadMappings(link.Username, result, mapByCloud, localByID)
+		if err = s.ensureUploadMappings(link.Username, result, mapByCloud, localByID); err != nil {
+			return nil, 0, err
+		}
 	}
 
 	link.LastSyncAt = result.ServerTime
@@ -135,7 +142,7 @@ func (s *Service) syncWithLink(ctx context.Context, link *models.CloudLink, dire
 		applyMeResult(link, me)
 	}
 
-	if err = s.saveLink(link); err != nil {
+	if err = s.saveLinkSyncState(link); err != nil {
 		return nil, 0, err
 	}
 
@@ -209,7 +216,7 @@ func (s *Service) applyCloudResult(username string, result *SyncResult, mapByClo
 		}
 
 		if localID == "" {
-			local, err := s.createLocalFavoriteFromCloud(username, remote)
+			local, mapping, err := s.createLocalFavoriteFromCloud(username, remote)
 			if err != nil {
 				return err
 			}
@@ -218,7 +225,7 @@ func (s *Service) applyCloudResult(username string, result *SyncResult, mapByClo
 				if fingerprint := snapshotFingerprint(local.Data); fingerprint != "" {
 					localByFingerprint[fingerprint] = local.ID
 				}
-				s.upsertMapping(username, local.ID, remote, mapByLocal, mapByCloud)
+				registerMapping(mapByLocal, mapByCloud, mapping)
 			}
 			continue
 		}
@@ -226,7 +233,7 @@ func (s *Service) applyCloudResult(username string, result *SyncResult, mapByClo
 		local := localByID[localID]
 		if local == nil {
 			// 映射指向的本地收藏已不存在（例如手工清理过数据库），重新创建并重建映射。
-			created, err := s.createLocalFavoriteFromCloud(username, remote)
+			created, mapping, err := s.createLocalFavoriteFromCloud(username, remote)
 			if err != nil {
 				return err
 			}
@@ -235,7 +242,7 @@ func (s *Service) applyCloudResult(username string, result *SyncResult, mapByClo
 				if fingerprint := snapshotFingerprint(created.Data); fingerprint != "" {
 					localByFingerprint[fingerprint] = created.ID
 				}
-				s.upsertMapping(username, created.ID, remote, mapByLocal, mapByCloud)
+				registerMapping(mapByLocal, mapByCloud, mapping)
 			}
 			continue
 		}
@@ -246,16 +253,24 @@ func (s *Service) applyCloudResult(username string, result *SyncResult, mapByClo
 			if !ok {
 				continue
 			}
+			mapping := mergeCloudMapping(username, local.ID, remote, mapByLocal)
 			updatedAt := remoteUpdatedAt
-			if err := s.favoriteDao.UpdateFavoriteFromCloud(local.ID, username, snapshot, remote.Remark, updatedAt); err != nil {
+			// 收藏快照与映射必须原子写入，否则映射失败后下次同步无法回连，会重复创建收藏。
+			if err := s.favoriteDao.UpdateFavoriteFromCloudWithMapping(local.ID, username, snapshot, remote.Remark, updatedAt, mapping); err != nil {
 				return err
 			}
 			local.Data = snapshot
 			local.Remark = remote.Remark
 			local.UpdatedAt = updatedAt
 			local.DeletedAt = 0
+			registerMapping(mapByLocal, mapByCloud, mapping)
+			continue
 		}
-		s.upsertMapping(username, local.ID, remote, mapByLocal, mapByCloud)
+		mapping := mergeCloudMapping(username, local.ID, remote, mapByLocal)
+		if err := s.cloudMapDao.Upsert(mapping); err != nil {
+			return err
+		}
+		registerMapping(mapByLocal, mapByCloud, mapping)
 	}
 
 	for i := range result.Deleted {
@@ -282,7 +297,7 @@ func (s *Service) applyCloudResult(username string, result *SyncResult, mapByClo
 	return nil
 }
 
-func (s *Service) ensureUploadMappings(username string, result *SyncResult, mapByCloud map[string]*models.CloudFavoriteMap, localByID map[string]*models.Favorite) {
+func (s *Service) ensureUploadMappings(username string, result *SyncResult, mapByCloud map[string]*models.CloudFavoriteMap, localByID map[string]*models.Favorite) error {
 	for i := range result.Favorites {
 		remote := &result.Favorites[i]
 		if remote.LocalFavoriteID == "" {
@@ -294,24 +309,20 @@ func (s *Service) ensureUploadMappings(username string, result *SyncResult, mapB
 		if mapByCloud[remote.ID] != nil {
 			continue
 		}
-		mapping := &models.CloudFavoriteMap{
-			Username:        username,
-			LocalFavoriteID: remote.LocalFavoriteID,
-			CloudFavoriteID: remote.ID,
-			LastCloudUpdate: remote.UpdatedAt,
-			CreatedAt:       nowSeconds(),
-			UpdatedAt:       nowSeconds(),
-		}
+		mapping := newCloudMapping(username, remote.LocalFavoriteID, remote)
 		if err := s.cloudMapDao.Upsert(mapping); err != nil {
-			logger.Logger.Warnf("保存云收藏映射失败, username: %s, localID: %s, err: %v", username, remote.LocalFavoriteID, err)
+			return err
 		}
+		mapByCloud[remote.ID] = mapping
 	}
+
+	return nil
 }
 
-func (s *Service) createLocalFavoriteFromCloud(username string, remote *Favorite) (*models.Favorite, error) {
+func (s *Service) createLocalFavoriteFromCloud(username string, remote *Favorite) (*models.Favorite, *models.CloudFavoriteMap, error) {
 	snapshot, ok := prepareRemoteSnapshot(remote)
 	if !ok {
-		return nil, nil
+		return nil, nil, nil
 	}
 	updatedAt := toLocalMillis(remote.UpdatedAt)
 	if updatedAt == 0 {
@@ -330,35 +341,45 @@ func (s *Service) createLocalFavoriteFromCloud(username string, remote *Favorite
 		UpdatedAt: updatedAt,
 		DeletedAt: 0,
 	}
-	if err := s.favoriteDao.CreateFavorite(favorite); err != nil {
-		return nil, err
+	mapping := newCloudMapping(username, "", remote)
+	if err := s.favoriteDao.CreateFavoriteWithMapping(favorite, mapping); err != nil {
+		return nil, nil, err
 	}
 
-	return favorite, nil
+	return favorite, mapping, nil
 }
 
-func (s *Service) upsertMapping(username, localID string, remote *Favorite, mapByLocal, mapByCloud map[string]*models.CloudFavoriteMap) {
+func newCloudMapping(username, localID string, remote *Favorite) *models.CloudFavoriteMap {
+	now := nowSeconds()
+
+	return &models.CloudFavoriteMap{
+		Username:        username,
+		LocalFavoriteID: localID,
+		CloudFavoriteID: remote.ID,
+		LastCloudUpdate: remote.UpdatedAt,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+}
+
+func mergeCloudMapping(username, localID string, remote *Favorite, mapByLocal map[string]*models.CloudFavoriteMap) *models.CloudFavoriteMap {
 	mapping := mapByLocal[localID]
 	if mapping == nil {
-		mapping = &models.CloudFavoriteMap{
-			Username:        username,
-			LocalFavoriteID: localID,
-			CloudFavoriteID: remote.ID,
-			LastCloudUpdate: remote.UpdatedAt,
-			CreatedAt:       nowSeconds(),
-			UpdatedAt:       nowSeconds(),
-		}
-	} else {
-		mapping.CloudFavoriteID = remote.ID
-		mapping.LastCloudUpdate = remote.UpdatedAt
-		mapping.UpdatedAt = nowSeconds()
+		return newCloudMapping(username, localID, remote)
 	}
-	if err := s.cloudMapDao.Upsert(mapping); err != nil {
-		logger.Logger.Warnf("保存云收藏映射失败, username: %s, localID: %s, err: %v", username, localID, err)
+	mapping.CloudFavoriteID = remote.ID
+	mapping.LastCloudUpdate = remote.UpdatedAt
+	mapping.UpdatedAt = nowSeconds()
+
+	return mapping
+}
+
+func registerMapping(mapByLocal, mapByCloud map[string]*models.CloudFavoriteMap, mapping *models.CloudFavoriteMap) {
+	if mapping == nil {
 		return
 	}
-	mapByLocal[localID] = mapping
-	mapByCloud[remote.ID] = mapping
+	mapByLocal[mapping.LocalFavoriteID] = mapping
+	mapByCloud[mapping.CloudFavoriteID] = mapping
 }
 
 // prepareRemoteSnapshot 校验云端快照并清空自定义启动命令，返回入库 JSON。

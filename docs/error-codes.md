@@ -146,25 +146,25 @@
 | 8063 | 玩家 | 玩家聊天信息获取失败 | get chat message fail | warn | 读取聊天记录失败。确认聊天日志已生成且可读。 | service/player/service.go:Chat |
 | 8091 | 玩家 | 数据库连接失败 | Database Connection Error | fatal | 数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。 | service/player/service.go:Chat<br>service/player/service.go:Gantt<br>service/player/service.go:List<br>service/player/service.go:StatisticsPlayerCount<br>service/player/service.go:StatisticsPlayerCountV2<br>service/player/service.go:UIDMap<br>service/player/service.go:UpdateList |
 | 9001 | 云服务 | 请求参数错误 | Bad Request | warn | 请求参数缺失、类型错误或取值非法。核对前端提交的字段名与取值范围，必要时用浏览器开发者工具查看请求体。 | app/cloud/handler.go:archiveUploadPost<br>app/cloud/handler.go:linkPost<br>app/cloud/handler.go:loginPost<br>app/cloud/handler.go:syncPost<br>app/cloud/handler.go:unlinkPost<br>service/cloud/service.go:Link<br>service/cloud/service.go:Login |
-| 9002 | 云服务 | 云存档 ID 非法 | Invalid cloud archive ID | warn | 云存档 ID 格式非法。刷新列表后重试。 | service/cloud/archive.go:ArchiveDownload<br>service/cloud/archive.go:ArchiveOpen |
+| 9002 | 云服务 | 云存档 ID 非法 | Invalid cloud archive ID | warn | 云存档 ID 格式非法。刷新列表后重试。 | service/cloud/archive.go:ArchiveDownload<br>service/cloud/archive.go:ArchiveImport |
 | 9021 | 云服务 | 没有该房间的操作权限 | No permission for this room | warn | 当前账号没有该房间权限，无法上传云存档。 | service/cloud/archive.go:ArchiveUpload |
-| 9022 | 云服务 | 没有创建房间的权限 | No permission to create rooms | warn | 当前账号没有创建房间的权限，无法导入云存档。 | service/cloud/archive.go:ArchiveOpen |
-| 9061 | 云服务 | 该云账号尚未绑定本地账号，请先用本地账号登录并在设置中绑定 | This cloud account is not linked to a local account yet | warn | 本地账号还没有绑定云账号。先到「云服务」页面完成绑定。 | service/cloud/service.go:Login<br>service/cloud/service.go:bootstrapCloudUser |
+| 9022 | 云服务 | 没有创建房间的权限 | No permission to create rooms | warn | 当前账号没有创建房间的权限，无法导入云存档。 | service/cloud/archive.go:ArchiveImport |
+| 9061 | 云服务 | 该云账号尚未绑定本地账号，请先用本地账号登录并在设置中绑定 | This cloud account is not linked to a local account yet | warn | 本地账号还没有绑定云账号。先到「云服务」页面完成绑定。 | service/cloud/service.go:authenticateLinkedCloudUser<br>service/cloud/service.go:bootstrapCloudUser |
 | 9062 | 云服务 | 该云账号已绑定到本机其他账号 | This cloud account is already linked to another local account | warn | 该云账号已经绑定了别的本地账号。先解绑或换一个云账号。 | service/cloud/service.go:Link |
-| 9063 | 云服务 | 当前账号尚未绑定云账号 | No cloud account is linked | warn | 云账号绑定不存在或已被解绑。重新绑定后再试。 | service/cloud/service.go:Unlink<br>service/cloud/service.go:requireLink |
-| 9064 | 云服务 | 绑定的本地账号不存在，请重新绑定 | The linked local account no longer exists | warn | 云账号对应的本地用户不存在（可能已被删除）。重新绑定或重建本地用户。 | service/cloud/service.go:Link<br>service/cloud/service.go:Login<br>service/cloud/service.go:fallbackLocalLogin |
-| 9065 | 云服务 | 本地账号已被禁用 | Local account is disabled | warn | 云账号对应的本地用户已被禁用。让管理员解除禁用。 | service/cloud/service.go:Login<br>service/cloud/service.go:fallbackLocalLogin |
+| 9063 | 云服务 | 当前账号尚未绑定云账号 | No cloud account is linked | warn | 云账号绑定不存在或已被解绑。重新绑定后再试。 | service/cloud/archive.go:ArchiveUpload<br>service/cloud/service.go:Unlink<br>service/cloud/service.go:requireLink<br>service/cloud/sync.go:Sync |
+| 9064 | 云服务 | 绑定的本地账号不存在，请重新绑定 | The linked local account no longer exists | warn | 云账号对应的本地用户不存在（可能已被删除）。重新绑定或重建本地用户。 | service/cloud/service.go:Link<br>service/cloud/service.go:authenticateLinkedCloudUser<br>service/cloud/service.go:fallbackLocalLogin |
+| 9065 | 云服务 | 本地账号已被禁用 | Local account is disabled | warn | 云账号对应的本地用户已被禁用。让管理员解除禁用。 | service/cloud/service.go:authenticateLinkedCloudUser<br>service/cloud/service.go:fallbackLocalLogin |
 | 9066 | 云服务 | 密码错误 | Wrong password | warn | 云账号或本地密码错误。确认输入；多次失败会被限流。 | service/cloud/service.go:Unlink<br>service/cloud/service.go:fallbackLocalLogin |
 | 9067 | 云服务 | 云账号关联已失效，请重新绑定 | Cloud link expired, please link again | warn | 云账号的登录凭据已失效（token 被撤销或密码变更）。重新绑定云账号。 | service/cloud/service.go:failCloud |
 | 9068 | 云服务 | 云服务暂时不可用，请稍后重试 | Cloud service is temporarily unavailable | fatal | 云服务不可达或返回异常。检查服务器到云服务的网络，稍后重试；本地登录仍可用。 | service/cloud/service.go:failCloud<br>service/cloud/service.go:fallbackLocalLogin |
 | 9069 | 云服务 | 云同步失败 | Cloud sync failed | warn | 云同步失败。查看响应 message 与 logs/runtime.log 中的具体原因。 | service/cloud/sync.go:Sync |
 | 9070 | 云服务 | 不支持的同步方向 | Unsupported sync direction | warn | 同步方向参数非法，只能是 both/upload/download。 | service/cloud/sync.go:Sync |
-| 9071 | 云服务 | 存档压缩包超过 50MB，无法上传 | The archive exceeds 50MB | warn | 云存档超过大小上限。清理日志或快照后重新上传。 | app/cloud/handler.go:archiveImportPost<br>service/cloud/archive.go:ArchiveUpload |
+| 9071 | 云服务 | 存档压缩包超过 50MB，无法上传 | The archive exceeds 50MB | warn | 云存档超过大小上限。清理日志或快照后重新上传。 | service/cloud/archive.go:ArchiveImport<br>service/cloud/archive.go:ArchiveUpload |
 | 9072 | 云服务 | 云存档是旗舰版专属功能，升级到旗舰版后即可使用 | Cloud archives require the ultimate plan | warn | 云存档是旗舰套餐功能。升级套餐后重试。 | service/cloud/archive.go:ArchiveUpload |
 | 9073 | 云服务 | 打包存档失败 | Failed to package the save archive | warn | 打包云存档失败。检查临时目录权限与磁盘空间。 | service/cloud/archive.go:ArchiveUpload |
-| 9074 | 云服务 | 云存档导入失败 | Cloud archive import failed | warn | 导入云存档失败。存档可能损坏或与当前版本不兼容。 | app/cloud/handler.go:archiveImportPost<br>service/cloud/archive.go:ImportArchive |
-| 9075 | 云服务 | 下载云存档失败 | Failed to download cloud archive | warn | 从云服务下载存档失败。检查网络与云账号状态后重试。 | app/cloud/handler.go:archiveImportPost |
+| 9074 | 云服务 | 云存档导入失败 | Cloud archive import failed | warn | 导入云存档失败。存档可能损坏或与当前版本不兼容。 | service/cloud/archive.go:ArchiveImport |
+| 9075 | 云服务 | 下载云存档失败 | Failed to download cloud archive | warn | 从云服务下载存档失败。检查网络与云账号状态后重试。 | service/cloud/archive.go:ArchiveImport |
 | 9076 | 云服务 | 云服务返回错误 | Cloud service error | warn | 云服务返回了业务错误，具体原因见 message（由云端给出，未经过本地翻译）。 | service/cloud/service.go:failCloud |
-| 9091 | 云服务 | 数据库连接失败 | Database Connection Error | fatal | 数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。 | service/cloud/archive.go:ArchiveUpload<br>service/cloud/service.go:Link<br>service/cloud/service.go:Login<br>service/cloud/service.go:Status<br>service/cloud/service.go:Unlink<br>service/cloud/service.go:bootstrapCloudUser<br>service/cloud/service.go:fallbackLocalLogin<br>service/cloud/service.go:requireLink |
-| 9092 | 云服务 | 云账号登录失败 | Cloud login failed | warn | 云登录失败，常见于签发本地 token 或写入绑定信息时出错。查看 logs/runtime.log。 | service/cloud/service.go:Login<br>service/cloud/service.go:bootstrapCloudUser<br>service/cloud/service.go:fallbackLocalLogin |
+| 9091 | 云服务 | 数据库连接失败 | Database Connection Error | fatal | 数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。 | service/cloud/archive.go:ArchiveUpload<br>service/cloud/service.go:Link<br>service/cloud/service.go:Login<br>service/cloud/service.go:Status<br>service/cloud/service.go:Unlink<br>service/cloud/service.go:authenticateLinkedCloudUser<br>service/cloud/service.go:bootstrapCloudUser<br>service/cloud/service.go:fallbackLocalLogin<br>service/cloud/service.go:requireLink |
+| 9092 | 云服务 | 云账号登录失败 | Cloud login failed | warn | 云登录失败，常见于签发本地 token 或写入绑定信息时出错。查看 logs/runtime.log。 | service/cloud/service.go:bootstrapCloudUser<br>service/cloud/service.go:fallbackLocalLogin<br>service/cloud/service.go:loginLinkedCloudUser |
 | 9093 | 云服务 | 创建失败 | Create Fail | warn | 创建失败，常见原因是必填字段缺失或数据库写入异常。查看响应 message 与运行日志。 | service/cloud/service.go:bootstrapCloudUser |

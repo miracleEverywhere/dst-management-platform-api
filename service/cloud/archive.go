@@ -51,6 +51,9 @@ func (s *Service) ArchiveUpload(ctx context.Context, actor service.Actor, roomID
 		return *failed
 	}
 	if err := s.refreshProfile(ctx, link); err != nil {
+		if errors.Is(err, errLinkChanged) {
+			return service.Fail(constant.CodeCloudLinkNotFound)
+		}
 		return failCloud(actor, err)
 	}
 	if link.Plan != "ultimate" {
@@ -82,7 +85,7 @@ func (s *Service) ArchiveUpload(ctx context.Context, actor service.Actor, roomID
 	if err != nil {
 		return failCloud(actor, err)
 	}
-	if err = s.saveLink(link); err != nil {
+	if err = s.saveLinkTokens(link); err != nil {
 		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
 	}
 
@@ -100,7 +103,7 @@ func (s *Service) Archives(ctx context.Context, actor service.Actor) service.Res
 	if err != nil {
 		return failCloud(actor, err)
 	}
-	if err = s.saveLink(link); err != nil {
+	if err = s.saveLinkTokens(link); err != nil {
 		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
 	}
 
@@ -123,46 +126,82 @@ func (s *Service) ArchiveDownload(ctx context.Context, actor service.Actor, id s
 		return nil, "", 0, failCloud(actor, err)
 	}
 
-	if err = s.saveLink(link); err != nil {
+	if err = s.saveLinkTokens(link); err != nil {
 		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
 	}
 
 	return body, fileName, size, service.Result{Code: 200}
 }
 
-// ArchiveOpen 校验导入权限并打开云存档下载流，落盘与大小校验由 handler 负责
-func (s *Service) ArchiveOpen(ctx context.Context, actor service.Actor, id string) (io.ReadCloser, service.Result) {
+// ArchiveImport 下载云存档、校验大小并导入为一个新房间。
+// handler 只负责提取路径参数和输出结果，临时目录、落盘与清理都在此完成。
+func (s *Service) ArchiveImport(ctx context.Context, actor service.Actor, id string) service.Result {
 	if !validCloudID(id) {
-		return nil, service.Fail(constant.CodeCloudArchiveIDInvalid)
+		return service.Fail(constant.CodeCloudArchiveIDInvalid)
 	}
 	if !s.canCreateRoom(actor) {
-		return nil, service.Fail(constant.CodeCloudArchiveCreateNoPermission)
+		return service.Fail(constant.CodeCloudArchiveCreateNoPermission)
 	}
-
-	link, failed := s.requireLink(actor)
-	if failed != nil {
-		return nil, *failed
-	}
-
-	body, _, _, err := s.client.DownloadArchive(ctx, link, id)
-	if err != nil {
-		return nil, failCloud(actor, err)
-	}
-
-	if err = s.saveLink(link); err != nil {
-		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
-	}
-
-	return body, service.Result{Code: 200}
-}
-
-// ImportArchive 把已落盘的云存档导入为新房间，保持原导入失败的 code/msgKey 映射
-func (s *Service) ImportArchive(actor service.Actor, id, savePath, unzipPath string) service.Result {
 	if s.roomSvc == nil {
 		logger.Logger.Error("云存档导入失败：房间导入器未初始化")
 		return service.Fail(constant.CodeCloudArchiveImportFail)
 	}
 
+	link, failed := s.requireLink(actor)
+	if failed != nil {
+		return *failed
+	}
+
+	body, _, _, err := s.client.DownloadArchive(ctx, link, id)
+	if err != nil {
+		return failCloud(actor, err)
+	}
+	defer body.Close()
+
+	if err = s.saveLinkTokens(link); err != nil {
+		logger.Logger.Errorf("保存云账号 token 失败, err: %v", err)
+	}
+
+	baseDir := filepath.Join(constant.CloudTempPath, "import")
+	if err = os.MkdirAll(baseDir, 0o700); err != nil {
+		logger.Logger.Errorf("创建云存档导入目录失败, err: %v", err)
+		return service.Fail(constant.CodeCloudArchiveImportFail)
+	}
+	tempDir, err := os.MkdirTemp(baseDir, "import-*")
+	if err != nil {
+		logger.Logger.Errorf("创建云存档导入临时目录失败, err: %v", err)
+		return service.Fail(constant.CodeCloudArchiveImportFail)
+	}
+	defer func() {
+		if removeErr := utils.RemoveDir(tempDir); removeErr != nil {
+			logger.Logger.Warnf("清理云存档导入临时目录失败, dir: %s, err: %v", tempDir, removeErr)
+		}
+	}()
+
+	savePath := filepath.Join(tempDir, "archive.zip")
+	file, err := os.OpenFile(savePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		logger.Logger.Errorf("保存云存档失败, err: %v", err)
+		return service.Fail(constant.CodeCloudArchiveImportFail)
+	}
+	written, copyErr := io.Copy(file, io.LimitReader(body, constant.CloudArchiveMaxBytes+1))
+	closeErr := file.Close()
+	if copyErr != nil {
+		logger.Logger.Errorf("下载云存档失败, err: %v", copyErr)
+		return service.Fail(constant.CodeCloudArchiveDownloadFail)
+	}
+	if closeErr != nil {
+		logger.Logger.Errorf("保存云存档失败, err: %v", closeErr)
+		return service.Fail(constant.CodeCloudArchiveImportFail)
+	}
+	if written > constant.CloudArchiveMaxBytes {
+		return service.Fail(constant.CodeCloudArchiveTooLarge)
+	}
+	if written == 0 {
+		return service.Fail(constant.CodeCloudArchiveDownloadFail)
+	}
+
+	unzipPath := filepath.Join(tempDir, "unzip") + string(os.PathSeparator)
 	roomInfo, code, err := s.roomSvc.ImportNewRoomFromZip(actor, savePath, unzipPath)
 	if err != nil {
 		logger.Logger.Errorf("导入云存档失败, archiveID: %s, err: %v", id, err)

@@ -2,14 +2,10 @@ package cloud
 
 import (
 	"dst-management-platform-api/constant"
-	"dst-management-platform-api/logger"
 	"dst-management-platform-api/middleware"
 	"dst-management-platform-api/service"
-	"dst-management-platform-api/utils"
 	"fmt"
-	"io"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -183,65 +179,7 @@ func (h *Handler) archiveDownloadGet(c *gin.Context) {
 // 只有拥有创建房间权限（管理员或 roomCreation=true）的用户可以执行。
 func (h *Handler) archiveImportPost(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
-	actor := middleware.Actor(c)
-
-	body, result := h.svc.ArchiveOpen(c.Request.Context(), actor, id)
-	if body != nil {
-		defer body.Close()
-	}
-	if result.Code != 200 {
-		message.Respond(c, result)
-		return
-	}
-
-	baseDir := filepath.Join(constant.CloudTempPath, "import")
-	if err := os.MkdirAll(baseDir, 0o700); err != nil {
-		logger.Logger.Errorf("创建云存档导入目录失败, err: %v", err)
-		message.Respond(c, service.Fail(constant.CodeCloudArchiveImportFail))
-		return
-	}
-	tempDir, err := os.MkdirTemp(baseDir, "import-*")
-	if err != nil {
-		logger.Logger.Errorf("创建云存档导入临时目录失败, err: %v", err)
-		message.Respond(c, service.Fail(constant.CodeCloudArchiveImportFail))
-		return
-	}
-	defer func() {
-		if removeErr := utils.RemoveDir(tempDir); removeErr != nil {
-			logger.Logger.Warnf("清理云存档导入临时目录失败, dir: %s, err: %v", tempDir, removeErr)
-		}
-	}()
-
-	savePath := filepath.Join(tempDir, "archive.zip")
-	file, err := os.OpenFile(savePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		logger.Logger.Errorf("保存云存档失败, err: %v", err)
-		message.Respond(c, service.Fail(constant.CodeCloudArchiveImportFail))
-		return
-	}
-	written, copyErr := io.Copy(file, io.LimitReader(body, constant.CloudArchiveMaxBytes+1))
-	closeErr := file.Close()
-	if copyErr != nil {
-		logger.Logger.Errorf("下载云存档失败, err: %v", copyErr)
-		message.Respond(c, service.Fail(constant.CodeCloudArchiveDownloadFail))
-		return
-	}
-	if closeErr != nil {
-		logger.Logger.Errorf("保存云存档失败, err: %v", closeErr)
-		message.Respond(c, service.Fail(constant.CodeCloudArchiveImportFail))
-		return
-	}
-	if written > constant.CloudArchiveMaxBytes {
-		message.Respond(c, service.Fail(constant.CodeCloudArchiveTooLarge))
-		return
-	}
-	if written == 0 {
-		message.Respond(c, service.Fail(constant.CodeCloudArchiveDownloadFail))
-		return
-	}
-
-	unzipPath := filepath.Join(tempDir, "unzip") + string(os.PathSeparator)
-	message.Respond(c, h.svc.ImportArchive(actor, id, savePath, unzipPath))
+	message.Respond(c, h.svc.ArchiveImport(c.Request.Context(), middleware.Actor(c), id))
 }
 
 // attachmentHeader 生成兼容中文文件名的下载头。

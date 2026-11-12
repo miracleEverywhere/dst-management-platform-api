@@ -45,12 +45,17 @@ func (d *CloudFavoriteMapDAO) ListByUsername(username string) ([]models.CloudFav
 	return items, err
 }
 
-// Upsert 以本地收藏 ID 为唯一键写入映射，云端 ID 变化时覆盖。
-func (d *CloudFavoriteMapDAO) Upsert(item *models.CloudFavoriteMap) error {
-	return d.db.Clauses(clause.OnConflict{
+// upsertCloudFavoriteMap 以本地收藏 ID 为唯一键写入映射，可在事务内复用。
+func upsertCloudFavoriteMap(tx *gorm.DB, item *models.CloudFavoriteMap) error {
+	return tx.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "local_favorite_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"username", "cloud_favorite_id", "last_cloud_update", "updated_at"}),
 	}).Create(item).Error
+}
+
+// Upsert 以本地收藏 ID 为唯一键写入映射，云端 ID 变化时覆盖。
+func (d *CloudFavoriteMapDAO) Upsert(item *models.CloudFavoriteMap) error {
+	return upsertCloudFavoriteMap(d.db, item)
 }
 
 func (d *CloudFavoriteMapDAO) DeleteByUsername(username string) error {
