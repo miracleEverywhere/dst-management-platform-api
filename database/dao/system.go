@@ -2,9 +2,11 @@ package dao
 
 import (
 	"dst-management-platform-api/cache"
+	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 
@@ -40,6 +42,7 @@ func (d *SystemDAO) Set(key, value string) error {
 
 func (d *SystemDAO) initSystem() {
 	d.initJWTSecret()
+	d.initCloudKey()
 	d.initReadme()
 	d.initAIBaseSetting()
 }
@@ -64,6 +67,46 @@ func (d *SystemDAO) initJWTSecret() {
 
 	cache.JwtSecret = jwtSecret.Value
 	logger.Logger.Debug("jwt秘钥已写入缓存")
+}
+
+// initCloudKey 确保 system 表中存在云凭据主密钥，并载入缓存。
+// 密钥不再写入 dmp_files/cloud.key，随数据库一起备份与迁移。
+func (d *SystemDAO) initCloudKey() {
+	logger.Logger.Debug("正在检查云凭据密钥")
+	row, err := d.Get(models.CloudKey)
+	if err == nil {
+		key, decodeErr := base64.RawURLEncoding.DecodeString(row.Value)
+		if decodeErr == nil && len(key) == constant.CloudKeyBytes {
+			cache.CloudKey = key
+			logger.Logger.Debug("云凭据密钥已写入缓存")
+			return
+		}
+		logger.Logger.Warn("云凭据密钥格式不正确，重新生成")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		panic("数据库初始化失败: " + err.Error())
+	}
+
+	if err = d.createCloudKey(); err != nil {
+		panic("数据库初始化失败: " + err.Error())
+	}
+}
+
+func (d *SystemDAO) createCloudKey() error {
+	secret, err := utils.GenerateRandomKey(constant.CloudKeyBytes)
+	if err != nil {
+		return err
+	}
+	key, err := base64.RawURLEncoding.DecodeString(secret)
+	if err != nil {
+		return err
+	}
+	if err = d.Set(models.CloudKey, secret); err != nil {
+		return err
+	}
+	cache.CloudKey = key
+	logger.Logger.Debug("云凭据密钥创建完成")
+
+	return nil
 }
 
 func (d *SystemDAO) initReadme() {

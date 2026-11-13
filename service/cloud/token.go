@@ -18,7 +18,7 @@ func (c *Client) accessToken(ctx context.Context, link *models.CloudLink) (strin
 }
 
 func (c *Client) decryptToken(link *models.CloudLink, encrypted string) (string, error) {
-	key, err := loadOrCreateKey()
+	key, err := credentialKey()
 	if err != nil {
 		return "", err
 	}
@@ -62,7 +62,7 @@ func (c *Client) refreshLink(ctx context.Context, link *models.CloudLink) (strin
 }
 
 func applyTokenPair(link *models.CloudLink, pair TokenPair) error {
-	key, err := loadOrCreateKey()
+	key, err := credentialKey()
 	if err != nil {
 		return err
 	}

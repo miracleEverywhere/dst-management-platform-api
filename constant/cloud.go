@@ -21,12 +21,12 @@ const (
 	CloudArchiveMaxBytes = 50 << 20
 	// CloudKeepSnapshots 上传云存档时每个会话保留的最近快照数量
 	CloudKeepSnapshots = 2
+	// CloudKeyBytes 云凭据 AES-GCM 密钥字节数
+	CloudKeyBytes = 32
 )
 
-// 云功能本地文件路径。均位于 dmp_files 下，随平台数据目录一起备份。
+// 云功能本地文件路径。位于 dmp_files 下，随平台数据目录一起备份。
 const (
-	// CloudKeyPath 云凭据 AES-GCM 密钥文件
-	CloudKeyPath = DmpFiles + "/cloud.key"
 	// CloudTempPath 云存档打包临时目录
 	CloudTempPath = DmpFiles + "/cloud_tmp"
 )

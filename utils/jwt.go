@@ -19,15 +19,20 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateJWTSecret 生成JWT密钥。
+// GenerateRandomKey 使用 crypto/rand 生成 n 字节随机密钥，返回 Base64 RawURL 编码。
 // 使用 crypto/rand 生成随机字节，避免 math/rand 的伪随机序列被预测。
-func GenerateJWTSecret() (string, error) {
-	buf := make([]byte, constant.JwtSecretBytes)
+func GenerateRandomKey(n int) (string, error) {
+	buf := make([]byte, n)
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
 	}
 
 	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+// GenerateJWTSecret 生成JWT密钥。
+func GenerateJWTSecret() (string, error) {
+	return GenerateRandomKey(constant.JwtSecretBytes)
 }
 
 // GenerateJWT 生成 JWT Token

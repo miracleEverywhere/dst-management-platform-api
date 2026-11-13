@@ -11,6 +11,7 @@ func (System) TableName() string {
 
 var (
 	JwtSecret        = "jwt_secret"
+	CloudKey         = "cloud_key"
 	AIBaseSettingKey = "ai_base_setting"
 	ReadmeKey        = "readme"
 )
