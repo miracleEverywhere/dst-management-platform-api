@@ -1,7 +1,6 @@
 package room
 
 import (
-	"bufio"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
@@ -10,11 +9,7 @@ import (
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
 	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
 	"strconv"
-	"strings"
 )
 
 // WorldPath 存档中世界的名称与解压目录
@@ -233,334 +228,44 @@ func (s *Service) importRoomFromZip(actor service.Actor, savePath, unzipPath str
 	return &room, 0, nil
 }
 
-func handleUpload(savePath, unzipPath string, room *models.Room, worlds *[]models.World, roomSetting *models.RoomSetting, uploadExtraInfo *UploadExtraInfo) (int, error) {
-	// 1. 解压上传的zip压缩包
-	err := utils.Unzip(savePath, unzipPath)
+// UploadTarget 校验上传权限并解析目标房间ID；newRoom 为 true 表示新建房间
+func (s *Service) UploadTarget(actor service.Actor, roomIDStr string) (roomID int, newRoom bool, failed *service.Result) {
+	if roomIDStr == "" {
+		// 新建房间，新建权限验证
+		permission, _ := s.hasCreatePermission(actor)
+		if !permission {
+			r := service.Fail(constant.CodeRoomNoPermission)
+			return 0, true, &r
+		}
+		return 0, true, nil
+	}
+
+	// 修改当前房间，修改权限验证
+	if !s.hasRoomPermission(actor, roomIDStr) {
+		r := service.Fail(constant.CodeRoomNoPermission)
+		return 0, false, &r
+	}
+
+	id, err := strconv.Atoi(roomIDStr)
 	if err != nil {
-		return constant.CodeRoomUnzipFail, err
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, actor.Path)
+		r := service.Fail(constant.CodeRoomBadRequest)
+		return 0, false, &r
 	}
 
-	// 2. 查找存档的home路径
-	clusterDir, err := findClusterDir(unzipPath)
-	if err != nil {
-		return constant.CodeRoomClusterDirNotFound, err
-	}
-
-	// 3. 获取token
-	clusterToken, err := utils.GetFileAllContent(fmt.Sprintf("%s/cluster_token.txt", clusterDir))
-	if err != nil || clusterToken == "" {
-		logger.Logger.Info("未发现饥荒令牌文件，使用默认令牌")
-		room.Token = utils.GetDstToken()
-	} else {
-		room.Token = clusterToken
-	}
-
-	// 4. 读取adminlist.txt blocklist.txt whitelist.txt的路径
-	adminlistPath := fmt.Sprintf("%s/adminlist.txt", clusterDir)
-	// whitelist_slots 会在dst.save时设置
-	if utils.FileDirectoryExists(adminlistPath) {
-		adminlist, err := utils.GetFileAllContent(adminlistPath)
-		if err == nil {
-			uploadExtraInfo.adminlist = adminlist
-		}
-	}
-	blocklistPath := fmt.Sprintf("%s/blocklist.txt", clusterDir)
-	if utils.FileDirectoryExists(blocklistPath) {
-		blocklist, err := utils.GetFileAllContent(blocklistPath)
-		if err == nil {
-			uploadExtraInfo.blocklist = blocklist
-		}
-	}
-	whitelistPath := fmt.Sprintf("%s/whitelist.txt", clusterDir)
-	if utils.FileDirectoryExists(whitelistPath) {
-		whitelist, err := utils.GetFileAllContent(whitelistPath)
-		if err == nil {
-			uploadExtraInfo.whitelist = whitelist
-		}
-	}
-
-	// 5. 读取cluster.ini
-	clusterIniPath := fmt.Sprintf("%s/cluster.ini", clusterDir)
-	if !utils.FileDirectoryExists(clusterIniPath) {
-		return constant.CodeRoomClusterIniNotFound, fmt.Errorf("未发现 cluster.ini: %s", clusterIniPath)
-	}
-	clusterIni, err := parseIniToMap(clusterIniPath)
-	if err != nil {
-		return constant.CodeRoomClusterIniReadFail, err
-	}
-	if clusterIni["cluster_name"] == "" {
-		return constant.CodeRoomClusterNameNotFound, fmt.Errorf("未发现房间名")
-	}
-	room.GameName = clusterIni["cluster_name"]
-	room.Description = clusterIni["cluster_description"]
-	if clusterIni["game_mode"] == "" {
-		return constant.CodeRoomGameModeNotFound, fmt.Errorf("未发现游戏模式")
-	}
-	if !utils.IsValidGameMode(clusterIni["game_mode"]) {
-		return constant.CodeRoomGameModeInvalid, fmt.Errorf("无效的游戏模式: %s", clusterIni["game_mode"])
-	}
-	room.GameMode = clusterIni["game_mode"]
-	maxPlayer, err := strconv.Atoi(clusterIni["max_players"])
-	if err != nil {
-		logger.Logger.Info("玩家个数获取异常，设置为默认值6")
-		room.MaxPlayer = 6
-	} else {
-		room.MaxPlayer = maxPlayer
-	}
-	if clusterIni["pvp"] == "" {
-		logger.Logger.Info("玩家对战获取异常，设置为默认值关闭")
-		room.Pvp = false
-	} else {
-		pvp, err := strconv.ParseBool(clusterIni["pvp"])
-		if err != nil {
-			logger.Logger.Info("玩家对战获取异常，设置为默认值关闭")
-			room.Pvp = false
-		} else {
-			room.Pvp = pvp
-		}
-	}
-	if clusterIni["vote_enabled"] == "" {
-		logger.Logger.Info("玩家投票获取异常，设置为默认值关闭")
-		room.Vote = false
-	} else {
-		vote, err := strconv.ParseBool(clusterIni["vote_enabled"])
-		if err != nil {
-			logger.Logger.Info("玩家投票获取异常，设置为默认值关闭")
-			room.Vote = false
-		} else {
-			room.Vote = vote
-		}
-	}
-	if clusterIni["pause_when_empty"] == "" {
-		logger.Logger.Info("自动暂停获取异常，设置为默认值开启")
-		room.PauseEmpty = true
-	} else {
-		pauseEmpty, err := strconv.ParseBool(clusterIni["pause_when_empty"])
-		if err != nil {
-			logger.Logger.Info("自动暂停获取异常，设置为默认值开启")
-			room.PauseEmpty = false
-		} else {
-			room.PauseEmpty = pauseEmpty
-		}
-	}
-	maxRollBack, err := strconv.Atoi(clusterIni["max_snapshots"])
-	if err != nil {
-		logger.Logger.Info("回档天数获取异常，设置为默认值10")
-		room.MaxRollBack = 10
-	} else {
-		room.MaxRollBack = maxRollBack
-	}
-	room.Password = clusterIni["cluster_password"]
-	if clusterIni["master_ip"] == "" {
-		logger.Logger.Info("主世界IP获取异常，设置为默认值127.0.0.1")
-		room.MasterIP = "127.0.0.1"
-	} else {
-		room.MasterIP = clusterIni["master_ip"]
-	}
-	if clusterIni["cluster_key"] == "" {
-		logger.Logger.Info("世界认证密码获取异常，设置随机密码")
-		room.ClusterKey = utils.RandomString(14)
-	} else {
-		room.ClusterKey = clusterIni["cluster_key"]
-	}
-	tickRate, err := strconv.Atoi(clusterIni["tick_rate"])
-	if err != nil {
-		logger.Logger.Info("tick rate获取异常，设置为默认值15")
-		roomSetting.TickRate = 15
-	} else {
-		roomSetting.TickRate = tickRate
-	}
-	// steam 群组设置
-	room.SteamGroupID = clusterIni["steam_group_id"]
-	room.SteamGroupAdmins, err = strconv.ParseBool(clusterIni["steam_group_admins"])
-	if err != nil {
-		room.SteamGroupAdmins = false
-	}
-	room.SteamGroupOnly, err = strconv.ParseBool(clusterIni["steam_group_only"])
-	if err != nil {
-		room.SteamGroupOnly = false
-	}
-
-	// 6. 读取世界目录
-	allWorldsPath, err := utils.GetDirs(clusterDir, false)
-	if err != nil {
-		return constant.CodeRoomWorldsDirInvalid, err
-	}
-	utils.ReverseSlice(allWorldsPath) // 让Master在Caves前面
-	for _, i := range allWorldsPath {
-		// 判断是否含有奇奇怪怪的目录，MacOS真是狗屎啊
-		if strings.HasPrefix(i, "__") {
-			continue
-		}
-		// worldPath会放入bash命令中，需要校验worldName
-		if !isSafeWorldDir(i) {
-			return constant.CodeRoomWorldsDirInvalid, fmt.Errorf("非法的世界目录名")
-		}
-
-		var (
-			world     models.World
-			worldPath WorldPath
-		)
-		worldPath.path = fmt.Sprintf("%s/%s", clusterDir, i)
-		// 读取server.ini
-		serverIniPath := fmt.Sprintf("%s/%s/server.ini", clusterDir, i)
-		if !utils.FileDirectoryExists(serverIniPath) {
-			return constant.CodeRoomServerIniNotFound, fmt.Errorf("未发现 server.ini: %s", serverIniPath)
-		}
-		serverIni, err := parseIniToMap(serverIniPath)
-		if err != nil {
-			return constant.CodeRoomServerIniReadFail, err
-		}
-		worldID, err := strconv.Atoi(serverIni["id"])
-		if err != nil {
-			logger.Logger.Info("世界ID获取异常，设置为默认值101")
-			world.GameID = 101
-		} else {
-			world.GameID = worldID
-		}
-		if serverIni["is_master"] == "" {
-			return constant.CodeRoomIsMasterNotFound, fmt.Errorf("未发现是否为主节点")
-		}
-		isMaster, err := strconv.ParseBool(serverIni["is_master"])
-		if err != nil {
-			return constant.CodeRoomIsMasterReadFail, err
-		}
-		world.IsMaster = isMaster
-		// 世界名会被拼接进bash命令和文件路径，必须使用校验后的值
-		worldName := serverIni["name"]
-		if worldName == "" {
-			// 兼容缺失name字段的存档，按主/从节点设置默认名
-			if isMaster {
-				logger.Logger.Info("世界名获取异常，设置为默认值Master")
-				worldName = "Master"
-			} else {
-				logger.Logger.Info("世界名获取异常，设置为默认值Caves")
-				worldName = "Caves"
-			}
-		}
-		world.WorldName = worldName
-		// worldPath.name用于拼接复制目标目录，而目标目录由world.WorldName创建，两者必须一致，
-		// 否则存档会被复制到错误的目录，甚至覆盖其他世界的存档
-		worldPath.name = worldName
-		encodeUserPath, err := strconv.ParseBool(serverIni["encode_user_path"])
-		if err != nil {
-			logger.Logger.Info("获取encode_user_path失败，设置为默认值true")
-			world.EncodeUserPath = true
-		} else {
-			world.EncodeUserPath = encodeUserPath
-		}
-
-		// 读取世界配置 leveldataoverride.lua(worldgenoverride.lua)
-		levelDataPath := fmt.Sprintf("%s/%s/leveldataoverride.lua", clusterDir, i)
-		levelData, err := utils.GetFileAllContent(levelDataPath)
-		if err != nil {
-			levelDataPath = fmt.Sprintf("%s/%s/worldgenoverride.lua", clusterDir, i)
-			levelData, err = utils.GetFileAllContent(levelDataPath)
-			if err != nil {
-				return constant.CodeRoomLevelDataNotFound, fmt.Errorf("未发现世界配置")
-			}
-		}
-		// 归一化世界配置，剥离 BOM / Klei 引擎头等非法前缀，避免前端世界配置页解析失败
-		world.LevelData = utils.NormalizeLuaConfig(levelData)
-		if world.LevelData != levelData {
-			logger.Logger.Infof("世界配置含非法前缀(BOM/Klei头)，已自动归一化，世界目录: %s", i)
-		}
-
-		// 读取mod配置 modoverrides.lua
-		modDataPath := fmt.Sprintf("%s/%s/modoverrides.lua", clusterDir, i)
-		modData, err := utils.GetFileAllContent(modDataPath)
-		if err == nil {
-			world.ModData = utils.NormalizeLuaConfig(modData)
-		}
-
-		uploadExtraInfo.worldPath = append(uploadExtraInfo.worldPath, worldPath)
-		*worlds = append(*worlds, world)
-	}
-
-	// 7. 校验存档中的世界名，非法或重复时拒绝导入，避免命令注入和存档互相覆盖
-	if worldName, code := validateWorldNames(*worlds); code != 0 {
-		logger.Logger.Warnf("存档世界名校验失败，拒绝导入, world: %s, code: %d", worldName, code)
-		if code == constant.CodeRoomDuplicateWorldName {
-			return constant.CodeRoomDuplicateWorldNameInSave, fmt.Errorf("存档中存在重复的世界名: %s", worldName)
-		}
-		return constant.CodeRoomInvalidWorldNameInSave, fmt.Errorf("存档中存在非法的世界名: %s", worldName)
-	}
-
-	return 0, nil
+	return id, false, nil
 }
 
-// 查找包含 cluster.ini 文件的目录
-func findClusterDir(path string) (string, error) {
-	// 检查当前目录是否包含 cluster.ini
-	clusterFile := filepath.Join(path, "cluster.ini")
-	if _, err := os.Stat(clusterFile); err == nil {
-		return path, nil
-	}
-
-	// 读取当前目录
-	entries, err := os.ReadDir(path)
+// UploadImport 从已落盘的 zip 导入存档，newRoom 为 true 表示新建房间
+func (s *Service) UploadImport(actor service.Actor, savePath, unzipPath string, roomID int, newRoom bool) service.Result {
+	_, code, err := s.importRoomFromZip(actor, savePath, unzipPath, roomID, newRoom)
 	if err != nil {
-		return "", fmt.Errorf("读取目录失败: %v", err)
-	}
-
-	// 遍历子目录
-	for _, entry := range entries {
-		logger.Logger.Debug(entry.Name())
-		if entry.IsDir() {
-			subPath := filepath.Join(path, entry.Name())
-			// 递归查找
-			if result, err := findClusterDir(subPath); err == nil {
-				return result, nil
-			}
+		if code == 0 {
+			code = constant.CodeRoomUploadSaveFail
 		}
+		logger.Logger.Errorf("处理上传文件失败, err: %v", err)
+		return service.Fail(code)
 	}
 
-	return "", fmt.Errorf("未找到包含 cluster.ini 的目录")
-}
-
-func isSafeWorldDir(s string) bool {
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9/]+$`, s)
-
-	return matched
-}
-
-// 将ini文件读取为map
-func parseIniToMap(filePath string) (map[string]string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	configMap := make(map[string]string)
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		// 跳过空行和注释
-		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
-			continue
-		}
-
-		// 检查是否是节标题
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			continue
-		}
-
-		// 解析键值对
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-
-			configMap[key] = value
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return configMap, nil
+	return service.Msg("upload success", nil)
 }
