@@ -358,11 +358,14 @@ type DownloadedMod struct {
 	PreviewURL string `json:"preview_url"`
 }
 
-func (g *Game) getDownloadedMods() *[]DownloadedMod {
+func (g *Game) getDownloadedMods(username string) *[]DownloadedMod {
 	var downloadedMods []DownloadedMod
 
 	// 获取非ugc
 	modDirs, err := utils.GetDirs(g.notUgcPath, false)
+	if err != nil && !os.IsNotExist(err) {
+		logger.Logger.Warnf("读取非ugc模组目录失败, path: %s, err: %v", g.notUgcPath, err)
+	}
 	for _, dir := range modDirs {
 		if strings.HasPrefix(dir, "workshop") {
 			parts := strings.Split(dir, "-")
@@ -387,29 +390,57 @@ func (g *Game) getDownloadedMods() *[]DownloadedMod {
 	err = utils.EnsureFileExists(gameAcfPath)
 	if err != nil {
 		logger.Logger.Errorf("EnsureFileExists失败, path: %v", gameAcfPath)
-		return &downloadedMods
-	}
-
-	gameAcfParser, err := utils.NewParser(gameAcfPath)
-	if err != nil {
+	} else if gameAcfParser, err := utils.NewParser(gameAcfPath); err != nil {
 		logger.Logger.Warnf("获取acf文件失败：%v", err)
-		return &downloadedMods
-	}
+	} else {
+		mods := gameAcfParser.ListWorkshopItemsInstalled()
+		for _, mod := range mods {
+			id, err := strconv.Atoi(mod.Name)
+			if err != nil {
+				id = 0
+			}
 
-	mods := gameAcfParser.ListWorkshopItemsInstalled()
-	for _, mod := range mods {
-		id, err := strconv.Atoi(mod.Name)
-		if err != nil {
-			id = 0
+			downloadedMods = append(downloadedMods, DownloadedMod{
+				ID:        id,
+				LocalSize: mod.List["size"],
+			})
 		}
-
-		downloadedMods = append(downloadedMods, DownloadedMod{
-			ID:        id,
-			LocalSize: mod.List["size"],
-		})
 	}
 
-	return &downloadedMods
+	// 合并当前用户缓存中的模组，按 ID 去重，房间 dst 目录优先
+	mergedMods := mergeDownloadedMods(downloadedMods, g.getUserCachedMods(username))
+
+	return &mergedMods
+}
+
+// mergeDownloadedMods 合并房间条目与用户缓存条目，按 ID 去重：
+// 房间条目优先；同一层级内后出现的条目覆盖先出现的条目（ugc 条目排在 not_ugc 之后）。
+func mergeDownloadedMods(roomMods, cachedMods []DownloadedMod) []DownloadedMod {
+	merged := make([]DownloadedMod, 0, len(roomMods)+len(cachedMods))
+	index := make(map[int]int, len(roomMods)+len(cachedMods))
+
+	for _, mod := range roomMods {
+		if mod.ID > 0 {
+			if idx, ok := index[mod.ID]; ok {
+				merged[idx] = mod
+				continue
+			}
+			index[mod.ID] = len(merged)
+		}
+		merged = append(merged, mod)
+	}
+
+	for _, mod := range cachedMods {
+		if mod.ID > 0 {
+			if _, ok := index[mod.ID]; ok {
+				continue
+			}
+			index[mod.ID] = len(merged)
+		}
+		merged = append(merged, mod)
+	}
+
+	return merged
 }
 
 // resolveUgcWorld 按 worldSaveData 顺序返回 ugc 目录下第一个存在相对路径 rel 的分世界名。
@@ -765,31 +796,29 @@ func (g *Game) deleteMod(modID int, fileURL string) error {
 		for _, world := range g.worldSaveData {
 			gameAcfPath := fmt.Sprintf("%s/%s/appworkshop_322330.acf", g.ugcPath, world.WorldName)
 
-			err := utils.EnsureFileExists(gameAcfPath)
-			if err != nil {
-				logger.Logger.Errorf("acf文件不存在, path: %v", gameAcfPath)
-				return err
-			}
+			// 用户缓存独有的模组可能不在房间 acf 中，文件或条目不存在时跳过 acf 处理
+			if utils.FileDirectoryExists(gameAcfPath) {
+				gameAcfParser, err := utils.NewParser(gameAcfPath)
+				if err != nil {
+					logger.Logger.Errorf("读取acf文件失败, path: %v, err: %v", gameAcfPath, err)
+					return err
+				}
+				if gameAcfParser.Root != nil {
+					if _, err = gameAcfParser.GetWorkshopItemsInstalled(acfID); err == nil {
+						if err = gameAcfParser.RemoveWorkshopItemsInstalled(acfID); err != nil {
+							return err
+						}
 
-			gameAcfParser, err := utils.NewParser(gameAcfPath)
-			if err != nil {
-				return err
-			}
-
-			err = gameAcfParser.RemoveWorkshopItemsInstalled(acfID)
-			if err != nil {
-				return err
-			}
-
-			writtenContent := strings.Join(gameAcfParser.Format(), "\n")
-			err = utils.TruncAndWriteFile(gameAcfPath, writtenContent)
-			if err != nil {
-				return err
+						writtenContent := strings.Join(gameAcfParser.Format(), "\n")
+						if err = utils.TruncAndWriteFile(gameAcfPath, writtenContent); err != nil {
+							return err
+						}
+					}
+				}
 			}
 
 			modPath := fmt.Sprintf("%s/%s/content/322330/%d", g.ugcPath, world.WorldName, modID)
-			err = utils.RemoveDir(modPath)
-			if err != nil {
+			if err := utils.RemoveDir(modPath); err != nil {
 				logger.Logger.Errorf("删除模组失败, err: %v", err)
 				return err
 			}

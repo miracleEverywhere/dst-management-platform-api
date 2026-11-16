@@ -98,6 +98,12 @@ func (s *Service) AddEnable(actor service.Actor, roomID, worldID, id int, fileUR
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
+	if id > 0 {
+		if err = game.EnsureModAvailable(actor.Username, id, fileURL == ""); err != nil {
+			logger.Logger.Errorf("从用户缓存恢复模组失败, username: %s, modID: %d, err: %v", actor.Username, id, err)
+			return service.Fail(constant.CodeModEnableFail)
+		}
+	}
 	err = game.ModEnable(worldID, id, fileURL == "")
 	if err != nil {
 		logger.Logger.Errorf("模组启用失败, err: %v", err)

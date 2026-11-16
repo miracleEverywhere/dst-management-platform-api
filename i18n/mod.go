@@ -15,4 +15,5 @@ var Mod = NewExtendedI18n(map[string]Text{
 	"mod disable success":                     {ZH: "模组禁用成功", EN: "Mod Disable Success"},
 	"get enabled mod fail":                    {ZH: "获取启用模组失败", EN: "Get Enabled Mods Fail"},
 	"search fail":                             {ZH: "获取模组信息失败", EN: "Search Mod Fail"},
+	"delete partial success":                  {ZH: "删除完成：成功 %d 个，失败 %d 个（失败 ID：%s）", EN: "Delete finished: %d succeeded, %d failed (failed IDs: %s)"},
 })

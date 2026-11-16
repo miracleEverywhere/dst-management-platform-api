@@ -85,6 +85,11 @@ func (s *Service) ModDownload(actor service.Actor, roomID, id int, fileURL, size
 			logger.Logger.Errorf("更新模组下载状态失败, err: %v", setErr)
 		}
 
+		// 下载成功后按用户保存一份缓存，更新时覆盖旧副本；失败不影响房间下载结果
+		if saveErr := game.SaveModToUserCache(actor.Username, id, fileURL == ""); saveErr != nil {
+			logger.Logger.Warnf("保存模组到用户缓存失败, username: %s, modID: %d, err: %v", actor.Username, id, saveErr)
+		}
+
 		return nil
 	}
 
@@ -136,7 +141,7 @@ func (s *Service) DownloadedMods(actor service.Actor, roomID int) service.Result
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
-	downloadedMods := game.GetDownloadedMods()
+	downloadedMods := game.GetDownloadedMods(actor.Username)
 
 	if err = s.addDownloadedModInfo(downloadedMods, actor.Lang); err != nil {
 		logger.Logger.Error("添加模组额外信息失败")
@@ -162,7 +167,7 @@ func (s *Service) DownloadedModIDs(actor service.Actor, roomID int) service.Resu
 	}
 
 	game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
-	downloadedMods := game.GetDownloadedMods()
+	downloadedMods := game.GetDownloadedMods(actor.Username)
 	modIDs := make([]int, 0, len(*downloadedMods))
 	seen := make(map[int]struct{}, len(*downloadedMods))
 	for _, downloadedMod := range *downloadedMods {

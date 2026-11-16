@@ -103,6 +103,11 @@ func (s *Service) DeleteUser(user models.User) service.Result {
 		return service.Fail(constant.CodeUserDeleteFail)
 	}
 
+	// 清理该用户的模组缓存，清理失败不影响用户删除结果
+	if err = utils.RemoveDir(utils.UserModsDir(dbUser.Username)); err != nil {
+		logger.Logger.Warnf("清理用户模组缓存失败, username: %s, err: %v", dbUser.Username, err)
+	}
+
 	return service.Msg("delete success", nil)
 }
 

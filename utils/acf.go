@@ -65,6 +65,16 @@ func NewParser(path string) (*Parser, error) {
 	return p, nil
 }
 
+// NewEmptyParser 创建一个只含 AppWorkshop 与 WorkshopItemsInstalled 节点的空 acf 解析器，
+// 用于目标 acf 文件不存在或为空时补齐模组条目。
+func NewEmptyParser() *Parser {
+	root := NewNode("AppWorkshop")
+	root.List["appid"] = "322330"
+	workshopItemsInstalled := root.AddChild("WorkshopItemsInstalled")
+
+	return &Parser{Root: root, Cursor: workshopItemsInstalled}
+}
+
 func normalize(t string) string {
 	return strings.Trim(strings.TrimSpace(t), `\t`)
 }
@@ -130,7 +140,7 @@ loop:
 }
 
 func (p *Parser) GetWorkshopItemsInstalled(id string) (*Node, error) {
-	if p == nil {
+	if p == nil || p.Root == nil {
 		return nil, fmt.Errorf("acf not parsed")
 	}
 
@@ -150,7 +160,7 @@ func (p *Parser) GetWorkshopItemsInstalled(id string) (*Node, error) {
 }
 
 func (p *Parser) AddWorkshopItemsInstalled(n *Node) error {
-	if p == nil {
+	if p == nil || p.Root == nil {
 		return fmt.Errorf("acf not parsed")
 	}
 
@@ -184,7 +194,7 @@ func (p *Parser) AddWorkshopItemsInstalled(n *Node) error {
 }
 
 func (p *Parser) RemoveWorkshopItemsInstalled(id string) error {
-	if p == nil {
+	if p == nil || p.Root == nil {
 		return fmt.Errorf("acf not parsed")
 	}
 
@@ -230,7 +240,7 @@ func (p *Parser) Format() []string {
 		workshopItemsInstalled *Node
 	)
 
-	if p == nil {
+	if p == nil || p.Root == nil {
 		return []string{}
 	}
 

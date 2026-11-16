@@ -33,6 +33,9 @@ const DstBlockList = "https://dst-block.miraclesses.top/api/blacklist/public"
 // DmpFiles 平台文件根目录
 const DmpFiles = "dmp_files"
 
+// UserModsPath 用户模组缓存目录，按用户名分目录保存，不参与临时模组清理
+const UserModsPath = DmpFiles + "/mods/users"
+
 const PluginPath = DmpFiles + "/plugins"
 
 const PluginTmiPath = PluginPath + "/tmi"

@@ -108,6 +108,83 @@ func RemoveFile(filename string) error {
 	return nil
 }
 
+// CopyDir 递归复制目录，保留文件权限与符号链接
+func CopyDir(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("读取源目录信息失败: %w", err)
+	}
+	if !srcInfo.IsDir() {
+		return fmt.Errorf("源路径不是目录: %s", src)
+	}
+
+	if err = os.MkdirAll(dst, srcInfo.Mode().Perm()); err != nil {
+		return fmt.Errorf("创建目标目录失败: %w", err)
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("读取源目录失败: %w", err)
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		info, err := os.Lstat(srcPath)
+		if err != nil {
+			return fmt.Errorf("读取源文件信息失败: %w", err)
+		}
+
+		switch {
+		case info.Mode()&os.ModeSymlink != 0:
+			target, err := os.Readlink(srcPath)
+			if err != nil {
+				return fmt.Errorf("读取符号链接失败: %w", err)
+			}
+			if err = os.Symlink(target, dstPath); err != nil {
+				return fmt.Errorf("创建符号链接失败: %w", err)
+			}
+		case info.IsDir():
+			if err = CopyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		case info.Mode().IsRegular():
+			if err = copyFile(srcPath, dstPath, info.Mode().Perm()); err != nil {
+				return err
+			}
+		default:
+			// 跳过设备文件、命名管道等特殊文件
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dst string, perm os.FileMode) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("打开源文件失败: %w", err)
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return fmt.Errorf("创建目标文件失败: %w", err)
+	}
+
+	if _, err = io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return fmt.Errorf("复制文件失败: %w", err)
+	}
+
+	if err = out.Close(); err != nil {
+		return fmt.Errorf("关闭目标文件失败: %w", err)
+	}
+
+	return nil
+}
+
 // RemoveFilesOlderThan 删除指定目录下，修改时间大于days的文件
 func RemoveFilesOlderThan(dirPath string, days int) (int, error) {
 	// 计算截止时间（当前时间减去N天）

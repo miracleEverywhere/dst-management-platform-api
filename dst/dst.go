@@ -86,9 +86,24 @@ func (g *Game) DownloadMod(id int, fileURL string) (error, int64) {
 	return g.downloadMod(id, fileURL)
 }
 
-// GetDownloadedMods 获取已经下载的模组
-func (g *Game) GetDownloadedMods() *[]DownloadedMod {
-	return g.getDownloadedMods()
+// GetDownloadedMods 获取已经下载的模组，包含当前用户缓存中的模组
+func (g *Game) GetDownloadedMods(username string) *[]DownloadedMod {
+	return g.getDownloadedMods(username)
+}
+
+// SaveModToUserCache 将下载成功的模组保存一份到当前用户缓存
+func (g *Game) SaveModToUserCache(username string, id int, ugc bool) error {
+	return g.saveModToUserCache(username, id, ugc)
+}
+
+// EnsureModAvailable 房间缺少模组时从当前用户缓存恢复
+func (g *Game) EnsureModAvailable(username string, id int, ugc bool) error {
+	return g.ensureModAvailable(username, id, ugc)
+}
+
+// DeleteUserCachedMod 删除当前用户缓存中的指定模组（ugc 与 not_ugc 副本）
+func (g *Game) DeleteUserCachedMod(username string, id int) error {
+	return g.deleteUserCachedMod(username, id)
 }
 
 // GetModConfigureOptions 返回动态表单结构
@@ -124,18 +139,6 @@ func (g *Game) ModDisable(modID int) error {
 // ModDelete 删除模组
 func (g *Game) ModDelete(modID int, fileURL string) error {
 	return g.deleteMod(modID, fileURL)
-}
-
-// ModDeleteMulti 批量删除mod
-func (g *Game) ModDeleteMulti(mods []DeleteModInfo) error {
-	for _, mod := range mods {
-		err := g.deleteMod(mod.ID, mod.FileUrl)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // LogContent 获取日志
