@@ -85,8 +85,6 @@ func (s *Service) Overview() service.Result {
 		}
 	}
 
-	// TODO 玩家数最多的的房间Top3
-
 	data := OverviewData{
 		RunningTime: int64(t),
 		Memory:      mem,
