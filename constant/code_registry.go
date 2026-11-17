@@ -197,6 +197,23 @@ var Registry = []Entry{
 	{Code: 9091, Const: "CodeCloudDBError", Module: "cloud", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 	{Code: 9092, Const: "CodeCloudLoginFail", Module: "cloud", TextKey: "cloud login fail", Level: LevelWarn, Hint: "云登录失败，常见于签发本地 token 或写入绑定信息时出错。查看 logs/runtime.log。"},
 	{Code: 9093, Const: "CodeCloudCreateFail", Module: "cloud", TextKey: "create fail", Level: LevelWarn, Hint: "创建失败，常见原因是必填字段缺失或数据库写入异常。查看响应 message 与运行日志。"},
+	// diagnosis
+	{Code: 10001, Const: "CodeDiagnosisBadRequest", Module: "diagnosis", TextKey: "bad request", Level: LevelWarn, Hint: "诊断请求参数缺失或取值非法。核对 scope、roomID、actionIDs 等字段。"},
+	{Code: 10021, Const: "CodeDiagnosisNoPermission", Module: "diagnosis", TextKey: "permission needed", Level: LevelAuth, Hint: "当前账号没有该房间的诊断权限，或尝试执行管理员专属动作。"},
+	{Code: 10041, Const: "CodeDiagnosisNotFound", Module: "diagnosis", TextKey: "diagnosis not found", Level: LevelWarn, Hint: "诊断会话不存在或已被清理。重新发起一次诊断。"},
+	{Code: 10042, Const: "CodeDiagnosisExpired", Module: "diagnosis", TextKey: "diagnosis expired", Level: LevelWarn, Hint: "诊断会话已过期，修复动作不能继续执行。重新诊断后再操作。"},
+	{Code: 10043, Const: "CodeDiagnosisNotReady", Module: "diagnosis", TextKey: "diagnosis not ready", Level: LevelWarn, Hint: "诊断仍在进行或尚未成功结束。等待诊断完成后再执行修复。"},
+	{Code: 10061, Const: "CodeDiagnosisAIConfigMissing", Module: "diagnosis", TextKey: "diagnosis ai config missing", Level: LevelWarn, Hint: "诊断未配置大模型，AI 对话也未配置。先在工具-AI 诊断-模型设置或工具-AI 对话-基础设置中填写 Chat Base URL 与模型名。"},
+	{Code: 10062, Const: "CodeDiagnosisBusy", Module: "diagnosis", TextKey: "diagnosis busy", Level: LevelWarn, Hint: "同一账号或房间已有诊断在运行，或请求过于频繁。稍后重试。"},
+	{Code: 10063, Const: "CodeDiagnosisAIConfigInvalid", Module: "diagnosis", TextKey: "diagnosis ai config invalid", Level: LevelWarn, Hint: "诊断专用大模型配置不完整或不合法。检查 Base URL、API Key 与模型名。"},
+	{Code: 10064, Const: "CodeDiagnosisActionInvalid", Module: "diagnosis", TextKey: "diagnosis action invalid", Level: LevelWarn, Hint: "动作不在本次诊断的候选中，或动作 ID 不受支持。刷新诊断结果后重试。"},
+	{Code: 10065, Const: "CodeDiagnosisActionPrecondition", Module: "diagnosis", TextKey: "diagnosis action precondition", Level: LevelWarn, Hint: "动作参数或当前服务器状态不满足执行条件。重新诊断并确认证据。"},
+	{Code: 10066, Const: "CodeDiagnosisConfirmRequired", Module: "diagnosis", TextKey: "diagnosis confirm required", Level: LevelWarn, Hint: "高风险动作需要二次确认，确认文本必须与房间名或动作短语一致。"},
+	{Code: 10067, Const: "CodeDiagnosisApplyBusy", Module: "diagnosis", TextKey: "diagnosis apply busy", Level: LevelWarn, Hint: "该房间已有修复任务在执行。等待完成后再提交。"},
+	{Code: 10091, Const: "CodeDiagnosisAIFail", Module: "diagnosis", TextKey: "diagnosis ai fail", Level: LevelFatal, Hint: "调用大模型失败。检查 Base URL、API Key、模型是否支持 tools，或稍后重试。"},
+	{Code: 10092, Const: "CodeDiagnosisApplyFail", Module: "diagnosis", TextKey: "diagnosis apply fail", Level: LevelWarn, Hint: "修复动作执行失败。查看动作结果与 logs/runtime.log 中的具体错误。"},
+	{Code: 10093, Const: "CodeDiagnosisVerifyFail", Module: "diagnosis", TextKey: "diagnosis verify fail", Level: LevelWarn, Hint: "动作已执行但复检未通过。重新诊断，确认是否需要人工介入。"},
+	{Code: 10094, Const: "CodeDiagnosisDBError", Module: "diagnosis", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录磁盘空间与文件权限。"},
 }
 
 var codeIndex = func() map[int]Entry {

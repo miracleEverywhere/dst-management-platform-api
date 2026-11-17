@@ -24,7 +24,7 @@ const (
 )
 
 type chatSession struct {
-	messages   []chatMessage
+	messages   []Message
 	lastActive time.Time
 }
 
@@ -39,7 +39,7 @@ func newManager(roomAISettingDao *dao.RoomAISettingDAO, systemDao *dao.SystemDAO
 		roomAISettingDao: roomAISettingDao,
 		systemDao:        systemDao,
 		pluginDao:        pluginDao,
-		client:           newClient(),
+		client:           NewChatClient(),
 		ctx:              ctx,
 		cancel:           cancel,
 		workers:          make(map[int]*roomWorker),
@@ -533,18 +533,18 @@ func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIC
 	}
 
 	// 搜索 Wiki 知识库获取参考上下文
-	userMessage := chatMessage{Role: "user", Content: truncateRunes(question, maxQuestionRunes)}
-	messages := make([]chatMessage, 0, len(session.messages)+3)
+	userMessage := Message{Role: "user", Content: truncateRunes(question, maxQuestionRunes)}
+	messages := make([]Message, 0, len(session.messages)+3)
 
 	// 构建系统提示词（Wiki 上下文 + 用户设定的提示词）
 	systemContent := buildSystemPrompt(setting, wikiContext, currentPlayerPrefab(setting.RoomID, event.UID))
 	if systemContent != "" {
-		messages = append(messages, chatMessage{Role: "system", Content: systemContent})
+		messages = append(messages, Message{Role: "system", Content: systemContent})
 	}
 	messages = append(messages, session.messages...)
 	messages = append(messages, userMessage)
 
-	answer, err := m.client.complete(ctx, setting.AIModelConfig, messages)
+	answer, err := m.client.complete(ctx, ChatConfigFromModel(setting.AIModelConfig), messages)
 	if err != nil {
 		if ctx.Err() != nil {
 			return
@@ -555,13 +555,13 @@ func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIC
 	}
 	answer = truncateRunes(answer, maxReplyLength(setting))
 
-	session.messages = append(session.messages, userMessage, chatMessage{Role: "assistant", Content: answer})
+	session.messages = append(session.messages, userMessage, Message{Role: "assistant", Content: answer})
 	maxMessages := setting.ContextMaxMessages
 	if maxMessages%2 != 0 {
 		maxMessages--
 	}
 	if len(session.messages) > maxMessages {
-		session.messages = append([]chatMessage(nil), session.messages[len(session.messages)-maxMessages:]...)
+		session.messages = append([]Message(nil), session.messages[len(session.messages)-maxMessages:]...)
 	}
 	session.lastActive = time.Now()
 

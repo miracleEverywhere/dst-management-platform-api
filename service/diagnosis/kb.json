@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-11-17",
+  "description": {
+    "zh": "DMP AI 诊断知识库",
+    "en": "DMP AI diagnosis knowledge base"
+  },
+  "entries": [
+    {
+      "id": "invalid-token",
+      "enabled": true,
+      "category": "auth",
+      "priority": 100,
+      "severity": "high",
+      "title": {
+        "zh": "游戏令牌失效",
+        "en": "Invalid game token"
+      },
+      "symptoms": {
+        "zh": ["世界显示启动，但大厅搜不到房间", "直连代码也无法进入"],
+        "en": ["Worlds appear running but the lobby cannot find the room", "Direct connect also fails"]
+      },
+      "checks": {
+        "zh": ["查看 server_log.txt 是否出现 E_INVALID_TOKEN"],
+        "en": ["Check server_log.txt for E_INVALID_TOKEN"]
+      },
+      "causes": {
+        "zh": ["Klei 游戏令牌无效或与房间不匹配"],
+        "en": ["The Klei game token is invalid or does not match the room"]
+      },
+      "solutions": {
+        "zh": ["进入房间设置，更换正确的游戏令牌", "重启房间"],
+        "en": ["Open room settings and replace the game token", "Restart the room"]
+      },
+      "manualOnly": true,
+      "actionHints": [],
+      "risk": {
+        "zh": "更换令牌后需要等待大厅重新注册，期间玩家可能搜不到房间",
+        "en": "The lobby needs time to re-register; players may not find the room immediately"
+      },
+      "tags": ["token", "auth", "lobby"],
+      "updatedAt": "2026-11-17"
+    },
+    {
+      "id": "mod-load-failure",
+      "enabled": true,
+      "category": "mod",
+      "priority": 90,
+      "severity": "high",
+      "title": {
+        "zh": "模组加载失败",
+        "en": "Mod failed to load"
+      },
+      "symptoms": {
+        "zh": ["世界启动后很快变为未启动", "日志出现 Lua 或 LoadPrefabFile 报错"],
+        "en": ["A world starts and then stops", "Logs contain Lua or LoadPrefabFile errors"]
+      },
+      "checks": {
+        "zh": ["在 server_log.txt 中查找 error calling LoadPrefabFile in mod workshop-"],
+        "en": ["Search server_log.txt for error calling LoadPrefabFile in mod workshop-"]
+      },
+      "causes": {
+        "zh": ["模组文件缺失或版本不兼容", "modoverrides.lua 配置损坏"],
+        "en": ["The mod file is missing or incompatible", "modoverrides.lua is corrupted"]
+      },
+      "solutions": {
+        "zh": ["禁用日志中报错的模组", "重启世界", "确认其他模组依赖是否满足"],
+        "en": ["Disable the mod reported in the log", "Restart the world", "Check mod dependencies"]
+      },
+      "manualOnly": false,
+      "actionHints": [
+        {
+          "actionID": "disable_mod",
+          "risk": "medium",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "日志显示该模组加载失败",
+            "en": "The log shows this mod failed to load"
+          }
+        }
+      ],
+      "risk": {
+        "zh": "禁用模组可能影响存档内容，请先确认该模组不是存档必需模组",
+        "en": "Disabling a mod may affect the save; confirm it is not required"
+      },
+      "tags": ["mod", "startup", "lua"],
+      "updatedAt": "2026-11-17"
+    },
+    {
+      "id": "save-corruption",
+      "enabled": true,
+      "category": "save",
+      "priority": 80,
+      "severity": "high",
+      "title": {
+        "zh": "存档损坏",
+        "en": "Corrupted save"
+      },
+      "symptoms": {
+        "zh": ["世界显示启动，但无法进入", "日志出现 Lua stack traceback 或 attempt to call global"],
+        "en": ["Worlds appear running but cannot be entered", "Logs contain a Lua stack traceback or attempt to call global"]
+      },
+      "checks": {
+        "zh": ["在日志中查找 LUA ERROR stack traceback", "记录日志中的 session/xxxxx 存档编号"],
+        "en": ["Search logs for LUA ERROR stack traceback", "Note the session/xxxxx ID in the log"]
+      },
+      "causes": {
+        "zh": ["存档数据损坏，通常是某个模组或异常退出导致"],
+        "en": ["Save data is corrupted, often caused by a mod or abnormal shutdown"]
+      },
+      "solutions": {
+        "zh": ["备份当前存档", "删除日志中提到的存档文件，强制回档", "重启世界"],
+        "en": ["Back up the current save", "Delete the save file mentioned in the log to force a rollback", "Restart the world"]
+      },
+      "manualOnly": false,
+      "actionHints": [
+        {
+          "actionID": "delete_snapshot",
+          "risk": "high",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "日志显示指定存档损坏",
+            "en": "The log shows the specified save is corrupted"
+          }
+        }
+      ],
+      "risk": {
+        "zh": "删除存档不可逆；执行前会自动备份，并要求输入房间名确认",
+        "en": "Deleting a save is irreversible; a backup is created and the room name must be typed to confirm"
+      },
+      "tags": ["save", "rollback", "lua"],
+      "updatedAt": "2026-11-17"
+    },
+    {
+      "id": "platform-disk-low",
+      "enabled": true,
+      "category": "resource",
+      "priority": 70,
+      "severity": "high",
+      "title": {
+        "zh": "平台磁盘空间不足",
+        "en": "Platform disk space is low"
+      },
+      "symptoms": {
+        "zh": ["平台磁盘剩余空间低于 5GB", "日志或存档可能写入失败"],
+        "en": ["Less than 5GB free on the platform disk", "Logs or saves may fail to write"]
+      },
+      "checks": {
+        "zh": ["查看平台磁盘剩余空间", "检查日志目录和备份目录占用"],
+        "en": ["Check free disk space", "Check log and backup directory usage"]
+      },
+      "causes": {
+        "zh": ["日志、备份或存档占用过多磁盘"],
+        "en": ["Logs, backups, or saves are using too much disk"]
+      },
+      "solutions": {
+        "zh": ["清理过期日志", "清理旧备份", "扩容磁盘"],
+        "en": ["Clean old logs", "Clean old backups", "Expand the disk"]
+      },
+      "manualOnly": true,
+      "actionHints": [],
+      "risk": {
+        "zh": "清理日志不会删除存档，但会丢失历史日志",
+        "en": "Cleaning logs does not delete saves, but historical logs are lost"
+      },
+      "tags": ["disk", "logs", "platform"],
+      "updatedAt": "2026-11-17"
+    }
+  ]
+}

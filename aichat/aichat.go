@@ -17,7 +17,7 @@ type Manager struct {
 	roomAISettingDao *dao.RoomAISettingDAO
 	systemDao        *dao.SystemDAO
 	pluginDao        *dao.PluginDAO
-	client           *aiClient
+	client           *ChatClient
 	ctx              context.Context
 	cancel           context.CancelFunc
 	lifecycle        sync.Mutex

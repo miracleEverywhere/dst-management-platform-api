@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/app/cloud"
 	"dst-management-platform-api/app/dashboard"
+	"dst-management-platform-api/app/diagnosis"
 	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/mod"
 	"dst-management-platform-api/app/platform"
@@ -21,6 +22,7 @@ import (
 	"dst-management-platform-api/scheduler"
 	cloudsvc "dst-management-platform-api/service/cloud"
 	dashboardsvc "dst-management-platform-api/service/dashboard"
+	diagnosissvc "dst-management-platform-api/service/diagnosis"
 	logssvc "dst-management-platform-api/service/logs"
 	modsvc "dst-management-platform-api/service/mod"
 	platformsvc "dst-management-platform-api/service/platform"
@@ -75,6 +77,7 @@ func Run() {
 	modInfoDao := dao.NewModInfoDAO(db.DB)
 	cloudLinkDao := dao.NewCloudLinkDAO(db.DB)
 	cloudFavoriteMapDao := dao.NewCloudFavoriteMapDAO(db.DB)
+	diagnosisDao := dao.NewDiagnosisDAO(db.DB)
 
 	// 初始化缓存
 	cache.InitCache()
@@ -149,6 +152,9 @@ func Run() {
 	tools.NewHandler(toolssvc.New(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, mapImageDao, systemDao, roomAISettingDao, aiManager)).RegisterRoutes(r)
 	player.NewHandler(playersvc.New(userDao, uidMapDao, globalSettingDao)).RegisterRoutes(r)
 	cloud.NewHandler(cloudsvc.New(userDao, cloudLinkDao, cloudFavoriteMapDao, favoriteDao, roomSvc)).RegisterRoutes(r)
+
+	diagnosisSvc := diagnosissvc.New(userDao, roomDao, worldDao, roomSettingDao, systemDao, globalSettingDao, diagnosisDao, aiManager)
+	diagnosis.NewHandler(diagnosisSvc).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 

@@ -14,6 +14,7 @@ package constant
 //	7000-7999  工具模块
 //	8000-8999  玩家模块
 //	9000-9999  云服务模块
+//	10000-10999 AI 诊断模块
 //
 // 模块内后两位表示类别：01-19 参数校验、21-39 权限、41-59 资源不存在、61-89 业务规则、91-99 数据库/服务端内部。
 
@@ -181,4 +182,22 @@ const (
 	CodeCloudDBError                   = 9091
 	CodeCloudLoginFail                 = 9092
 	CodeCloudCreateFail                = 9093
+
+	// AI 诊断模块
+	CodeDiagnosisBadRequest         = 10001
+	CodeDiagnosisNoPermission       = 10021
+	CodeDiagnosisNotFound           = 10041
+	CodeDiagnosisExpired            = 10042
+	CodeDiagnosisNotReady           = 10043
+	CodeDiagnosisAIConfigMissing    = 10061
+	CodeDiagnosisBusy               = 10062
+	CodeDiagnosisAIConfigInvalid    = 10063
+	CodeDiagnosisActionInvalid      = 10064
+	CodeDiagnosisActionPrecondition = 10065
+	CodeDiagnosisConfirmRequired    = 10066
+	CodeDiagnosisApplyBusy          = 10067
+	CodeDiagnosisAIFail             = 10091
+	CodeDiagnosisApplyFail          = 10092
+	CodeDiagnosisVerifyFail         = 10093
+	CodeDiagnosisDBError            = 10094
 )

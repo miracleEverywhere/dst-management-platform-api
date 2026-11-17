@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dmp.miraclesses.top/schemas/diagnosis-kb.schema.json",
+  "title": "DMP AI Diagnosis Knowledge Base",
+  "type": "object",
+  "required": ["schemaVersion", "entries"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "updatedAt": { "type": "string" },
+    "description": { "$ref": "#/$defs/text" },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "object",
+      "required": ["zh", "en"],
+      "properties": {
+        "zh": { "type": "string" },
+        "en": { "type": "string" }
+      }
+    },
+    "textList": {
+      "type": "object",
+      "required": ["zh", "en"],
+      "properties": {
+        "zh": { "type": "array", "items": { "type": "string" } },
+        "en": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "actionHint": {
+      "type": "object",
+      "required": ["actionID", "risk", "requiresConfirmation", "reason"],
+      "properties": {
+        "actionID": { "type": "string" },
+        "risk": { "enum": ["low", "medium", "high"] },
+        "requiresConfirmation": { "type": "boolean" },
+        "reason": { "$ref": "#/$defs/text" }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "id", "category", "severity", "title", "symptoms",
+        "causes", "solutions", "risk", "updatedAt"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "enabled": { "type": "boolean" },
+        "category": {
+          "enum": ["startup", "network", "auth", "mod", "save", "resource", "config", "other"]
+        },
+        "priority": { "type": "integer" },
+        "severity": { "enum": ["low", "medium", "high", "critical"] },
+        "title": { "$ref": "#/$defs/text" },
+        "symptoms": { "$ref": "#/$defs/textList" },
+        "checks": { "$ref": "#/$defs/textList" },
+        "causes": { "$ref": "#/$defs/textList" },
+        "solutions": { "$ref": "#/$defs/textList" },
+        "manualOnly": { "type": "boolean" },
+        "actionHints": { "type": "array", "items": { "$ref": "#/$defs/actionHint" } },
+        "risk": { "$ref": "#/$defs/text" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "updatedAt": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "manualOnly": { "const": true } } },
+          "then": { "properties": { "actionHints": { "maxItems": 0 } } }
+        }
+      ]
+    }
+  }
+}
