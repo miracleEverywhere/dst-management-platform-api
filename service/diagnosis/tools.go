@@ -98,8 +98,13 @@ func (s *Service) toolSpecs() []aichat.Tool {
 			"evidenceIDs": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"reason":      map[string]any{"type": "string"},
 		}, "actionID", "evidenceIDs")),
-		tool("finish_diagnosis", "提交最终诊断结论、发现和候选修复动作。只能调用一次。", finishSchema()),
+		s.finishToolSpec(),
 	}
+}
+
+// finishToolSpec 是收尾阶段唯一向模型暴露的工具，主循环与收尾阶段共用同一份定义。
+func (s *Service) finishToolSpec() aichat.Tool {
+	return tool("finish_diagnosis", "提交最终诊断结论、发现和候选修复动作。只能调用一次。", finishSchema())
 }
 
 func tool(name, description string, parameters json.RawMessage) aichat.Tool {

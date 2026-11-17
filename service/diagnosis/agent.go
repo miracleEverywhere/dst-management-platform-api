@@ -6,13 +6,18 @@ import (
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 )
 
 const (
-	maxAgentSteps           = 8
-	maxAgentToolCall        = 12
+	maxAgentSteps    = 8
+	maxAgentToolCall = 24
+	// 剩余的调用次数不多时提醒模型收尾，避免撞到硬上限后被动收尾。
+	budgetRemindThreshold = 4
+	// 收尾阶段最多请求两次模型：第一次没有提交结论时，带着失败原因再试一次。
+	maxFinalizeAttempts     = 2
 	diagnosisTemperature    = 0.2
 	diagnosisModelMaxTokens = 4096
 	diagnosisCallTimeout    = 90 * time.Second
@@ -46,6 +51,7 @@ func (s *Service) runDiagnosis(ctx context.Context, session *Session) {
 	report := (*Report)(nil)
 	toolCalls := 0
 	budgetExceeded := false
+	budgetReminded := false
 
 	for step := 0; step < maxAgentSteps; step++ {
 		result, err := s.chatClient.ChatWithTools(ctx, session.ChatConfig, messages, tools, aichat.ChatOptions{
@@ -66,18 +72,7 @@ func (s *Service) runDiagnosis(ctx context.Context, session *Session) {
 		usage = addUsage(usage, result.Usage)
 
 		if len(result.Message.ToolCalls) == 0 {
-			content := strings.TrimSpace(result.Message.Content)
-			if content != "" {
-				report = &Report{
-					Summary:    truncateRunes(content, 200),
-					Severity:   "medium",
-					Markdown:   content,
-					Findings:   []*Finding{},
-					Actions:    []*Action{},
-					References: []Reference{},
-					Model:      result.Model,
-				}
-			}
+			report = reportFromContent(result.Message.Content, result.Model)
 			break
 		}
 
@@ -115,14 +110,27 @@ func (s *Service) runDiagnosis(ctx context.Context, session *Session) {
 			session.addEvent(EventNotice, NoticeEventData{Level: "warning", Message: "工具调用次数已达上限，已提前收尾"})
 			break
 		}
+		if !budgetReminded && maxAgentToolCall-toolCalls <= budgetRemindThreshold {
+			budgetReminded = true
+			messages = append(messages, aichat.Message{
+				Role:    "user",
+				Content: budgetReminder(session.Actor.Lang, maxAgentToolCall-toolCalls),
+			})
+		}
 	}
 
 	if report == nil {
-		report = s.forceFinish(ctx, session, scope, messages, &usage)
-	}
-	if report == nil {
-		s.failDiagnosis(session, constant.CodeDiagnosisAIFail, "empty diagnosis report")
-		return
+		var finalErr error
+		report, finalErr = s.forceFinish(ctx, session, scope, messages, &usage)
+		if report == nil {
+			message := "empty diagnosis report"
+			if finalErr != nil {
+				message = truncateRunes("生成诊断结论失败: "+redact(finalErr.Error()), 300)
+			}
+			logger.Logger.Errorf("AI 诊断未能生成结论, diagnosisID: %s, err: %s", session.ID, message)
+			s.failDiagnosis(session, constant.CodeDiagnosisAIFail, message)
+			return
+		}
 	}
 	s.completeDiagnosis(ctx, session, report, usage)
 }
@@ -188,6 +196,7 @@ func diagnosisSystemPrompt(lang string) string {
 7. 如果没有足够证据，明确说明“信息不足”，不要编造。
 8. 最后必须调用 finish_diagnosis 提交结构化结论；报告正文由第二阶段生成。
 9. 报告语言：` + language + `。不要使用 Markdown 代码围栏包裹整个报告。
+10. 工具调用上限 ` + fmt.Sprint(maxAgentToolCall) + ` 次，不要反复读取同一份日志；接近上限时直接提交结论，取证阶段结束后模型只能调用 finish_diagnosis。
 
 动作参数提示：
 - start_world / restart_world：worldID
@@ -264,35 +273,94 @@ func (s *Service) runTool(ctx context.Context, session *Session, scope *Scope, c
 	return string(output), true
 }
 
-func (s *Service) forceFinish(ctx context.Context, session *Session, scope *Scope, messages []aichat.Message, usage *aichat.ChatUsage) *Report {
-	forced := map[string]any{
-		"type":     "function",
-		"function": map[string]any{"name": "finish_diagnosis"},
-	}
-	result, err := s.chatClient.ChatWithTools(ctx, session.ChatConfig, messages, s.toolSpecs(), aichat.ChatOptions{
-		Temperature: diagnosisTemperature,
-		MaxTokens:   diagnosisModelMaxTokens,
-		Timeout:     diagnosisCallTimeout,
-		ToolChoice:  forced,
-	})
-	if err != nil {
-		logger.Logger.Warnf("AI 诊断强制收尾失败, diagnosisID: %s, err: %v", session.ID, err)
-		return nil
-	}
-	*usage = addUsage(*usage, result.Usage)
-	finishCalled := false
-	for _, call := range result.Message.ToolCalls {
-		output, ok := s.runTool(ctx, session, scope, call)
-		_ = output
-		if call.Function.Name == "finish_diagnosis" && ok {
-			finishCalled = true
-			return session.getReport()
+// forceFinish 在 Agent 停止取证后强制模型提交一次结论。
+// 收尾阶段只向模型暴露 finish_diagnosis，不再用 tool_choice 指定函数：
+// 部分思考模型会直接拒绝强制选择（Thinking mode does not support this tool_choice），
+// 只保留一个工具同样能阻止模型继续取证。模型直接输出正文时按正文生成报告。
+func (s *Service) forceFinish(ctx context.Context, session *Session, scope *Scope, messages []aichat.Message, usage *aichat.ChatUsage) (*Report, error) {
+	history := make([]aichat.Message, len(messages), len(messages)+1)
+	copy(history, messages)
+	history = append(history, aichat.Message{Role: "user", Content: finishPrompt(session.Actor.Lang)})
+
+	tools := []aichat.Tool{s.finishToolSpec()}
+	var lastErr error
+	for attempt := 0; attempt < maxFinalizeAttempts; attempt++ {
+		result, err := s.chatClient.ChatWithTools(ctx, session.ChatConfig, history, tools, aichat.ChatOptions{
+			Temperature: diagnosisTemperature,
+			MaxTokens:   diagnosisModelMaxTokens,
+			Timeout:     diagnosisCallTimeout,
+			ToolChoice:  "auto",
+		})
+		if err != nil {
+			logger.Logger.Warnf("AI 诊断收尾请求失败, diagnosisID: %s, err: %v", session.ID, err)
+			return nil, err
+		}
+		*usage = addUsage(*usage, result.Usage)
+
+		if len(result.Message.ToolCalls) == 0 {
+			if report := reportFromContent(result.Message.Content, result.Model); report != nil {
+				return report, nil
+			}
+			return nil, fmt.Errorf("模型没有返回诊断结论")
+		}
+
+		history = append(history, result.Message)
+		for _, call := range result.Message.ToolCalls {
+			// 收尾阶段只接受 finish_diagnosis，不再执行其他工具，避免模型借机继续取证。
+			output := toolError("取证阶段已结束，只能调用 finish_diagnosis")
+			if call.Function.Name == "finish_diagnosis" {
+				var ok bool
+				output, ok = s.runTool(ctx, session, scope, call)
+				if ok {
+					if report := session.getReport(); report != nil {
+						return report, nil
+					}
+				}
+			}
+			history = append(history, aichat.Message{
+				Role:       "tool",
+				ToolCallID: call.ID,
+				Content:    output,
+			})
+			lastErr = fmt.Errorf("finish_diagnosis 未被接受: %s", truncateRunes(output, 200))
 		}
 	}
-	if !finishCalled {
-		logger.Logger.Warnf("AI 诊断强制收尾未得到有效的 finish_diagnosis 结论, diagnosisID: %s, toolCalls: %d", session.ID, len(result.Message.ToolCalls))
+	if lastErr == nil {
+		lastErr = fmt.Errorf("模型没有提交诊断结论")
 	}
-	return nil
+	logger.Logger.Warnf("AI 诊断收尾未得到有效结论, diagnosisID: %s, err: %v", session.ID, lastErr)
+	return nil, lastErr
+}
+
+// reportFromContent 把模型直接输出的正文当作报告，用于模型没有调用 finish_diagnosis 的兜底。
+func reportFromContent(content, model string) *Report {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil
+	}
+	return &Report{
+		Summary:    truncateRunes(content, 200),
+		Severity:   "medium",
+		Markdown:   content,
+		Findings:   []*Finding{},
+		Actions:    []*Action{},
+		References: []Reference{},
+		Model:      model,
+	}
+}
+
+func budgetReminder(lang string, remaining int) string {
+	if lang == "en" {
+		return fmt.Sprintf("Tool call budget: %d calls left. Stop investigating, do not call the same tool again, and call finish_diagnosis now with the evidence you already have.", remaining)
+	}
+	return fmt.Sprintf("工具调用预算只剩 %d 次。请停止继续取证，不要重复调用相同工具，立即调用 finish_diagnosis 提交已有证据能支持的结论。", remaining)
+}
+
+func finishPrompt(lang string) string {
+	if lang == "en" {
+		return "The investigation phase is over. Do not call any other tool. Call finish_diagnosis now with the evidence already collected. If the evidence is not enough, say \"insufficient information\" in the summary and leave findings and actions empty."
+	}
+	return "取证阶段已结束，不要再调用其他工具。请立即调用 finish_diagnosis，用已经收集到的证据提交结论；证据不足时在 summary 中明确写“信息不足”，findings 与 actions 可以为空。"
 }
 
 func (s *Service) streamReport(ctx context.Context, session *Session, report *Report) (string, aichat.ChatUsage) {

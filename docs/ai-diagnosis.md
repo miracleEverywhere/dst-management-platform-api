@@ -810,6 +810,7 @@ export async function connectSSE(url, { token, lang, lastEventID, signal, onEven
 - 房间级、平台级诊断
 - 只读工具：系统指标、房间摘要、世界状态、日志、模组、版本、定时任务、备份、知识库检索
 - 工具调用失败时返回 `10091`，不再降级为本地知识库报告
+- 取证预算用尽后进入收尾模式：只向模型暴露 `finish_diagnosis`，不再用 `tool_choice` 指定函数（思考模型会拒绝），模型只回正文时按正文生成报告
 - 诊断专用 LLM 配置，未配置时回退 AI 对话配置
 - SSE 进度、结构化结论、报告逐 token 流式
 - 动作授权、执行、复检、SSE 进度
