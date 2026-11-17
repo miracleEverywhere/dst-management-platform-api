@@ -6,7 +6,7 @@
 #																#
 #################################################################
 
-FRONTEND_DIR := $(HOME)/WebstormProjects/dst-management-platform-web
+FRONTEND_DIR := $(HOME)/OpenIdeaProjects/dst-management-platform-web
 EMBED_DIR := embedFS/dist
 LITE_ASSET := lite/dist-lite
 OUT_DIR := .
@@ -18,7 +18,7 @@ ifeq ($(OS),Windows_NT)
     DETECTED_OS := Windows
     SHELL := powershell.exe
 	RM = rm -r
-	FRONTEND_DIR = $(USERPROFILE)\WebstormProjects\dst-management-platform-web
+	FRONTEND_DIR = $(USERPROFILE)\OpenIdeaProjects\dst-management-platform-web
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Linux)
