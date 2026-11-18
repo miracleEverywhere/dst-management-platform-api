@@ -373,6 +373,63 @@
       },
       "tags": ["token", "auth", "lobby", "rowid"],
       "updatedAt": "2026-11-18"
+    },
+    {
+      "id": "host-cpu-overload",
+      "enabled": true,
+      "category": "resource",
+      "priority": 65,
+      "severity": "high",
+      "title": {
+        "zh": "主机性能不足（世界 CPU 使用率过高）",
+        "en": "Host performance is insufficient (world CPU usage too high)"
+      },
+      "symptoms": {
+        "zh": [
+          "游戏正常启动",
+          "游戏内玩家网络质量良好（绿色）",
+          "游戏内主机网络质量差（红色）",
+          "玩家瞬移、无法攻击、无法移动，总的来说就是游戏内无法做出操作"
+        ],
+        "en": [
+          "The game starts normally",
+          "Players show good network quality in game (green)",
+          "The host shows poor network quality in game (red)",
+          "Players teleport, cannot attack and cannot move; in short, the game does not respond to input"
+        ]
+      },
+      "checks": {
+        "zh": [
+          "用 get_world_status 查看世界 cpuPercent，多次（至少 2 次）取样",
+          "世界 CPU 使用率多次超过 90%，即可判定为主机性能不够"
+        ],
+        "en": [
+          "Check the world cpuPercent with get_world_status and sample it several times (at least twice)",
+          "World CPU usage above 90% on several samples means the host does not have enough performance"
+        ]
+      },
+      "causes": {
+        "zh": [
+          "主机（服务器）CPU 配置不足，世界负载升高时主机性能不够",
+          "主机来不及处理玩家操作，表现为主机网络质量变红、玩家瞬移与操作无响应"
+        ],
+        "en": [
+          "The host (server) CPU is under-provisioned, so performance is insufficient when world load rises",
+          "The host cannot keep up with player actions, which shows up as red host network quality, teleporting and unresponsive input"
+        ]
+      },
+      "solutions": {
+        "zh": ["扩容服务器配置", "提升CPU单核性能"],
+        "en": ["Expand the server configuration", "Improve CPU single-core performance"]
+      },
+      "manualOnly": true,
+      "actionHints": [],
+      "risk": {
+        "zh": "扩容需要人工更换服务器规格，平台无法自动完成；扩容前建议先确认世界 CPU 使用率多次超过 90%",
+        "en": "Expanding requires a manual server spec change, and cannot be done automatically by the platform; confirm world CPU usage exceeded 90% several times first"
+      },
+      "tags": ["cpu", "performance", "host", "lag"],
+      "updatedAt": "2026-11-18"
     }
   ]
 }
