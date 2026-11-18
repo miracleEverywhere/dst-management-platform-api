@@ -184,6 +184,195 @@
       },
       "tags": ["disk", "logs", "platform"],
       "updatedAt": "2026-11-17"
+    },
+    {
+      "id": "game-install-broken",
+      "enabled": true,
+      "category": "startup",
+      "priority": 60,
+      "severity": "high",
+      "title": {
+        "zh": "游戏完全无法启动",
+        "en": "Game cannot start at all"
+      },
+      "symptoms": {
+        "zh": ["游戏无法启动", "游戏日志没有任何输出", "游戏无法连接"],
+        "en": ["The game cannot start", "The game log has no output at all", "The game cannot be connected to"]
+      },
+      "checks": {
+        "zh": [
+          "查看 DST 安装目录和启动脚本是否完整",
+          "手动执行启动命令，观察终端输出（游戏日志为空时，报错通常只出现在终端或平台系统日志中）",
+          "检查 DST 运行所需的系统依赖库（如 libstdc++、libcurl）是否已安装"
+        ],
+        "en": [
+          "Check that the DST install directory and startup scripts are complete",
+          "Run the startup command manually and watch the terminal output; when the game log is empty, errors usually appear only in the terminal or platform system log",
+          "Check that the system libraries DST requires (such as libstdc++ and libcurl) are installed"
+        ]
+      },
+      "causes": {
+        "zh": [
+          "DST 安装文件缺失或损坏，进程在写入游戏日志前就已退出",
+          "DST 运行所需的系统依赖库缺失或损坏"
+        ],
+        "en": [
+          "DST install files are missing or corrupted, so the process exits before writing the game log",
+          "The system libraries DST requires are missing or corrupted"
+        ]
+      },
+      "solutions": {
+        "zh": ["重新安装游戏（重新下载 DST 服务器文件）", "重新安装 DST 运行所需的系统依赖库"],
+        "en": ["Reinstall the game (download the DST server files again)", "Reinstall the system libraries DST requires"]
+      },
+      "manualOnly": true,
+      "actionHints": [],
+      "risk": {
+        "zh": "重新安装会重新下载游戏文件，耗时较长，并可能覆盖安装目录中的手动改动；操作前建议备份存档与配置",
+        "en": "Reinstalling downloads the game files again, takes a long time, and may overwrite manual changes in the install directory; back up saves and configs first"
+      },
+      "tags": ["startup", "install", "dependency"],
+      "updatedAt": "2026-11-18"
+    },
+    {
+      "id": "server-version-outdated",
+      "enabled": true,
+      "category": "startup",
+      "priority": 50,
+      "severity": "high",
+      "title": {
+        "zh": "服务器版本过旧",
+        "en": "Server version is outdated"
+      },
+      "symptoms": {
+        "zh": [
+          "游戏正常启动并且正常注册",
+          "游戏日志无异常",
+          "检查世界通过",
+          "连接游戏时提示“这个服务器使用了旧版本的游戏”"
+        ],
+        "en": [
+          "The game starts and registers normally",
+          "The game log has no errors",
+          "The world check passes",
+          "Connecting shows \"This server is using an older version of the game\""
+        ]
+      },
+      "checks": {
+        "zh": [
+          "用版本检查工具比较 DST 本地版本与远端版本，确认 gameVersionOutdated 是否为 true",
+          "确认客户端游戏版本是否已更新到最新版本"
+        ],
+        "en": [
+          "Use the version check tool to compare the local and remote DST versions and confirm whether gameVersionOutdated is true",
+          "Check whether the game client is already on the latest version"
+        ]
+      },
+      "causes": {
+        "zh": [
+          "DST 服务器文件未更新，本地版本低于最新版本",
+          "客户端已更新到新版本，服务器仍运行旧版本"
+        ],
+        "en": [
+          "The DST server files were not updated and are older than the latest version",
+          "The client is updated but the server still runs an older version"
+        ]
+      },
+      "solutions": {
+        "zh": ["更新游戏（通过 SteamCMD 更新 DST 服务器文件）", "重启游戏，让服务器加载新版本"],
+        "en": ["Update the game (update the DST server files via SteamCMD)", "Restart the game so the server loads the new version"]
+      },
+      "manualOnly": false,
+      "actionHints": [
+        {
+          "actionID": "update_game",
+          "risk": "medium",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "版本检查显示服务器版本低于最新版本，需要更新游戏",
+            "en": "The version check shows the server is older than the latest version; the game needs an update"
+          }
+        },
+        {
+          "actionID": "restart_room",
+          "risk": "medium",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "更新游戏后需要重启房间，服务器才会加载新版本",
+            "en": "Restart the room after updating so the server loads the new version"
+          }
+        }
+      ],
+      "risk": {
+        "zh": "更新游戏会通过 SteamCMD 重新下载服务器文件，耗时数分钟，仅管理员可执行；更新后必须重启房间才会加载新版本",
+        "en": "Updating downloads server files via SteamCMD, takes several minutes, and is admin-only; the room must be restarted afterward to load the new version"
+      },
+      "tags": ["version", "update", "startup", "connection"],
+      "updatedAt": "2026-11-18"
+    },
+    {
+      "id": "token-rowid-exist",
+      "enabled": true,
+      "category": "auth",
+      "priority": 95,
+      "severity": "high",
+      "title": {
+        "zh": "游戏令牌已被占用（E_ROWID_EXIST）",
+        "en": "Game token already in use (E_ROWID_EXIST)"
+      },
+      "symptoms": {
+        "zh": ["游戏无法启动", "游戏无法连接"],
+        "en": ["The game cannot start", "The game cannot be connected to"]
+      },
+      "checks": {
+        "zh": [
+          "在游戏日志中搜索 E_ROWID_EXIST，出现 Master Server Broadcast Error: E_ROWID_EXIST 即可确认",
+          "日志通常同时包含 [Http] Curl failed[1] with HTTP_500, retrying 与 {\"Error\":{\"Code\":\"E_ROWID_EXIST\"}}"
+        ],
+        "en": [
+          "Search the game log for E_ROWID_EXIST; Master Server Broadcast Error: E_ROWID_EXIST confirms it",
+          "The log usually also contains [Http] Curl failed[1] with HTTP_500, retrying and {\"Error\":{\"Code\":\"E_ROWID_EXIST\"}}"
+        ]
+      },
+      "causes": {
+        "zh": [
+          "游戏令牌已被注册，Master Server 广播时行号冲突，返回 E_ROWID_EXIST"
+        ],
+        "en": [
+          "The game token is already registered, so the Master Server broadcast hits a row ID conflict and returns E_ROWID_EXIST"
+        ]
+      },
+      "solutions": {
+        "zh": ["更换默认游戏令牌", "重启游戏"],
+        "en": ["Switch to the default game token", "Restart the game"]
+      },
+      "manualOnly": false,
+      "actionHints": [
+        {
+          "actionID": "use_default_token",
+          "risk": "medium",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "日志出现 E_ROWID_EXIST，说明当前令牌已被注册，需要更换默认游戏令牌",
+            "en": "The log shows E_ROWID_EXIST, so the current token is already registered; switch to the default game token"
+          }
+        },
+        {
+          "actionID": "restart_room",
+          "risk": "medium",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "更换令牌后需要重启房间，服务器才会用新令牌重新注册",
+            "en": "Restart the room after changing the token so the server registers again with the new token"
+          }
+        }
+      ],
+      "risk": {
+        "zh": "更换令牌后需要等待大厅重新注册，期间玩家可能搜不到房间",
+        "en": "The lobby needs time to re-register after the token change and players may not find the room meanwhile"
+      },
+      "tags": ["token", "auth", "lobby", "rowid"],
+      "updatedAt": "2026-11-18"
     }
   ]
 }

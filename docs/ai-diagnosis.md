@@ -447,7 +447,7 @@ DELETE /v3/diagnosis/:id
 - `disable_mod`：证据中必须出现 `workshop-<modID>`；未传 `modID` 时后端会自动提取。
 - `delete_snapshot`：证据中必须出现 `session/<sessionID>`；未传 `sessionID` 时后端会自动提取。
 - `update_game`：必须有版本检查证据，且包含 `"gameVersionOutdated": true` 或 `"dstUpdating": true`。
-- `use_default_token`：证据中必须出现 `token` 或“令牌”相关文字（例如 `E_INVALID_TOKEN`）。
+- `use_default_token`：证据中必须出现 `token`、`E_INVALID_TOKEN` 或 `E_ROWID_EXIST` 等令牌相关文字。
 - 其他动作至少需要一条证据。
 
 `use_default_token` 的 `preview` 会直接展示平台默认游戏令牌，便于前端确认；它只更新房间令牌与 `cluster_token.txt`，不会自动重启，通常应同时选择 `restart_room` 或 `start_world` 使其生效。

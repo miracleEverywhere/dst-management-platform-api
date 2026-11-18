@@ -261,8 +261,8 @@ func (s *Service) requireEvidence(actionID string, session *Session, evidenceIDs
 		}
 	case "use_default_token":
 		lower := strings.ToLower(text)
-		if !strings.Contains(lower, "token") && !strings.Contains(text, "令牌") {
-			return fmt.Errorf("使用默认令牌需要令牌失效的证据")
+		if !strings.Contains(lower, "token") && !strings.Contains(text, "令牌") && !strings.Contains(text, "E_ROWID_EXIST") {
+			return fmt.Errorf("使用默认令牌需要令牌失效或 E_ROWID_EXIST 的证据")
 		}
 	}
 	return nil
