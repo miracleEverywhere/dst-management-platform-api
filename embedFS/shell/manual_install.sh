@@ -30,6 +30,7 @@ function install_ubuntu() {
 }
 
 function install_rhel() {
+    yum -y install epel-release
     yum update -y
     yum -y install glibc.i686 libstdc++.i686 libcurl.i686
     yum -y install glibc libstdc++ libcurl
