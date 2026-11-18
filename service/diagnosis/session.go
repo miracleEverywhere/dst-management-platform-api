@@ -3,6 +3,7 @@ package diagnosis
 import (
 	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/service"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -149,6 +150,43 @@ func (s *Session) getReport() *Report {
 	return s.Report
 }
 
+// isCanceled 判断用户是否已取消本次诊断。
+func (s *Session) isCanceled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Status == StatusCanceled
+}
+
+// finishWithReport 仅在诊断仍在运行时写入最终报告并置为成功。
+// 返回 false 表示诊断已被取消或已结束，调用方不应再写成功事件。
+func (s *Session) finishWithReport(report *Report) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.Status != StatusRunning {
+		return false
+	}
+	s.Report = report
+	s.Status = StatusSucceeded
+	now := time.Now()
+	s.finishedAt = &now
+	return true
+}
+
+// failIfActive 仅在诊断仍在运行时置为失败并记录错误。
+// 返回 false 表示诊断已被取消或已结束，调用方不应再写失败事件。
+func (s *Session) failIfActive(message string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.Status != StatusRunning {
+		return false
+	}
+	s.Status = StatusFailed
+	s.Error = message
+	now := time.Now()
+	s.finishedAt = &now
+	return true
+}
+
 func (s *Session) stepCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -219,10 +257,15 @@ func (s *Session) getAction(id string) *Action {
 func (s *Session) actionList() []*Action {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.actionListLocked()
+}
+
+// actionListLocked 返回会话内动作指针，调用方需持有 s.mu。
+// 会话内的 Report.Actions 与这里返回的指针是同一批对象，状态只有一份。
+func (s *Session) actionListLocked() []*Action {
 	out := make([]*Action, 0, len(s.Actions))
 	for _, action := range s.Actions {
-		copyAction := *action
-		out = append(out, &copyAction)
+		out = append(out, action)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Order == out[j].Order {
@@ -233,11 +276,11 @@ func (s *Session) actionList() []*Action {
 	return out
 }
 
-func (s *Session) hasAction(id string) bool {
+// actionsJSON 在锁内序列化动作列表，避免与修复执行时的状态更新并发读写。
+func (s *Session) actionsJSON() ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, ok := s.Actions[id]
-	return ok
+	return json.Marshal(s.actionListLocked())
 }
 
 func (s *Session) setActionStatus(id, status string) {
@@ -248,20 +291,21 @@ func (s *Session) setActionStatus(id, status string) {
 	}
 }
 
+// setActionParams 覆盖动作参数（用户授权时可以改写参数），与快照读取共用同一把锁。
+func (s *Session) setActionParams(id string, params map[string]any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if action, ok := s.Actions[id]; ok {
+		action.Params = params
+	}
+}
+
 func (s *Session) setActionResult(result ActionResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if action, ok := s.Actions[result.ActionID]; ok {
 		action.Status = result.Status
 		action.ApplyResult = &result
-	}
-	if s.Report != nil {
-		for _, action := range s.Report.Actions {
-			if action.ActionID == result.ActionID {
-				action.Status = result.Status
-				action.ApplyResult = &result
-			}
-		}
 	}
 }
 
@@ -328,8 +372,8 @@ func (s *Session) snapshot() *SessionSnapshot {
 			copyFinding.Evidence = append([]*Evidence(nil), finding.Evidence...)
 			copyReport.Findings = append(copyReport.Findings, &copyFinding)
 		}
-		copyReport.Actions = make([]*Action, 0, len(s.Report.Actions))
-		for _, action := range s.Report.Actions {
+		copyReport.Actions = make([]*Action, 0, len(s.Actions))
+		for _, action := range s.actionListLocked() {
 			if action == nil {
 				continue
 			}
@@ -372,14 +416,12 @@ type sessionStore struct {
 	mu       sync.Mutex
 	sessions map[string]*Session
 	max      int
-	ttl      time.Duration
 }
 
 func newSessionStore() *sessionStore {
 	return &sessionStore{
 		sessions: make(map[string]*Session),
 		max:      100,
-		ttl:      15 * time.Minute,
 	}
 }
 

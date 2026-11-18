@@ -16,13 +16,15 @@ const (
 	StatusSucceeded = "succeeded"
 	StatusFailed    = "failed"
 	StatusCanceled  = "canceled"
-	StatusExpired   = "expired"
 
 	ActionStatusProposed  = "proposed"
 	ActionStatusRunning   = "running"
 	ActionStatusSucceeded = "succeeded"
 	ActionStatusFailed    = "failed"
 	ActionStatusSkipped   = "skipped"
+
+	// ApplyStatusPartial 表示修复动作都执行了，但有动作复检未通过。
+	ApplyStatusPartial = "partial"
 
 	RiskLow    = "low"
 	RiskMedium = "medium"
@@ -41,7 +43,6 @@ const (
 	EventReportEnd   = "report_end"
 	EventDone        = "done"
 	EventError       = "error"
-	EventReset       = "reset"
 	EventApplyStart  = "apply_start"
 	EventActionStart = "action_start"
 	EventActionDone  = "action_done"
@@ -110,10 +111,7 @@ type Action struct {
 	Preview           string         `json:"preview"`
 	Reason            string         `json:"reason"`
 	EvidenceIDs       []string       `json:"evidenceIDs"`
-	DependsOn         []string       `json:"dependsOn,omitempty"`
 	Order             int            `json:"order"`
-	Available         bool           `json:"available"`
-	UnavailableReason string         `json:"unavailableReason,omitempty"`
 	Status            string         `json:"status"`
 	ApplyResult       *ActionResult  `json:"applyResult,omitempty"`
 }
@@ -212,7 +210,6 @@ type HistoryRow struct {
 	AppliedCount int        `json:"appliedCount"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	FinishedAt   *time.Time `json:"finishedAt"`
-	CanApply     bool       `json:"canApply"`
 }
 
 // EventError 是 SSE error 事件的数据。

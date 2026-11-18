@@ -22,11 +22,9 @@ var Diagnosis = NewExtendedI18n(map[string]Text{
 	"diagnosis action restart room":      {ZH: "重启房间", EN: "Restart room"},
 	"diagnosis action clean logs":        {ZH: "清理日志", EN: "Clean logs"},
 	"diagnosis action use default token": {ZH: "使用默认游戏令牌", EN: "Use the default game token"},
-	"diagnosis action predownload mods":  {ZH: "预下载模组", EN: "Pre-download mods"},
 	"diagnosis action update game":       {ZH: "更新游戏", EN: "Update game"},
 	"diagnosis action disable mod":       {ZH: "禁用模组", EN: "Disable mod"},
 	"diagnosis action enable mod":        {ZH: "启用模组", EN: "Enable mod"},
 	"diagnosis action delete snapshot":   {ZH: "删除存档快照", EN: "Delete snapshot"},
 	"diagnosis action restore backup":    {ZH: "恢复备份", EN: "Restore backup"},
-	"diagnosis action change port":       {ZH: "修改端口", EN: "Change port"},
 })

@@ -44,23 +44,19 @@ type wikiResult struct {
 	Filename   string   `json:"filename"`
 	Categories []string `json:"categories"`
 	Content    string   `json:"content"`
-	ContentLen int      `json:"content_length"`
-	Score      float64  `json:"score"`
 }
 
 type wikiPageInfo struct {
-	Title         string   `json:"title"`
-	Categories    []string `json:"categories"`
-	Content       string   `json:"content"`
-	ContentLength int      `json:"content_length"`
-	Filename      string   `json:"filename"`
+	Title      string   `json:"title"`
+	Categories []string `json:"categories"`
+	Content    string   `json:"content"`
+	Filename   string   `json:"filename"`
 }
 
 type wikiIndex struct {
-	Version       int                           `json:"version"`
-	Pages         map[string]wikiPageInfo       `json:"pages"`
-	CategoryIndex map[string][]string           `json:"category_index"`
-	TermIndex     map[string]map[string]float64 `json:"term_index"`
+	Version   int                           `json:"version"`
+	Pages     map[string]wikiPageInfo       `json:"pages"`
+	TermIndex map[string]map[string]float64 `json:"term_index"`
 }
 
 type keywordWikiSearcher struct {
@@ -82,24 +78,12 @@ func (s *keywordWikiSearcher) load() error {
 	return s.loadLocked()
 }
 
-func (s *keywordWikiSearcher) unload() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.unloadLocked()
-}
-
 func (s *keywordWikiSearcher) unloadLocked() {
 	if s.index != nil {
 		logger.Logger.Infof("释放关键词搜索索引内存 (%d 篇文档)", len(s.index.Pages))
 		s.index = nil
 	}
 	s.stopIdleTimer()
-}
-
-func (s *keywordWikiSearcher) isLoaded() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.index != nil
 }
 
 func (s *keywordWikiSearcher) resetIdleTimer() {
@@ -216,8 +200,6 @@ func (s *keywordWikiSearcher) search(query string, maxResults int) ([]wikiResult
 			Filename:   info.Filename,
 			Categories: info.Categories,
 			Content:    info.Content,
-			ContentLen: info.ContentLength,
-			Score:      roundFloat(item.score, 3),
 		})
 		if len(results) == maxResults {
 			break
@@ -317,17 +299,14 @@ func normalizeForMatch(text string) string {
 
 const maxContextTokens = 8000
 
-func formatWikiContext(results []wikiResult, maxTokens int) string {
+func formatWikiContext(results []wikiResult) string {
 	if len(results) == 0 {
 		return ""
-	}
-	if maxTokens <= 0 {
-		maxTokens = maxContextTokens
 	}
 
 	parts := []string{"# 饥荒 Wiki 参考文档"}
 	totalChars := 0
-	maxChars := maxTokens * 2
+	maxChars := maxContextTokens * 2
 	for i, result := range results {
 		header := formatResultHeader(i+1, result)
 		body := result.Content
@@ -356,23 +335,16 @@ func formatResultHeader(index int, result wikiResult) string {
 	return header
 }
 
-func roundFloat(value float64, decimals int) float64 {
-	pow := math.Pow10(decimals)
-	return math.Round(value*pow) / pow
-}
-
 func (s *keywordWikiSearcher) buildIndex(force bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if !force {
-		if _, err := os.Stat(s.indexPath); err == nil {
-			if loadErr := s.loadLocked(); loadErr == nil {
-				logger.Logger.Infof("关键词索引已存在且版本有效，无需重建")
-				return nil
-			} else {
-				logger.Logger.Infof("丢弃旧关键词索引并重建: %v", loadErr)
-			}
+		if loadErr := s.loadLocked(); loadErr == nil {
+			logger.Logger.Infof("关键词索引已存在且版本有效，无需重建")
+			return nil
+		} else {
+			logger.Logger.Infof("加载已有关键词索引失败，将重建: %v", loadErr)
 		}
 	}
 
@@ -391,10 +363,9 @@ func (s *keywordWikiSearcher) buildIndex(force bool) error {
 	sort.Strings(mdFiles)
 
 	idx := &wikiIndex{
-		Version:       keywordIndexVersion,
-		Pages:         make(map[string]wikiPageInfo, len(mdFiles)),
-		CategoryIndex: make(map[string][]string),
-		TermIndex:     make(map[string]map[string]float64),
+		Version:   keywordIndexVersion,
+		Pages:     make(map[string]wikiPageInfo, len(mdFiles)),
+		TermIndex: make(map[string]map[string]float64),
 	}
 	documentScores := make(map[string]map[string]float64, len(mdFiles))
 
@@ -408,16 +379,11 @@ func (s *keywordWikiSearcher) buildIndex(force bool) error {
 
 		doc := parseWikiDocument(string(content), filename)
 		idx.Pages[filename] = wikiPageInfo{
-			Title:         doc.Name,
-			Categories:    doc.Categories,
-			Content:       doc.Content,
-			ContentLength: utf8.RuneCountInString(doc.Content),
-			Filename:      filename,
+			Title:      doc.Name,
+			Categories: doc.Categories,
+			Content:    doc.Content,
+			Filename:   filename,
 		}
-		for _, category := range doc.Categories {
-			idx.CategoryIndex[category] = append(idx.CategoryIndex[category], filename)
-		}
-
 		scores := make(map[string]float64)
 		addFieldTerms(scores, doc.Name, keywordNameWeight)
 		addFieldTerms(scores, strings.Join(doc.Categories, " "), keywordCategoryWeight)

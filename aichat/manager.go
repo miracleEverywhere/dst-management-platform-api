@@ -9,7 +9,6 @@ import (
 	"dst-management-platform-api/logger"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -21,6 +20,7 @@ const (
 	chatLogBufferSize = 256
 	maxQuestionRunes  = 2000
 	maxReplyRunes     = 180
+	maxNicknameRunes  = 32
 )
 
 type chatSession struct {
@@ -286,11 +286,9 @@ func (m *Manager) watchChatLog(ctx context.Context, game *dst.Game, roomID int, 
 	}
 }
 
-// isEmbeddingConfigured 只有 embedding 地址、密钥和模型均已配置时才启用向量检索。
+// isEmbeddingConfigured 地址与模型都配置时启用向量检索；API Key 可为空（本地模型服务）。
 func (m *Manager) isEmbeddingConfigured(setting models.AIChatSetting) bool {
-	return setting.EmbeddingBaseURL != "" &&
-		setting.EmbeddingApiKey != "" &&
-		setting.EmbeddingModel != ""
+	return setting.EmbeddingBaseURL != "" && setting.EmbeddingModel != ""
 }
 
 // getEmbeddingSearcher 获取或创建向量搜索引擎
@@ -373,13 +371,6 @@ func (m *Manager) buildEmbeddingIndex(config EmbeddingConfig, force bool) error 
 	return nil
 }
 
-// GetEmbeddingStats 获取向量索引统计信息
-func (m *Manager) getEmbeddingStats(config EmbeddingConfig) EmbeddingStats {
-	searcher := newEmbeddingWikiSearcher(wikiPagesDir, config)
-	defer searcher.stopIdleTimer()
-	return searcher.getStats()
-}
-
 // BuildKeywordIndex 手动构建关键词搜索索引。
 // force 为 true 时强制重建，否则索引已存在则跳过。
 func (m *Manager) buildKeywordIndex(force bool) error {
@@ -391,12 +382,10 @@ func (m *Manager) buildKeywordIndex(force bool) error {
 	searcher := newKeywordWikiSearcher(wikiPagesDir, wikiIndexFile)
 
 	if !force {
-		if _, err := os.Stat(wikiIndexFile); err == nil {
-			if loadErr := searcher.load(); loadErr == nil {
-				logger.Logger.Infof("关键词索引已存在，无需重建。使用 force=true 强制重建。")
-				m.keywordSearcher = searcher
-				return nil
-			}
+		if loadErr := searcher.load(); loadErr == nil {
+			logger.Logger.Infof("关键词索引已存在，无需重建。使用 force=true 强制重建。")
+			m.keywordSearcher = searcher
+			return nil
 		}
 	}
 
@@ -410,30 +399,19 @@ func (m *Manager) buildKeywordIndex(force bool) error {
 	return nil
 }
 
-// UnloadKeywordIndex 释放关键词搜索索引占用的内存。
-// 下次 Search 时会自动从磁盘重新加载。
-func (m *Manager) unloadKeywordIndex() {
-	if m.keywordSearcher != nil {
-		m.keywordSearcher.unload()
-	}
-}
-
 // searchWiki 搜索 Wiki 知识库，返回格式化的参考上下文
 func (m *Manager) searchWiki(setting models.AIChatSetting, question string) string {
 	maxResults := setting.MaxResults
-	if maxResults <= 0 {
-		maxResults = models.DefaultAIWikiMaxResults
-	}
 
 	// 优先使用向量搜索
 	if m.isEmbeddingConfigured(setting) {
 		if searcher := m.getEmbeddingSearcher(setting); searcher != nil {
-			results, err := searcher.search(question, nil, maxResults, 0.3)
+			results, err := searcher.search(question, maxResults, 0.3)
 			if err != nil {
 				logger.Logger.Warnf("向量搜索 Wiki 失败: %v，回退到关键词搜索", err)
 			} else if len(results) > 0 {
 				logger.Logger.Debugf("Wiki 搜索方式: embedding, roomID: %d, results: %d", setting.RoomID, len(results))
-				return formatWikiContext(results, maxContextTokens)
+				return formatWikiContext(results)
 			}
 		}
 	} else {
@@ -450,28 +428,18 @@ func (m *Manager) searchWiki(setting models.AIChatSetting, question string) stri
 		}
 		logger.Logger.Debugf("Wiki 搜索方式: keyword, roomID: %d, results: %d", setting.RoomID, len(results))
 		if len(results) > 0 {
-			return formatWikiContext(results, maxContextTokens)
+			return formatWikiContext(results)
 		}
 	}
 
 	return ""
 }
 
-func maxReplyLength(setting models.AIChatSetting) int {
-	if setting.MaxReplyLength < models.MinAIReplyLength {
-		return models.DefaultAIReplyMaxLength
-	}
-	if setting.MaxReplyLength > models.MaxAIReplyLength {
-		return models.MaxAIReplyLength
-	}
-	return setting.MaxReplyLength
-}
-
 // buildSystemPrompt 构建系统提示词（Wiki 上下文 + 用户设定的提示词）。
 // playerPrefab 为空时不添加玩家角色上下文。
 func buildSystemPrompt(setting models.AIChatSetting, wikiContext, playerPrefab string) string {
 	// 默认提示词
-	limitPrompt := fmt.Sprintf("回答不能超过%d个字。", maxReplyLength(setting))
+	limitPrompt := fmt.Sprintf("回答不能超过%d个字。", setting.MaxReplyLength)
 	defaultPrompt := "你是饥荒联机版游戏内的 AI 助手。请用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式。"
 	if wikiContext != "" {
 		defaultPrompt = "你是饥荒联机版游戏内的 AI 助手。请根据以上参考文档，用中文回答玩家的问题。回答应简洁、准确，适合在游戏聊天框中显示，坚决不能使用使用 Markdown 格式。"
@@ -538,9 +506,7 @@ func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIC
 
 	// 构建系统提示词（Wiki 上下文 + 用户设定的提示词）
 	systemContent := buildSystemPrompt(setting, wikiContext, currentPlayerPrefab(setting.RoomID, event.UID))
-	if systemContent != "" {
-		messages = append(messages, Message{Role: "system", Content: systemContent})
-	}
+	messages = append(messages, Message{Role: "system", Content: systemContent})
 	messages = append(messages, session.messages...)
 	messages = append(messages, userMessage)
 
@@ -553,7 +519,7 @@ func (m *Manager) answer(ctx context.Context, game *dst.Game, setting models.AIC
 		_ = sendGameReply(game, event.Nickname, "暂时无法回答，请稍后再试。")
 		return
 	}
-	answer = truncateRunes(answer, maxReplyLength(setting))
+	answer = truncateRunes(answer, setting.MaxReplyLength)
 
 	session.messages = append(session.messages, userMessage, Message{Role: "assistant", Content: answer})
 	maxMessages := setting.ContextMaxMessages
@@ -596,6 +562,8 @@ func sendGameReply(game *dst.Game, nickname, answer string) error {
 		return fmt.Errorf("AI 回答为空")
 	}
 
+	// 昵称来自游戏日志，限制长度以保证每条消息（前缀 + 正文）不超过游戏内单条上限。
+	nickname = truncateRunes(nickname, maxNicknameRunes)
 	prefix := fmt.Sprintf("[DMP] %s: ", nickname)
 	for _, part := range splitRunes(answer, maxReplyRunes-utf8.RuneCountInString(prefix)) {
 		if err := game.SystemMsg(prefix + part); err != nil {
@@ -607,7 +575,7 @@ func sendGameReply(game *dst.Game, nickname, answer string) error {
 
 func splitRunes(value string, size int) []string {
 	if size <= 0 {
-		size = maxReplyRunes
+		return nil
 	}
 	runes := []rune(value)
 	parts := make([]string, 0, (len(runes)+size-1)/size)

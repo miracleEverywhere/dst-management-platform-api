@@ -1,7 +1,6 @@
 package diagnosis
 
 import (
-	"context"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
@@ -25,9 +24,6 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 	if session.expired() {
 		return service.Fail(constant.CodeDiagnosisExpired)
 	}
-	if session.Status != StatusSucceeded {
-		return service.Fail(constant.CodeDiagnosisNotReady)
-	}
 	if !session.canApply() {
 		if apply := session.getApply(); apply != nil && apply.Status == StatusRunning {
 			return service.Fail(constant.CodeDiagnosisApplyBusy)
@@ -37,6 +33,22 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 	if len(input.ActionIDs) == 0 {
 		return service.Fail(constant.CodeDiagnosisBadRequest)
 	}
+
+	// 先占用房间执行锁，再改写动作参数，避免两个并发授权请求交叉覆盖参数。
+	lockID := session.RoomID
+	if session.Scope == ScopePlatform {
+		lockID = -1
+	}
+	lock := s.roomLock(lockID)
+	if !lock.TryLock() {
+		return service.Fail(constant.CodeDiagnosisApplyBusy)
+	}
+	locked := true
+	defer func() {
+		if locked {
+			lock.Unlock()
+		}
+	}()
 
 	selected := make([]*Action, 0, len(input.ActionIDs))
 	seen := make(map[string]struct{}, len(input.ActionIDs))
@@ -62,7 +74,7 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 				params[key] = value
 			}
 		}
-		action.Params = params
+		session.setActionParams(actionID, params)
 
 		scope, err := s.actionScopeForAction(&Scope{
 			Actor:    session.Actor,
@@ -73,9 +85,11 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 			logger.Logger.Warnf("诊断动作上下文无效, action: %s, err: %v", actionID, err)
 			return service.Fail(constant.CodeDiagnosisActionPrecondition)
 		}
-		if err = spec.Validate(context.Background(), s, scope, params); err != nil {
-			logger.Logger.Warnf("诊断动作前置条件不满足, action: %s, err: %v", actionID, err)
-			return service.Fail(constant.CodeDiagnosisActionPrecondition)
+		if spec.Validate != nil {
+			if err = spec.Validate(scope, params); err != nil {
+				logger.Logger.Warnf("诊断动作前置条件不满足, action: %s, err: %v", actionID, err)
+				return service.Fail(constant.CodeDiagnosisActionPrecondition)
+			}
 		}
 		if err = s.requireEvidence(actionID, session, action.EvidenceIDs, params); err != nil {
 			return service.Fail(constant.CodeDiagnosisActionPrecondition)
@@ -92,21 +106,6 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 		return si.Order < sj.Order
 	})
 
-	lockID := session.RoomID
-	if session.Scope == ScopePlatform {
-		lockID = -1
-	}
-	lock := s.roomLock(lockID)
-	if !lock.TryLock() {
-		return service.Fail(constant.CodeDiagnosisApplyBusy)
-	}
-	locked := true
-	defer func() {
-		if locked {
-			lock.Unlock()
-		}
-	}()
-
 	random, err := utils.GenerateRandomKey(12)
 	if err != nil {
 		return service.Fail(constant.CodeDiagnosisDBError)
@@ -120,7 +119,6 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 		Results:   []ActionResult{},
 	})
 	for _, action := range selected {
-		action.Status = ActionStatusRunning
 		session.setActionStatus(action.ActionID, ActionStatusRunning)
 	}
 	session.addApplyEvent(EventApplyStart, map[string]any{
@@ -131,23 +129,21 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 
 	// 落库动作审计记录，执行过程中逐条更新。
 	records := make(map[string]*models.DiagnosisActionRecord, len(selected))
-	if s.diagnosisDao != nil {
-		for _, action := range selected {
-			params, _ := json.Marshal(action.Params)
-			record := &models.DiagnosisActionRecord{
-				DiagnosisID: session.ID,
-				ActionID:    action.ActionID,
-				Params:      string(params),
-				Risk:        action.Risk,
-				Status:      ActionStatusRunning,
-				Operator:    actor.Username,
-				CreatedAt:   now,
-			}
-			if err = s.diagnosisDao.CreateActionRecord(record); err != nil {
-				logger.Logger.Warnf("创建动作审计记录失败: %v", err)
-			} else {
-				records[action.ActionID] = record
-			}
+	for _, action := range selected {
+		params, _ := json.Marshal(action.Params)
+		record := &models.DiagnosisActionRecord{
+			DiagnosisID: session.ID,
+			ActionID:    action.ActionID,
+			Params:      string(params),
+			Risk:        action.Risk,
+			Status:      ActionStatusRunning,
+			Operator:    actor.Username,
+			CreatedAt:   now,
+		}
+		if err = s.diagnosisDao.CreateActionRecord(record); err != nil {
+			logger.Logger.Warnf("创建动作审计记录失败: %v", err)
+		} else {
+			records[action.ActionID] = record
 		}
 	}
 
@@ -165,9 +161,6 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 }
 
 func (s *Service) runApply(session *Session, actions []*Action, records map[string]*models.DiagnosisActionRecord) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
-	defer cancel()
-
 	overall := StatusSucceeded
 	stopped := false
 	for index, action := range actions {
@@ -185,7 +178,7 @@ func (s *Service) runApply(session *Session, actions []*Action, records map[stri
 			"index":     index,
 			"startedAt": time.Now(),
 		})
-		result := s.applyAction(ctx, session, action)
+		result := s.applyAction(session, action)
 		session.appendApplyResult(result)
 		session.setActionResult(result)
 		s.updateActionRecord(records[action.ActionID], result)
@@ -197,7 +190,7 @@ func (s *Service) runApply(session *Session, actions []*Action, records map[stri
 			continue
 		}
 		if !result.Verified {
-			overall = "partial"
+			overall = ApplyStatusPartial
 		}
 	}
 
@@ -248,14 +241,13 @@ func (s *Service) updateActionRecord(record *models.DiagnosisActionRecord, resul
 	record.Code = result.Code
 	record.Message = result.Message
 	record.Verified = result.Verified
+	record.VerifyMessage = result.VerifyMessage
 	if result.Status != ActionStatusRunning {
 		now := time.Now()
 		record.FinishedAt = &now
 	}
-	if s.diagnosisDao != nil {
-		if err := s.diagnosisDao.UpdateActionRecord(record); err != nil {
-			logger.Logger.Warnf("更新动作审计记录失败: %v", err)
-		}
+	if err := s.diagnosisDao.UpdateActionRecord(record); err != nil {
+		logger.Logger.Warnf("更新动作审计记录失败: %v", err)
 	}
 }
 

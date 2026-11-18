@@ -62,8 +62,11 @@ func (s *Service) runDiagnosis(ctx context.Context, session *Session) {
 			ToolChoice:  "auto",
 		})
 		if err != nil {
+			if session.isCanceled() {
+				return
+			}
 			if ctx.Err() != nil {
-				s.failDiagnosis(session, constant.CodeDiagnosisAIFail, "diagnosis canceled")
+				s.failDiagnosis(session, constant.CodeDiagnosisAIFail, "诊断超时")
 				return
 			}
 			logger.Logger.Errorf("AI 诊断调用失败, diagnosisID: %s, err: %v", session.ID, err)
@@ -123,6 +126,9 @@ func (s *Service) runDiagnosis(ctx context.Context, session *Session) {
 	if report == nil {
 		var finalErr error
 		report, finalErr = s.forceFinish(ctx, session, scope, messages, &usage)
+		if session.isCanceled() {
+			return
+		}
 		if report == nil {
 			message := "empty diagnosis report"
 			if finalErr != nil {
@@ -137,24 +143,32 @@ func (s *Service) runDiagnosis(ctx context.Context, session *Session) {
 }
 
 func (s *Service) completeDiagnosis(ctx context.Context, session *Session, report *Report, usage aichat.ChatUsage) {
-	if report == nil {
-		s.failDiagnosis(session, constant.CodeDiagnosisAIFail, "empty diagnosis report")
-		return
-	}
 	if report.Model == "" {
 		report.Model = session.ChatConfig.Model
 	}
 	report.Usage = usage
+	// 会话内的动作是唯一来源：propose_action 登记过但未在 finish_diagnosis 重复的动作也要出现在报告里。
+	report.Actions = session.actionList()
 
 	session.setReport(report)
-	session.setStatus(StatusSucceeded, "")
 	session.addEvent(EventReportMeta, reportMeta(report))
 
-	markdown, streamUsage := s.streamReport(ctx, session, report)
+	markdown, streamUsage, err := s.streamReport(ctx, session, report)
+	if err != nil {
+		if session.isCanceled() {
+			return
+		}
+		s.failDiagnosis(session, constant.CodeDiagnosisAIFail, truncateRunes("生成诊断报告失败: "+redact(err.Error()), 300))
+		return
+	}
 	usage = addUsage(usage, streamUsage)
-	report.Markdown = markdown
-	report.Usage = usage
-	session.setReport(report)
+
+	final := *report
+	final.Markdown = markdown
+	final.Usage = usage
+	if !session.finishWithReport(&final) {
+		return
+	}
 	session.addEvent(EventReportEnd, map[string]any{
 		"report": markdown,
 		"usage":  usage,
@@ -378,11 +392,11 @@ func finishPrompt(lang string) string {
 	return "取证阶段已结束，不要再调用其他工具。请立即调用 finish_diagnosis，用已经收集到的证据提交结论；证据不足时在 summary 中明确写“信息不足”，findings 与 actions 可以为空。"
 }
 
-func (s *Service) streamReport(ctx context.Context, session *Session, report *Report) (string, aichat.ChatUsage) {
+func (s *Service) streamReport(ctx context.Context, session *Session, report *Report) (string, aichat.ChatUsage, error) {
 	if report.Markdown != "" {
 		session.addEvent(EventReportStart, map[string]any{"model": report.Model})
 		session.addEvent(EventReportDelta, map[string]any{"delta": report.Markdown})
-		return report.Markdown, aichat.ChatUsage{}
+		return report.Markdown, aichat.ChatUsage{}, nil
 	}
 
 	session.addEvent(EventReportStart, map[string]any{"model": report.Model})
@@ -410,18 +424,22 @@ func (s *Service) streamReport(ctx context.Context, session *Session, report *Re
 		return nil
 	})
 	if err != nil {
+		// 取消/超时不能再用兜底报告把状态覆盖成成功，交由调用方处理。
+		if ctx.Err() != nil {
+			return "", usage, err
+		}
 		logger.Logger.Warnf("AI 诊断报告流式生成失败, diagnosisID: %s, err: %v", session.ID, err)
 		session.addEvent(EventNotice, NoticeEventData{Level: "warning", Message: "报告流式生成失败，已使用结构化结果生成报告"})
 		fallback := fallbackMarkdown(report, session.Actor.Lang)
 		session.addEvent(EventReportDelta, map[string]any{"delta": fallback})
-		return fallback, usage
+		return fallback, usage, nil
 	}
 	markdown := strings.TrimSpace(builder.String())
 	if markdown == "" {
 		markdown = fallbackMarkdown(report, session.Actor.Lang)
 		session.addEvent(EventReportDelta, map[string]any{"delta": markdown})
 	}
-	return markdown, usage
+	return markdown, usage, nil
 }
 
 func fallbackMarkdown(report *Report, lang string) string {
@@ -499,7 +517,9 @@ func fallbackMarkdown(report *Report, lang string) string {
 }
 
 func (s *Service) failDiagnosis(session *Session, code int, message string) {
-	session.setStatus(StatusFailed, message)
+	if !session.failIfActive(message) {
+		return
+	}
 	session.addEvent(EventError, ErrorEventData{Code: code, Message: message, Retryable: true})
 	session.addEvent(EventDone, map[string]any{
 		"status":     StatusFailed,
@@ -514,10 +534,28 @@ func reportMeta(report *Report) map[string]any {
 		"summary":    report.Summary,
 		"severity":   report.Severity,
 		"findings":   report.Findings,
-		"actions":    report.Actions,
+		"actions":    cloneActions(report.Actions),
 		"references": report.References,
 		"model":      report.Model,
 	}
+}
+
+// cloneActions 复制动作，避免 SSE 事件在修复执行修改动作状态后再被序列化时读到半更新数据。
+func cloneActions(actions []*Action) []*Action {
+	out := make([]*Action, 0, len(actions))
+	for _, action := range actions {
+		if action == nil {
+			continue
+		}
+		copied := *action
+		copied.EvidenceIDs = append([]string(nil), action.EvidenceIDs...)
+		if action.ApplyResult != nil {
+			result := *action.ApplyResult
+			copied.ApplyResult = &result
+		}
+		out = append(out, &copied)
+	}
+	return out
 }
 
 func addUsage(a, b aichat.ChatUsage) aichat.ChatUsage {
@@ -526,8 +564,4 @@ func addUsage(a, b aichat.ChatUsage) aichat.ChatUsage {
 		CompletionTokens: a.CompletionTokens + b.CompletionTokens,
 		TotalTokens:      a.TotalTokens + b.TotalTokens,
 	}
-}
-
-func round2(value float64) float64 {
-	return float64(int(value*100+0.5)) / 100
 }

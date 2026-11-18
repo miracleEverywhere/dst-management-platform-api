@@ -61,10 +61,8 @@ func New(
 	} else {
 		logKBLoaded(kb)
 	}
-	if diagnosisDao != nil {
-		if err := diagnosisDao.MarkInterrupted(time.Now().Add(-10 * time.Minute)); err != nil {
-			logger.Logger.Warnf("标记中断的诊断记录失败: %v", err)
-		}
+	if err := diagnosisDao.MarkInterrupted(); err != nil {
+		logger.Logger.Warnf("标记中断的诊断记录失败: %v", err)
 	}
 	return &Service{
 		userDao:          userDao,
@@ -214,13 +212,11 @@ func (s *Service) Start(actor service.Actor, input StartInput) service.Result {
 		Status:      StatusRunning,
 		CreatedAt:   session.CreatedAt,
 	}
-	if s.diagnosisDao != nil {
-		if err := s.diagnosisDao.CreateRecord(record); err != nil {
-			logger.Logger.Errorf("创建诊断记录失败: %v", err)
-			cancel()
-			s.store.delete(id)
-			return service.Fail(constant.CodeDiagnosisDBError)
-		}
+	if err := s.diagnosisDao.CreateRecord(record); err != nil {
+		logger.Logger.Errorf("创建诊断记录失败: %v", err)
+		cancel()
+		s.store.delete(id)
+		return service.Fail(constant.CodeDiagnosisDBError)
 	}
 
 	go s.runDiagnosis(ctx, session)
@@ -235,9 +231,6 @@ func (s *Service) Start(actor service.Actor, input StartInput) service.Result {
 
 // Get 返回诊断快照；会话过期后回退到数据库记录。
 func (s *Service) Get(actor service.Actor, id string) service.Result {
-	if id == "" {
-		return service.Fail(constant.CodeDiagnosisBadRequest)
-	}
 	session := s.store.get(id)
 	if session != nil {
 		if session.Actor.Username != actor.Username && !actor.IsAdmin() {
@@ -379,18 +372,19 @@ func (s *Service) History(actor service.Actor, scope, status string, page, pageS
 	}
 
 	rows := make([]HistoryRow, 0, len(records.Data))
+	recordIDs := make([]string, 0, len(records.Data))
+	for i := range records.Data {
+		recordIDs = append(recordIDs, records.Data[i].ID)
+	}
+	appliedCounts, err := s.diagnosisDao.CountActionRecordsByStatus(recordIDs, ActionStatusSucceeded)
+	if err != nil {
+		logger.Logger.Errorf("查询诊断动作记录失败: %v", err)
+		return service.Fail(constant.CodeDiagnosisDBError)
+	}
 	for i := range records.Data {
 		record := &records.Data[i]
 		var actions []*Action
 		_ = json.Unmarshal([]byte(record.Actions), &actions)
-		applied := 0
-		if actionRecords, err := s.diagnosisDao.ListActionRecords(record.ID); err == nil {
-			for _, actionRecord := range actionRecords {
-				if actionRecord.Status == ActionStatusSucceeded {
-					applied++
-				}
-			}
-		}
 		rows = append(rows, HistoryRow{
 			DiagnosisID:  record.ID,
 			Scope:        record.Scope,
@@ -403,10 +397,9 @@ func (s *Service) History(actor service.Actor, scope, status string, page, pageS
 			Summary:      record.Summary,
 			Model:        record.Model,
 			ActionCount:  len(actions),
-			AppliedCount: applied,
+			AppliedCount: appliedCounts[record.ID],
 			CreatedAt:    record.CreatedAt,
 			FinishedAt:   record.FinishedAt,
-			CanApply:     false,
 		})
 	}
 
@@ -500,7 +493,7 @@ func recordSnapshot(record *models.DiagnosisRecord, actionRecords []models.Diagn
 				Code:          actionRecord.Code,
 				Message:       actionRecord.Message,
 				Verified:      actionRecord.Verified,
-				VerifyMessage: actionRecord.Message,
+				VerifyMessage: actionRecord.VerifyMessage,
 			})
 		}
 		if record.FinishedAt != nil {
@@ -526,9 +519,6 @@ func recordSnapshot(record *models.DiagnosisRecord, actionRecords []models.Diagn
 }
 
 func (s *Service) saveRecordFromSession(session *Session) {
-	if s.diagnosisDao == nil {
-		return
-	}
 	snapshot := session.snapshot()
 	record, err := s.diagnosisDao.GetRecord(session.ID)
 	if err != nil {
@@ -545,7 +535,7 @@ func (s *Service) saveRecordFromSession(session *Session) {
 		record.PromptTokens = snapshot.Report.Usage.PromptTokens
 		record.CompletionTokens = snapshot.Report.Usage.CompletionTokens
 		findings, _ := json.Marshal(snapshot.Report.Findings)
-		actions, _ := json.Marshal(session.actionList())
+		actions, _ := session.actionsJSON()
 		references, _ := json.Marshal(snapshot.Report.References)
 		record.Findings = string(findings)
 		record.Actions = string(actions)
@@ -597,7 +587,7 @@ func (s *Service) AISettingPut(actor service.Actor, setting models.DiagnosisAISe
 	}
 	setting = normalizeDiagnosisSetting(setting)
 	if setting.Configured() {
-		if err := diagnosisChatConfig(setting).Validate(); err != nil {
+		if err := diagnosisChatConfig(setting).ValidateEndpoint(); err != nil {
 			return service.FailMsg(constant.CodeDiagnosisAIConfigInvalid, err.Error())
 		}
 	}
@@ -619,20 +609,18 @@ func (s *Service) resolveChatConfig() (aichat.ChatConfig, int, error) {
 		return aichat.ChatConfig{}, constant.CodeDiagnosisAIConfigMissing, errors.New("AI 诊断尚未配置专用大模型")
 	}
 	config := diagnosisChatConfig(*setting)
-	if err := config.Validate(); err != nil {
+	if err := config.ValidateEndpoint(); err != nil {
 		return config, constant.CodeDiagnosisAIConfigInvalid, err
 	}
 	return config, 0, nil
 }
 
+// diagnosisChatConfig 只保留连接信息；采样参数与超时由调用方的 ChatOptions 统一指定。
 func diagnosisChatConfig(setting models.DiagnosisAISetting) aichat.ChatConfig {
 	return aichat.ChatConfig{
-		BaseURL:               setting.ChatBaseURL,
-		APIKey:                setting.ChatApiKey,
-		Model:                 setting.ChatModel,
-		Temperature:           diagnosisTemperature,
-		MaxTokens:             diagnosisModelMaxTokens,
-		RequestTimeoutSeconds: int(diagnosisCallTimeout.Seconds()),
+		BaseURL: setting.ChatBaseURL,
+		APIKey:  setting.ChatApiKey,
+		Model:   setting.ChatModel,
 	}.Normalize()
 }
 

@@ -58,7 +58,7 @@ SSE 使用 `fetch`，不要用 `EventSource`，因为需要携带 `X-DMP-TOKEN`�
 
 ### 3.1 诊断 LLM 配置
 
-诊断优先使用自己的 LLM 配置；诊断未填写 `chatBaseURL`/`chatModel`/`chatApiKey` 时，自动回退 AI 对话的全局基础配置。两处都不可用时，创建诊断返回 `10061`。
+诊断只使用自己的 LLM 配置，不再回退 AI 对话的全局基础配置；未配置时创建诊断返回 `10061`。
 
 `GET /v3/diagnosis/setting`（管理员）：
 
@@ -67,12 +67,12 @@ SSE 使用 `fetch`，不要用 `EventSource`，因为需要携带 `X-DMP-TOKEN`�
   "code": 200,
   "message": "success",
   "data": {
-    "source": "aichat",
-    "configured": false,
+    "source": "diagnosis",
+    "configured": true,
     "setting": {
-      "chatBaseURL": "",
-      "chatApiKey": "",
-      "chatModel": ""
+      "chatBaseURL": "https://api.example.com/v1",
+      "chatApiKey": "sk-***",
+      "chatModel": "gpt-4o-mini"
     },
     "effective": {
       "chatBaseURL": "https://api.example.com/v1",
@@ -83,7 +83,7 @@ SSE 使用 `fetch`，不要用 `EventSource`，因为需要携带 `X-DMP-TOKEN`�
 }
 ```
 
-- `source`：`diagnosis`（使用诊断专用配置）、`aichat`（回退 AI 对话配置）、`none`（两处都不可用）。
+- `source`：`diagnosis`（已配置诊断专用配置）或 `none`（未配置）。
 - `configured`：是否填写了诊断专用配置。
 - `setting`：诊断专用配置原文，用于表单回显。
 - `effective`：本次诊断实际使用的模型配置。
@@ -99,7 +99,7 @@ SSE 使用 `fetch`，不要用 `EventSource`，因为需要携带 `X-DMP-TOKEN`�
 }
 ```
 
-将 `chatBaseURL`、`chatApiKey`、`chatModel` 全部留空即清除诊断专用配置并回退 AI 对话配置。配置不合法返回 `10063`。
+将 `chatBaseURL`、`chatApiKey`、`chatModel` 全部留空即清除诊断专用配置，之后创建诊断会返回 `10061`。配置不合法返回 `10063`。
 
 ## 4. 创建诊断
 
@@ -402,10 +402,7 @@ DELETE /v3/diagnosis/:id
   "preview": "将禁用模组 workshop-123",
   "reason": "日志显示该模组加载失败",
   "evidenceIDs": ["ev_3"],
-  "dependsOn": [],
   "order": 20,
-  "available": true,
-  "unavailableReason": "",
   "status": "proposed",
   "applyResult": null
 }
@@ -571,8 +568,7 @@ GET /v3/diagnosis/history?page=1&pageSize=10&scope=room&status=succeeded
         "actionCount": 2,
         "appliedCount": 1,
         "createdAt": "...",
-        "finishedAt": "...",
-        "canApply": false
+        "finishedAt": "..."
       }
     ],
     "page": 1,
@@ -713,7 +709,6 @@ export async function connectSSE(url, { token, lang, lastEventID, signal, onEven
 - `reason`
 - 证据折叠面板
 - 勾选框
-- 不可用时展示 `unavailableReason`
 
 高风险动作：
 
@@ -815,7 +810,7 @@ export async function connectSSE(url, { token, lang, lastEventID, signal, onEven
 - 只读工具：系统指标、房间摘要、世界状态、日志、模组、版本、定时任务、备份、知识库检索
 - 工具调用失败时返回 `10091`，不再降级为本地知识库报告
 - 取证预算用尽后进入收尾模式：只向模型暴露 `finish_diagnosis`，不再用 `tool_choice` 指定函数（思考模型会拒绝），模型只回正文时按正文生成报告
-- 诊断专用 LLM 配置，未配置时回退 AI 对话配置
+- 诊断专用 LLM 配置，与 AI 对话配置完全独立
 - SSE 进度、结构化结论、报告逐 token 流式
 - 动作授权、执行、复检、SSE 进度
 - 诊断历史与动作审计落库
@@ -825,7 +820,6 @@ export async function connectSSE(url, { token, lang, lastEventID, signal, onEven
 
 - `predownload_mods`、`change_port` 动作
 - 平台级系统日志清理动作
-- SSE 事件超过内存上限后的 `reset` 重放
 - 诊断报告导出、分享
 
 ## 17. 后端验证命令

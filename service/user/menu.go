@@ -59,5 +59,6 @@ type menuItem struct {
 	To        string     `json:"to"`
 	Component string     `json:"component"`
 	Icon      string     `json:"icon"`
+	BadgeContent string `json:"badgeContent"`
 	Links     []menuItem `json:"links"`
 }

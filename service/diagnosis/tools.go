@@ -17,7 +17,6 @@ import (
 	"os"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -27,7 +26,7 @@ import (
 const (
 	maxLogLines        = 200
 	maxLogLineRunes    = 500
-	maxToolResultBytes = 16 * 1024
+	maxToolResultRunes = 5000
 )
 
 var (
@@ -203,14 +202,11 @@ func truncateRunes(value string, limit int) string {
 }
 
 func capText(text string) (string, bool) {
-	if len(text) <= maxToolResultBytes {
+	runes := []rune(text)
+	if len(runes) <= maxToolResultRunes {
 		return text, false
 	}
-	runes := []rune(text)
-	if len(runes) > maxToolResultBytes/3 {
-		runes = runes[:maxToolResultBytes/3]
-	}
-	return string(runes) + "\n...(truncated)", true
+	return string(runes[:maxToolResultRunes]) + "\n...(truncated)", true
 }
 
 func toolError(message string) string {
@@ -695,24 +691,7 @@ func (s *Service) scopedRoomID(current *Scope, params map[string]any) int {
 	if current != nil && !current.Platform {
 		return current.RoomID
 	}
-	if params == nil {
-		return 0
-	}
-	switch value := params["roomID"].(type) {
-	case float64:
-		return int(value)
-	case int:
-		return value
-	case json.Number:
-		id, _ := strconv.Atoi(value.String())
-		return id
-	default:
-		return 0
-	}
-}
-
-func (s *Service) actorFromSession(session *Session) service.Actor {
-	return session.Actor
+	return intParam(params, "roomID")
 }
 
 func (s *Service) debugTool(name string) {

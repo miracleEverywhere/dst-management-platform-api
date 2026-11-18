@@ -27,21 +27,11 @@ func (h *Handler) startPost(c *gin.Context) {
 }
 
 func (h *Handler) getGet(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		message.Respond(c, service.Fail(constant.CodeDiagnosisBadRequest))
-		return
-	}
-	message.Respond(c, h.svc.Get(middleware.Actor(c), id))
+	message.Respond(c, h.svc.Get(middleware.Actor(c), c.Param("id")))
 }
 
 func (h *Handler) cancelDelete(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		message.Respond(c, service.Fail(constant.CodeDiagnosisBadRequest))
-		return
-	}
-	message.Respond(c, h.svc.Cancel(middleware.Actor(c), id))
+	message.Respond(c, h.svc.Cancel(middleware.Actor(c), c.Param("id")))
 }
 
 func (h *Handler) eventsGet(c *gin.Context) {
@@ -50,10 +40,6 @@ func (h *Handler) eventsGet(c *gin.Context) {
 
 func (h *Handler) applyPost(c *gin.Context) {
 	id := c.Param("id")
-	if id == "" {
-		message.Respond(c, service.Fail(constant.CodeDiagnosisBadRequest))
-		return
-	}
 	var reqForm diagnosissvc.ApplyInput
 	if err := c.ShouldBindJSON(&reqForm); err != nil {
 		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
@@ -83,12 +69,7 @@ func (h *Handler) historyGet(c *gin.Context) {
 }
 
 func (h *Handler) historyDetailGet(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		message.Respond(c, service.Fail(constant.CodeDiagnosisBadRequest))
-		return
-	}
-	message.Respond(c, h.svc.HistoryDetail(middleware.Actor(c), id))
+	message.Respond(c, h.svc.HistoryDetail(middleware.Actor(c), c.Param("id")))
 }
 
 func (h *Handler) settingGet(c *gin.Context) {
@@ -107,10 +88,6 @@ func (h *Handler) settingPut(c *gin.Context) {
 
 func (h *Handler) stream(c *gin.Context, apply bool) {
 	id := c.Param("id")
-	if id == "" {
-		message.Respond(c, service.Fail(constant.CodeDiagnosisBadRequest))
-		return
-	}
 	after := parseLastEventID(c)
 	actor := middleware.Actor(c)
 
@@ -123,7 +100,7 @@ func (h *Handler) stream(c *gin.Context, apply bool) {
 	} else {
 		ch, result = h.svc.Stream(c.Request.Context(), actor, id, after)
 	}
-	if result.Code != 200 {
+	if result.Code != nethttp.StatusOK {
 		message.Respond(c, result)
 		return
 	}
@@ -134,10 +111,7 @@ func (h *Handler) stream(c *gin.Context, apply bool) {
 	header.Set("Connection", "keep-alive")
 	header.Set("X-Accel-Buffering", "no")
 	c.Writer.WriteHeader(nethttp.StatusOK)
-	flusher, ok := c.Writer.(nethttp.Flusher)
-	if !ok {
-		return
-	}
+	flusher := c.Writer.(nethttp.Flusher)
 	_, _ = c.Writer.WriteString("retry: 3000\n\n")
 	flusher.Flush()
 
@@ -163,17 +137,9 @@ func (h *Handler) stream(c *gin.Context, apply bool) {
 func (h *Handler) writeEvent(c *gin.Context, flusher nethttp.Flusher, event diagnosissvc.SSEEvent) {
 	data := event.Data
 	if event.Type == diagnosissvc.EventError {
-		switch value := data.(type) {
-		case diagnosissvc.ErrorEventData:
-			if value.Message == "" {
-				value.Message = localizeCode(c, value.Code)
-				data = value
-			}
-		case *diagnosissvc.ErrorEventData:
-			if value.Message == "" {
-				value.Message = localizeCode(c, value.Code)
-				data = value
-			}
+		if value, ok := data.(diagnosissvc.ErrorEventData); ok && value.Message == "" {
+			value.Message = localizeCode(c, value.Code)
+			data = value
 		}
 	}
 	payload, err := json.Marshal(data)

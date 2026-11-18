@@ -173,6 +173,7 @@ var tools = menuItem{
 			To:        "/tools/ai-diagnosis",
 			Component: "tools/ai-diagnosis",
 			Icon:      "ri-stethoscope-line",
+			BadgeContent: "Beta",
 			Links:     nil,
 		},
 		{

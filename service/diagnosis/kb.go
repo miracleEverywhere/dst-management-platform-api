@@ -54,8 +54,6 @@ type KBEntry struct {
 // KnowledgeBase 是内嵌的诊断知识库。
 type KnowledgeBase struct {
 	SchemaVersion int       `json:"schemaVersion"`
-	UpdatedAt     string    `json:"updatedAt"`
-	Description   KBText    `json:"description"`
 	Entries       []KBEntry `json:"entries"`
 }
 

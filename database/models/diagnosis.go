@@ -34,18 +34,19 @@ func (DiagnosisRecord) TableName() string {
 
 // DiagnosisActionRecord 保存一次修复动作的授权与执行结果。
 type DiagnosisActionRecord struct {
-	ID          uint       `gorm:"primaryKey;autoIncrement" json:"id"`
-	DiagnosisID string     `gorm:"column:diagnosis_id;index:idx_diagnosis_action" json:"diagnosisID"`
-	ActionID    string     `gorm:"column:action_id" json:"actionID"`
-	Params      string     `gorm:"column:params;type:text" json:"params"`
-	Risk        string     `gorm:"column:risk" json:"risk"`
-	Status      string     `gorm:"column:status" json:"status"`
-	Code        int        `gorm:"column:code" json:"code"`
-	Message     string     `gorm:"column:message;type:text" json:"message"`
-	Verified    bool       `gorm:"column:verified" json:"verified"`
-	Operator    string     `gorm:"column:operator" json:"operator"`
-	CreatedAt   time.Time  `gorm:"column:created_at;index:idx_diagnosis_action_created" json:"createdAt"`
-	FinishedAt  *time.Time `gorm:"column:finished_at" json:"finishedAt"`
+	ID            uint       `gorm:"primaryKey;autoIncrement" json:"id"`
+	DiagnosisID   string     `gorm:"column:diagnosis_id;index:idx_diagnosis_action" json:"diagnosisID"`
+	ActionID      string     `gorm:"column:action_id" json:"actionID"`
+	Params        string     `gorm:"column:params;type:text" json:"params"`
+	Risk          string     `gorm:"column:risk" json:"risk"`
+	Status        string     `gorm:"column:status" json:"status"`
+	Code          int        `gorm:"column:code" json:"code"`
+	Message       string     `gorm:"column:message;type:text" json:"message"`
+	Verified      bool       `gorm:"column:verified" json:"verified"`
+	VerifyMessage string     `gorm:"column:verify_message;type:text" json:"verifyMessage"`
+	Operator      string     `gorm:"column:operator" json:"operator"`
+	CreatedAt     time.Time  `gorm:"column:created_at;index:idx_diagnosis_action_created" json:"createdAt"`
+	FinishedAt    *time.Time `gorm:"column:finished_at" json:"finishedAt"`
 }
 
 func (DiagnosisActionRecord) TableName() string {

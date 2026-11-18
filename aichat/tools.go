@@ -66,8 +66,7 @@ type apiUsage struct {
 
 type toolCompletionResponse struct {
 	Choices []struct {
-		Message      Message `json:"message"`
-		FinishReason string  `json:"finish_reason"`
+		Message Message `json:"message"`
 	} `json:"choices"`
 	Usage *apiUsage `json:"usage"`
 	Error *struct {
@@ -95,7 +94,6 @@ type streamChunk struct {
 		Delta struct {
 			Content string `json:"content"`
 		} `json:"delta"`
-		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 	Usage *apiUsage `json:"usage"`
 	Error *struct {
@@ -221,8 +219,6 @@ func (c *ChatClient) ChatStream(ctx context.Context, config ChatConfig, messages
 		Temperature:   temperature,
 		MaxTokens:     maxTokens,
 		Stream:        true,
-		Tools:         nil,
-		ToolChoice:    "none",
 		StreamOptions: &streamOptions{IncludeUsage: true},
 	}
 	body, err := json.Marshal(requestBody)

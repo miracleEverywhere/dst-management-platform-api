@@ -1,7 +1,6 @@
 package diagnosis
 
 import (
-	"context"
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
@@ -10,7 +9,6 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/utils"
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -27,10 +25,9 @@ type ActionSpec struct {
 	AdminOnly    bool
 	Confirmation string
 	Order        int
-	DependsOn    []string
-	Validate     func(ctx context.Context, s *Service, scope *Scope, params map[string]any) error
-	Execute      func(ctx context.Context, s *Service, scope *Scope, params map[string]any) error
-	Verify       func(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string)
+	Validate     func(scope *Scope, params map[string]any) error
+	Execute      func(scope *Scope, params map[string]any) error
+	Verify       func(scope *Scope, params map[string]any) (bool, string)
 }
 
 var (
@@ -74,11 +71,11 @@ func (s *Service) actionSpec(id string) (*ActionSpec, bool) {
 		}, true
 	case "use_default_token":
 		return &ActionSpec{
-			ID: "use_default_token", TitleKey: "diagnosis action use default token", Risk: RiskMedium, Reversible: true,
+			ID: "use_default_token", TitleKey: "diagnosis action use default token", Risk: RiskMedium, Reversible: false,
 			Confirmation: ConfirmNormal, Order: 15,
 			Validate: s.validateUseDefaultToken,
-			Execute:  executeUseDefaultToken,
-			Verify:   verifyDefaultToken,
+			Execute:  s.executeUseDefaultToken,
+			Verify:   s.verifyDefaultToken,
 		}, true
 	case "disable_mod":
 		return &ActionSpec{
@@ -109,16 +106,15 @@ func (s *Service) actionSpec(id string) (*ActionSpec, bool) {
 			ID: "restore_backup", TitleKey: "diagnosis action restore backup", Risk: RiskHigh, Reversible: false,
 			Confirmation: ConfirmTyped, Order: 40,
 			Validate: s.validateBackup,
-			Execute:  executeRestoreBackup,
+			Execute:  s.executeRestoreBackup,
 			Verify:   verifyRoomRunning,
 		}, true
 	case "update_game":
 		return &ActionSpec{
 			ID: "update_game", TitleKey: "diagnosis action update game", Risk: RiskMedium, Reversible: false,
 			AdminOnly: true, Confirmation: ConfirmTyped, Order: 30,
-			Validate: s.validateUpdateGame,
-			Execute:  executeUpdateGame,
-			Verify:   verifyGameVersion,
+			Execute: s.executeUpdateGame,
+			Verify:  verifyGameVersion,
 		}, true
 	default:
 		return nil, false
@@ -173,8 +169,10 @@ func (s *Service) buildAction(session *Session, current *Scope, actionID string,
 	if spec.AdminOnly && !session.Actor.IsAdmin() {
 		return nil, fmt.Errorf("该动作仅管理员可执行")
 	}
-	if err = spec.Validate(context.Background(), s, scope, params); err != nil {
-		return nil, err
+	if spec.Validate != nil {
+		if err = spec.Validate(scope, params); err != nil {
+			return nil, err
+		}
 	}
 	if err = s.requireEvidence(actionID, session, evidenceIDs, params); err != nil {
 		return nil, err
@@ -204,9 +202,7 @@ func (s *Service) buildAction(session *Session, current *Scope, actionID string,
 		Preview:           s.actionPreview(actionID, session.Actor.Lang, scope, params),
 		Reason:            reason,
 		EvidenceIDs:       evidenceIDs,
-		DependsOn:         spec.DependsOn,
 		Order:             spec.Order,
-		Available:         true,
 		Status:            ActionStatusProposed,
 	}, nil
 }
@@ -345,11 +341,6 @@ func intParam(params map[string]any, key string) int {
 		return int(value)
 	case int:
 		return value
-	case int64:
-		return int(value)
-	case jsonNumber:
-		number, _ := strconv.Atoi(string(value))
-		return number
 	case string:
 		number, _ := strconv.Atoi(value)
 		return number
@@ -357,8 +348,6 @@ func intParam(params map[string]any, key string) int {
 		return 0
 	}
 }
-
-type jsonNumber string
 
 func stringParam(params map[string]any, key string) string {
 	if params == nil {
@@ -378,7 +367,7 @@ func boolParam(params map[string]any, key string) bool {
 	return value
 }
 
-func (s *Service) validateWorldID(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+func (s *Service) validateWorldID(scope *Scope, params map[string]any) error {
 	worldID := intParam(params, "worldID")
 	if worldID <= 0 {
 		return fmt.Errorf("worldID 不能为空")
@@ -391,14 +380,14 @@ func (s *Service) validateWorldID(ctx context.Context, svc *Service, scope *Scop
 	return fmt.Errorf("世界不存在: %d", worldID)
 }
 
-func (s *Service) validateRoomOnly(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+func (s *Service) validateRoomOnly(scope *Scope, params map[string]any) error {
 	if scope == nil || scope.Room == nil {
 		return fmt.Errorf("缺少房间信息")
 	}
 	return nil
 }
 
-func (s *Service) validateCleanLogs(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+func (s *Service) validateCleanLogs(scope *Scope, params map[string]any) error {
 	targets, ok := params["targets"].(map[string]any)
 	if !ok || len(targets) == 0 {
 		return fmt.Errorf("targets 不能为空")
@@ -413,7 +402,7 @@ func (s *Service) validateCleanLogs(ctx context.Context, svc *Service, scope *Sc
 	return nil
 }
 
-func (s *Service) validateUseDefaultToken(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+func (s *Service) validateUseDefaultToken(scope *Scope, params map[string]any) error {
 	if scope == nil || scope.Room == nil || scope.Game == nil {
 		return fmt.Errorf("缺少房间信息")
 	}
@@ -427,14 +416,14 @@ func (s *Service) validateUseDefaultToken(ctx context.Context, svc *Service, sco
 	return nil
 }
 
-func (s *Service) validateModID(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+func (s *Service) validateModID(scope *Scope, params map[string]any) error {
 	if intParam(params, "modID") <= 0 {
 		return fmt.Errorf("modID 不能为空")
 	}
 	return nil
 }
 
-func (s *Service) validateSnapshot(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+func (s *Service) validateSnapshot(scope *Scope, params map[string]any) error {
 	sessionID := stringParam(params, "sessionID")
 	if sessionID == "" || !utils.IsSafeString(sessionID) {
 		return fmt.Errorf("sessionID 非法")
@@ -451,7 +440,7 @@ func (s *Service) validateSnapshot(ctx context.Context, svc *Service, scope *Sco
 	return fmt.Errorf("存档快照不存在: %s", sessionID)
 }
 
-func (s *Service) validateBackup(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+func (s *Service) validateBackup(scope *Scope, params map[string]any) error {
 	name := stringParam(params, "backupName")
 	if name == "" || !utils.IsSafePath(name) {
 		return fmt.Errorf("backupName 非法")
@@ -468,14 +457,7 @@ func (s *Service) validateBackup(ctx context.Context, svc *Service, scope *Scope
 	return fmt.Errorf("备份不存在: %s", name)
 }
 
-func (s *Service) validateUpdateGame(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
-	if !scope.Actor.IsAdmin() {
-		return fmt.Errorf("仅管理员可以更新游戏")
-	}
-	return nil
-}
-
-func executeStartWorld(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func executeStartWorld(scope *Scope, params map[string]any) error {
 	worldID := intParam(params, "worldID")
 	if scope.Game.WorldUpStatus(worldID) {
 		return nil
@@ -483,20 +465,20 @@ func executeStartWorld(ctx context.Context, s *Service, scope *Scope, params map
 	return scope.Game.StartWorld(worldID)
 }
 
-func executeRestartWorld(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func executeRestartWorld(scope *Scope, params map[string]any) error {
 	worldID := intParam(params, "worldID")
 	_ = scope.Game.StopWorld(worldID)
 	time.Sleep(2 * time.Second)
 	return scope.Game.StartWorld(worldID)
 }
 
-func executeRestartRoom(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func executeRestartRoom(scope *Scope, params map[string]any) error {
 	_ = scope.Game.StopAllWorld()
 	time.Sleep(2 * time.Second)
 	return scope.Game.StartAllWorld()
 }
 
-func executeCleanLogs(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func executeCleanLogs(scope *Scope, params map[string]any) error {
 	targets, _ := params["targets"].(map[string]any)
 	clean := &dst.CleanLogs{
 		Game:    boolParam(targets, "game"),
@@ -511,7 +493,7 @@ func executeCleanLogs(ctx context.Context, s *Service, scope *Scope, params map[
 	return nil
 }
 
-func executeUseDefaultToken(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func (s *Service) executeUseDefaultToken(scope *Scope, params map[string]any) error {
 	token := strings.TrimSpace(utils.GetDstToken())
 	if token == "" {
 		return fmt.Errorf("默认游戏令牌不可用")
@@ -526,11 +508,11 @@ func executeUseDefaultToken(ctx context.Context, s *Service, scope *Scope, param
 	return nil
 }
 
-func executeDisableMod(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func executeDisableMod(scope *Scope, params map[string]any) error {
 	return scope.Game.ModDisable(intParam(params, "modID"))
 }
 
-func executeEnableMod(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func executeEnableMod(scope *Scope, params map[string]any) error {
 	worldID := 0
 	for _, world := range scope.Worlds {
 		if world.IsMaster {
@@ -553,14 +535,14 @@ func executeEnableMod(ctx context.Context, s *Service, scope *Scope, params map[
 	return nil
 }
 
-func executeDeleteSnapshot(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func executeDeleteSnapshot(scope *Scope, params map[string]any) error {
 	if err := scope.Game.Backup(); err != nil {
 		return fmt.Errorf("删除前备份失败: %w", err)
 	}
 	return scope.Game.DeleteSnapshot(stringParam(params, "sessionID"))
 }
 
-func executeRestoreBackup(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+func (s *Service) executeRestoreBackup(scope *Scope, params map[string]any) error {
 	running := make([]int, 0, len(scope.Worlds))
 	for _, world := range scope.Worlds {
 		if scope.Game.WorldUpStatus(world.ID) {
@@ -605,10 +587,7 @@ func executeRestoreBackup(ctx context.Context, s *Service, scope *Scope, params 
 	return nil
 }
 
-func executeUpdateGame(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
-	if !scope.Actor.IsAdmin() {
-		return fmt.Errorf("仅管理员可以更新游戏")
-	}
+func (s *Service) executeUpdateGame(scope *Scope, params map[string]any) error {
 	cache.DstUpdating = true
 	defer func() { cache.DstUpdating = false }()
 	updateCmd := "cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit"
@@ -638,7 +617,7 @@ func executeUpdateGame(ctx context.Context, s *Service, scope *Scope, params map
 	return nil
 }
 
-func verifyWorldRunning(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func verifyWorldRunning(scope *Scope, params map[string]any) (bool, string) {
 	worldID := intParam(params, "worldID")
 	for i := 0; i < 10; i++ {
 		if scope.Game.WorldUpStatus(worldID) {
@@ -649,7 +628,7 @@ func verifyWorldRunning(ctx context.Context, s *Service, scope *Scope, params ma
 	return false, "世界未启动"
 }
 
-func verifyRoomRunning(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func verifyRoomRunning(scope *Scope, params map[string]any) (bool, string) {
 	for i := 0; i < 15; i++ {
 		game := scope.Game
 		worlds := scope.Worlds
@@ -675,11 +654,29 @@ func verifyRoomRunning(ctx context.Context, s *Service, scope *Scope, params map
 	return false, "部分世界未启动"
 }
 
-func verifyCleanLogs(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func verifyCleanLogs(scope *Scope, params map[string]any) (bool, string) {
+	targets, _ := params["targets"].(map[string]any)
+	info := scope.Game.LogsInfo()
+	checks := []struct {
+		name    string
+		enabled bool
+		size    int64
+	}{
+		{"game", boolParam(targets, "game"), info.Game},
+		{"chat", boolParam(targets, "chat"), info.Chat},
+		{"runtime", boolParam(targets, "runtime"), info.Runtime},
+		{"access", boolParam(targets, "access"), info.Access},
+		{"steam", boolParam(targets, "steam"), info.Steam},
+	}
+	for _, check := range checks {
+		if check.enabled && check.size > 0 {
+			return false, fmt.Sprintf("%s 日志仍有 %d 字节未清理", check.name, check.size)
+		}
+	}
 	return true, "日志已清理"
 }
 
-func verifyDefaultToken(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func (s *Service) verifyDefaultToken(scope *Scope, params map[string]any) (bool, string) {
 	defaultToken := strings.TrimSpace(utils.GetDstToken())
 	room, err := s.roomDao.GetRoomByID(scope.RoomID)
 	if err != nil {
@@ -698,7 +695,7 @@ func verifyDefaultToken(ctx context.Context, s *Service, scope *Scope, params ma
 	return true, "已使用默认游戏令牌，重启房间后生效"
 }
 
-func verifyModDisabled(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func verifyModDisabled(scope *Scope, params map[string]any) (bool, string) {
 	modID := intParam(params, "modID")
 	worldID := 0
 	for _, world := range scope.Worlds {
@@ -722,7 +719,7 @@ func verifyModDisabled(ctx context.Context, s *Service, scope *Scope, params map
 	return true, "模组已禁用"
 }
 
-func verifyModEnabled(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func verifyModEnabled(scope *Scope, params map[string]any) (bool, string) {
 	modID := intParam(params, "modID")
 	worldID := 0
 	for _, world := range scope.Worlds {
@@ -746,7 +743,7 @@ func verifyModEnabled(ctx context.Context, s *Service, scope *Scope, params map[
 	return false, "模组未启用"
 }
 
-func verifySnapshotDeleted(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func verifySnapshotDeleted(scope *Scope, params map[string]any) (bool, string) {
 	sessionID := stringParam(params, "sessionID")
 	snapshots, err := scope.Game.GetSnapshot()
 	if err != nil {
@@ -760,10 +757,13 @@ func verifySnapshotDeleted(ctx context.Context, s *Service, scope *Scope, params
 	return true, "存档快照已删除"
 }
 
-func verifyGameVersion(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+func verifyGameVersion(scope *Scope, params map[string]any) (bool, string) {
 	version := scheduler.GetDSTVersion()
 	if version.Local <= 0 {
 		return false, "无法读取本地游戏版本"
+	}
+	if version.Server > 0 && version.Local < version.Server {
+		return false, fmt.Sprintf("本地版本 %d 仍低于服务端版本 %d", version.Local, version.Server)
 	}
 	return true, "游戏版本已更新"
 }
@@ -829,7 +829,6 @@ func (s *Service) buildReport(session *Session, current *Scope, args *finishArgs
 		})
 	}
 
-	actions := make([]*Action, 0, len(args.Actions))
 	seen := make(map[string]struct{}, len(args.Actions))
 	for _, item := range args.Actions {
 		if _, ok := seen[item.ActionID]; ok {
@@ -841,7 +840,6 @@ func (s *Service) buildReport(session *Session, current *Scope, args *finishArgs
 		}
 		seen[item.ActionID] = struct{}{}
 		session.upsertAction(action)
-		actions = append(actions, action)
 	}
 
 	references := make([]Reference, 0, len(args.References))
@@ -850,16 +848,17 @@ func (s *Service) buildReport(session *Session, current *Scope, args *finishArgs
 			references = append(references, reference)
 		}
 	}
+	// propose_action 登记过的动作也要出现在报告里，动作只保留会话这一份来源。
 	return &Report{
 		Summary:    args.Summary,
 		Severity:   severity,
 		Findings:   findings,
-		Actions:    actions,
+		Actions:    session.actionList(),
 		References: references,
 	}, nil
 }
 
-func (s *Service) applyAction(ctx context.Context, session *Session, action *Action) ActionResult {
+func (s *Service) applyAction(session *Session, action *Action) ActionResult {
 	start := time.Now()
 	result := ActionResult{ActionID: action.ActionID, Status: ActionStatusFailed}
 	spec, ok := s.actionSpec(action.ActionID)
@@ -883,24 +882,26 @@ func (s *Service) applyAction(ctx context.Context, session *Session, action *Act
 		result.Message = "仅管理员可执行该动作"
 		return result
 	}
-	if err = spec.Validate(ctx, s, scope, action.Params); err != nil {
-		result.Code = constant.CodeDiagnosisActionPrecondition
-		result.Message = err.Error()
-		return result
+	if spec.Validate != nil {
+		if err = spec.Validate(scope, action.Params); err != nil {
+			result.Code = constant.CodeDiagnosisActionPrecondition
+			result.Message = err.Error()
+			return result
+		}
 	}
 	if err = s.requireEvidence(action.ActionID, session, action.EvidenceIDs, action.Params); err != nil {
 		result.Code = constant.CodeDiagnosisActionPrecondition
 		result.Message = err.Error()
 		return result
 	}
-	if err = spec.Execute(ctx, s, scope, action.Params); err != nil {
+	if err = spec.Execute(scope, action.Params); err != nil {
 		logger.Logger.Errorf("诊断动作执行失败, action: %s, roomID: %d, err: %v", action.ActionID, session.RoomID, err)
 		result.Code = constant.CodeDiagnosisApplyFail
 		result.Message = err.Error()
 		result.DurationMs = time.Since(start).Milliseconds()
 		return result
 	}
-	verified, verifyMessage := spec.Verify(ctx, s, scope, action.Params)
+	verified, verifyMessage := spec.Verify(scope, action.Params)
 	result.Status = ActionStatusSucceeded
 	result.Verified = verified
 	result.VerifyMessage = verifyMessage
@@ -910,5 +911,3 @@ func (s *Service) applyAction(ctx context.Context, session *Session, action *Act
 	result.DurationMs = time.Since(start).Milliseconds()
 	return result
 }
-
-var _ = errors.Is

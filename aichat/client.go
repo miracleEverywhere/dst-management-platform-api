@@ -47,8 +47,9 @@ func (c ChatConfig) Normalize() ChatConfig {
 	return c
 }
 
-// Validate 校验对话所需的最小字段集合，不要求向量模型配置合法。
-func (c ChatConfig) Validate() error {
+// ValidateEndpoint 只校验连接所需的字段。
+// 采样参数与超时由调用方的 ChatOptions 指定时，不需要再要求 ChatConfig 携带这些值。
+func (c ChatConfig) ValidateEndpoint() error {
 	c = c.Normalize()
 	if c.BaseURL == "" || !utils.IsValidURL(c.BaseURL) {
 		return fmt.Errorf("大模型 Base URL 不合法")
@@ -61,15 +62,6 @@ func (c ChatConfig) Validate() error {
 	}
 	if len(c.APIKey) > 16*1024 {
 		return fmt.Errorf("API Key 过长")
-	}
-	if c.Temperature < 0 || c.Temperature > 2 {
-		return fmt.Errorf("temperature 必须在 0 到 2 之间")
-	}
-	if c.MaxTokens <= 0 || c.MaxTokens > 32768 {
-		return fmt.Errorf("maxTokens 必须在 1 到 32768 之间")
-	}
-	if c.RequestTimeoutSeconds <= 0 || c.RequestTimeoutSeconds > 300 {
-		return fmt.Errorf("请求超时时间必须在 1 到 300 秒之间")
 	}
 	return nil
 }

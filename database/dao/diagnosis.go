@@ -2,7 +2,6 @@ package dao
 
 import (
 	"dst-management-platform-api/database/models"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -33,12 +32,6 @@ func (d *DiagnosisDAO) GetRecord(id string) (*models.DiagnosisRecord, error) {
 // ListRecords 按房间范围、诊断范围与状态分页查询历史。
 // roomIDs 为 nil 表示不限制房间（管理员），空切片表示没有可见房间。
 func (d *DiagnosisDAO) ListRecords(roomIDs []int, scope, status string, page, pageSize int) (*PaginatedResult[models.DiagnosisRecord], error) {
-	if page <= 0 {
-		page = 1
-	}
-	if pageSize <= 0 || pageSize > 100 {
-		pageSize = 10
-	}
 	if roomIDs != nil && len(roomIDs) == 0 {
 		return &PaginatedResult[models.DiagnosisRecord]{
 			Data: []models.DiagnosisRecord{}, Page: page, PageSize: pageSize,
@@ -91,14 +84,34 @@ func (d *DiagnosisDAO) ListActionRecords(diagnosisID string) ([]models.Diagnosis
 	return records, err
 }
 
-// DeleteOlderThan 清理超过保留期的诊断历史。
-func (d *DiagnosisDAO) DeleteOlderThan(before time.Time) error {
-	return d.db.Where("created_at < ?", before).Delete(&models.DiagnosisRecord{}).Error
+// CountActionRecordsByStatus 一次统计多条诊断记录中处于指定状态的动作数量。
+func (d *DiagnosisDAO) CountActionRecordsByStatus(diagnosisIDs []string, status string) (map[string]int, error) {
+	counts := make(map[string]int, len(diagnosisIDs))
+	if len(diagnosisIDs) == 0 {
+		return counts, nil
+	}
+	var rows []struct {
+		DiagnosisID string
+		Count       int
+	}
+	err := d.db.Model(&models.DiagnosisActionRecord{}).
+		Select("diagnosis_id, COUNT(*) AS count").
+		Where("diagnosis_id IN ? AND status = ?", diagnosisIDs, status).
+		Group("diagnosis_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[row.DiagnosisID] = row.Count
+	}
+	return counts, nil
 }
 
 // MarkInterrupted 将服务异常退出时遗留的 running 记录标记为 interrupted。
-func (d *DiagnosisDAO) MarkInterrupted(before time.Time) error {
+// 启动时本进程不可能有正在运行的诊断，因此不需要按时间窗口过滤。
+func (d *DiagnosisDAO) MarkInterrupted() error {
 	return d.db.Model(&models.DiagnosisRecord{}).
-		Where("status = ? AND created_at < ?", "running", before).
+		Where("status = ?", "running").
 		Update("status", "interrupted").Error
 }
