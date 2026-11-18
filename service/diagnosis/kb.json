@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-17",
+  "updatedAt": "2026-11-18",
   "description": {
     "zh": "DMP AI 诊断知识库",
     "en": "DMP AI diagnosis knowledge base"
@@ -29,17 +29,36 @@
         "en": ["The Klei game token is invalid or does not match the room"]
       },
       "solutions": {
-        "zh": ["进入房间设置，更换正确的游戏令牌", "重启房间"],
-        "en": ["Open room settings and replace the game token", "Restart the room"]
+        "zh": ["进入房间设置，更换正确的游戏令牌", "也可以使用平台默认游戏令牌", "重启房间"],
+        "en": ["Open room settings and replace the game token", "Alternatively, use the platform default game token", "Restart the room"]
       },
-      "manualOnly": true,
-      "actionHints": [],
+      "manualOnly": false,
+      "actionHints": [
+        {
+          "actionID": "use_default_token",
+          "risk": "medium",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "日志显示游戏令牌失效，可改用平台默认游戏令牌",
+            "en": "The log shows the game token is invalid; use the platform default game token"
+          }
+        },
+        {
+          "actionID": "restart_room",
+          "risk": "medium",
+          "requiresConfirmation": true,
+          "reason": {
+            "zh": "更换令牌后需要重启房间才能生效",
+            "en": "Restart the room after changing the token"
+          }
+        }
+      ],
       "risk": {
         "zh": "更换令牌后需要等待大厅重新注册，期间玩家可能搜不到房间",
         "en": "The lobby needs time to re-register; players may not find the room immediately"
       },
       "tags": ["token", "auth", "lobby"],
-      "updatedAt": "2026-11-17"
+      "updatedAt": "2026-11-18"
     },
     {
       "id": "mod-load-failure",

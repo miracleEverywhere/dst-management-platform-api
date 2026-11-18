@@ -49,9 +49,11 @@ const (
 )
 
 // StartInput 是创建诊断的请求体。
+// Description 是用户对异常现象的可选描述，作为排查线索传给模型。
 type StartInput struct {
-	Scope  string `json:"scope"`
-	RoomID int    `json:"roomID"`
+	Scope       string `json:"scope"`
+	RoomID      int    `json:"roomID"`
+	Description string `json:"description"`
 }
 
 // SSEEvent 是推送给前端的一条 SSE 事件。
@@ -168,6 +170,7 @@ type SessionSnapshot struct {
 	Scope       string      `json:"scope"`
 	RoomID      int         `json:"roomID"`
 	RoomName    string      `json:"roomName"`
+	Description string      `json:"description"`
 	Status      string      `json:"status"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	FinishedAt  *time.Time  `json:"finishedAt"`
@@ -199,6 +202,7 @@ type HistoryRow struct {
 	Scope        string     `json:"scope"`
 	RoomID       int        `json:"roomID"`
 	RoomName     string     `json:"roomName"`
+	Description  string     `json:"description"`
 	Username     string     `json:"username"`
 	Status       string     `json:"status"`
 	Severity     string     `json:"severity"`

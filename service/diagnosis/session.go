@@ -11,15 +11,16 @@ import (
 
 // Session 保存一次诊断的内存状态与 SSE 事件日志。
 type Session struct {
-	ID         string
-	Scope      string
-	RoomID     int
-	RoomName   string
-	Actor      service.Actor
-	ChatConfig aichat.ChatConfig
-	Status     string
-	CreatedAt  time.Time
-	ExpiresAt  time.Time
+	ID          string
+	Scope       string
+	RoomID      int
+	RoomName    string
+	Description string
+	Actor       service.Actor
+	ChatConfig  aichat.ChatConfig
+	Status      string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
 
 	Steps    []Step
 	Evidence map[string]*Evidence
@@ -42,13 +43,14 @@ type Session struct {
 	finishedAt *time.Time
 }
 
-func newSession(id, scope string, roomID int, roomName string, actor service.Actor) *Session {
+func newSession(id, scope string, roomID int, roomName, description string, actor service.Actor) *Session {
 	now := time.Now()
 	return &Session{
 		ID:          id,
 		Scope:       scope,
 		RoomID:      roomID,
 		RoomName:    roomName,
+		Description: description,
 		Actor:       actor,
 		Status:      StatusRunning,
 		CreatedAt:   now,
@@ -353,6 +355,7 @@ func (s *Session) snapshot() *SessionSnapshot {
 		Scope:       s.Scope,
 		RoomID:      s.RoomID,
 		RoomName:    s.RoomName,
+		Description: s.Description,
 		Status:      s.Status,
 		CreatedAt:   s.CreatedAt,
 		FinishedAt:  s.finishedAt,

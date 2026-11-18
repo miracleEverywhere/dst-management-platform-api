@@ -199,11 +199,12 @@ var Registry = []Entry{
 	{Code: 9093, Const: "CodeCloudCreateFail", Module: "cloud", TextKey: "create fail", Level: LevelWarn, Hint: "创建失败，常见原因是必填字段缺失或数据库写入异常。查看响应 message 与运行日志。"},
 	// diagnosis
 	{Code: 10001, Const: "CodeDiagnosisBadRequest", Module: "diagnosis", TextKey: "bad request", Level: LevelWarn, Hint: "诊断请求参数缺失或取值非法。核对 scope、roomID、actionIDs 等字段。"},
+	{Code: 10002, Const: "CodeDiagnosisDescriptionTooLong", Module: "diagnosis", TextKey: "diagnosis description too long", Level: LevelWarn, Hint: "异常描述最长 1000 个字符。精简描述后重新发起诊断。"},
 	{Code: 10021, Const: "CodeDiagnosisNoPermission", Module: "diagnosis", TextKey: "permission needed", Level: LevelAuth, Hint: "当前账号没有该房间的诊断权限，或尝试执行管理员专属动作。"},
 	{Code: 10041, Const: "CodeDiagnosisNotFound", Module: "diagnosis", TextKey: "diagnosis not found", Level: LevelWarn, Hint: "诊断会话不存在或已被清理。重新发起一次诊断。"},
 	{Code: 10042, Const: "CodeDiagnosisExpired", Module: "diagnosis", TextKey: "diagnosis expired", Level: LevelWarn, Hint: "诊断会话已过期，修复动作不能继续执行。重新诊断后再操作。"},
 	{Code: 10043, Const: "CodeDiagnosisNotReady", Module: "diagnosis", TextKey: "diagnosis not ready", Level: LevelWarn, Hint: "诊断仍在进行或尚未成功结束。等待诊断完成后再执行修复。"},
-	{Code: 10061, Const: "CodeDiagnosisAIConfigMissing", Module: "diagnosis", TextKey: "diagnosis ai config missing", Level: LevelWarn, Hint: "诊断未配置大模型，AI 对话也未配置。先在工具-AI 诊断-模型设置或工具-AI 对话-基础设置中填写 Chat Base URL 与模型名。"},
+	{Code: 10061, Const: "CodeDiagnosisAIConfigMissing", Module: "diagnosis", TextKey: "diagnosis ai config missing", Level: LevelWarn, Hint: "诊断未配置专用大模型。先在工具-AI 诊断-模型设置中填写 Chat Base URL、API Key 与模型名；诊断与 AI 对话配置相互独立，不会回退。"},
 	{Code: 10062, Const: "CodeDiagnosisBusy", Module: "diagnosis", TextKey: "diagnosis busy", Level: LevelWarn, Hint: "同一账号或房间已有诊断在运行，或请求过于频繁。稍后重试。"},
 	{Code: 10063, Const: "CodeDiagnosisAIConfigInvalid", Module: "diagnosis", TextKey: "diagnosis ai config invalid", Level: LevelWarn, Hint: "诊断专用大模型配置不完整或不合法。检查 Base URL、API Key 与模型名。"},
 	{Code: 10064, Const: "CodeDiagnosisActionInvalid", Module: "diagnosis", TextKey: "diagnosis action invalid", Level: LevelWarn, Hint: "动作不在本次诊断的候选中，或动作 ID 不受支持。刷新诊断结果后重试。"},

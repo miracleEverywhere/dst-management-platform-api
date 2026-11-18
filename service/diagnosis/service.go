@@ -20,6 +20,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// maxDescriptionRunes 限制用户提交的异常描述长度，避免超长文本占满提示词。
+const maxDescriptionRunes = 1000
+
 // Service 是 AI 诊断模块的业务实现。
 type Service struct {
 	userDao          *dao.UserDAO
@@ -118,13 +121,15 @@ func (s *Service) allowedRoomIDs(actor service.Actor) ([]int, bool) {
 
 // Start 创建一次诊断会话并异步启动 Agent。
 func (s *Service) Start(actor service.Actor, input StartInput) service.Result {
-	chatConfig, source, err := s.resolveChatConfig()
+	chatConfig, configCode, err := s.resolveChatConfig()
 	if err != nil {
 		logger.Logger.Warnf("AI 诊断配置不可用: %v", err)
-		if source == "diagnosis" {
-			return service.FailMsg(constant.CodeDiagnosisAIConfigInvalid, err.Error())
+		switch configCode {
+		case constant.CodeDiagnosisAIConfigMissing, constant.CodeDiagnosisDBError:
+			return service.Fail(configCode)
+		default:
+			return service.FailMsg(configCode, err.Error())
 		}
-		return service.FailMsg(constant.CodeDiagnosisAIConfigMissing, err.Error())
 	}
 
 	scope := input.Scope
@@ -133,6 +138,11 @@ func (s *Service) Start(actor service.Actor, input StartInput) service.Result {
 	}
 	if scope != ScopeRoom && scope != ScopePlatform {
 		return service.Fail(constant.CodeDiagnosisBadRequest)
+	}
+
+	description := strings.TrimSpace(input.Description)
+	if len([]rune(description)) > maxDescriptionRunes {
+		return service.Fail(constant.CodeDiagnosisDescriptionTooLong)
 	}
 
 	roomID := input.RoomID
@@ -188,20 +198,21 @@ func (s *Service) Start(actor service.Actor, input StartInput) service.Result {
 	}
 	id := "diag_" + random
 
-	session := newSession(id, scope, roomID, roomName, actor)
+	session := newSession(id, scope, roomID, roomName, description, actor)
 	session.ChatConfig = chatConfig
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	session.cancel = cancel
 	s.store.put(session)
 
 	record := &models.DiagnosisRecord{
-		ID:        id,
-		Scope:     scope,
-		RoomID:    roomID,
-		RoomName:  roomName,
-		Username:  actor.Username,
-		Status:    StatusRunning,
-		CreatedAt: session.CreatedAt,
+		ID:          id,
+		Scope:       scope,
+		RoomID:      roomID,
+		RoomName:    roomName,
+		Description: description,
+		Username:    actor.Username,
+		Status:      StatusRunning,
+		CreatedAt:   session.CreatedAt,
 	}
 	if s.diagnosisDao != nil {
 		if err := s.diagnosisDao.CreateRecord(record); err != nil {
@@ -385,6 +396,7 @@ func (s *Service) History(actor service.Actor, scope, status string, page, pageS
 			Scope:        record.Scope,
 			RoomID:       record.RoomID,
 			RoomName:     record.RoomName,
+			Description:  record.Description,
 			Username:     record.Username,
 			Status:       record.Status,
 			Severity:     record.Severity,
@@ -501,6 +513,7 @@ func recordSnapshot(record *models.DiagnosisRecord, actionRecords []models.Diagn
 		Scope:       record.Scope,
 		RoomID:      record.RoomID,
 		RoomName:    record.RoomName,
+		Description: record.Description,
 		Status:      record.Status,
 		CreatedAt:   record.CreatedAt,
 		FinishedAt:  record.FinishedAt,
@@ -523,6 +536,7 @@ func (s *Service) saveRecordFromSession(session *Session) {
 	}
 	record.Status = snapshot.Status
 	record.Error = snapshot.Error
+	record.Description = snapshot.Description
 	if snapshot.Report != nil {
 		record.Severity = snapshot.Report.Severity
 		record.Summary = snapshot.Report.Summary
@@ -544,6 +558,7 @@ func (s *Service) saveRecordFromSession(session *Session) {
 }
 
 // AISettingData 是诊断 LLM 配置接口的响应。
+// Effective 始终是诊断专用配置，与 AI 对话配置无关。
 type AISettingData struct {
 	Source     string                    `json:"source"`
 	Configured bool                      `json:"configured"`
@@ -551,7 +566,7 @@ type AISettingData struct {
 	Effective  models.DiagnosisAISetting `json:"effective"`
 }
 
-// AISettingGet 返回诊断专用 LLM 配置与实际生效配置。
+// AISettingGet 返回诊断专用 LLM 配置；未配置时不会回退 AI 对话配置。
 func (s *Service) AISettingGet(actor service.Actor) service.Result {
 	if !actor.IsAdmin() {
 		return service.Fail(constant.CodeDiagnosisNoPermission)
@@ -562,30 +577,20 @@ func (s *Service) AISettingGet(actor service.Actor) service.Result {
 		return service.Fail(constant.CodeDiagnosisDBError)
 	}
 
+	normalized := normalizeDiagnosisSetting(*setting)
 	data := AISettingData{
-		Configured: setting.Configured(),
-		Setting:    *setting,
+		Configured: normalized.Configured(),
+		Setting:    normalized,
+		Source:     "none",
+		Effective:  normalized,
 	}
 	if data.Configured {
 		data.Source = "diagnosis"
-		data.Effective = normalizeDiagnosisSetting(*setting)
-		return service.Success(data)
-	}
-
-	base, err := s.systemDao.GetAIBaseSetting()
-	if err != nil {
-		logger.Logger.Errorf("获取 AI 基础配置失败: %v", err)
-		return service.Fail(constant.CodeDiagnosisDBError)
-	}
-	data.Effective = diagnosisSettingFromModel(base.AIModelConfig)
-	data.Source = "none"
-	if err := aichat.ChatConfigFromModel(base.AIModelConfig).Validate(); err == nil {
-		data.Source = "aichat"
 	}
 	return service.Success(data)
 }
 
-// AISettingPut 保存诊断专用 LLM 配置；聊天字段留空表示回退 AI 对话配置。
+// AISettingPut 保存诊断专用 LLM 配置；三项都留空表示清除配置，诊断将要求重新配置。
 func (s *Service) AISettingPut(actor service.Actor, setting models.DiagnosisAISetting) service.Result {
 	if !actor.IsAdmin() {
 		return service.Fail(constant.CodeDiagnosisNoPermission)
@@ -603,28 +608,21 @@ func (s *Service) AISettingPut(actor service.Actor, setting models.DiagnosisAISe
 	return service.Msg("update success", nil)
 }
 
-func (s *Service) resolveChatConfig() (aichat.ChatConfig, string, error) {
+// resolveChatConfig 只读取诊断专用配置，不回退 AI 对话配置。
+// 返回的 code 是失败时应写入业务响应的错误码。
+func (s *Service) resolveChatConfig() (aichat.ChatConfig, int, error) {
 	setting, err := s.systemDao.GetAIDiagnosisSetting()
 	if err != nil {
-		return aichat.ChatConfig{}, "", err
+		return aichat.ChatConfig{}, constant.CodeDiagnosisDBError, err
 	}
-	if setting.Configured() {
-		config := diagnosisChatConfig(*setting)
-		if err := config.Validate(); err != nil {
-			return config, "diagnosis", err
-		}
-		return config, "diagnosis", nil
+	if !setting.Configured() {
+		return aichat.ChatConfig{}, constant.CodeDiagnosisAIConfigMissing, errors.New("AI 诊断尚未配置专用大模型")
 	}
-
-	base, err := s.systemDao.GetAIBaseSetting()
-	if err != nil {
-		return aichat.ChatConfig{}, "aichat", err
-	}
-	config := aichat.ChatConfigFromModel(base.AIModelConfig)
+	config := diagnosisChatConfig(*setting)
 	if err := config.Validate(); err != nil {
-		return config, "aichat", err
+		return config, constant.CodeDiagnosisAIConfigInvalid, err
 	}
-	return config, "aichat", nil
+	return config, 0, nil
 }
 
 func diagnosisChatConfig(setting models.DiagnosisAISetting) aichat.ChatConfig {
@@ -636,14 +634,6 @@ func diagnosisChatConfig(setting models.DiagnosisAISetting) aichat.ChatConfig {
 		MaxTokens:             diagnosisModelMaxTokens,
 		RequestTimeoutSeconds: int(diagnosisCallTimeout.Seconds()),
 	}.Normalize()
-}
-
-func diagnosisSettingFromModel(config models.AIModelConfig) models.DiagnosisAISetting {
-	return models.DiagnosisAISetting{
-		ChatBaseURL: strings.TrimSpace(config.ChatBaseURL),
-		ChatApiKey:  config.ChatApiKey,
-		ChatModel:   strings.TrimSpace(config.ChatModel),
-	}
 }
 
 func normalizeDiagnosisSetting(setting models.DiagnosisAISetting) models.DiagnosisAISetting {

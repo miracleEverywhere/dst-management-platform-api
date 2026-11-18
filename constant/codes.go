@@ -185,6 +185,7 @@ const (
 
 	// AI 诊断模块
 	CodeDiagnosisBadRequest         = 10001
+	CodeDiagnosisDescriptionTooLong = 10002
 	CodeDiagnosisNoPermission       = 10021
 	CodeDiagnosisNotFound           = 10041
 	CodeDiagnosisExpired            = 10042

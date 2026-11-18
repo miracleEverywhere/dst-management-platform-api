@@ -72,6 +72,14 @@ func (s *Service) actionSpec(id string) (*ActionSpec, bool) {
 			Execute:  executeCleanLogs,
 			Verify:   verifyCleanLogs,
 		}, true
+	case "use_default_token":
+		return &ActionSpec{
+			ID: "use_default_token", TitleKey: "diagnosis action use default token", Risk: RiskMedium, Reversible: true,
+			Confirmation: ConfirmNormal, Order: 15,
+			Validate: s.validateUseDefaultToken,
+			Execute:  executeUseDefaultToken,
+			Verify:   verifyDefaultToken,
+		}, true
 	case "disable_mod":
 		return &ActionSpec{
 			ID: "disable_mod", TitleKey: "diagnosis action disable mod", Risk: RiskMedium, Reversible: true,
@@ -251,6 +259,11 @@ func (s *Service) requireEvidence(actionID string, session *Session, evidenceIDs
 		if !strings.Contains(text, `"gameVersionOutdated": true`) && !strings.Contains(text, `"dstUpdating": true`) {
 			return fmt.Errorf("更新游戏需要版本检查证据")
 		}
+	case "use_default_token":
+		lower := strings.ToLower(text)
+		if !strings.Contains(lower, "token") && !strings.Contains(text, "令牌") {
+			return fmt.Errorf("使用默认令牌需要令牌失效的证据")
+		}
 	}
 	return nil
 }
@@ -287,6 +300,12 @@ func (s *Service) actionPreview(actionID, lang string, scope *Scope, params map[
 			return "将清理所选日志文件"
 		}
 		return "Clean the selected log files"
+	case "use_default_token":
+		token := utils.GetDstToken()
+		if zh {
+			return fmt.Sprintf("将房间令牌替换为平台默认游戏令牌：%s（重启房间后生效）", token)
+		}
+		return fmt.Sprintf("Replace the room token with the platform default game token: %s (takes effect after restarting the room)", token)
 	case "disable_mod":
 		if zh {
 			return fmt.Sprintf("将禁用模组 workshop-%d", intParam(params, "modID"))
@@ -394,6 +413,20 @@ func (s *Service) validateCleanLogs(ctx context.Context, svc *Service, scope *Sc
 	return nil
 }
 
+func (s *Service) validateUseDefaultToken(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
+	if scope == nil || scope.Room == nil || scope.Game == nil {
+		return fmt.Errorf("缺少房间信息")
+	}
+	defaultToken := strings.TrimSpace(utils.GetDstToken())
+	if defaultToken == "" {
+		return fmt.Errorf("默认游戏令牌不可用")
+	}
+	if strings.TrimSpace(scope.Room.Token) == defaultToken {
+		return fmt.Errorf("房间已使用默认游戏令牌")
+	}
+	return nil
+}
+
 func (s *Service) validateModID(ctx context.Context, svc *Service, scope *Scope, params map[string]any) error {
 	if intParam(params, "modID") <= 0 {
 		return fmt.Errorf("modID 不能为空")
@@ -474,6 +507,21 @@ func executeCleanLogs(ctx context.Context, s *Service, scope *Scope, params map[
 	}
 	if !scope.Game.LogsClean(clean) {
 		return fmt.Errorf("清理日志失败")
+	}
+	return nil
+}
+
+func executeUseDefaultToken(ctx context.Context, s *Service, scope *Scope, params map[string]any) error {
+	token := strings.TrimSpace(utils.GetDstToken())
+	if token == "" {
+		return fmt.Errorf("默认游戏令牌不可用")
+	}
+	// 先写 cluster_token.txt 再更新数据库：写文件失败时数据库保持旧值，重试仍可通过校验。
+	if err := scope.Game.UpdateToken(token); err != nil {
+		return fmt.Errorf("写入令牌文件失败: %w", err)
+	}
+	if err := s.roomDao.UpdateRoomToken(scope.RoomID, token); err != nil {
+		return fmt.Errorf("更新房间令牌失败: %w", err)
 	}
 	return nil
 }
@@ -629,6 +677,25 @@ func verifyRoomRunning(ctx context.Context, s *Service, scope *Scope, params map
 
 func verifyCleanLogs(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
 	return true, "日志已清理"
+}
+
+func verifyDefaultToken(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {
+	defaultToken := strings.TrimSpace(utils.GetDstToken())
+	room, err := s.roomDao.GetRoomByID(scope.RoomID)
+	if err != nil {
+		return false, "读取房间令牌失败"
+	}
+	if strings.TrimSpace(room.Token) != defaultToken {
+		return false, "房间令牌未更新"
+	}
+	fileToken, err := scope.Game.GetToken()
+	if err != nil {
+		return false, "读取令牌文件失败"
+	}
+	if strings.TrimSpace(fileToken) != defaultToken {
+		return false, "令牌文件未更新"
+	}
+	return true, "已使用默认游戏令牌，重启房间后生效"
 }
 
 func verifyModDisabled(ctx context.Context, s *Service, scope *Scope, params map[string]any) (bool, string) {

@@ -68,6 +68,29 @@ func (g *Game) createRoom() error {
 	return nil
 }
 
+// UpdateToken 更新房间令牌并写入 cluster_token.txt。
+func (g *Game) UpdateToken(token string) error {
+	g.roomMutex.Lock()
+	defer g.roomMutex.Unlock()
+
+	if err := utils.EnsureDirExists(g.clusterPath); err != nil {
+		return err
+	}
+	if err := utils.TruncAndWriteFile(g.clusterTokenTxtPath, token); err != nil {
+		return err
+	}
+	g.room.Token = token
+	return nil
+}
+
+// GetToken 读取 cluster_token.txt 的当前内容。
+func (g *Game) GetToken() (string, error) {
+	g.roomMutex.Lock()
+	defer g.roomMutex.Unlock()
+
+	return utils.GetFileAllContent(g.clusterTokenTxtPath)
+}
+
 func (g *Game) getClusterIni() string {
 	var (
 		gameMode          string

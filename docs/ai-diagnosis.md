@@ -427,6 +427,7 @@ DELETE /v3/diagnosis/:id
 | `restart_world` | `worldID` | low | none | 房间/管理员 | 停止后启动世界 |
 | `restart_room` | `roomID`（平台级） | medium | normal | 房间/管理员 | 停止并启动全部世界 |
 | `clean_logs` | `targets` | low | none | 房间/管理员 | 清理 game/chat；runtime/access/steam 仅管理员 |
+| `use_default_token` | 无 | medium | normal | 房间/管理员 | 把房间令牌替换为平台默认游戏令牌，并写入 `cluster_token.txt`；重启房间后生效 |
 | `disable_mod` | `modID` | medium | normal | 房间/管理员 | 从模组配置中禁用 |
 | `enable_mod` | `modID` | medium | normal | 房间/管理员 | 重新启用模组 |
 | `delete_snapshot` | `sessionID` | high | typed（房间名） | 房间/管理员 | 先备份再删除存档快照 |
@@ -446,7 +447,10 @@ DELETE /v3/diagnosis/:id
 - `disable_mod`：证据中必须出现 `workshop-<modID>`；未传 `modID` 时后端会自动提取。
 - `delete_snapshot`：证据中必须出现 `session/<sessionID>`；未传 `sessionID` 时后端会自动提取。
 - `update_game`：必须有版本检查证据，且包含 `"gameVersionOutdated": true` 或 `"dstUpdating": true`。
+- `use_default_token`：证据中必须出现 `token` 或“令牌”相关文字（例如 `E_INVALID_TOKEN`）。
 - 其他动作至少需要一条证据。
+
+`use_default_token` 的 `preview` 会直接展示平台默认游戏令牌，便于前端确认；它只更新房间令牌与 `cluster_token.txt`，不会自动重启，通常应同时选择 `restart_room` 或 `start_world` 使其生效。
 
 ### 8.2 尚未开放
 
@@ -754,7 +758,7 @@ export async function connectSSE(url, { token, lang, lastEventID, signal, onEven
 - 诊断只读取数据，工具全部只读；唯一的写操作是用户授权后的动作。
 - AI 不能生成 shell 命令，只能返回动作 ID。
 - 动作必须在服务端白名单中，并重新校验权限、参数、证据和当前状态。
-- 不发送：房间 Token、房间密码、ClusterKey、`cluster_token.txt`、AI API Key、Webhook 地址、玩家聊天日志。
+- 不发送：房间 Token、房间密码、ClusterKey、`cluster_token.txt`、AI API Key、Webhook 地址、玩家聊天日志。`use_default_token` 动作的 `preview` 会展示平台默认游戏令牌（前端本身即可计算），但不发送房间当前令牌。
 - 系统日志仅在管理员诊断时读取；普通用户只能读 game 日志。
 - 日志中可能包含敏感信息，服务端会脱敏并用 `truncated` 标记截断。
 - 高风险动作先备份，确认文本不匹配不执行。

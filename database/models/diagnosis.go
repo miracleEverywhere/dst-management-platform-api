@@ -11,6 +11,7 @@ type DiagnosisRecord struct {
 	Scope            string     `gorm:"column:scope;index:idx_diagnosis_scope" json:"scope"`
 	RoomID           int        `gorm:"column:room_id;index:idx_diagnosis_room" json:"roomID"`
 	RoomName         string     `gorm:"column:room_name" json:"roomName"`
+	Description      string     `gorm:"column:description;type:text" json:"description"`
 	Username         string     `gorm:"column:username;index:idx_diagnosis_user" json:"username"`
 	Status           string     `gorm:"column:status;index:idx_diagnosis_status" json:"status"`
 	Severity         string     `gorm:"column:severity" json:"severity"`
@@ -51,8 +52,8 @@ func (DiagnosisActionRecord) TableName() string {
 	return "diagnosis_action_records"
 }
 
-// DiagnosisAISetting 是 AI 诊断专用的 LLM 配置。
-// chatBaseURL/chatModel/chatApiKey 都未填写时回退到 AI 对话的全局基础配置。
+// DiagnosisAISetting 是 AI 诊断专用的 LLM 配置，与 AI 对话的基础配置相互独立。
+// 三项都未填写表示未配置，诊断会提示先完成配置；不会回退 AI 对话配置。
 type DiagnosisAISetting struct {
 	ChatBaseURL string `json:"chatBaseURL"`
 	ChatApiKey  string `json:"chatApiKey"`
@@ -60,7 +61,7 @@ type DiagnosisAISetting struct {
 }
 
 // Configured 表示管理员是否填写了诊断专用配置。
-// 只填了一部分也算已配置，此时会按配置不完整报错，而不是静默回退。
+// 只填了一部分也算已配置，此时会按配置不完整报错，而不是静默使用其他配置。
 func (s DiagnosisAISetting) Configured() bool {
 	return strings.TrimSpace(s.ChatBaseURL) != "" ||
 		strings.TrimSpace(s.ChatModel) != "" ||
