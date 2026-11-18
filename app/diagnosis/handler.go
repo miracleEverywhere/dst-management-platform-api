@@ -107,7 +107,8 @@ func (h *Handler) stream(c *gin.Context, apply bool) {
 
 	header := c.Writer.Header()
 	header.Set("Content-Type", "text/event-stream; charset=utf-8")
-	header.Set("Cache-Control", "no-cache")
+	// no-transform 让反向代理不要缓冲或改写流式响应，与日志流保持一致
+	header.Set("Cache-Control", "no-cache, no-transform")
 	header.Set("Connection", "keep-alive")
 	header.Set("X-Accel-Buffering", "no")
 	c.Writer.WriteHeader(nethttp.StatusOK)

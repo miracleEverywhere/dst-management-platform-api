@@ -186,3 +186,4 @@
 | 10092 | AI 诊断 | 修复执行失败 | Repair failed | warn | 修复动作执行失败。查看动作结果与 logs/runtime.log 中的具体错误。 | service/diagnosis/actions.go:applyAction |
 | 10093 | AI 诊断 | 修复执行后复检未通过 | Verification failed after the repair | warn | 动作已执行但复检未通过。重新诊断，确认是否需要人工介入。 | service/diagnosis/actions.go:applyAction |
 | 10094 | AI 诊断 | 数据库连接失败 | Database Connection Error | fatal | 数据库读写失败。检查数据目录磁盘空间与文件权限。 | service/diagnosis/agent.go:runDiagnosis<br>service/diagnosis/apply.go:Apply<br>service/diagnosis/service.go:AISettingGet<br>service/diagnosis/service.go:AISettingPut<br>service/diagnosis/service.go:Get<br>service/diagnosis/service.go:History<br>service/diagnosis/service.go:HistoryDetail<br>service/diagnosis/service.go:Start<br>service/diagnosis/service.go:resolveChatConfig |
+| 10095 | AI 诊断 | 诊断执行异常中断，请重试 | The diagnosis stopped unexpectedly, please retry | fatal | 诊断协程内部异常（panic）被兜底终止。查看 logs/runtime.log 中的调用栈，按提示重新发起诊断。 | service/diagnosis/agent.go:runDiagnosis |

@@ -6,8 +6,10 @@ import (
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/scheduler"
+	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // validateAnnounceIntervals 校验启用的通知间隔，避免注册任务时 time.Duration 溢出。
@@ -221,6 +223,57 @@ func processJobs(game *dst.Game, roomID int, roomSetting models.RoomSetting) {
 	} else {
 		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModFalse", roomID))
 		scheduler.DeleteJob(fmt.Sprintf("%d-PlayerUpdateModTrue", roomID))
+	}
+}
+
+// parseAnnounceSetting 解析房间设置里的通知配置；解析或校验失败时返回 nil，
+// 调用方按「没有启用的通知」重建任务。房间已经激活的场景下不能因为配置脏数据而中断操作。
+func parseAnnounceSetting(setting string) []scheduler.AnnounceSetting {
+	raw := strings.TrimSpace(setting)
+	if raw == "" {
+		return nil
+	}
+	var announces []scheduler.AnnounceSetting
+	if err := json.Unmarshal([]byte(raw), &announces); err != nil {
+		logger.Logger.Errorf("解析定时通知设置失败, err: %v", err)
+		return nil
+	}
+	if err := validateAnnounceIntervals(announces); err != nil {
+		logger.Logger.Errorf("定时通知间隔无效, err: %v", err)
+		return nil
+	}
+
+	return announces
+}
+
+// processAnnounceJobs 按通知设置重建房间的定时通知任务：先删除旧任务，再为启用的通知注册任务。
+// 房间激活与存档导入都会重建 game（世界ID会变），两者的通知任务必须用同一个函数重建，
+// 否则持有旧 *dst.Game 的任务会按已失效的世界ID查找世界。
+func processAnnounceJobs(game *dst.Game, roomID int, announces []scheduler.AnnounceSetting) {
+	jobNames := scheduler.GetJobsByType(roomID, "Announce")
+	logger.Logger.Debug(utils.StructToFlatString(jobNames))
+	for _, jobName := range jobNames {
+		// 删除旧通知任务
+		scheduler.DeleteJob(jobName)
+	}
+	logger.Logger.Debug(utils.StructToFlatString(announces))
+	for _, announce := range announces {
+		// 创建通知任务
+		if !announce.Status {
+			continue
+		}
+		// 注意，-为分隔符，需要删除uuid中的-
+		err := scheduler.UpdateJob(&scheduler.JobConfig{
+			Name:     fmt.Sprintf("%d-%s-Announce", roomID, strings.ReplaceAll(announce.ID, "-", "")),
+			Func:     scheduler.Announce,
+			Args:     []any{game, announce.Content},
+			TimeType: scheduler.SecondType,
+			Interval: announce.Interval,
+			DayAt:    "",
+		})
+		if err != nil {
+			logger.Logger.Errorf("定时通知定时任务处理失败, err: %v", err)
+		}
 	}
 }
 

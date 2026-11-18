@@ -120,7 +120,8 @@ func collectUsages() (map[string][]string, error) {
 					if !ok || pkg.Name != "constant" || !strings.HasPrefix(sel.Sel.Name, "Code") {
 						return true
 					}
-					usages[sel.Sel.Name] = append(usages[sel.Sel.Name], path+":"+fn.Name.Name)
+					// 出现位置统一用 / 分隔，保证 Linux/macOS 与 Windows 生成的文档一致
+					usages[sel.Sel.Name] = append(usages[sel.Sel.Name], filepath.ToSlash(path)+":"+fn.Name.Name)
 					return true
 				})
 			}

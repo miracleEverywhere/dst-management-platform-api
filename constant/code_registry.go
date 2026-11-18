@@ -215,6 +215,7 @@ var Registry = []Entry{
 	{Code: 10092, Const: "CodeDiagnosisApplyFail", Module: "diagnosis", TextKey: "diagnosis apply fail", Level: LevelWarn, Hint: "修复动作执行失败。查看动作结果与 logs/runtime.log 中的具体错误。"},
 	{Code: 10093, Const: "CodeDiagnosisVerifyFail", Module: "diagnosis", TextKey: "diagnosis verify fail", Level: LevelWarn, Hint: "动作已执行但复检未通过。重新诊断，确认是否需要人工介入。"},
 	{Code: 10094, Const: "CodeDiagnosisDBError", Module: "diagnosis", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录磁盘空间与文件权限。"},
+	{Code: 10095, Const: "CodeDiagnosisInternalError", Module: "diagnosis", TextKey: "diagnosis internal error", Level: LevelFatal, Hint: "诊断协程内部异常（panic）被兜底终止。查看 logs/runtime.log 中的调用栈，按提示重新发起诊断。"},
 }
 
 var codeIndex = func() map[int]Entry {

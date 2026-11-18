@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"dst-management-platform-api/constant"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -851,7 +852,8 @@ func GetFileLastNLines(filename string, n int) []string {
 
 // GetFileLastNLinesWithOffset 获取文件的最后N行，并返回读取时的文件大小。
 // 调用方可以从该偏移继续读取后续追加的内容；n <= 0 时只返回文件大小。
-// 从文件末尾按块反向读取，避免日志文件较大时每次都从文件头扫描整个文件。
+// 从文件末尾按块反向读取，避免日志文件较大时每次都从文件头扫描整个文件；
+// 累计读取超过 constant.FileTailMaxBytes 时停止，避免「无换行大文件」被整体读入。
 func GetFileLastNLinesWithOffset(filename string, n int) ([]string, int64) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -873,6 +875,7 @@ func GetFileLastNLinesWithOffset(filename string, n int) ([]string, int64) {
 		pos          = size
 		newlineCount int
 		totalSize    int
+		byteLimitHit bool
 	)
 
 	// 从后往前读取，直到积累的换行数足够覆盖最后 N 行。
@@ -901,6 +904,11 @@ func GetFileLastNLinesWithOffset(filename string, n int) ([]string, int64) {
 		if newlineCount > n {
 			break
 		}
+		if totalSize >= constant.FileTailMaxBytes {
+			// 命中字节上限时才可能出现「首行是半行」，下面会把它丢掉
+			byteLimitHit = true
+			break
+		}
 	}
 
 	// chunks 是按文件尾部到头部收集的，拼接时反转回来。
@@ -913,6 +921,10 @@ func GetFileLastNLinesWithOffset(filename string, n int) ([]string, int64) {
 	// 文件以换行结尾时，Split 会多出一个空字符串，与 bufio.Scanner 的行为保持一致。
 	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
 		lines = lines[:len(lines)-1]
+	}
+	if byteLimitHit && len(lines) > 0 {
+		// 因字节上限提前停止时，缓冲区开头不是行边界，首行可能是不完整的
+		lines = lines[1:]
 	}
 	if len(lines) > n {
 		lines = lines[len(lines)-n:]

@@ -8,6 +8,7 @@ import (
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 	"sort"
 	"time"
 )
@@ -161,6 +162,26 @@ func (s *Service) Apply(actor service.Actor, id string, input ApplyInput) servic
 }
 
 func (s *Service) runApply(session *Session, actions []*Action, records map[string]*models.DiagnosisActionRecord) {
+	// 修复动作在独立 goroutine 里执行，panic 会让整个进程退出：
+	// 兜底把本次修复标记为失败并发出结束事件，避免前端一直等到流超时。
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		logger.Logger.Errorf("AI 诊断修复 panic, diagnosisID: %s, err: %v\n%s", session.ID, r, debug.Stack())
+		if apply := session.getApply(); apply != nil && apply.Status == StatusRunning {
+			session.finishApply(StatusFailed)
+			session.addApplyEvent(EventApplyEnd, map[string]any{
+				"status":     StatusFailed,
+				"results":    apply.Results,
+				"finishedAt": time.Now(),
+			})
+			session.markApplyDone()
+			s.saveRecordFromSession(session)
+		}
+	}()
+
 	overall := StatusSucceeded
 	stopped := false
 	for index, action := range actions {

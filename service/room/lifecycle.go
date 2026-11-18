@@ -11,7 +11,6 @@ import (
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -69,30 +68,7 @@ func (s *Service) Activate(actor service.Actor, roomID int) service.Result {
 	// 添加定时任务
 	processJobs(game, roomID, *roomSetting)
 	// 添加定时通知
-	jobNames := scheduler.GetJobsByType(roomID, "Announce")
-	logger.Logger.Debug(utils.StructToFlatString(jobNames))
-	for _, jobName := range jobNames {
-		// 删除旧通知任务
-		scheduler.DeleteJob(jobName)
-	}
-	logger.Logger.Debug(utils.StructToFlatString(announces))
-	for _, announce := range announces {
-		// 创建通知任务
-		if announce.Status {
-			// 注意，-为分隔符，需要删除uuid中的-
-			err = scheduler.UpdateJob(&scheduler.JobConfig{
-				Name:     fmt.Sprintf("%d-%s-Announce", room.ID, strings.ReplaceAll(announce.ID, "-", "")),
-				Func:     scheduler.Announce,
-				Args:     []any{game, announce.Content},
-				TimeType: scheduler.SecondType,
-				Interval: announce.Interval,
-				DayAt:    "",
-			})
-			if err != nil {
-				logger.Logger.Errorf("定时通知定时任务处理失败, err: %v", err)
-			}
-		}
-	}
+	processAnnounceJobs(game, roomID, announces)
 	if err = s.aiManager.Reload(roomID); err != nil {
 		logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", roomID, err)
 	}

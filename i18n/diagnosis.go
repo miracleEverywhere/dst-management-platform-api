@@ -16,6 +16,7 @@ var Diagnosis = NewExtendedI18n(map[string]Text{
 	"diagnosis ai fail":              {ZH: "AI 调用失败，请检查模型配置或稍后重试", EN: "AI request failed. Check the model settings or retry later"},
 	"diagnosis apply fail":           {ZH: "修复执行失败", EN: "Repair failed"},
 	"diagnosis verify fail":          {ZH: "修复执行后复检未通过", EN: "Verification failed after the repair"},
+	"diagnosis internal error":       {ZH: "诊断执行异常中断，请重试", EN: "The diagnosis stopped unexpectedly, please retry"},
 
 	"diagnosis action start world":       {ZH: "启动世界", EN: "Start world"},
 	"diagnosis action restart world":     {ZH: "重启世界", EN: "Restart world"},

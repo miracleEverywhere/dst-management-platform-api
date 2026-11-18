@@ -52,13 +52,13 @@ func (s *Service) Menu(actor service.Actor) service.Result {
 
 // ---- 菜单数据 ----
 type menuItem struct {
-	ID        int        `json:"id"`
-	Type      string     `json:"type"`
-	Section   string     `json:"section"`
-	Title     string     `json:"title"`
-	To        string     `json:"to"`
-	Component string     `json:"component"`
-	Icon      string     `json:"icon"`
-	BadgeContent string `json:"badgeContent"`
-	Links     []menuItem `json:"links"`
+	ID           int        `json:"id"`
+	Type         string     `json:"type"`
+	Section      string     `json:"section"`
+	Title        string     `json:"title"`
+	To           string     `json:"to"`
+	Component    string     `json:"component"`
+	Icon         string     `json:"icon"`
+	BadgeContent string     `json:"badgeContent"`
+	Links        []menuItem `json:"links"`
 }

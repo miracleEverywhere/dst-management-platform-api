@@ -7,6 +7,7 @@ import (
 	"dst-management-platform-api/logger"
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -24,7 +25,13 @@ const (
 )
 
 func (s *Service) runDiagnosis(ctx context.Context, session *Session) {
+	// 诊断在独立 goroutine 里执行，gin 的 Recovery 兜不住这里的 panic：
+	// 不 recover 会让整个进程退出，所以在这里把会话置为失败并记录调用栈。
 	defer func() {
+		if r := recover(); r != nil {
+			logger.Logger.Errorf("诊断执行 panic, diagnosisID: %s, err: %v\n%s", session.ID, r, debug.Stack())
+			s.failDiagnosis(session, constant.CodeDiagnosisInternalError, "诊断执行异常中断，请重试")
+		}
 		if session.cancel != nil {
 			session.cancel()
 		}

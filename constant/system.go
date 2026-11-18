@@ -46,3 +46,11 @@ const LoginRateLimitMaxEntries = 2 << 15
 
 // LoginBodyMaxBytes 登录请求体读取上限，仅用于提取用户名
 const LoginBodyMaxBytes = 8 << 10
+
+// LogMaxLines 日志接口单次返回/推送的最大行数。
+// 日志接口的行数由客户端指定，不设上限时一个请求就能把整份日志读进内存。
+const LogMaxLines = 2000
+
+// FileTailMaxBytes 尾部读取文件的最大字节数。
+// 反向按块读取仍可能被「没有换行符的大文件」拖成整文件读取，这里给它一个字节上限。
+const FileTailMaxBytes = 8 << 20

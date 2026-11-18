@@ -5,6 +5,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/dst"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/scheduler"
 	"dst-management-platform-api/service"
 	"dst-management-platform-api/utils"
 	"dst-management-platform-api/webhook"
@@ -40,6 +41,12 @@ func (s *Service) importRoomFromZip(actor service.Actor, savePath, unzipPath str
 		worlds          []models.World
 		roomSetting     models.RoomSetting
 		uploadExtraInfo UploadExtraInfo
+	)
+	// 导入到已有房间时，UpdateWorlds 会先删后插，世界ID一定变化：
+	// 需要旧世界ID到世界名的映射来迁移世界监控数据，并用数据库里的房间设置重建定时任务。
+	var (
+		oldWorldIDMap    map[string]int
+		existRoomSetting *models.RoomSetting
 	)
 
 	code, err := handleUpload(savePath, unzipPath, &room, &worlds, &roomSetting, &uploadExtraInfo)
@@ -118,6 +125,13 @@ func (s *Service) importRoomFromZip(actor service.Actor, savePath, unzipPath str
 			worlds[index].MasterServerPort = (*dbWorlds)[index].MasterServerPort
 			worlds[index].AuthenticationPort = (*dbWorlds)[index].AuthenticationPort
 			worlds[index].RoomID = roomID
+		}
+		// 世界重建前记下旧世界ID，导入后按世界名迁移监控数据
+		oldWorldIDMap = worldIDByName(*dbWorlds)
+		existRoomSetting, errRoom = s.roomSettingDao.GetRoomSettingsByRoomID(roomID)
+		if errRoom != nil {
+			logger.Logger.Errorf("查询房间设置失败, roomID: %d, err: %v", roomID, errRoom)
+			return nil, constant.CodeRoomDBError, errRoom
 		}
 	}
 
@@ -220,6 +234,25 @@ func (s *Service) importRoomFromZip(actor service.Actor, savePath, unzipPath str
 			RoomSettingData: roomSetting,
 		})
 	} else {
+		// 存档导入到已有房间时世界会被重建，世界ID随之变化：
+		// 1) 定时任务持有的是导入前的 *dst.Game（世界ID已失效），必须用新 game 重建，
+		//    否则保活/重启会按失效的世界ID查世界而静默失效；
+		// 2) 世界监控数据按世界ID键控，必须按世界名迁移，否则监控曲线会永久为空。
+		if room.Status {
+			processJobs(game, room.ID, *existRoomSetting)
+			processAnnounceJobs(game, room.ID, parseAnnounceSetting(existRoomSetting.AnnounceSetting))
+		} else {
+			// 未激活的房间不应保留任务，清掉可能残留的旧任务（与房间保存的逻辑保持一致）
+			for _, jobName := range scheduler.GetJobsByRoomID(room.ID) {
+				scheduler.DeleteJob(jobName)
+			}
+		}
+		newWorldIDMap := worldIDByName(worlds)
+		if room.Status && existRoomSetting.RoomMetricsEnable {
+			migrateWorldMetrics(oldWorldIDMap, newWorldIDMap)
+		} else {
+			deleteWorldMetrics(oldWorldIDMap, newWorldIDMap)
+		}
 		if err = s.aiManager.Reload(room.ID); err != nil {
 			logger.Logger.Errorf("重载房间 AI 对话失败, roomID: %d, err: %v", room.ID, err)
 		}

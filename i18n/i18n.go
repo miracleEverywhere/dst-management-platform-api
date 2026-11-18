@@ -37,6 +37,9 @@ func (b *BaseI18n) GetF(c *gin.Context, message string, args ...interface{}) str
 // 它是 app/ 与 middleware 写响应的唯一入口：
 //   - 文案优先级：Result.Msg（已是最终文案，不再翻译）> Result.MsgBuilder（需要与其他字符串拼接）
 //     > MsgKey/MsgArgs（显式词条）> 错误码注册表反查出的词条
+//   - 注册表反查出的词条按该码所属模块的词条表翻译，跨模块透传的码（如云存档导入失败时
+//     透传房间模块的存档解析错误码）也能取到文案
+//   - 词条缺失时兜底 unknown error，避免前端拿到空 message
 //   - Result.Status 为 0 时使用 HTTP 200
 func (b *BaseI18n) Respond(c *gin.Context, r service.Result) {
 	status := r.Status
@@ -44,29 +47,30 @@ func (b *BaseI18n) Respond(c *gin.Context, r service.Result) {
 		status = http.StatusOK
 	}
 
-	translate := func(msgKey string, args ...any) string {
-		if len(args) > 0 {
-			return b.GetF(c, msgKey, args...)
-		}
-		return b.Get(c, msgKey)
-	}
-
 	msg := r.Msg
 	if msg == "" && r.MsgBuilder != nil {
-		msg = r.MsgBuilder(translate)
+		msg = r.MsgBuilder(func(msgKey string, args ...any) string {
+			return b.get(c, msgKey, args...)
+		})
 	}
 	if msg == "" {
+		table := b
 		msgKey := r.MsgKey
 		if msgKey == "" {
-			// 错误码是唯一标识，文案由注册表反查；未注册的码回退到通用文案，
-			// 避免因为漏配让用户看到空 message。
 			if entry, ok := constant.LookupCode(r.Code); ok {
 				msgKey = entry.TextKey
+				if codeTable, ok := codeTables[entry.Module]; ok {
+					table = codeTable
+				}
 			} else {
 				msgKey = "unknown error"
 			}
 		}
-		msg = translate(msgKey, r.MsgArgs...)
+		msg = table.get(c, msgKey, r.MsgArgs...)
+	}
+	if msg == "" {
+		// 码已注册但对应模块的词条表里没有该 key 时不能把空串写出去
+		msg = b.Get(c, "unknown error")
 	}
 
 	c.JSON(status, gin.H{"code": r.Code, "message": msg, "data": r.Data})
@@ -105,6 +109,32 @@ func NewExtendedI18n(texts map[string]Text) *ExtendedI18n {
 	}
 
 	return i
+}
+
+// get 按请求语言取词条，带格式化参数时走 GetF
+func (b *BaseI18n) get(c *gin.Context, msgKey string, args ...any) string {
+	if len(args) > 0 {
+		return b.GetF(c, msgKey, args...)
+	}
+	return b.Get(c, msgKey)
+}
+
+// codeTables 错误码所属模块（constant.Entry.Module）到该模块词条表的映射。
+// 错误码的文案由注册表指向某个模块的词条，与当前请求由哪个模块写出响应无关：
+// 例如云存档导入失败会透传房间模块的存档解析错误码，文案必须去房间模块的表里取，
+// 否则只查调用方模块的表会命中不到词条、返回空 message。
+var codeTables = map[string]*BaseI18n{
+	"framework": &I18n,
+	"user":      &User.BaseI18n,
+	"room":      &Room.BaseI18n,
+	"mod":       &Mod.BaseI18n,
+	"dashboard": &Dashboard.BaseI18n,
+	"platform":  &Platform.BaseI18n,
+	"logs":      &Logs.BaseI18n,
+	"tools":     &Tools.BaseI18n,
+	"player":    &Player.BaseI18n,
+	"cloud":     &Cloud.BaseI18n,
+	"diagnosis": &Diagnosis.BaseI18n,
 }
 
 // I18n 全局的message，由各个app中的子i18n调用

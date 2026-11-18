@@ -201,4 +201,5 @@ const (
 	CodeDiagnosisApplyFail          = 10092
 	CodeDiagnosisVerifyFail         = 10093
 	CodeDiagnosisDBError            = 10094
+	CodeDiagnosisInternalError      = 10095
 )

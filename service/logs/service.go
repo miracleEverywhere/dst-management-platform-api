@@ -98,6 +98,20 @@ func (s *Service) contentLogPath(actor service.Actor, roomID, worldID int, logTy
 	return "", service.Fail(constant.CodeLogsBadRequest)
 }
 
+// clampLogLines 限制单次读取/推送的日志行数。
+// 行数由客户端指定，不设上限时一个请求就能让服务端把整份日志读进内存；
+// 超出上限时按上限截取尾部，不报错，保持前端「取最后 N 行」的语义。
+func clampLogLines(lines int) int {
+	if lines < 0 {
+		return 0
+	}
+	if lines > constant.LogMaxLines {
+		return constant.LogMaxLines
+	}
+
+	return lines
+}
+
 // Content 读取日志内容：game/chat 走房间日志，其余为系统级日志且仅管理员可见
 func (s *Service) Content(actor service.Actor, roomID, worldID int, logType string, lines int) service.Result {
 	logPath, result := s.contentLogPath(actor, roomID, worldID, logType)
@@ -105,7 +119,7 @@ func (s *Service) Content(actor service.Actor, roomID, worldID int, logType stri
 		return result
 	}
 
-	return service.Success(utils.GetFileLastNLines(logPath, lines))
+	return service.Success(utils.GetFileLastNLines(logPath, clampLogLines(lines)))
 }
 
 // ContentStream 以流的方式推送当前日志：先推送尾部快照，再持续推送新增的完整行。
@@ -115,9 +129,7 @@ func (s *Service) ContentStream(ctx context.Context, actor service.Actor, roomID
 	if result.Code != nethttp.StatusOK {
 		return nil, result
 	}
-	if lines < 0 {
-		lines = 0
-	}
+	lines = clampLogLines(lines)
 
 	ch := make(chan dst.LogChunk, 16)
 	go func() {

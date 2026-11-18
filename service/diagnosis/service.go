@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -287,7 +288,13 @@ func (s *Service) Stream(ctx context.Context, actor service.Actor, id string, af
 	}
 	ch := make(chan SSEEvent, 64)
 	go func() {
-		defer close(ch)
+		// 推送协程 panic 会带走整个进程，这里只记录并关闭通道，SSE 连接随之结束
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Logger.Errorf("诊断事件推送 panic, diagnosisID: %s, err: %v\n%s", session.ID, r, debug.Stack())
+			}
+			close(ch)
+		}()
 		last := after
 		for {
 			events, notify, done := session.eventsAfter(last)
@@ -323,7 +330,13 @@ func (s *Service) ApplyStream(ctx context.Context, actor service.Actor, id strin
 	}
 	ch := make(chan SSEEvent, 64)
 	go func() {
-		defer close(ch)
+		// 推送协程 panic 会带走整个进程，这里只记录并关闭通道，SSE 连接随之结束
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Logger.Errorf("诊断修复事件推送 panic, diagnosisID: %s, err: %v\n%s", session.ID, r, debug.Stack())
+			}
+			close(ch)
+		}()
 		last := after
 		for {
 			events, notify, done := session.applyEventsAfter(last)

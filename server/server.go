@@ -124,6 +124,13 @@ func Run() {
 				// SSE 响应必须逐条到达浏览器；gzip 会先缓冲到最小压缩长度，导致日志流长时间无输出。
 				"/" + constant.ApiVersion + "/logs/content/stream",
 			}),
+			// 诊断的两条 SSE 流同样要逐条送达：不足 1KB 时 gzip 中间件会把数据留在内部缓冲，
+			// Flush 也不会写出，事件被整体延迟；流在 1KB 前结束时会写出「gzip 头 + 明文」的损坏响应。
+			// 这里只排除事件流本身，诊断的普通 JSON 接口仍然压缩。
+			gzip.WithExcludedPathsRegexs([]string{
+				"^/" + constant.ApiVersion + "/diagnosis/[^/]+/events$",
+				"^/" + constant.ApiVersion + "/diagnosis/[^/]+/apply/events$",
+			}),
 			gzip.WithExcludedExtensions([]string{
 				".woff", ".woff2", ".ttf",
 				".png", ".jpeg", "jpg", ".gif", ".webp", ".ico",
