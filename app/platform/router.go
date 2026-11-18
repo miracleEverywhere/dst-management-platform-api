@@ -17,7 +17,9 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			platform.POST("/readme", h.readmePost)
 			platform.GET("/overview", middleware.AdminOnly(), h.overviewGet)
 			platform.GET("/game_version", h.gameVersionGet)
-			platform.GET("/webssh", middleware.AdminOnly(), h.websshWS)
+			// 游戏安装/更新：启动 + SSE 订阅同一条流；action 为空表示只订阅已有任务
+			platform.GET("/game/install/stream", middleware.AdminOnly(), h.gameInstallStreamGet)
+			platform.GET("/game/install/state", middleware.AdminOnly(), h.gameTaskStateGet)
 			platform.GET("/os_info", h.osInfoGet)
 			platform.GET("/metrics", middleware.AdminOnly(), h.metricsGet)
 			platform.GET("/global_settings", middleware.AdminOnly(), h.globalSettingsGet)

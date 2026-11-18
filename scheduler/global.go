@@ -181,7 +181,7 @@ func GameUpdate(enable bool, restart bool) {
 		return
 	}
 
-	if cache.DstUpdating {
+	if cache.GameTask.Busy() {
 		return
 	}
 
@@ -192,16 +192,22 @@ func GameUpdate(enable bool, restart bool) {
 		logger.Logger.Info("[定时任务]：检测到游戏需要更新")
 		logger.Logger.Info("[定时任务]：开始执行游戏更新")
 
-		cache.DstUpdating = true
+		// 与网页安装/更新、控制台更新、诊断修复共用一把锁；拿不到说明有人在更新，直接跳过本轮
+		if !cache.GameTask.Acquire(cache.GameTaskActionUpdate, false) {
+			logger.Logger.Info("[定时任务]：已有游戏安装或更新任务在跑，跳过本轮更新")
+			return
+		}
 
 		updateCmd := fmt.Sprintf("cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit")
-		_ = utils.BashCMD(updateCmd)
+		func() {
+			// 用 defer 释放，脚本异常退出（含 panic）时也不会把锁留在进程里
+			defer cache.GameTask.Release()
+			_ = utils.BashCMD(updateCmd)
+		}()
 
 		logger.Logger.Info("[定时任务]：游戏更新结束")
 
 		webhook.Snd.Send(webhook.EventGameUpdate, 0, "[定时任务]：游戏更新结束")
-
-		cache.DstUpdating = false
 
 		// 如果设置了更新后重启游戏
 		if restart {

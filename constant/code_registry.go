@@ -135,6 +135,9 @@ var Registry = []Entry{
 	{Code: 5065, Const: "CodePlatformScreensFail", Module: "platform", TextKey: "get screens fail", Level: LevelWarn, Hint: "列出 screen 会话失败。确认已安装 screen 且当前用户可执行。"},
 	{Code: 5066, Const: "CodePlatformKillScreenFail", Module: "platform", TextKey: "kill screen fail", Level: LevelWarn, Hint: "结束 screen 会话失败。确认会话存在且属于当前用户。"},
 	{Code: 5067, Const: "CodePlatformWebhookTestFail", Module: "platform", TextKey: "webhook test fail", Level: LevelWarn, Hint: "Webhook 测试请求发送失败。检查目标地址可达性、证书与签名密钥。"},
+	{Code: 5068, Const: "CodePlatformGameTaskBusy", Module: "platform", TextKey: "game task busy", Level: LevelWarn, Hint: "已有游戏安装/更新任务在跑：定时自动更新、控制台更新、诊断修复与网页安装/更新共用一把互斥锁。等当前任务结束后再操作，或查看 /v3/platform/game/install/state 确认进度。"},
+	{Code: 5069, Const: "CodePlatformGameTaskStartFail", Module: "platform", TextKey: "game task start fail", Level: LevelWarn, Hint: "安装/更新脚本无法启动。确认工作目录下存在 manual_install.sh / manual_update.sh（首次启动会自动释放），且有 bash 与写入权限。"},
+	{Code: 5070, Const: "CodePlatformGameTaskNotRunning", Module: "platform", TextKey: "game task not running", Level: LevelWarn, Hint: "订阅安装/更新日志时没有可用的任务：没有正在执行的任务，进程启动后也没有执行过。先发起安装或更新再订阅。"},
 	{Code: 5091, Const: "CodePlatformDBError", Module: "platform", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 
 	// logs

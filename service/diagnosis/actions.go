@@ -588,8 +588,12 @@ func (s *Service) executeRestoreBackup(scope *Scope, params map[string]any) erro
 }
 
 func (s *Service) executeUpdateGame(scope *Scope, params map[string]any) error {
-	cache.DstUpdating = true
-	defer func() { cache.DstUpdating = false }()
+	// 与网页安装/更新、定时更新、控制台更新共用一把锁
+	if !cache.GameTask.Acquire(cache.GameTaskActionUpdate, false) {
+		return fmt.Errorf("已有游戏安装或更新任务在跑，请稍后再试")
+	}
+	defer cache.GameTask.Release()
+
 	updateCmd := "cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit"
 	if err := utils.BashCMD(updateCmd); err != nil {
 		return fmt.Errorf("更新游戏失败: %w", err)

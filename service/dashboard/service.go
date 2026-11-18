@@ -131,7 +131,7 @@ func (s *Service) InfoSys() service.Result {
 	return service.Success(InfoSysData{
 		Cpu:      utils.CpuUsage(),
 		Memory:   utils.MemoryUsage(),
-		Updating: cache.DstUpdating,
+		Updating: cache.GameTask.Busy(),
 	})
 }
 

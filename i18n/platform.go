@@ -11,4 +11,10 @@ var Platform = NewExtendedI18n(map[string]Text{
 	"install fail":         {ZH: "安装失败: %s", EN: "Install Failed: %s"},
 	"install success":      {ZH: "安装成功", EN: "Install Success"},
 	"uninstall fail":       {ZH: "卸载失败", EN: "Uninstall Fail"},
+	"game task busy":       {ZH: "已有游戏安装或更新任务正在进行，请等待其结束", EN: "A game install or update task is already running, please wait for it to finish"},
+	"game task start fail": {ZH: "游戏安装或更新任务启动失败", EN: "Failed to start the game install or update task"},
+	"game task not running": {
+		ZH: "当前没有进行中的游戏安装或更新任务",
+		EN: "No game install or update task is running",
+	},
 })

@@ -275,7 +275,7 @@ func (s *Service) toolSystemMetrics(session *Session) (any, *Evidence, error) {
 		"os":              runtime.GOOS,
 		"arch":            runtime.GOARCH,
 		"platformVersion": constant.Version,
-		"dstUpdating":     cache.DstUpdating,
+		"dstUpdating":     cache.GameTask.Busy(),
 		"time":            time.Now().Format(time.RFC3339),
 		"timezone":        time.Local.String(),
 	}
@@ -594,7 +594,7 @@ func (s *Service) toolGameVersion() (any, *Evidence, error) {
 		"dstLocalVersion":     version.Local,
 		"dstServerVersion":    version.Server,
 		"gameVersionOutdated": outdated,
-		"dstUpdating":         cache.DstUpdating,
+		"dstUpdating":         cache.GameTask.Busy(),
 	}
 	return data, &Evidence{
 		Tool:    "get_game_version",

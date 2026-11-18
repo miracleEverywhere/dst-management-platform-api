@@ -120,7 +120,11 @@ const (
 	CodePlatformScreensFail     = 5065
 	CodePlatformKillScreenFail  = 5066
 	CodePlatformWebhookTestFail = 5067
-	CodePlatformDBError         = 5091
+	// 游戏安装/更新任务：三者原因互不相同——有任务在跑、启动不了、没有可订阅的任务
+	CodePlatformGameTaskBusy       = 5068
+	CodePlatformGameTaskStartFail  = 5069
+	CodePlatformGameTaskNotRunning = 5070
+	CodePlatformDBError            = 5091
 
 	// 日志模块
 	CodeLogsBadRequest   = 6001

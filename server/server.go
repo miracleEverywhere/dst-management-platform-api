@@ -123,6 +123,8 @@ func Run() {
 				"/" + constant.ApiVersion + "/cloud/archives",
 				// SSE 响应必须逐条到达浏览器；gzip 会先缓冲到最小压缩长度，导致日志流长时间无输出。
 				"/" + constant.ApiVersion + "/logs/content/stream",
+				// 游戏安装/更新的输出是一条长时间几乎静默的流，gzip 缓冲会让进度完全看不到。
+				"/" + constant.ApiVersion + "/platform/game/install/stream",
 			}),
 			// 诊断的两条 SSE 流同样要逐条送达：不足 1KB 时 gzip 中间件会把数据留在内部缓冲，
 			// Flush 也不会写出，事件被整体延迟；流在 1KB 前结束时会写出「gzip 头 + 明文」的损坏响应。
