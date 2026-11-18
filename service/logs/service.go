@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"context"
 	"dst-management-platform-api/cache"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/database/dao"
@@ -8,6 +9,7 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/service"
 	"dst-management-platform-api/utils"
+	"errors"
 	"fmt"
 	nethttp "net/http"
 	"os"
@@ -49,47 +51,83 @@ func (s *Service) hasPermission(actor service.Actor, roomID string) bool {
 	return false
 }
 
-// Content 读取日志内容：game/chat 走房间日志，其余为系统级日志且仅管理员可见
-func (s *Service) Content(actor service.Actor, roomID, worldID int, logType string, lines int) service.Result {
+// contentLogPath 解析日志类型对应的文件路径，并完成权限与参数校验。
+func (s *Service) contentLogPath(actor service.Actor, roomID, worldID int, logType string) (string, service.Result) {
 	if !s.hasPermission(actor, fmt.Sprintf("%d", roomID)) {
-		return service.Fail(constant.CodeLogsNoPermission)
+		return "", service.Fail(constant.CodeLogsNoPermission)
 	}
 
-	if logType == "game" || logType == "chat" {
+	switch logType {
+	case "game", "chat":
 		if roomID == 0 {
-			return service.Fail(constant.CodeLogsBadRequest)
+			return "", service.Fail(constant.CodeLogsBadRequest)
 		}
 
 		room, worlds, roomSetting, err := dao.FetchGameInfo(roomID)
 		if err != nil {
 			logger.Logger.Errorf("获取基本信息失败, err: %v", err)
-			return service.Fail(constant.CodeLogsDBError)
+			return "", service.Fail(constant.CodeLogsDBError)
 		}
 
 		game := dst.NewGameController(room, worlds, roomSetting, actor.Lang)
-		return service.Success(game.LogContent(logType, worldID, lines))
+		logPath := game.LogContentPath(logType, worldID)
+		if logPath == "" {
+			return "", service.Fail(constant.CodeLogsBadRequest)
+		}
+
+		return logPath, service.Success(nil)
 	}
 
 	// 系统级日志（steam、access、runtime）仅允许管理员查看
 	if !actor.IsAdmin() {
-		return service.Fail(constant.CodeLogsNoPermission)
+		return "", service.Fail(constant.CodeLogsNoPermission)
 	}
 
-	var logPath string
 	switch logType {
 	case "steam":
 		if cache.OsType == constant.Darwin {
-			logPath = constant.DarwinSteamLogPath
-		} else {
-			logPath = constant.SteamLogPath
+			return constant.DarwinSteamLogPath, service.Success(nil)
 		}
+		return constant.SteamLogPath, service.Success(nil)
 	case "access":
-		logPath = "logs/access.log"
+		return "logs/access.log", service.Success(nil)
 	case "runtime":
-		logPath = "logs/runtime.log"
+		return "logs/runtime.log", service.Success(nil)
+	}
+
+	return "", service.Fail(constant.CodeLogsBadRequest)
+}
+
+// Content 读取日志内容：game/chat 走房间日志，其余为系统级日志且仅管理员可见
+func (s *Service) Content(actor service.Actor, roomID, worldID int, logType string, lines int) service.Result {
+	logPath, result := s.contentLogPath(actor, roomID, worldID, logType)
+	if result.Code != nethttp.StatusOK {
+		return result
 	}
 
 	return service.Success(utils.GetFileLastNLines(logPath, lines))
+}
+
+// ContentStream 以流的方式推送当前日志：先推送尾部快照，再持续推送新增的完整行。
+// 返回的通道在 ctx 取消或读取失败时关闭，SSE 传输由 app 层负责。
+func (s *Service) ContentStream(ctx context.Context, actor service.Actor, roomID, worldID int, logType string, lines int) (<-chan dst.LogChunk, service.Result) {
+	logPath, result := s.contentLogPath(actor, roomID, worldID, logType)
+	if result.Code != nethttp.StatusOK {
+		return nil, result
+	}
+	if lines < 0 {
+		lines = 0
+	}
+
+	ch := make(chan dst.LogChunk, 16)
+	go func() {
+		defer close(ch)
+		if err := dst.TailLog(ctx, logPath, lines, ch); err != nil && !errors.Is(err, context.Canceled) {
+			logger.Logger.Warnf("推送日志失败, path: %s, err: %v", logPath, err)
+		}
+	}()
+
+	return ch, service.Success(nil)
 }
 
 // HistoryList 历史日志文件列表

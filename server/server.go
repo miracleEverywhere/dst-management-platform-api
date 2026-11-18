@@ -121,6 +121,8 @@ func Run() {
 			gzip.WithExcludedPaths([]string{
 				"/" + constant.ApiVersion + "/tools/backup/download",
 				"/" + constant.ApiVersion + "/cloud/archives",
+				// SSE 响应必须逐条到达浏览器；gzip 会先缓冲到最小压缩长度，导致日志流长时间无输出。
+				"/" + constant.ApiVersion + "/logs/content/stream",
 			}),
 			gzip.WithExcludedExtensions([]string{
 				".woff", ".woff2", ".ttf",
