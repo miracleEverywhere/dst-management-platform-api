@@ -28,6 +28,7 @@ type Service struct {
 	systemDao        *dao.SystemDAO
 	roomAISettingDao *dao.RoomAISettingDAO
 	aiManager        *aichat.Manager
+	lobbyCache       *lobbyCache
 }
 
 // New 创建工具模块 service
@@ -42,6 +43,7 @@ func New(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roo
 		systemDao:        systemDao,
 		roomAISettingDao: roomAISettingDao,
 		aiManager:        aiManager,
+		lobbyCache:       newLobbyCache(),
 	}
 }
 

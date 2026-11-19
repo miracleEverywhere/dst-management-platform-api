@@ -166,6 +166,8 @@ var Registry = []Entry{
 	{Code: 7069, Const: "CodeToolsMapBusy", Module: "tools", TextKey: "map busy", Level: LevelFatal, Hint: "地图正在生成中，请等当前任务结束后再试。"},
 	{Code: 7070, Const: "CodeToolsMapParseFail", Module: "tools", TextKey: "map parse fail", Level: LevelWarn, Hint: "解析地图数据失败。存档可能损坏或版本不兼容。"},
 	{Code: 7071, Const: "CodeToolsSnapshotStartFail", Module: "tools", TextKey: "snapshot start fail", Level: LevelWarn, Hint: "快照已删除，但房间世界重新启动失败。检查 DST 安装、screen 会话与端口占用，确认世界进程是否恢复运行。"},
+	{Code: 7072, Const: "CodeToolsLobbyListFail", Module: "tools", TextKey: "lobby list fail", Level: LevelWarn, Hint: "拉取 Klei 游戏大厅房间列表失败。检查服务器出境网络与 lobby-v2-cdn.klei.com 可用性；若已缓存过数据，页面会展示旧数据。"},
+	{Code: 7073, Const: "CodeToolsLobbyDetailFail", Module: "tools", TextKey: "lobby detail fail", Level: LevelWarn, Hint: "获取房间详情失败。房间可能已下线，或 Klei 大厅详情令牌失效；刷新列表后重试，仍失败检查出境网络。"},
 	{Code: 7091, Const: "CodeToolsDBError", Module: "tools", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 
 	// player

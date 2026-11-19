@@ -17,4 +17,6 @@ var Tools = NewExtendedI18n(map[string]Text{
 	"embedding base url invalid":     {ZH: "嵌入模型 Base URL 不合法", EN: "Embedding model Base URL is invalid"},
 	"embedding build not running":    {ZH: "当前没有正在进行的嵌入索引构建", EN: "No embedding index build is running"},
 	"embedding build cancel success": {ZH: "已取消嵌入索引构建", EN: "Embedding index build cancelled"},
+	"lobby list fail":                {ZH: "获取游戏大厅列表失败", EN: "get lobby list fail"},
+	"lobby detail fail":              {ZH: "获取房间详情失败", EN: "get lobby detail fail"},
 })

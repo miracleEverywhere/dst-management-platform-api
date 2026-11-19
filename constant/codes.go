@@ -152,6 +152,8 @@ const (
 	CodeToolsMapBusy                   = 7069
 	CodeToolsMapParseFail              = 7070
 	CodeToolsSnapshotStartFail         = 7071
+	CodeToolsLobbyListFail             = 7072
+	CodeToolsLobbyDetailFail           = 7073
 	CodeToolsDBError                   = 7091
 
 	// 玩家模块

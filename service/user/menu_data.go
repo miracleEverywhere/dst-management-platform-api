@@ -196,6 +196,16 @@ var tools = menuItem{
 			Icon:      "ri-dashboard-2-line",
 			Links:     nil,
 		},
+		{
+			ID:        610,
+			Type:      "link",
+			Section:   "",
+			Title:     "toolsLobby",
+			To:        "/tools/lobby",
+			Component: "tools/lobby",
+			Icon:      "ri-radar-line",
+			Links:     nil,
+		},
 	},
 }
 

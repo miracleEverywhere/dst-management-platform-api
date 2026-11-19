@@ -29,6 +29,7 @@ func (s *Service) Menu(actor service.Actor) service.Result {
 			tools.Links[5],
 			tools.Links[6],
 			tools.Links[7],
+			tools.Links[9],
 		}
 		logsLess := logs
 		logsLess.Links = []menuItem{

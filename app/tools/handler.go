@@ -252,6 +252,28 @@ func (h *Handler) aiEmbeddingIndexCancel(c *gin.Context) {
 	message.Respond(c, h.svc.AIEmbeddingIndexCancel())
 }
 
+func (h *Handler) lobbySearchPost(c *gin.Context) {
+	var reqForm toolssvc.LobbySearchInput
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodeToolsBadRequest))
+		return
+	}
+
+	message.Respond(c, h.svc.LobbySearch(reqForm))
+}
+
+func (h *Handler) lobbyDetailPost(c *gin.Context) {
+	var reqForm toolssvc.LobbyDetailInput
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodeToolsBadRequest))
+		return
+	}
+
+	message.Respond(c, h.svc.LobbyDetail(reqForm))
+}
+
 func (h *Handler) mapGet(c *gin.Context) {
 	type ReqForm struct {
 		RoomID  int    `form:"roomID"`
