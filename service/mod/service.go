@@ -6,7 +6,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/service"
-	"dst-management-platform-api/utils"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -49,34 +49,24 @@ func (s *Service) ModSearch(actor service.Actor, searchType, searchText string, 
 			return service.Fail(constant.CodeModBadRequest)
 		}
 
-		var cachedModInfo *models.ModInfo
-		if s.modInfoDao != nil {
-			cachedModInfo, err = s.modInfoDao.GetModInfoByID(id, langStr)
+		modInfo, err := s.ModInfoByID(langStr, id)
+		// Steam 查不到该 ID 时保持原有契约：成功返回空列表，而不是报搜索失败。
+		if errors.Is(err, errModInfoNotFound) {
+			return service.Success(Data{Total: 1, Page: 1, PageSize: 1})
 		}
-		if err == nil && cachedModInfo != nil && checkCacheValidity(cachedModInfo.CacheTimestamp) {
-			data := Data{
-				Total:    1,
-				Page:     1,
-				PageSize: 1,
-				Rows: []models.ModInfo{
-					*cachedModInfo,
-				},
-			}
-			return service.Success(data)
-		}
-
-		data, err := searchModById(id, langStr)
 		if err != nil {
 			logger.Logger.Errorf("获取mod信息失败, err: %v", err)
 			return service.Fail(constant.CodeModSearchFail)
 		}
-		if len(data.Rows) > 0 && s.modInfoDao != nil {
-			data.Rows[0].CacheTimestamp = utils.GetTimestamp()
-			if cacheErr := s.modInfoDao.UpdateModInfo(&data.Rows[0]); cacheErr != nil {
-				logger.Logger.Errorf("更新模组缓存信息失败, err: %v", cacheErr)
-			}
-		}
 
+		data := Data{
+			Total:    1,
+			Page:     1,
+			PageSize: 1,
+			Rows: []models.ModInfo{
+				*modInfo,
+			},
+		}
 		return service.Success(data)
 	}
 

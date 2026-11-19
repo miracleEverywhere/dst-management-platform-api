@@ -8,6 +8,7 @@ import (
 	"dst-management-platform-api/database/models"
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/service"
+	modsvc "dst-management-platform-api/service/mod"
 	"dst-management-platform-api/utils"
 	"encoding/json"
 	"errors"
@@ -33,6 +34,7 @@ type Service struct {
 	systemDao        *dao.SystemDAO
 	globalSettingDao *dao.GlobalSettingDAO
 	diagnosisDao     *dao.DiagnosisDAO
+	modSvc           *modsvc.Service
 	aiManager        *aichat.Manager
 	chatClient       *aichat.ChatClient
 
@@ -54,6 +56,7 @@ func New(
 	systemDao *dao.SystemDAO,
 	globalSettingDao *dao.GlobalSettingDAO,
 	diagnosisDao *dao.DiagnosisDAO,
+	modSvc *modsvc.Service,
 	aiManager *aichat.Manager,
 ) *Service {
 	kb, kbErr := loadKnowledgeBase()
@@ -73,6 +76,7 @@ func New(
 		systemDao:        systemDao,
 		globalSettingDao: globalSettingDao,
 		diagnosisDao:     diagnosisDao,
+		modSvc:           modSvc,
 		aiManager:        aiManager,
 		chatClient:       aichat.NewChatClient(),
 		kb:               kb,

@@ -34,6 +34,14 @@ func (d *RoomDAO) UpdateRoomToken(id int, token string) error {
 	return d.db.Model(&models.Room{}).Where("id = ?", id).Update("token", token).Error
 }
 
+// UpdateRoomModData 只更新房间的模组配置，避免诊断修复等场景覆盖房间其他字段。
+func (d *RoomDAO) UpdateRoomModData(id int, modData string) error {
+	if id <= 0 {
+		return gorm.ErrInvalidData
+	}
+	return d.db.Model(&models.Room{}).Where("id = ?", id).Update("mod_data", modData).Error
+}
+
 // CreateConfiguration 在同一事务中创建房间、世界和房间设置。
 func (d *RoomDAO) CreateConfiguration(room *models.Room, worlds *[]models.World, setting *models.RoomSetting) error {
 	if room == nil || worlds == nil || setting == nil {

@@ -27,6 +27,8 @@ const (
 	maxLogLines        = 200
 	maxLogLineRunes    = 500
 	maxToolResultRunes = 5000
+	// maxModDescriptionRunes 限制交给模型的模组简介长度，避免创意工坊长文本占满提示词。
+	maxModDescriptionRunes = 600
 )
 
 var (
@@ -81,6 +83,9 @@ func (s *Service) toolSpecs() []aichat.Tool {
 			"roomID":  map[string]any{"type": "integer"},
 			"worldID": map[string]any{"type": "integer"},
 		})),
+		tool("get_mod_info", "按模组 ID 查询 Steam 创意工坊信息：名称、大小、标签、简介、订阅数、更新时间与链接。可用于确认模组是否存在、是否停更或改名。", objectSchema(map[string]any{
+			"modID": map[string]any{"type": "integer", "description": "Steam 创意工坊模组 ID（workshop ID）"},
+		}, "modID")),
 		tool("get_game_version", "获取平台版本、DST 本地/远端版本与是否正在更新。", objectSchema(nil)),
 		tool("get_scheduler", "获取当前时间、时区与房间定时任务名称。", objectSchema(map[string]any{
 			"roomID": map[string]any{"type": "integer"},
@@ -227,6 +232,8 @@ func (s *Service) executeTool(ctx context.Context, session *Session, current *Sc
 		return s.toolLogs(session, current, raw)
 	case "get_mods":
 		return s.toolMods(current, raw)
+	case "get_mod_info":
+		return s.toolModInfo(session, raw)
 	case "get_game_version":
 		return s.toolGameVersion()
 	case "get_scheduler":
@@ -584,6 +591,66 @@ func (s *Service) toolMods(current *Scope, raw json.RawMessage) (any, *Evidence,
 		Summary: fmt.Sprintf("读取世界 %d 的启用模组，共 %d 个", worldID, len(items)),
 		Detail:  mustJSON(data),
 	}, nil
+}
+
+func (s *Service) toolModInfo(session *Session, raw json.RawMessage) (any, *Evidence, error) {
+	var args struct {
+		ModID int `json:"modID"`
+	}
+	if err := json.Unmarshal(raw, &args); err != nil {
+		return nil, nil, fmt.Errorf("参数解析失败: %w", err)
+	}
+	if args.ModID <= 0 {
+		return nil, nil, fmt.Errorf("modID 必须是正整数")
+	}
+	if s.modSvc == nil {
+		return nil, nil, fmt.Errorf("模组信息服务不可用")
+	}
+
+	modInfo, err := s.modSvc.ModInfoByID(session.Actor.Lang, args.ModID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("查询 Steam 模组信息失败: %w", err)
+	}
+
+	tags := make([]string, 0, len(modInfo.Tags.Data()))
+	for _, tag := range modInfo.Tags.Data() {
+		label := strings.TrimSpace(tag.DisplayName)
+		if label == "" {
+			label = strings.TrimSpace(tag.Tag)
+		}
+		if label != "" {
+			tags = append(tags, label)
+		}
+	}
+
+	data := map[string]any{
+		"modID":         modInfo.ID,
+		"name":          modInfo.Name,
+		"size":          modInfo.Size,
+		"tags":          tags,
+		"description":   truncateRunes(strings.TrimSpace(modInfo.FileDescription), maxModDescriptionRunes),
+		"subscriptions": modInfo.Subscriptions,
+		"voteScore":     modInfo.VoteData.Score,
+		"votesUp":       modInfo.VoteData.VotesUp,
+		"votesDown":     modInfo.VoteData.VotesDown,
+		"timeCreated":   unixTimeText(modInfo.TimeCreated),
+		"timeUpdated":   unixTimeText(modInfo.TimeUpdated),
+		"workshopURL":   fmt.Sprintf("https://steamcommunity.com/sharedfiles/filedetails/?id=%d", modInfo.ID),
+	}
+	return data, &Evidence{
+		Tool:    "get_mod_info",
+		Source:  fmt.Sprintf("steam/workshop:%d", modInfo.ID),
+		Summary: fmt.Sprintf("查询 Steam 模组 %d：%s", modInfo.ID, truncateRunes(modInfo.Name, 60)),
+		Detail:  mustJSON(data),
+	}, nil
+}
+
+// unixTimeText 把 Steam 返回的 Unix 秒格式化为 RFC3339，0 表示未知。
+func unixTimeText(seconds int) string {
+	if seconds <= 0 {
+		return ""
+	}
+	return time.Unix(int64(seconds), 0).Format(time.RFC3339)
 }
 
 func (s *Service) toolGameVersion() (any, *Evidence, error) {

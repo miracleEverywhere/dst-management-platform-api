@@ -706,7 +706,12 @@ func (g *Game) getEnabledMods(worldID int) ([]DownloadedMod, error) {
 	}
 
 	var modsID []DownloadedMod
-	for k := range mods {
+	for k, config := range mods {
+		// enabled=false 的条目仍会留在 modoverrides.lua 里（Klei 客户端生成或导入存档会这样写），
+		// 游戏并未加载它，这里必须跳过，否则禁用中的模组会被当成启用。
+		if config == nil || !config.Enabled {
+			continue
+		}
 		modIDSlice := strings.Split(k, "-")
 		var modID int
 		if len(modIDSlice) < 2 {

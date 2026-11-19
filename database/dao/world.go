@@ -48,6 +48,15 @@ func (d *WorldDAO) UpdateWorlds(worlds *[]models.World) error {
 	})
 }
 
+// UpdateWorldModData 只更新指定世界的模组配置。
+// 禁用/启用模组时不能用 UpdateWorlds：它会删除并重建该房间全部世界，世界 ID 随之变化。
+func (d *WorldDAO) UpdateWorldModData(id int, modData string) error {
+	if id <= 0 {
+		return gorm.ErrInvalidData
+	}
+	return d.db.Model(&models.World{}).Where("id = ?", id).Update("mod_data", modData).Error
+}
+
 func (d *WorldDAO) GetWorldsByRoomIDWthPage(id int) (*PaginatedResult[models.World], error) {
 	// 获取所有的world，一个room最大world数为64
 	worlds, err := d.Query(1, 64, "room_id = ?", id)

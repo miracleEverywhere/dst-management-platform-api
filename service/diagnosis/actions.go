@@ -82,7 +82,7 @@ func (s *Service) actionSpec(id string) (*ActionSpec, bool) {
 			ID: "disable_mod", TitleKey: "diagnosis action disable mod", Risk: RiskMedium, Reversible: true,
 			Confirmation: ConfirmNormal, Order: 20,
 			Validate: s.validateModID,
-			Execute:  executeDisableMod,
+			Execute:  s.executeDisableMod,
 			Verify:   verifyModDisabled,
 		}, true
 	case "enable_mod":
@@ -90,7 +90,7 @@ func (s *Service) actionSpec(id string) (*ActionSpec, bool) {
 			ID: "enable_mod", TitleKey: "diagnosis action enable mod", Risk: RiskMedium, Reversible: true,
 			Confirmation: ConfirmNormal, Order: 20,
 			Validate: s.validateModID,
-			Execute:  executeEnableMod,
+			Execute:  s.executeEnableMod,
 			Verify:   verifyModEnabled,
 		}, true
 	case "delete_snapshot":
@@ -304,14 +304,14 @@ func (s *Service) actionPreview(actionID, lang string, scope *Scope, params map[
 		return fmt.Sprintf("Replace the room token with the platform default game token: %s (takes effect after restarting the room)", token)
 	case "disable_mod":
 		if zh {
-			return fmt.Sprintf("将禁用模组 workshop-%d", intParam(params, "modID"))
+			return fmt.Sprintf("将禁用模组 workshop-%d（需重启世界后生效）", intParam(params, "modID"))
 		}
-		return fmt.Sprintf("Disable mod workshop-%d", intParam(params, "modID"))
+		return fmt.Sprintf("Disable mod workshop-%d (takes effect after restarting the world)", intParam(params, "modID"))
 	case "enable_mod":
 		if zh {
-			return fmt.Sprintf("将启用模组 workshop-%d", intParam(params, "modID"))
+			return fmt.Sprintf("将启用模组 workshop-%d（需重启世界后生效）", intParam(params, "modID"))
 		}
-		return fmt.Sprintf("Enable mod workshop-%d", intParam(params, "modID"))
+		return fmt.Sprintf("Enable mod workshop-%d (takes effect after restarting the world)", intParam(params, "modID"))
 	case "delete_snapshot":
 		if zh {
 			return fmt.Sprintf("将备份并删除存档快照 %s", stringParam(params, "sessionID"))
@@ -508,11 +508,14 @@ func (s *Service) executeUseDefaultToken(scope *Scope, params map[string]any) er
 	return nil
 }
 
-func executeDisableMod(scope *Scope, params map[string]any) error {
-	return scope.Game.ModDisable(intParam(params, "modID"))
+func (s *Service) executeDisableMod(scope *Scope, params map[string]any) error {
+	if err := scope.Game.ModDisable(intParam(params, "modID")); err != nil {
+		return err
+	}
+	return s.persistMods(scope)
 }
 
-func executeEnableMod(scope *Scope, params map[string]any) error {
+func (s *Service) executeEnableMod(scope *Scope, params map[string]any) error {
 	worldID := 0
 	for _, world := range scope.Worlds {
 		if world.IsMaster {
@@ -530,6 +533,25 @@ func executeEnableMod(scope *Scope, params map[string]any) error {
 	if err := scope.Game.ModEnable(worldID, modID, true); err != nil {
 		if err = scope.Game.ModEnable(worldID, modID, false); err != nil {
 			return err
+		}
+	}
+	return s.persistMods(scope)
+}
+
+// persistMods 把 ModDisable/ModEnable 改过的模组配置写回数据库。
+// 只更新 mod_data 字段：不整行 Save 房间（避免覆盖令牌等其他字段），也不调用 UpdateWorlds
+// （它会删除并重建房间下全部世界，世界 ID 随之变化，后续按旧 ID 执行的动作会失败）。
+func (s *Service) persistMods(scope *Scope) error {
+	if scope.Room.ModInOne {
+		if err := s.roomDao.UpdateRoomModData(scope.RoomID, scope.Room.ModData); err != nil {
+			return fmt.Errorf("更新房间模组配置失败: %w", err)
+		}
+		return nil
+	}
+	worlds := scope.Game.Worlds()
+	for i := range worlds {
+		if err := s.worldDao.UpdateWorldModData(worlds[i].ID, worlds[i].ModData); err != nil {
+			return fmt.Errorf("更新世界 %s 的模组配置失败: %w", worlds[i].WorldName, err)
 		}
 	}
 	return nil
@@ -720,6 +742,9 @@ func verifyModDisabled(scope *Scope, params map[string]any) (bool, string) {
 			return false, "模组仍处于启用状态"
 		}
 	}
+	if anyWorldRunning(scope) {
+		return true, "模组已禁用，重启世界后生效"
+	}
 	return true, "模组已禁用"
 }
 
@@ -741,10 +766,26 @@ func verifyModEnabled(scope *Scope, params map[string]any) (bool, string) {
 	}
 	for _, mod := range mods {
 		if mod.ID == modID {
+			if anyWorldRunning(scope) {
+				return true, "模组已启用，重启世界后生效"
+			}
 			return true, "模组已启用"
 		}
 	}
 	return false, "模组未启用"
+}
+
+// anyWorldRunning 判断房间里是否有世界正在运行，用于提示模组改动需要重启才生效。
+func anyWorldRunning(scope *Scope) bool {
+	if scope == nil || scope.Game == nil {
+		return false
+	}
+	for _, world := range scope.Worlds {
+		if scope.Game.WorldUpStatus(world.ID) {
+			return true
+		}
+	}
+	return false
 }
 
 func verifySnapshotDeleted(scope *Scope, params map[string]any) (bool, string) {

@@ -153,10 +153,11 @@ func Run() {
 	// 初始化即注册路由
 	// 业务依赖统一在 service 层构造，app 层 handler 只接收 service
 	roomSvc := roomsvc.New(userDao, roomDao, worldDao, roomSettingDao, favoriteDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager)
+	modSvc := modsvc.New(roomDao, worldDao, userDao, modInfoDao)
 
 	user.NewHandler(usersvc.New(userDao)).RegisterRoutes(r)
 	room.NewHandler(roomSvc).RegisterRoutes(r)
-	mod.NewHandler(modsvc.New(roomDao, worldDao, userDao, modInfoDao)).RegisterRoutes(r)
+	mod.NewHandler(modSvc).RegisterRoutes(r)
 	dashboard.NewHandler(dashboardsvc.New(userDao, roomDao, roomSettingDao, globalSettingDao)).RegisterRoutes(r)
 	platform.NewHandler(platformsvc.New(userDao, roomDao, worldDao, systemDao, globalSettingDao, uidMapDao, pluginDao, dstImageDao, aiManager)).RegisterRoutes(r)
 	logs.NewHandler(logssvc.New(userDao)).RegisterRoutes(r)
@@ -164,7 +165,7 @@ func Run() {
 	player.NewHandler(playersvc.New(userDao, uidMapDao, globalSettingDao)).RegisterRoutes(r)
 	cloud.NewHandler(cloudsvc.New(userDao, cloudLinkDao, cloudFavoriteMapDao, favoriteDao, roomSvc)).RegisterRoutes(r)
 
-	diagnosisSvc := diagnosissvc.New(userDao, roomDao, worldDao, roomSettingDao, systemDao, globalSettingDao, diagnosisDao, aiManager)
+	diagnosisSvc := diagnosissvc.New(userDao, roomDao, worldDao, roomSettingDao, systemDao, globalSettingDao, diagnosisDao, modSvc, aiManager)
 	diagnosis.NewHandler(diagnosisSvc).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))

@@ -7,11 +7,51 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/utils"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 )
+
+// errModInfoNotFound 表示 Steam 没有返回该 ID 的创意工坊信息（ID 不存在或已下架）。
+var errModInfoNotFound = errors.New("steam 未返回该模组的信息")
+
+// ModInfoByID 按模组 ID 查询 Steam 创意工坊信息，优先读取本地缓存。
+// 缓存未命中或已过期时回源 Steam 并写回缓存；lang 只区分 zh/en，其余取值按 zh 处理。
+// 供其它 service（如 AI 诊断工具）复用，因此直接返回模型与错误，不包装 service.Result。
+// Steam 查不到该 ID 时返回 errModInfoNotFound，调用方可据此区分“查不到”与“请求失败”。
+func (s *Service) ModInfoByID(lang string, modID int) (*models.ModInfo, error) {
+	if modID <= 0 {
+		return nil, fmt.Errorf("模组 ID 必须为正整数: %d", modID)
+	}
+	lang = normalizeModLanguage(lang)
+
+	if s.modInfoDao != nil {
+		cachedModInfo, err := s.modInfoDao.GetModInfoByID(modID, lang)
+		if err == nil && cachedModInfo != nil && checkCacheValidity(cachedModInfo.CacheTimestamp) {
+			logger.Logger.Debugf("返回模组缓存数据, modID: %d", modID)
+			return cachedModInfo, nil
+		}
+	}
+
+	data, err := searchModById(modID, lang)
+	if err != nil {
+		return nil, err
+	}
+	if len(data.Rows) == 0 {
+		return nil, fmt.Errorf("%w: %d", errModInfoNotFound, modID)
+	}
+
+	modInfo := data.Rows[0]
+	if s.modInfoDao != nil {
+		modInfo.CacheTimestamp = utils.GetTimestamp()
+		if cacheErr := s.modInfoDao.UpdateModInfo(&modInfo); cacheErr != nil {
+			logger.Logger.Errorf("更新模组缓存信息失败, err: %v", cacheErr)
+		}
+	}
+	return &modInfo, nil
+}
 
 func (s *Service) addDownloadedModInfo(mods *[]dst.DownloadedMod, lang string) error {
 	if len(*mods) == 0 {
