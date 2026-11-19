@@ -15,7 +15,6 @@ const (
 	EventKeepaliveTriggered       = "keepalive_triggered"
 	EventPlayerManage             = "player_manage"
 	EventGlobalSettingUpdated     = "global_setting_updated"
-	EventWebsocketConnected       = "websocket_connected"
 	EventOnlinePlayerUpdated      = "online_player_updated"
 	EventPluginUpdated            = "plugin_updated"
 	EventAIChatSettingUpdated     = "ai_chat_setting_updated"
@@ -37,7 +36,6 @@ var AllEventTypes = []EventInfo{
 	{Type: EventKeepaliveTriggered, ZH: "自动保活", EN: "Keepalive Triggered"},
 	{Type: EventPlayerManage, ZH: "玩家管理", EN: "Player Manage"},
 	{Type: EventGlobalSettingUpdated, ZH: "平台设置修改", EN: "Platform Settings Updated"},
-	{Type: EventWebsocketConnected, ZH: "虚拟终端连接", EN: "Websocket Connected"},
 	{Type: EventOnlinePlayerUpdated, ZH: "在线玩家变化", EN: "Online Player Updated"},
 	{Type: EventPluginUpdated, ZH: "插件配置修改", EN: "Plugin Updated"},
 	{Type: EventAIChatSettingUpdated, ZH: "房间 AI 设置修改", EN: "Room AI Setting Updated"},

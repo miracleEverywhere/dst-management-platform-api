@@ -166,6 +166,17 @@ var tools = menuItem{
 			Links:     nil,
 		},
 		{
+			ID:           609,
+			Type:         "link",
+			Section:      "",
+			Title:        "toolsAIDiagnosis",
+			To:           "/tools/ai-diagnosis",
+			Component:    "tools/ai-diagnosis",
+			Icon:         "ri-stethoscope-line",
+			BadgeContent: "Beta",
+			Links:        nil,
+		},
+		{
 			ID:        607,
 			Type:      "link",
 			Section:   "",

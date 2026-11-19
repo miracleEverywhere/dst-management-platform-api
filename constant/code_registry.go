@@ -135,6 +135,9 @@ var Registry = []Entry{
 	{Code: 5065, Const: "CodePlatformScreensFail", Module: "platform", TextKey: "get screens fail", Level: LevelWarn, Hint: "列出 screen 会话失败。确认已安装 screen 且当前用户可执行。"},
 	{Code: 5066, Const: "CodePlatformKillScreenFail", Module: "platform", TextKey: "kill screen fail", Level: LevelWarn, Hint: "结束 screen 会话失败。确认会话存在且属于当前用户。"},
 	{Code: 5067, Const: "CodePlatformWebhookTestFail", Module: "platform", TextKey: "webhook test fail", Level: LevelWarn, Hint: "Webhook 测试请求发送失败。检查目标地址可达性、证书与签名密钥。"},
+	{Code: 5068, Const: "CodePlatformGameTaskBusy", Module: "platform", TextKey: "game task busy", Level: LevelWarn, Hint: "已有游戏安装/更新任务在跑：定时自动更新、控制台更新、诊断修复与网页安装/更新共用一把互斥锁。等当前任务结束后再操作，或查看 /v3/platform/game/install/state 确认进度。"},
+	{Code: 5069, Const: "CodePlatformGameTaskStartFail", Module: "platform", TextKey: "game task start fail", Level: LevelWarn, Hint: "安装/更新脚本无法启动。确认工作目录下存在 manual_install.sh / manual_update.sh（首次启动会自动释放），且有 bash 与写入权限。"},
+	{Code: 5070, Const: "CodePlatformGameTaskNotRunning", Module: "platform", TextKey: "game task not running", Level: LevelWarn, Hint: "订阅安装/更新日志时没有可用的任务：没有正在执行的任务，进程启动后也没有执行过。先发起安装或更新再订阅。"},
 	{Code: 5091, Const: "CodePlatformDBError", Module: "platform", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 
 	// logs
@@ -197,6 +200,25 @@ var Registry = []Entry{
 	{Code: 9091, Const: "CodeCloudDBError", Module: "cloud", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 	{Code: 9092, Const: "CodeCloudLoginFail", Module: "cloud", TextKey: "cloud login fail", Level: LevelWarn, Hint: "云登录失败，常见于签发本地 token 或写入绑定信息时出错。查看 logs/runtime.log。"},
 	{Code: 9093, Const: "CodeCloudCreateFail", Module: "cloud", TextKey: "create fail", Level: LevelWarn, Hint: "创建失败，常见原因是必填字段缺失或数据库写入异常。查看响应 message 与运行日志。"},
+	// diagnosis
+	{Code: 10001, Const: "CodeDiagnosisBadRequest", Module: "diagnosis", TextKey: "bad request", Level: LevelWarn, Hint: "诊断请求参数缺失或取值非法。核对 scope、roomID、actionIDs 等字段。"},
+	{Code: 10002, Const: "CodeDiagnosisDescriptionTooLong", Module: "diagnosis", TextKey: "diagnosis description too long", Level: LevelWarn, Hint: "异常描述最长 1000 个字符。精简描述后重新发起诊断。"},
+	{Code: 10021, Const: "CodeDiagnosisNoPermission", Module: "diagnosis", TextKey: "permission needed", Level: LevelAuth, Hint: "当前账号没有该房间的诊断权限，或尝试执行管理员专属动作。"},
+	{Code: 10041, Const: "CodeDiagnosisNotFound", Module: "diagnosis", TextKey: "diagnosis not found", Level: LevelWarn, Hint: "诊断会话不存在或已被清理。重新发起一次诊断。"},
+	{Code: 10042, Const: "CodeDiagnosisExpired", Module: "diagnosis", TextKey: "diagnosis expired", Level: LevelWarn, Hint: "诊断会话已过期，修复动作不能继续执行。重新诊断后再操作。"},
+	{Code: 10043, Const: "CodeDiagnosisNotReady", Module: "diagnosis", TextKey: "diagnosis not ready", Level: LevelWarn, Hint: "诊断仍在进行或尚未成功结束。等待诊断完成后再执行修复。"},
+	{Code: 10061, Const: "CodeDiagnosisAIConfigMissing", Module: "diagnosis", TextKey: "diagnosis ai config missing", Level: LevelWarn, Hint: "诊断未配置专用大模型。先在工具-AI 诊断-模型设置中填写 Chat Base URL、API Key 与模型名；诊断与 AI 对话配置相互独立，不会回退。"},
+	{Code: 10062, Const: "CodeDiagnosisBusy", Module: "diagnosis", TextKey: "diagnosis busy", Level: LevelWarn, Hint: "同一账号或房间已有诊断在运行，或请求过于频繁。稍后重试。"},
+	{Code: 10063, Const: "CodeDiagnosisAIConfigInvalid", Module: "diagnosis", TextKey: "diagnosis ai config invalid", Level: LevelWarn, Hint: "诊断专用大模型配置不完整或不合法。检查 Base URL、API Key 与模型名。"},
+	{Code: 10064, Const: "CodeDiagnosisActionInvalid", Module: "diagnosis", TextKey: "diagnosis action invalid", Level: LevelWarn, Hint: "动作不在本次诊断的候选中，或动作 ID 不受支持。刷新诊断结果后重试。"},
+	{Code: 10065, Const: "CodeDiagnosisActionPrecondition", Module: "diagnosis", TextKey: "diagnosis action precondition", Level: LevelWarn, Hint: "动作参数或当前服务器状态不满足执行条件。重新诊断并确认证据。"},
+	{Code: 10066, Const: "CodeDiagnosisConfirmRequired", Module: "diagnosis", TextKey: "diagnosis confirm required", Level: LevelWarn, Hint: "高风险动作需要二次确认，确认文本必须与房间名或动作短语一致。"},
+	{Code: 10067, Const: "CodeDiagnosisApplyBusy", Module: "diagnosis", TextKey: "diagnosis apply busy", Level: LevelWarn, Hint: "该房间已有修复任务在执行。等待完成后再提交。"},
+	{Code: 10091, Const: "CodeDiagnosisAIFail", Module: "diagnosis", TextKey: "diagnosis ai fail", Level: LevelFatal, Hint: "调用大模型失败。检查 Base URL、API Key、模型是否支持 tools，或稍后重试。"},
+	{Code: 10092, Const: "CodeDiagnosisApplyFail", Module: "diagnosis", TextKey: "diagnosis apply fail", Level: LevelWarn, Hint: "修复动作执行失败。查看动作结果与 logs/runtime.log 中的具体错误。"},
+	{Code: 10093, Const: "CodeDiagnosisVerifyFail", Module: "diagnosis", TextKey: "diagnosis verify fail", Level: LevelWarn, Hint: "动作已执行但复检未通过。重新诊断，确认是否需要人工介入。"},
+	{Code: 10094, Const: "CodeDiagnosisDBError", Module: "diagnosis", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录磁盘空间与文件权限。"},
+	{Code: 10095, Const: "CodeDiagnosisInternalError", Module: "diagnosis", TextKey: "diagnosis internal error", Level: LevelFatal, Hint: "诊断协程内部异常（panic）被兜底终止。查看 logs/runtime.log 中的调用栈，按提示重新发起诊断。"},
 }
 
 var codeIndex = func() map[int]Entry {

@@ -13,5 +13,7 @@ var (
 	JwtSecret        = "jwt_secret"
 	CloudKey         = "cloud_key"
 	AIBaseSettingKey = "ai_base_setting"
-	ReadmeKey        = "readme"
+	// DiagnosisAISettingKey 保存 AI 诊断专用的 LLM 配置。
+	DiagnosisAISettingKey = "ai_diagnosis_setting"
+	ReadmeKey             = "readme"
 )

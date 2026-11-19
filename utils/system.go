@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"dst-management-platform-api/constant"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -844,28 +845,37 @@ func isSubPath(path, mountpoint string) bool {
 const fileTailChunkSize = 32 * 1024
 
 // GetFileLastNLines 获取文件的最后N行，返回字符串切片。
-// 从文件末尾按块反向读取，避免日志文件较大时每次都从文件头扫描整个文件。
 func GetFileLastNLines(filename string, n int) []string {
-	if n <= 0 {
-		return []string{}
-	}
+	lines, _ := GetFileLastNLinesWithOffset(filename, n)
+	return lines
+}
 
+// GetFileLastNLinesWithOffset 获取文件的最后N行，并返回读取时的文件大小。
+// 调用方可以从该偏移继续读取后续追加的内容；n <= 0 时只返回文件大小。
+// 从文件末尾按块反向读取，避免日志文件较大时每次都从文件头扫描整个文件；
+// 累计读取超过 constant.FileTailMaxBytes 时停止，避免「无换行大文件」被整体读入。
+func GetFileLastNLinesWithOffset(filename string, n int) ([]string, int64) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return []string{}
+		return []string{}, 0
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
-	if err != nil || fileInfo.Size() == 0 {
-		return []string{}
+	if err != nil {
+		return []string{}, 0
+	}
+	size := fileInfo.Size()
+	if n <= 0 || size == 0 {
+		return []string{}, size
 	}
 
 	var (
 		chunks       [][]byte
-		pos          = fileInfo.Size()
+		pos          = size
 		newlineCount int
 		totalSize    int
+		byteLimitHit bool
 	)
 
 	// 从后往前读取，直到积累的换行数足够覆盖最后 N 行。
@@ -880,7 +890,7 @@ func GetFileLastNLines(filename string, n int) []string {
 		chunk := make([]byte, readSize)
 		readN, readErr := file.ReadAt(chunk, pos)
 		if readErr != nil && readErr != io.EOF {
-			return []string{}
+			return []string{}, 0
 		}
 		chunk = chunk[:readN]
 		chunks = append(chunks, chunk)
@@ -892,6 +902,11 @@ func GetFileLastNLines(filename string, n int) []string {
 			}
 		}
 		if newlineCount > n {
+			break
+		}
+		if totalSize >= constant.FileTailMaxBytes {
+			// 命中字节上限时才可能出现「首行是半行」，下面会把它丢掉
+			byteLimitHit = true
 			break
 		}
 	}
@@ -907,6 +922,10 @@ func GetFileLastNLines(filename string, n int) []string {
 	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
 		lines = lines[:len(lines)-1]
 	}
+	if byteLimitHit && len(lines) > 0 {
+		// 因字节上限提前停止时，缓冲区开头不是行边界，首行可能是不完整的
+		lines = lines[1:]
+	}
 	if len(lines) > n {
 		lines = lines[len(lines)-n:]
 	}
@@ -917,7 +936,7 @@ func GetFileLastNLines(filename string, n int) []string {
 		result = append(result, string(line))
 	}
 
-	return result
+	return result, size
 }
 
 // GetFileFirstNLines 获取一个文件的前n行，返回字符串切片

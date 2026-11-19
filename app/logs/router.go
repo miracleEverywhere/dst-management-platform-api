@@ -14,6 +14,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		logs.Use(middleware.TokenCheck())
 		{
 			logs.GET("/content", h.contentGet)
+			logs.GET("/content/stream", h.contentStreamGet)
 			logs.GET("/history/list", h.historyListGet)
 			logs.GET("/history/content", h.historyContentGet)
 			logs.GET("/clean/info", middleware.AdminOnly(), h.cleanInfoGet)

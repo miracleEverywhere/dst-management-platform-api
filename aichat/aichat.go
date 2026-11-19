@@ -17,7 +17,7 @@ type Manager struct {
 	roomAISettingDao *dao.RoomAISettingDAO
 	systemDao        *dao.SystemDAO
 	pluginDao        *dao.PluginDAO
-	client           *aiClient
+	client           *ChatClient
 	ctx              context.Context
 	cancel           context.CancelFunc
 	lifecycle        sync.Mutex
@@ -40,14 +40,6 @@ type EmbeddingConfig struct {
 	APIKey     string
 	Model      string
 	Dimensions int
-}
-
-// EmbeddingStats 向量索引统计信息
-type EmbeddingStats struct {
-	TotalDocs       int            `json:"totalDocs"`
-	TotalCategories int            `json:"totalCategories"`
-	VectorDim       int            `json:"vectorDim"`
-	Categories      map[string]int `json:"categories"`
 }
 
 // NewManager 创建 AI 对话服务管理器
@@ -101,11 +93,6 @@ func (m *Manager) CancelEmbeddingIndexBuild() bool {
 	return true
 }
 
-// GetEmbeddingStats 获取向量索引统计信息
-func (m *Manager) GetEmbeddingStats(config EmbeddingConfig) EmbeddingStats {
-	return m.getEmbeddingStats(config)
-}
-
 // GetEmbeddingIndexDimensions 返回磁盘上已有向量索引的维度，没有索引时返回 -1。
 // 该值来自索引文件本身，与当前 Embedding 配置无关，用于判断是否需要重建索引。
 func (m *Manager) GetEmbeddingIndexDimensions() int {
@@ -115,11 +102,6 @@ func (m *Manager) GetEmbeddingIndexDimensions() int {
 // BuildKeywordIndex 手动构建关键词搜索索引。force 为 true 时强制重建。
 func (m *Manager) BuildKeywordIndex(force bool) error {
 	return m.buildKeywordIndex(force)
-}
-
-// UnloadKeywordIndex 释放关键词搜索索引占用的内存。下次 Search 时会自动从磁盘重新加载。
-func (m *Manager) UnloadKeywordIndex() {
-	m.unloadKeywordIndex()
 }
 
 // ValidateModelConfig 校验 AI 模型配置参数

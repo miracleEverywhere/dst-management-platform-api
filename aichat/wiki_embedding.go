@@ -63,8 +63,6 @@ type wikiMeta struct {
 type embeddingIndexMeta struct {
 	Model      string `json:"model"`
 	Dimensions int    `json:"dimensions"`
-	TotalDocs  int    `json:"totalDocs"`
-	UpdatedAt  string `json:"updatedAt"`
 }
 
 // ========== 向量搜索引擎 ==========
@@ -131,14 +129,9 @@ func (s *embeddingWikiSearcher) configMismatch() string {
 	return ""
 }
 
-// NeedsSetup 是否需要构建索引
+// needsSetup 是否需要构建索引
 func (s *embeddingWikiSearcher) needsSetup() bool {
-	s.mu.RLock()
-	loaded := s.loaded
-	s.mu.RUnlock()
-	if !loaded {
-		s.load()
-	}
+	s.load()
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -148,8 +141,8 @@ func (s *embeddingWikiSearcher) needsSetup() bool {
 	return s.configMismatch() != ""
 }
 
-// Search 向量语义搜索
-func (s *embeddingWikiSearcher) search(query string, categories []string, maxResults int, minScore float64) ([]wikiResult, error) {
+// search 向量语义搜索
+func (s *embeddingWikiSearcher) search(query string, maxResults int, minScore float64) ([]wikiResult, error) {
 	s.mu.RLock()
 	if !s.loaded {
 		s.mu.RUnlock()
@@ -197,22 +190,6 @@ func (s *embeddingWikiSearcher) search(query string, categories []string, maxRes
 		if !ok || meta.ContentLength < embedMinContentLength {
 			continue
 		}
-		if len(categories) > 0 {
-			catSet := make(map[string]struct{}, len(categories))
-			for _, c := range categories {
-				catSet[c] = struct{}{}
-			}
-			hasCat := false
-			for _, c := range meta.Categories {
-				if _, ok := catSet[c]; ok {
-					hasCat = true
-					break
-				}
-			}
-			if !hasCat {
-				continue
-			}
-		}
 
 		sim := cosineSimilarity(queryVector, docVec)
 		if sim >= minScore {
@@ -233,8 +210,6 @@ func (s *embeddingWikiSearcher) search(query string, categories []string, maxRes
 			Filename:   meta.Filename,
 			Categories: meta.Categories,
 			Content:    meta.Content,
-			ContentLen: meta.ContentLength,
-			Score:      roundFloat(scores[i].score, 4),
 		})
 	}
 
@@ -450,8 +425,6 @@ func (s *embeddingWikiSearcher) save() error {
 	s.meta = embeddingIndexMeta{
 		Model:      s.model,
 		Dimensions: s.indexDimensions(),
-		TotalDocs:  len(s.embeddings),
-		UpdatedAt:  time.Now().Format(time.RFC3339),
 	}
 
 	data, err := json.Marshal(s.metadata)
@@ -609,7 +582,7 @@ func (s *embeddingWikiSearcher) prepareBatch(files []string) (texts []string, me
 		}
 		rawContent := string(content)
 
-		title := extractWikiTitle(rawContent, filepath.Base(fp))
+		title := wikiPageName(filepath.Base(fp))
 		categories := extractWikiCategories(rawContent)
 		cleanText := preprocessWikiDoc(rawContent, title)
 		strippedContent := stripWikiMeta(rawContent)
@@ -628,11 +601,6 @@ func (s *embeddingWikiSearcher) prepareBatch(files []string) (texts []string, me
 }
 
 // ========== 预处理 ==========
-
-// extractWikiTitle 从文件名提取条目名称
-func extractWikiTitle(_ string, fallback string) string {
-	return wikiPageName(fallback)
-}
 
 // extractWikiCategories 从固定的“分类”章节提取分类
 func extractWikiCategories(rawContent string) []string {
@@ -705,79 +673,10 @@ func readEmbeddingIndexMeta() (embeddingIndexMeta, error) {
 	return meta, nil
 }
 
-// firstEmbeddingDimensions 读取 embeddings.json 中第一个向量的长度。
-// 使用流式解析，避免为了取维度而加载整个索引。没有索引时返回 0。
-func firstEmbeddingDimensions() int {
-	file, err := os.Open(filepath.Join(embeddingDir, "embeddings.json"))
-	if err != nil {
-		return 0
-	}
-	defer file.Close()
-
-	decoder := json.NewDecoder(file)
-	if _, err = decoder.Token(); err != nil { // 左花括号
-		return 0
-	}
-	for decoder.More() {
-		if _, err = decoder.Token(); err != nil { // 文件名
-			return 0
-		}
-		var vector []float64
-		if err = decoder.Decode(&vector); err != nil {
-			return 0
-		}
-		if len(vector) > 0 {
-			return len(vector)
-		}
-	}
-	return 0
-}
-
 // embeddingIndexDimensions 返回已构建向量索引的维度，没有索引时返回 -1。
-// 优先使用索引元数据；旧版本索引没有元数据文件时回退到读取第一个向量的长度。
 func embeddingIndexDimensions() int {
 	if meta, err := readEmbeddingIndexMeta(); err == nil && meta.Dimensions > 0 {
 		return meta.Dimensions
 	}
-	if dim := firstEmbeddingDimensions(); dim > 0 {
-		return dim
-	}
 	return -1
-}
-
-// ================================================================
-// 索引统计
-// ================================================================
-
-// GetStats 获取索引统计信息
-func (s *embeddingWikiSearcher) getStats() EmbeddingStats {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if !s.loaded {
-		s.mu.RUnlock()
-		s.load()
-		s.mu.RLock()
-	}
-
-	stats := EmbeddingStats{
-		TotalDocs:  len(s.embeddings),
-		Categories: make(map[string]int),
-	}
-
-	for _, meta := range s.metadata {
-		for _, c := range meta.Categories {
-			stats.Categories[c]++
-		}
-	}
-	stats.TotalCategories = len(stats.Categories)
-
-	if len(s.embeddings) > 0 {
-		for _, v := range s.embeddings {
-			stats.VectorDim = len(v)
-			break
-		}
-	}
-
-	return stats
 }

@@ -16,15 +16,13 @@ import (
 )
 
 // AISettingPutInput 房间 AI 设置请求体。
-// 同时接受平铺字段与旧版 {setting: {...}} 结构，嵌套对象也只解析房间级字段。
 type AISettingPutInput struct {
-	RoomID         int                   `json:"roomID"`
-	Enabled        bool                  `json:"enabled"`
-	AllowChat      bool                  `json:"allowChat"`
-	Prefix         string                `json:"prefix"`
-	MaxResults     int                   `json:"maxResults"`
-	MaxReplyLength int                   `json:"maxReplyLength"`
-	Setting        *models.RoomAISetting `json:"setting"`
+	RoomID         int    `json:"roomID"`
+	Enabled        bool   `json:"enabled"`
+	AllowChat      bool   `json:"allowChat"`
+	Prefix         string `json:"prefix"`
+	MaxResults     int    `json:"maxResults"`
+	MaxReplyLength int    `json:"maxReplyLength"`
 }
 
 // AIBaseSettingResponse AI 基础设置响应，附带磁盘上已有向量索引的维度（没有索引时为 -1）
@@ -70,11 +68,6 @@ func (s *Service) AISettingPut(actor service.Actor, input AISettingPutInput) ser
 		MaxResults:     input.MaxResults,
 		MaxReplyLength: input.MaxReplyLength,
 	}
-	// 兼容旧版 {setting: {...}} 请求体，嵌套对象也只能解析房间级字段。
-	if input.Setting != nil {
-		setting = *input.Setting
-	}
-
 	if !s.hasPermission(actor, strconv.Itoa(setting.RoomID)) {
 		return service.Fail(constant.CodeToolsNoPermission)
 	}
@@ -159,7 +152,10 @@ func (s *Service) AIBaseSettingPut(actor service.Actor, setting models.AIBaseSet
 
 // AIKeywordIndexRebuild 重建关键词索引
 func (s *Service) AIKeywordIndexRebuild() service.Result {
-	_ = s.aiManager.BuildKeywordIndex(true)
+	if err := s.aiManager.BuildKeywordIndex(true); err != nil {
+		logger.Logger.Errorf("重建关键词索引失败, err: %v", err)
+		return service.Fail(constant.CodeToolsUpdateFail)
+	}
 
 	return service.Msg("update success", nil)
 }
@@ -174,7 +170,7 @@ func (s *Service) AIEmbeddingIndexRebuild() service.Result {
 
 	baseURL := strings.TrimSpace(setting.EmbeddingBaseURL)
 	model := strings.TrimSpace(setting.EmbeddingModel)
-	if baseURL == "" || setting.EmbeddingApiKey == "" || model == "" {
+	if baseURL == "" || model == "" {
 		return service.Fail(constant.CodeToolsEmbeddingConfigIncomplete)
 	}
 	if !utils.IsValidURL(baseURL) {

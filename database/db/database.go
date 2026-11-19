@@ -62,6 +62,8 @@ var AllTables = []any{
 	&models.Favorite{},
 	&models.CloudLink{},
 	&models.CloudFavoriteMap{},
+	&models.DiagnosisRecord{},
+	&models.DiagnosisActionRecord{},
 }
 
 func AutoMigrate() {

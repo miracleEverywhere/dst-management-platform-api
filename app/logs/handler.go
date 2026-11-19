@@ -6,7 +6,9 @@ import (
 	"dst-management-platform-api/logger"
 	"dst-management-platform-api/middleware"
 	"dst-management-platform-api/service"
+	"encoding/json"
 	nethttp "net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +28,63 @@ func (h *Handler) contentGet(c *gin.Context) {
 	}
 
 	message.Respond(c, h.svc.Content(middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.LogType, reqForm.Lines))
+}
+
+// contentStreamGet 以 SSE 推送当前日志：先发送尾部快照，随后持续发送新增的完整行。
+func (h *Handler) contentStreamGet(c *gin.Context) {
+	type ReqForm struct {
+		RoomID  int    `json:"roomID" form:"roomID"`
+		WorldID int    `json:"worldID" form:"worldID"`
+		LogType string `json:"logType" form:"logType"`
+		Lines   int    `json:"lines" form:"lines"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodeLogsBadRequest))
+		return
+	}
+
+	ch, result := h.svc.ContentStream(c.Request.Context(), middleware.Actor(c), reqForm.RoomID, reqForm.WorldID, reqForm.LogType, reqForm.Lines)
+	if result.Code != nethttp.StatusOK {
+		message.Respond(c, result)
+		return
+	}
+
+	header := c.Writer.Header()
+	header.Set("Content-Type", "text/event-stream; charset=utf-8")
+	header.Set("Cache-Control", "no-cache, no-transform")
+	header.Set("Connection", "keep-alive")
+	header.Set("X-Accel-Buffering", "no")
+	c.Writer.WriteHeader(nethttp.StatusOK)
+	flusher := c.Writer.(nethttp.Flusher)
+	_, _ = c.Writer.WriteString("retry: 3000\n\n")
+	flusher.Flush()
+
+	heartbeat := time.NewTicker(15 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case chunk, ok := <-ch:
+			if !ok {
+				return
+			}
+			payload, err := json.Marshal(chunk)
+			if err != nil {
+				logger.Logger.Warnf("序列化日志事件失败: %v", err)
+				continue
+			}
+			_, _ = c.Writer.WriteString("event: log\n")
+			_, _ = c.Writer.WriteString("data: " + string(payload) + "\n\n")
+			flusher.Flush()
+		case <-heartbeat.C:
+			_, _ = c.Writer.WriteString(": ping\n\n")
+			flusher.Flush()
+		}
+	}
 }
 
 func (h *Handler) historyListGet(c *gin.Context) {

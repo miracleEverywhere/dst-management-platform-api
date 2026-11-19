@@ -80,10 +80,16 @@ func (s *Service) ExecGame(actor service.Actor, execType string, roomID, worldID
 		}
 
 		go func() {
-			cache.DstUpdating = true
+			// 与网页安装/更新、定时更新、诊断修复共用一把锁
+			if !cache.GameTask.Acquire(cache.GameTaskActionUpdate, false) {
+				logger.Logger.Info("已有游戏安装或更新任务在跑，跳过控制台更新")
+				return
+			}
 			updateCmd := fmt.Sprintf("cd ~/steamcmd && ./steamcmd.sh +login anonymous +force_install_dir ~/dst +app_update 343050 validate +quit")
-			_ = utils.BashCMD(updateCmd)
-			cache.DstUpdating = false
+			func() {
+				defer cache.GameTask.Release()
+				_ = utils.BashCMD(updateCmd)
+			}()
 
 			// 如果需要重启，则重启激活的房间
 			var globalSettings models.GlobalSetting

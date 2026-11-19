@@ -1,0 +1,1 @@
+import{Y as e,dt as t,lt as n}from"./runtime-core.esm-bundler-CaNi8Aqu.js";import{c as r}from"./theme-XrvvVkh_.js";var i=r({eager:Boolean},`lazy`);function a(r,i){let a=n(!1),o=t(()=>a.value||r.eager||i.value);e(i,()=>a.value=!0);function s(){r.eager||(a.value=!1)}return{isBooted:a,hasContent:o,onAfterLeave:s}}export{a as n,i as t};

@@ -33,11 +33,12 @@ var tables = map[string]*i18n.BaseI18n{
 	"tools":     &i18n.Tools.BaseI18n,
 	"player":    &i18n.Player.BaseI18n,
 	"cloud":     &i18n.Cloud.BaseI18n,
+	"diagnosis": &i18n.Diagnosis.BaseI18n,
 }
 
 var moduleNames = map[string]string{
 	"framework": "框架层", "user": "用户", "room": "房间", "mod": "模组", "dashboard": "控制台",
-	"platform": "平台", "logs": "日志", "tools": "工具", "player": "玩家", "cloud": "云服务",
+	"platform": "平台", "logs": "日志", "tools": "工具", "player": "玩家", "cloud": "云服务", "diagnosis": "AI 诊断",
 }
 
 var levelNames = map[constant.Level]string{
@@ -119,7 +120,8 @@ func collectUsages() (map[string][]string, error) {
 					if !ok || pkg.Name != "constant" || !strings.HasPrefix(sel.Sel.Name, "Code") {
 						return true
 					}
-					usages[sel.Sel.Name] = append(usages[sel.Sel.Name], path+":"+fn.Name.Name)
+					// 出现位置统一用 / 分隔，保证 Linux/macOS 与 Windows 生成的文档一致
+					usages[sel.Sel.Name] = append(usages[sel.Sel.Name], filepath.ToSlash(path)+":"+fn.Name.Name)
 					return true
 				})
 			}
@@ -197,7 +199,7 @@ func verify(usages map[string][]string) []string {
 
 // codeRange 返回模块对应的号段，框架层单独一小段。
 func codeRange(module string) (int, int) {
-	order := []string{"user", "room", "mod", "dashboard", "platform", "logs", "tools", "player", "cloud"}
+	order := []string{"user", "room", "mod", "dashboard", "platform", "logs", "tools", "player", "cloud", "diagnosis"}
 	for i, m := range order {
 		if m == module {
 			base := (i + 1) * 1000
@@ -221,7 +223,7 @@ func render(usages map[string][]string) string {
 
 	b.WriteString("## 号段\n\n| 号段 | 模块 |\n|---|---|\n")
 	b.WriteString("| 0-999 | 框架层（token/权限/限流/参数） |\n")
-	for i, m := range []string{"user", "room", "mod", "dashboard", "platform", "logs", "tools", "player", "cloud"} {
+	for i, m := range []string{"user", "room", "mod", "dashboard", "platform", "logs", "tools", "player", "cloud", "diagnosis"} {
 		base := (i + 1) * 1000
 		fmt.Fprintf(&b, "| %d-%d | %s |\n", base, base+999, moduleNames[m])
 	}

@@ -4,6 +4,7 @@ import (
 	"dst-management-platform-api/aichat"
 	"dst-management-platform-api/app/cloud"
 	"dst-management-platform-api/app/dashboard"
+	"dst-management-platform-api/app/diagnosis"
 	"dst-management-platform-api/app/logs"
 	"dst-management-platform-api/app/mod"
 	"dst-management-platform-api/app/platform"
@@ -21,6 +22,7 @@ import (
 	"dst-management-platform-api/scheduler"
 	cloudsvc "dst-management-platform-api/service/cloud"
 	dashboardsvc "dst-management-platform-api/service/dashboard"
+	diagnosissvc "dst-management-platform-api/service/diagnosis"
 	logssvc "dst-management-platform-api/service/logs"
 	modsvc "dst-management-platform-api/service/mod"
 	platformsvc "dst-management-platform-api/service/platform"
@@ -75,6 +77,7 @@ func Run() {
 	modInfoDao := dao.NewModInfoDAO(db.DB)
 	cloudLinkDao := dao.NewCloudLinkDAO(db.DB)
 	cloudFavoriteMapDao := dao.NewCloudFavoriteMapDAO(db.DB)
+	diagnosisDao := dao.NewDiagnosisDAO(db.DB)
 
 	// 初始化缓存
 	cache.InitCache()
@@ -118,6 +121,17 @@ func Run() {
 			gzip.WithExcludedPaths([]string{
 				"/" + constant.ApiVersion + "/tools/backup/download",
 				"/" + constant.ApiVersion + "/cloud/archives",
+				// SSE 响应必须逐条到达浏览器；gzip 会先缓冲到最小压缩长度，导致日志流长时间无输出。
+				"/" + constant.ApiVersion + "/logs/content/stream",
+				// 游戏安装/更新的输出是一条长时间几乎静默的流，gzip 缓冲会让进度完全看不到。
+				"/" + constant.ApiVersion + "/platform/game/install/stream",
+			}),
+			// 诊断的两条 SSE 流同样要逐条送达：不足 1KB 时 gzip 中间件会把数据留在内部缓冲，
+			// Flush 也不会写出，事件被整体延迟；流在 1KB 前结束时会写出「gzip 头 + 明文」的损坏响应。
+			// 这里只排除事件流本身，诊断的普通 JSON 接口仍然压缩。
+			gzip.WithExcludedPathsRegexs([]string{
+				"^/" + constant.ApiVersion + "/diagnosis/[^/]+/events$",
+				"^/" + constant.ApiVersion + "/diagnosis/[^/]+/apply/events$",
 			}),
 			gzip.WithExcludedExtensions([]string{
 				".woff", ".woff2", ".ttf",
@@ -149,6 +163,9 @@ func Run() {
 	tools.NewHandler(toolssvc.New(userDao, roomDao, worldDao, roomSettingDao, dstImageDao, mapImageDao, systemDao, roomAISettingDao, aiManager)).RegisterRoutes(r)
 	player.NewHandler(playersvc.New(userDao, uidMapDao, globalSettingDao)).RegisterRoutes(r)
 	cloud.NewHandler(cloudsvc.New(userDao, cloudLinkDao, cloudFavoriteMapDao, favoriteDao, roomSvc)).RegisterRoutes(r)
+
+	diagnosisSvc := diagnosissvc.New(userDao, roomDao, worldDao, roomSettingDao, systemDao, globalSettingDao, diagnosisDao, aiManager)
+	diagnosis.NewHandler(diagnosisSvc).RegisterRoutes(r)
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 

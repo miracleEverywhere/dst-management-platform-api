@@ -172,3 +172,27 @@ func (d *SystemDAO) UpdateAIBaseSetting(setting *models.AIBaseSetting) error {
 	}
 	return d.Set(models.AIBaseSettingKey, string(data))
 }
+
+func (d *SystemDAO) GetAIDiagnosisSetting() (*models.DiagnosisAISetting, error) {
+	value, err := d.Get(models.DiagnosisAISettingKey)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return &models.DiagnosisAISetting{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var setting models.DiagnosisAISetting
+	if err = json.Unmarshal([]byte(value.Value), &setting); err != nil {
+		return nil, err
+	}
+	return &setting, nil
+}
+
+func (d *SystemDAO) UpdateAIDiagnosisSetting(setting *models.DiagnosisAISetting) error {
+	data, err := json.Marshal(setting)
+	if err != nil {
+		return err
+	}
+	return d.Set(models.DiagnosisAISettingKey, string(data))
+}
