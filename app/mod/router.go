@@ -29,7 +29,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			mod.POST("/delete/multi", h.deletePostMulti)
 			mod.DELETE("/delete/acf", h.acfDelete)
 			// 全局屏蔽名单对所有集群生效，只允许管理员修改
-			mod.GET("/banned", middleware.AdminOnly(), h.bannedModsGet)
+			mod.GET("/banned", h.bannedModsGet)
 			mod.PUT("/banned", middleware.AdminOnly(), h.bannedModsPut)
 		}
 	}
