@@ -61,7 +61,7 @@ func checkDstLobbyRoom(urls []string, clusterName string) ([]Room, error) {
 	)
 
 	client := &nethttp.Client{
-		Timeout: constant.HttpTimeout * time.Second,
+		Timeout: constant.KleiLobbyTimeout * time.Second,
 	}
 
 	for _, url := range urls {

@@ -78,6 +78,16 @@ type lobbyDetailResponse struct {
 	GET []lobbyRoomJSON `json:"GET"`
 }
 
+// fetchLobbyRoomsLimited 在全局并发上限内拉取区域列表：
+// 列表接口单次下载量大（解压后 0.5~12MB），多区域同时下载会互相抢带宽，
+// 这里用 Service 上的信号量限制同时进行的下载数量，后台刷新同样受限。
+func (s *Service) fetchLobbyRoomsLimited(region string) ([]LobbyRoom, error) {
+	s.lobbyFetchGuard <- struct{}{}
+	defer func() { <-s.lobbyFetchGuard }()
+
+	return s.fetchLobbyRooms(region)
+}
+
 // fetchLobbyRooms 拉取指定区域的大厅房间列表
 func (s *Service) fetchLobbyRooms(region string) ([]LobbyRoom, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constant.KleiLobbyTimeout*time.Second)

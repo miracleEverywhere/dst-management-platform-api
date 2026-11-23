@@ -46,8 +46,11 @@ const KleiLobbyToken = "pds-g^KU_JpEFW0P3^GLDPpmMYhgm/Bd254Xwi9MqRouHutahdIfGzv4
 // KleiLobbyGameID 大厅详情请求体中的 __gameId
 const KleiLobbyGameID = "DontStarveTogether"
 
-// KleiLobbyTimeout Klei 大厅请求超时时间（秒）
-const KleiLobbyTimeout = 15
+// KleiLobbyTimeout Klei 大厅请求超时时间（秒）。
+// 区域列表的下载量远大于普通接口：压缩后 ap-east-1 约 0.85MB、ap-southeast-1 约 2.2MB，
+// 解压后分别约 5MB、12MB；跨境慢链路（实测约 100KB/s）下单区域就要 2~30 秒，
+// 取 15 秒会让东亚/东南亚稳定超时，因此放宽到 60 秒。
+const KleiLobbyTimeout = 60
 
 // Klei 大厅区域，Klei 可能随时调整，改动时同步前端区域展示
 const (

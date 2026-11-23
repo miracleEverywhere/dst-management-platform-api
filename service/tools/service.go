@@ -29,6 +29,7 @@ type Service struct {
 	roomAISettingDao *dao.RoomAISettingDAO
 	aiManager        *aichat.Manager
 	lobbyCache       *lobbyCache
+	lobbyFetchGuard  chan struct{}
 }
 
 // New 创建工具模块 service
@@ -44,6 +45,7 @@ func New(userDao *dao.UserDAO, roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, roo
 		roomAISettingDao: roomAISettingDao,
 		aiManager:        aiManager,
 		lobbyCache:       newLobbyCache(),
+		lobbyFetchGuard:  make(chan struct{}, lobbyFetchConcurrency),
 	}
 }
 

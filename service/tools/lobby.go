@@ -24,6 +24,10 @@ const (
 	lobbyCacheTTL = 60 * time.Second
 	// lobbyMinRefreshInterval 两次强制刷新同一区域的最小间隔
 	lobbyMinRefreshInterval = 10 * time.Second
+	// lobbyFetchConcurrency 同时下载的区域数量上限：Klei CDN 单个区域解压后可达 12MB，
+	// 多个区域一起下载会互相抢出口带宽（实测四区域并发时单区域耗时从 9 秒涨到 26 秒），
+	// 限制并发反而更快也更稳。
+	lobbyFetchConcurrency = 2
 )
 
 // lobbyRegions Klei 大厅支持的区域，顺序即前端区域选择的展示顺序
@@ -150,7 +154,7 @@ func (s *Service) LobbySearch(input LobbySearchInput) service.Result {
 		go func(index int, region string) {
 			defer wg.Done()
 
-			rooms, fetchedAt, err := s.lobbyCache.rooms(region, input.Refresh, s.fetchLobbyRooms)
+			rooms, fetchedAt, err := s.lobbyCache.rooms(region, input.Refresh, s.fetchLobbyRoomsLimited)
 			results[index] = regionResult{
 				region:    region,
 				rooms:     rooms,
