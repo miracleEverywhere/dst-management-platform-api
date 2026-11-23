@@ -31,6 +31,11 @@ const (
 	maxModDescriptionRunes = 600
 )
 
+// gameLogTimeNote 随 game 日志一起返回，说明行首时间戳的语义。
+// DST 的 server_log.txt 用 [HH:MM:SS] 记录世界启动后经过的时间，满 24 小时后重新从 00:00:00 计数，
+// 模型若把它当成墙钟时间会误判事件先后，所以在这里贴着数据提示一次。
+const gameLogTimeNote = "行首 [HH:MM:SS] 是世界启动后经过的时间，不是墙钟时间且不含日期；满 24 小时后从 00:00:00 重新计数，回绕之后的时间视为更晚发生。读取多个世界时各自从自己的启动时刻计时，跨世界不能直接比较时间先后。"
+
 var (
 	secretPattern = regexp.MustCompile(`(?i)(cluster[_-]?token|cluster[_-]?password|password|passwd|api[_-]?key|authorization|secret)\s*[:=]\s*[^\s,;]+`)
 	bearerPattern = regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._\-]+`)
@@ -541,6 +546,9 @@ func (s *Service) toolLogs(session *Session, current *Scope, raw json.RawMessage
 		"source":    source,
 		"lines":     filtered,
 		"truncated": truncated,
+	}
+	if args.Scope == "game" {
+		data["timeNote"] = gameLogTimeNote
 	}
 	return data, &Evidence{
 		Tool:      "get_logs",
