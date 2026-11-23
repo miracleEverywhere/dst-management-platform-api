@@ -58,6 +58,7 @@ var AllTables = []any{
 	&models.DstImage{},
 	&models.RoomAISetting{},
 	&models.ModInfo{},
+	&models.BannedMod{},
 	&models.MapImage{},
 	&models.Favorite{},
 	&models.CloudLink{},

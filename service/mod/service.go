@@ -15,19 +15,21 @@ import (
 
 // Service 模组模块业务实现，不依赖 gin
 type Service struct {
-	roomDao    *dao.RoomDAO
-	worldDao   *dao.WorldDAO
-	userDao    *dao.UserDAO
-	modInfoDao *dao.ModInfoDAO
+	roomDao      *dao.RoomDAO
+	worldDao     *dao.WorldDAO
+	userDao      *dao.UserDAO
+	modInfoDao   *dao.ModInfoDAO
+	bannedModDao *dao.BannedModDAO
 }
 
 // New 创建模组模块 service
-func New(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, userDao *dao.UserDAO, modInfoDao *dao.ModInfoDAO) *Service {
+func New(roomDao *dao.RoomDAO, worldDao *dao.WorldDAO, userDao *dao.UserDAO, modInfoDao *dao.ModInfoDAO, bannedModDao *dao.BannedModDAO) *Service {
 	return &Service{
-		roomDao:    roomDao,
-		worldDao:   worldDao,
-		userDao:    userDao,
-		modInfoDao: modInfoDao,
+		roomDao:      roomDao,
+		worldDao:     worldDao,
+		userDao:      userDao,
+		modInfoDao:   modInfoDao,
+		bannedModDao: bannedModDao,
 	}
 }
 

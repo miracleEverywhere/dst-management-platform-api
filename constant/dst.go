@@ -12,6 +12,10 @@ const GameNotUgcPath = GameMainPath + "/mods"
 // GameModSettingPath 自动下载mod配置文件
 const GameModSettingPath = GameNotUgcPath + "/dedicated_server_mods_setup.lua"
 
+// BannedModsFileName 全局模组屏蔽名单文件名。
+// 该文件位于存档根目录（与集群目录同级），内容为每行一个模组 ID，对本机所有集群生效。
+const BannedModsFileName = "banned_mods.txt"
+
 // DSTLocalVersionPath 饥荒版本文件
 const DSTLocalVersionPath = "dst/version.txt"
 

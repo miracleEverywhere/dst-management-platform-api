@@ -259,3 +259,29 @@ func (h *Handler) acfDelete(c *gin.Context) {
 
 	message.Respond(c, h.svc.DeleteAcf(middleware.Actor(c), reqForm.RoomID))
 }
+
+// bannedModsGet 获取全局屏蔽模组名单，返回模组 ID 数组
+func (h *Handler) bannedModsGet(c *gin.Context) {
+	message.Respond(c, h.svc.BannedModsGet(middleware.Actor(c)))
+}
+
+// bannedModsPut 覆盖保存全局屏蔽模组名单。
+// ids 用指针区分「没有传该字段」（参数错误）与「传了空数组」（清空名单）。
+func (h *Handler) bannedModsPut(c *gin.Context) {
+	type ReqForm struct {
+		IDs *[]int `json:"ids"`
+	}
+	var reqForm ReqForm
+	if err := c.ShouldBindJSON(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
+		return
+	}
+	if reqForm.IDs == nil {
+		logger.Logger.Infof("请求参数错误: 缺少 ids 字段, api: %s", c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodeModBadRequest))
+		return
+	}
+
+	message.Respond(c, h.svc.BannedModsPut(middleware.Actor(c), *reqForm.IDs))
+}

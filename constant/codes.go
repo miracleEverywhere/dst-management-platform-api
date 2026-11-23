@@ -80,19 +80,21 @@ const (
 	CodeRoomDBError                  = 2091
 
 	// 模组模块
-	CodeModBadRequest         = 3001
-	CodeModNoPermission       = 3021
-	CodeModSearchFail         = 3061
-	CodeModConfigOptionsError = 3062
-	CodeModConfigValuesError  = 3063
-	CodeModModifyConfigError  = 3064
-	CodeModEnableFail         = 3065
-	CodeModDisableFail        = 3066
-	CodeModGetEnabledFail     = 3067
-	CodeModDeleteFail         = 3068
-	CodeModDownloadFail       = 3069
-	CodeModDBError            = 3091
-	CodeModServerError        = 3092
+	CodeModBadRequest          = 3001
+	CodeModNoPermission        = 3021
+	CodeModSearchFail          = 3061
+	CodeModConfigOptionsError  = 3062
+	CodeModConfigValuesError   = 3063
+	CodeModModifyConfigError   = 3064
+	CodeModEnableFail          = 3065
+	CodeModDisableFail         = 3066
+	CodeModGetEnabledFail      = 3067
+	CodeModDeleteFail          = 3068
+	CodeModDownloadFail        = 3069
+	CodeModBannedListGetFail   = 3070
+	CodeModBannedFileWriteFail = 3071
+	CodeModDBError             = 3091
+	CodeModServerError         = 3092
 
 	// 控制台模块
 	CodeDashboardBadRequest         = 4001

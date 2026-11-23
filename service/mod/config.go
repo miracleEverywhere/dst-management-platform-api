@@ -120,6 +120,12 @@ func (s *Service) AddEnable(actor service.Actor, roomID, worldID, id int, fileUR
 		return service.Fail(constant.CodeModDBError)
 	}
 
+	// 启用本身不受全局屏蔽影响：banned_mods.txt 由游戏引擎在加载时过滤。
+	// 这里只在启用成功后额外提示，避免面板显示「已启用」而用户不知道模组不会被加载。
+	if s.isModBanned(id) {
+		return service.Msg("mod enable success but globally banned", nil)
+	}
+
 	return service.Msg("mod enable success", nil)
 }
 

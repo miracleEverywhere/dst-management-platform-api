@@ -75,12 +75,17 @@ func Run() {
 	mapImageDao := dao.NewMapImageDAO(db.DB)
 	roomAISettingDao := dao.NewRoomAISettingDAO(db.DB)
 	modInfoDao := dao.NewModInfoDAO(db.DB)
+	bannedModDao := dao.NewBannedModDAO(db.DB)
 	cloudLinkDao := dao.NewCloudLinkDAO(db.DB)
 	cloudFavoriteMapDao := dao.NewCloudFavoriteMapDAO(db.DB)
 	diagnosisDao := dao.NewDiagnosisDAO(db.DB)
 
 	// 初始化缓存
 	cache.InitCache()
+
+	// 全局模组屏蔽名单以数据库为准，启动时投影到 banned_mods.txt；
+	// 数据库为空时不动文件，避免清掉服主手工维护的名单
+	modsvc.SyncBannedModsToFile(bannedModDao)
 
 	// 初始化文件
 	embedFS.GenerateDefaultFile()
@@ -153,7 +158,7 @@ func Run() {
 	// 初始化即注册路由
 	// 业务依赖统一在 service 层构造，app 层 handler 只接收 service
 	roomSvc := roomsvc.New(userDao, roomDao, worldDao, roomSettingDao, favoriteDao, globalSettingDao, uidMapDao, roomAISettingDao, aiManager)
-	modSvc := modsvc.New(roomDao, worldDao, userDao, modInfoDao)
+	modSvc := modsvc.New(roomDao, worldDao, userDao, modInfoDao, bannedModDao)
 
 	user.NewHandler(usersvc.New(userDao)).RegisterRoutes(r)
 	room.NewHandler(roomSvc).RegisterRoutes(r)

@@ -106,6 +106,8 @@ var Registry = []Entry{
 	{Code: 3067, Const: "CodeModGetEnabledFail", Module: "mod", TextKey: "get enabled mod fail", Level: LevelWarn, Hint: "读取已启用模组列表失败。确认 modoverrides.lua 存在且格式正确。"},
 	{Code: 3068, Const: "CodeModDeleteFail", Module: "mod", TextKey: "delete fail", Level: LevelWarn, Hint: "删除失败，可能是资源仍被占用（进程未退出、文件被锁）或数据库写入异常。"},
 	{Code: 3069, Const: "CodeModDownloadFail", Module: "mod", TextKey: "download fail", Level: LevelWarn, Hint: "模组下载失败或下载大小与预期不符。检查网络、下载地址与模组文件是否完整，查看 logs/runtime.log 中的具体错误。"},
+	{Code: 3070, Const: "CodeModBannedListGetFail", Module: "mod", TextKey: "get banned mods fail", Level: LevelWarn, Hint: "读取全局屏蔽模组名单失败。检查数据库可用性（-dbpath 目录权限与磁盘空间）以及 logs/runtime.log 中的 GORM 错误。"},
+	{Code: 3071, Const: "CodeModBannedFileWriteFail", Module: "mod", TextKey: "write banned mods file fail", Level: LevelWarn, Hint: "写入 banned_mods.txt 失败：名单已存入数据库但游戏侧尚未生效。检查存档根目录（~/.klei/DoNotStarveTogether）的磁盘空间与写权限，修复后重新保存即可。"},
 	{Code: 3091, Const: "CodeModDBError", Module: "mod", TextKey: "database error", Level: LevelFatal, Hint: "数据库读写失败。检查数据目录（-dbpath）磁盘空间与文件权限，以及 logs/runtime.log 中的 GORM 错误。"},
 	{Code: 3092, Const: "CodeModServerError", Module: "mod", TextKey: "server error", Level: LevelFatal, Hint: "服务端内部异常，通常是被其他请求触发的空指针或未初始化状态。查看 logs/runtime.log。"},
 
