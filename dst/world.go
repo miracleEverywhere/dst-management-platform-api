@@ -302,7 +302,7 @@ func (g *Game) stopWorld(id int) error {
 		logger.Logger.Infof("执行ScreenCMD失败，可能是未运行，忽略: %v, cmd: c_shutdown()", err)
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	killCMD := fmt.Sprintf("screen -S %s -X quit", utils.ShellQuote(world.screenName))
 	err = utils.BashCMD(killCMD)
