@@ -16,6 +16,8 @@ var (
 	GameServerVersion int
 	// OsType 当前运行的系统
 	OsType string
+	// DBPath 数据库目录（启动参数 -dbpath），自更新备份数据库时使用
+	DBPath string
 )
 
 func initCurrentDir() {

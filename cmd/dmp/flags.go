@@ -12,6 +12,7 @@ var (
 	key               string
 	noHttpCompression bool
 	pprof             bool
+	updateGuardState  string
 )
 
 func bindFlags() {
@@ -24,5 +25,6 @@ func bindFlags() {
 	flag.BoolVar(&versionShow, "v", false, "查看版本, 如: -v")
 	flag.BoolVar(&pprof, "pprof", false, "是否开启pprof")
 	flag.StringVar(&consoleCmd, "console", "", "控制台命令, 如: -console help")
+	flag.StringVar(&updateGuardState, "update_guard", "", "内部使用: 自更新回滚守护的状态文件路径")
 	flag.Parse()
 }

@@ -126,7 +126,22 @@ const (
 	CodePlatformGameTaskBusy       = 5068
 	CodePlatformGameTaskStartFail  = 5069
 	CodePlatformGameTaskNotRunning = 5070
-	CodePlatformDBError            = 5091
+	// 平台自更新：环境限制、检查更新、下载校验、落盘替换、任务状态，一个原因一个码
+	CodePlatformSelfUpdateContainer   = 5071
+	CodePlatformSelfUpdateUnsupported = 5072
+	CodePlatformSelfUpdateNotWritable = 5073
+	CodePlatformUpdateCheckFail       = 5074
+	CodePlatformUpdateAssetInvalid    = 5075
+	CodePlatformUpdateDownloadFail    = 5076
+	CodePlatformUpdateDigestMismatch  = 5077
+	CodePlatformUpdateExtractFail     = 5078
+	CodePlatformUpdatePreflightFail   = 5079
+	CodePlatformUpdateReplaceFail     = 5080
+	CodePlatformUpdateBusy            = 5081
+	CodePlatformUpdateNotRunning      = 5082
+	CodePlatformUpdateBackupFail      = 5083
+	CodePlatformUpdateNotNeeded       = 5084
+	CodePlatformDBError               = 5091
 
 	// 日志模块
 	CodeLogsBadRequest   = 6001

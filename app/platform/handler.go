@@ -8,6 +8,8 @@ import (
 	"dst-management-platform-api/service"
 	platformsvc "dst-management-platform-api/service/platform"
 	"encoding/json"
+	"errors"
+	"io"
 	nethttp "net/http"
 	"strconv"
 	"time"
@@ -258,4 +260,109 @@ func (h *Handler) pluginStatusGet(c *gin.Context) {
 	}
 
 	message.Respond(c, h.svc.PluginStatus(reqForm.Name))
+}
+
+// versionGet 查询平台版本：当前版本、最新版本、更新说明，以及当前环境能否在网页上升级。
+// refresh=1 时忽略服务端缓存重新查询 GitHub。
+func (h *Handler) versionGet(c *gin.Context) {
+	var reqForm struct {
+		Refresh bool `json:"refresh" form:"refresh"`
+	}
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
+		return
+	}
+
+	message.Respond(c, h.svc.Version(reqForm.Refresh))
+}
+
+// selfUpdatePost 发起平台自更新：下载最新 Release、校验、备份数据库、替换二进制并原地重启。
+// 更新在后台执行，进度与结果通过 update/stream 推送。
+func (h *Handler) selfUpdatePost(c *gin.Context) {
+	var reqForm struct {
+		// Proxy 加速节点前缀，为空表示直连；只用于下载资产，元数据始终直连 GitHub
+		Proxy string `json:"proxy"`
+	}
+	// 允许空 body：前端不选加速节点时可以不带参数
+	if err := c.ShouldBindJSON(&reqForm); err != nil && !errors.Is(err, io.EOF) {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
+		return
+	}
+
+	message.Respond(c, h.svc.StartSelfUpdate(middleware.Actor(c), reqForm.Proxy))
+}
+
+// selfUpdateStateGet 当前更新任务状态，供前端刷新页面后恢复界面
+func (h *Handler) selfUpdateStateGet(c *gin.Context) {
+	message.Respond(c, h.svc.SelfUpdateState())
+}
+
+// selfUpdateStreamGet 以 SSE 推送平台更新进度。
+// after 是客户端已收到的最后一条事件 ID，断线续传时原样带回。
+// 进程重启后连接会断开，前端据此轮询 version 接口确认新版本是否已经上线。
+func (h *Handler) selfUpdateStreamGet(c *gin.Context) {
+	var reqForm struct {
+		After int64 `json:"after" form:"after"`
+	}
+	if err := c.ShouldBindQuery(&reqForm); err != nil {
+		logger.Logger.Infof("请求参数错误: %v, api: %s", err, c.Request.URL.Path)
+		message.Respond(c, service.Fail(constant.CodePlatformBadRequest))
+		return
+	}
+
+	actor := middleware.Actor(c)
+	ch, result := h.svc.SelfUpdateStream(c.Request.Context(), actor, reqForm.After)
+	if result.Code != nethttp.StatusOK {
+		message.Respond(c, result)
+		return
+	}
+
+	header := c.Writer.Header()
+	header.Set("Content-Type", "text/event-stream; charset=utf-8")
+	// no-transform 让反向代理不要缓冲或改写流式响应，与日志流、诊断流保持一致
+	header.Set("Cache-Control", "no-cache, no-transform")
+	header.Set("Connection", "keep-alive")
+	header.Set("X-Accel-Buffering", "no")
+	c.Writer.WriteHeader(nethttp.StatusOK)
+	flusher := c.Writer.(nethttp.Flusher)
+	_, _ = c.Writer.WriteString("retry: 3000\n\n")
+	flusher.Flush()
+
+	heartbeat := time.NewTicker(15 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case event, ok := <-ch:
+			if !ok {
+				return
+			}
+			h.writeSelfUpdateEvent(c, flusher, event)
+			// done 是最后一条事件，写完就结束响应
+			if event.Type == platformsvc.UpdateEventDone {
+				return
+			}
+		case <-heartbeat.C:
+			_, _ = c.Writer.WriteString(": ping\n\n")
+			flusher.Flush()
+		}
+	}
+}
+
+// writeSelfUpdateEvent 把一条更新事件写成 SSE 帧
+func (h *Handler) writeSelfUpdateEvent(c *gin.Context, flusher nethttp.Flusher, event platformsvc.SelfUpdateEvent) {
+	payload, err := json.Marshal(event.Data)
+	if err != nil {
+		logger.Logger.Warnf("序列化更新事件失败: %v", err)
+		return
+	}
+
+	_, _ = c.Writer.WriteString("id: " + strconv.FormatInt(event.ID, 10) + "\n")
+	_, _ = c.Writer.WriteString("event: " + event.Type + "\n")
+	_, _ = c.Writer.WriteString("data: " + string(payload) + "\n\n")
+	flusher.Flush()
 }

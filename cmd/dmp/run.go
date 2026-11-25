@@ -32,6 +32,8 @@ import (
 	usersvc "dst-management-platform-api/service/user"
 	"dst-management-platform-api/webhook"
 	"fmt"
+	"net"
+	"net/http"
 	"runtime"
 
 	"github.com/gin-contrib/gzip"
@@ -43,6 +45,13 @@ import (
 func run() {
 	// 绑定启动参数
 	bindFlags()
+
+	// 自更新回滚守护：更新流程会以独立进程把它拉起来，它只等待新版本上报健康状态，
+	// 不通往任何初始化流程，也不需要日志与数据库。
+	if updateGuardState != "" {
+		platformsvc.RunUpdateGuard(updateGuardState)
+		return
+	}
 
 	// 打印版本
 	if versionShow {
@@ -58,6 +67,9 @@ func run() {
 
 	// 初始化日志
 	logger.InitLogger(logLevel)
+
+	// 数据目录：自更新在替换二进制前会备份这里的数据库
+	cache.DBPath = dbPath
 
 	// 初始化数据库
 	db.InitDB(dbPath)
@@ -130,6 +142,8 @@ func run() {
 				"/" + constant.ApiVersion + "/logs/content/stream",
 				// 游戏安装/更新的输出是一条长时间几乎静默的流，gzip 缓冲会让进度完全看不到。
 				"/" + constant.ApiVersion + "/platform/game/install/stream",
+				// 平台更新的进度事件同样需要逐条到达，否则前端看不到下载百分比。
+				"/" + constant.ApiVersion + "/platform/update/stream",
 			}),
 			// 诊断的两条 SSE 流同样要逐条送达：不足 1KB 时 gzip 中间件会把数据留在内部缓冲，
 			// Flush 也不会写出，事件被整体延迟；流在 1KB 前结束时会写出「gzip 头 + 明文」的损坏响应。
@@ -175,14 +189,22 @@ func run() {
 
 	r.Use(static.ServeEmbed("dist", embedFS.Dist))
 
-	// 启动服务器
-	var err error
+	// 先监听端口，再上报"启动成功"：自更新的回滚守护靠这一步判断新版本是否真的能提供服务，
+	// 端口占用之类的启动失败必须发生在健康标记之前，否则守护会误以为升级成功。
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", bindPort))
+	if err != nil {
+		panic(fmt.Sprintf("启动服务器失败: %s", err.Error()))
+	}
+
+	platformsvc.NotifyServerStarted()
+
+	server := &http.Server{Handler: r}
 	if cert != "" && key != "" {
 		// 证书文件和私钥文件都不为空，则启动https
-		err = r.RunTLS(fmt.Sprintf(":%d", bindPort), cert, key)
+		err = server.ServeTLS(listener, cert, key)
 	} else {
 		// 否则启动http
-		err = r.Run(fmt.Sprintf(":%d", bindPort))
+		err = server.Serve(listener)
 	}
 	if err != nil {
 		panic(fmt.Sprintf("启动服务器失败: %s", err.Error()))

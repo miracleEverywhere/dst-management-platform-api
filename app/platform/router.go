@@ -20,6 +20,11 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 			// 游戏安装/更新：启动 + SSE 订阅同一条流；action 为空表示只订阅已有任务
 			platform.GET("/game/install/stream", middleware.AdminOnly(), h.gameInstallStreamGet)
 			platform.GET("/game/install/state", middleware.AdminOnly(), h.gameTaskStateGet)
+			// 平台版本与网页端自更新：更新会替换二进制并重启进程，只允许管理员操作
+			platform.GET("/version", h.versionGet)
+			platform.POST("/update", middleware.AdminOnly(), h.selfUpdatePost)
+			platform.GET("/update/stream", middleware.AdminOnly(), h.selfUpdateStreamGet)
+			platform.GET("/update/state", middleware.AdminOnly(), h.selfUpdateStateGet)
 			platform.GET("/os_info", h.osInfoGet)
 			platform.GET("/metrics", middleware.AdminOnly(), h.metricsGet)
 			platform.GET("/global_settings", middleware.AdminOnly(), h.globalSettingsGet)
