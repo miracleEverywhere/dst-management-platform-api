@@ -1,10 +1,7 @@
-//go:build !lite
-
 package main
 
 import (
 	"dst-management-platform-api/logger"
-	"dst-management-platform-api/server"
 )
 
 func main() {
@@ -13,5 +10,5 @@ func main() {
 	// 正常退出前刷盘日志
 	defer logger.Sync()
 
-	server.Run()
+	run()
 }

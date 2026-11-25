@@ -4,14 +4,14 @@
 
 ## 项目概览
 
-DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务器管理平台。本仓库包含 Go 后端，以及由独立前端仓库构建后嵌入二进制的静态资源；同一份代码用 `lite` 构建标签还会产出精简版后端，其前端以磁盘目录分发。
+DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务器管理平台。本仓库包含 Go 后端，以及由独立前端仓库构建后嵌入二进制的静态资源；同一份代码另有一个精简版入口（`cmd/dmp-lite`），其前端以磁盘目录分发。
 
 - Go 工具链：`go.mod` 指定 Go 1.27.4；模块路径为 `dst-management-platform-api`。升级 Go 版本时同步 `go.mod`、`.github/workflows/go.yml` 与 `docker/Dockerfile` 中的 `golang` 版本。
 - 主程序技术栈：HTTP 用 Gin，数据访问用 GORM + SQLite，任务调度用 gocron，日志用 Zap。
-- 仓库用构建标签产出两个可执行文件：
-  - 主程序 `main.go`（`//go:build !lite`）调用 `server.Run()`，功能完整。
-  - 精简版 `lite.go`（`//go:build lite`）调用 `lite.Run()`，只用标准库 `net/http` 和 JSON 单文件数据库，不引入 Gin/GORM/Zap，目标内存 8-10MB。
-- `main.go` 安装 panic 捕获与日志刷盘钩子（`logger.HandlePanic`、`logger.Sync`）后调用 `server.Run()`；启动参数在 `server/flags.go`，控制台命令在 `server/console.go`，初始化、依赖装配和路由注册位于 `server/`。`lite/` 有自己独立的启动参数、路由和工具包，不复用这些包。
+- 仓库有两个 `main` 入口，都放在 `cmd/` 下，不使用构建标签：
+  - 主程序 `cmd/dmp/`：完整功能，产物为 `dmp`。
+  - 精简版 `cmd/dmp-lite/`：调用 `lite.Run()`，只用标准库 `net/http` 和 JSON 单文件数据库，不引入 Gin/GORM/Zap，目标内存 8-10MB。
+- 主程序入口目录 `cmd/dmp/`：`main.go` 只安装 panic 捕获与日志刷盘钩子（`logger.HandlePanic`、`logger.Sync`）后调用 `run()`；`run.go` 负责初始化、依赖装配与路由注册；启动参数在 `flags.go`，控制台命令在 `console.go`。`lite/` 有自己独立的启动参数、路由和工具包，不复用这些包。
 - API 版本取自 `constant.ApiVersion`，平台版本取自 `constant/system.go` 中的 `constant.Version`；发版时更新该常量，推送 `v*` tag 会触发 `.github/workflows/go.yml` 构建二进制与镜像。`lite/api` 使用自己的 `apiPrefix`（当前 `/v3`），改接口版本时两处都要同步。
 - 运行环境主要面向 Linux，也支持 macOS；依赖 `screen`、SteamCMD、DST 文件与进程等外部资源。
 - 前端由独立仓库构建后复制到 `embedFS/dist/`，再通过 `go:embed` 嵌入后端二进制；精简版前端则从磁盘目录 `dist-lite/` 提供。
@@ -20,7 +20,7 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 
 - `app/<module>/`：HTTP 业务模块，固定只包含 `handler.go`、`router.go`、`utils.go` **三个** Go 文件。`handler.go` 只放 HTTP handler、请求/响应结构体、参数绑定与流式响应的响应头/写 body；`router.go` 注册路由；`utils.go` 放模块级装配——`Handler`、`NewHandler`，以及一行 `var message = i18n.<Module>` 把本模块词条表引入包内作用域（词条数据本身在 `i18n/`，见下）。写响应用 `message.Respond`（由 `i18n` 提供），提取身份用 `middleware.Actor`，不要在模块内重复实现。具体业务逻辑不再写在这里，见下一条。
 - `service/`：业务层，与 `app/<module>/` 一一对应为 `service/<module>/`。service 层可自由拆成多个文件（`service.go`、`client.go`、`crypto.go`、`sync.go`、`archive.go`、`jobs.go` 等），不受 app 层三文件约定约束。service 层不依赖 gin、不出现 `*gin.Context`、不写 `c.JSON`、不 import 任何 `app/` 包；`i18n` 与 `middleware` 会 import `service` 以消费 `Result`/`Actor`（表现层依赖用例契约），但 `service` 绝不反向 import `i18n`/`middleware`/gin（`service` 根包只放类型，无任何 import）；业务结果统一返回 `service.Result`。错误一律返回 `constant` 里的唯一错误码（一个原因一个码），**不传文案 key**；只有成功文案（`Msg`/`MsgF`）和极少数必须覆盖措辞的场景（`FailMsg`/`FailKey`）才带文案。handler 用 `message.Respond` 翻译成 `{"code","message","data"}`。DAO、`aichat.Manager`、云客户端等依赖由该层的 `Service` 持有。
-- `lite/`：精简版独立实现；`lite/api/` 是 net/http 路由与 handler，`lite/utils/` 是 JSON 单文件数据库、DST 文件与进程控制、JWT、密码和日志。它不 import 主程序的 `app/`、`server/`、`database/`、`dst/`、`scheduler/`、`i18n/`、`logger/`、`middleware/`、`webhook/`。`lite/dist-lite/` 是外部前端产物，运行时从可执行文件同级目录读取，不通过 `go:embed` 打进二进制。
+- `lite/`：精简版独立实现；`lite/api/` 是 net/http 路由与 handler，`lite/utils/` 是 JSON 单文件数据库、DST 文件与进程控制、JWT、密码和日志。它不 import 主程序的 `app/`、`cmd/`、`database/`、`dst/`、`scheduler/`、`i18n/`、`logger/`、`middleware/`、`webhook/`。`lite/dist-lite/` 是外部前端产物，运行时从可执行文件同级目录读取，不通过 `go:embed` 打进二进制。
 - `aichat/`：游戏内 AI 对话监听、关键词/向量索引、知识库（wiki）解析与向量模型配置。
 - `cache/`：进程级缓存初始化与访问。
 - `constant/`：编译期常量；版本号、超时、JWT 与静态缓存等平台级常量在 `constant/system.go`，DST 路径、外部接口与插件目录在 `constant/dst.go`。业务错误码在 `constant/codes.go`（`CodeXxx` 常量）与 `constant/code_registry.go`（`Registry`：码 → 文案词条 + 排查建议 + 级别），号段与类别见文件头注释，文档 `docs/error-codes.md` 由 `go run ./cmd/codedoc` 生成。
@@ -34,6 +34,8 @@ DMP（Don't Starve Together Management Platform）是一个饥荒联机版服务
 - `logger/`：Zap 日志、访问日志、panic 捕获与运行时崩溃输出。
 - `embedFS/`：通过 `go:embed` 打包的前端、LuaJIT 库和安装脚本。
 - `docs/`：项目文档及图片资源；`docs/error-codes.md` 是业务错误码表，由 `cmd/codedoc` 生成，不要手工编辑。
+- `cmd/dmp/`：主程序入口。`main.go` 装钩子、`run.go` 做初始化与依赖装配、`flags.go` 定义启动参数、`console.go` 实现控制台命令。
+- `cmd/dmp-lite/`：精简版入口，只有一行 `lite.Run()`。
 - `cmd/codedoc/`：错误码文档生成器兼校验器。通过 `make codes` / `make codes-verify` 调用（等价于 `go run ./cmd/codedoc [-verify]`）；`-verify` 校验码唯一、号段正确、词条存在、无死码，并检查 `docs/error-codes.md` 是否已同步。
 - `.agents/skills/`：本仓库的 agent 技能说明（`frontend-project`、`no-test`、`sandbox`、`zh-cn`），按任务类型加载。
 - `.github/`：Issue 模板与发布流水线；`workflows/go.yml` 在 `v*` tag 上构建 Linux/macOS 主程序与 `dmp-lite.tgz`（含 `dmp-lite`、`lite/dist-lite`、手动安装/更新脚本），并推送 Docker 镜像（镜像只包含主程序）。
@@ -51,17 +53,17 @@ gofmt -w path/to/changed.go
 go vet ./...
 
 # Linux 发布构建（无 CGO）
-CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp
+CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp ./cmd/dmp
 
 # Make 构建后端；所有平台均为 CGO_ENABLED=0
 # macOS 输出到 ~/dmp，Linux 输出到仓库根目录 ./dmp
 make backend-only
 
-# 构建精简版后端（-tags=lite，输出 ~/dmp-lite）
+# 构建精简版后端（输出 ~/dmp-lite）
 make lite
 
 # 直接构建精简版
-CGO_ENABLED=0 go build -tags=lite -ldflags '-s -w' -v -o dmp-lite
+CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp-lite ./cmd/dmp-lite
 
 # 重新生成业务错误码文档（改动 constant/code_registry.go 后必须执行）
 make codes
@@ -70,7 +72,7 @@ make codes
 # 注意：make backend-only 与 make lite 会先执行这一步，校验失败则构建失败
 make codes-verify
 
-# 提交前检查：codes-verify + gofmt(全仓) + go vet ./... + go vet -tags=lite ./...
+# 提交前检查：codes-verify + gofmt(全仓) + go vet ./...
 make check
 
 # 查看 Makefile 提供的目标
@@ -84,7 +86,7 @@ make help
 如确需本地启动，使用非特权端口和隔离数据目录，例如：
 
 ```bash
-go run . -bind 8080 -dbpath ./data -level debug
+go run ./cmd/dmp -bind 8080 -dbpath ./data -level debug
 ```
 
 启动服务会创建数据库、日志、`dmp_files/` 和手动安装脚本，并启动可能访问网络或操作 DST 进程的调度任务。不要把启动服务作为普通代码修改的默认验证步骤。
@@ -98,7 +100,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 ### Go 代码
 
 - 遵循 `.editorconfig`，Go 文件使用 UTF-8、LF 和 Tab；所有修改过的 Go 文件必须通过 `gofmt`。
-- 沿用现有包边界和构造方式。业务依赖由 `service/<module>/` 的 `Service` 持有，`Service` 在 `server/server.go` 统一创建后注入对应的 `Handler`（`NewHandler(svc)`）；`app/` 层的 `Handler` 不再直接持有 DAO。`lite/` 不引用 `service/`，保持独立实现。
+- 沿用现有包边界和构造方式。业务依赖由 `service/<module>/` 的 `Service` 持有，`Service` 在 `cmd/dmp/run.go` 统一创建后注入对应的 `Handler`（`NewHandler(svc)`）；`app/` 层的 `Handler` 不再直接持有 DAO。`lite/` 不引用 `service/`，保持独立实现。
 - `app/<module>/` 只允许 `handler.go`、`router.go`、`utils.go` 三个文件，不要新增第四个 `.go` 文件（原「四文件原则」的 `i18n.go` 已并入 `i18n/` 包和 `utils.go`）。业务实现写进 `service/<module>/`：handler 只做参数绑定、用 `middleware.Actor(c)` 提取 `service.Actor`、调用 service、用 `message.Respond(c, result)` 翻译并写响应（`message` 是 `utils.go` 里引入的本模块词条表）。禁止在模块内再写一份 `respond`/`actorOf`，也不要绕过 `message.Respond` 手写 `gin.H{"code": ...}`（`middleware` 同样适用）。
 - 新增一个错误响应时：先在 `constant/code_registry.go` 的 `Registry` 加一条（并同步 `constant/codes.go` 的 `CodeXxx` 常量，号段见文件头），再在 service 里 `return service.Fail(constant.CodeXxx)`（带参数用 `FailF`，带 data 用 `FailData`），最后跑 `make codes` 重新生成文档并确认 `make codes-verify` 通过。**不要**再用裸数字 code 或字符串文案 key。
 - 业务码约定：成功固定 `200`；认证失效固定 `420`（前端据此清登录态跳登录页）；其余错误码按「错误原因」唯一，同一个原因在不同接口复用同一个码。
@@ -113,7 +115,7 @@ go run . -bind 8080 -dbpath ./data -level debug
 
 ### Lite 精简版
 
-- 精简版与主程序共享模块路径，但包完全独立。给 `lite/` 加功能时不要 import 主程序的 `app/`、`server/`、`database/`、`dst/`、`scheduler/`、`i18n/`、`logger/`、`middleware/`、`webhook/`；确需复用的逻辑复制到 `lite/utils/`，或抽到不引入 Gin/GORM/Zap 的公共位置。
+- 精简版与主程序共享模块路径，但包完全独立。给 `lite/` 加功能时不要 import 主程序的 `app/`、`cmd/`、`database/`、`dst/`、`scheduler/`、`i18n/`、`logger/`、`middleware/`、`webhook/`；确需复用的逻辑复制到 `lite/utils/`，或抽到不引入 Gin/GORM/Zap 的公共位置。
 - 同一份外部契约存在两套实现（主程序 `app/` 与 `lite/api/`）。修改登录/JWT、房间与世界配置、`cluster.ini`/`server.ini`/`modoverrides.lua` 生成、日志读取或前端字段时，先判断精简版是否也要同步，并在交付说明中写明。
 - `lite/utils/db.go` 用 `DBMu` 保护整个数据库：文件是 `./dmp-lite.sdb`，内容为 Base64(JSON)，整体读写并通过临时文件原子替换（权限 0600）。写接口必须包在 `withWriteLock` 中，它依靠 `db` 结构可比较来判断是否需要落盘；新增 `map`/`slice` 字段时要改成显式脏标记或序列化比较。
 - `sync.RWMutex` 不可重入：`withWriteLock`/`withReadLock` 的 handler 内不能再调用 `DB.Read()` 或自行加锁；handler 内也不要做长时间阻塞操作，否则会挡住其它写请求。
@@ -165,9 +167,9 @@ go run . -bind 8080 -dbpath ./data -level debug
 按改动范围执行最小充分验证：
 
 1. 对所有修改过的 Go 文件运行 `gofmt`，并确认没有意外格式变化（`make check` 会一次性覆盖 gofmt、vet 与错误码校验）。
-2. 修改共享工具、中间件、数据库、调度器或 API 契约时，运行 `go vet ./...`；涉及 `lite.go` 的构建标签时用 `go vet -tags=lite ./...` 才能覆盖该入口。
+2. 修改共享工具、中间件、数据库、调度器或 API 契约时，运行 `go vet ./...`（`./...` 已覆盖 `cmd/dmp` 与 `cmd/dmp-lite` 两个入口，不再需要构建标签）。
 3. 改动 `constant/codes.go` 或 `constant/code_registry.go` 后必须运行 `make codes` 重新生成文档，并确认 `make codes-verify` 通过（`backend-only` / `lite` 已把它作为前置依赖）。
-4. 修改入口、依赖、嵌入资源或发布相关代码时，在 Linux 上执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp`；macOS 执行 `make backend-only`（产物输出到 `~/dmp`）。涉及 `lite/`、构建标签或发布流水线时，再执行 `CGO_ENABLED=0 go build -tags=lite -ldflags '-s -w' -v -o dmp-lite`（或 `make lite`），并确认 `build-lite` 打包仍包含 `dmp-lite`、`dist-lite` 与脚本。验证后不要提交生成的 `dmp`/`dmp-lite`。
+4. 修改入口、依赖、嵌入资源或发布相关代码时，在 Linux 上执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp ./cmd/dmp`；macOS 执行 `make backend-only`（产物输出到 `~/dmp`）。涉及 `lite/` 或发布流水线时，再执行 `CGO_ENABLED=0 go build -ldflags '-s -w' -v -o dmp-lite ./cmd/dmp-lite`（或 `make lite`），并确认 `build-lite` 打包仍包含 `dmp-lite`、`dist-lite` 与脚本。验证后不要提交生成的 `dmp`/`dmp-lite`。
 5. 无法执行依赖 Linux/DST/网络的验证时，在交付说明中明确列出未验证项和原因。
 
 ## Agent 工作方式

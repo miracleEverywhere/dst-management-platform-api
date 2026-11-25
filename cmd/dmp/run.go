@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"dst-management-platform-api/aichat"
@@ -40,7 +40,7 @@ import (
 	static "github.com/soulteary/gin-static"
 )
 
-func Run() {
+func run() {
 	// 绑定启动参数
 	bindFlags()
 

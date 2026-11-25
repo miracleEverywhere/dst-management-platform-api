@@ -51,7 +51,7 @@ frontend-only:
 backend-only: codes-verify
 	@echo "=== 正在编译后端, 当前系统为: $(DETECTED_OS) ==="
 	mkdir -p $(OUT_DIR)
-	$(CGO) go build -ldflags '-s -w' -v -o $(OUT_DIR)/dmp
+	$(CGO) go build -ldflags '-s -w' -v -o $(OUT_DIR)/dmp ./cmd/dmp
 
 # 复制前端产物到 embedFS/dist（不重新构建前端）
 copy-frontend:
@@ -61,7 +61,7 @@ copy-frontend:
 
 lite: codes-verify
 	@echo "=== 正在编译后端(lite), 当前系统为: $(DETECTED_OS) ==="
-	$(CGO) go build -ldflags '-s -w' -v -tags=lite -o ~/dmp-lite
+	$(CGO) go build -ldflags '-s -w' -v -o ~/dmp-lite ./cmd/dmp-lite
 
 lite-frontend-only:
 	@echo "=== 正在编译前端(lite), 当前系统为: $(DETECTED_OS) ==="
@@ -89,7 +89,6 @@ check: codes-verify
 	@test -z "$$(gofmt -l $$(find . -name '*.go' -not -path './embedFS/*' -not -path './lite/dist-lite/*'))" || \
 		(echo "以下文件未通过 gofmt:"; gofmt -l $$(find . -name '*.go' -not -path './embedFS/*' -not -path './lite/dist-lite/*'); exit 1)
 	go vet ./...
-	go vet -tags=lite ./...
 
 help:
 	@echo "=== 正在打印帮助信息, 当前系统为: $(DETECTED_OS) ==="

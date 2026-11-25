@@ -28,18 +28,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         if: matrix.os == 'ubuntu-latest'
-        run: CGO_ENABLED=0 go build -ldflags '-s -w' -v -o ./dmp && tar zcf dmp.tgz dmp
+        run: CGO_ENABLED=0 go build -ldflags '-s -w' -v -o ./dmp ./cmd/dmp && tar zcf dmp.tgz dmp
 
       - name: build-darwin
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         if: matrix.os == 'macos-latest'
-        run: CGO_ENABLED=0 go build -ldflags '-s -w' -v -o ./dmp && tar zcf dmp_darwin.tgz dmp
+        run: CGO_ENABLED=0 go build -ldflags '-s -w' -v -o ./dmp ./cmd/dmp && tar zcf dmp_darwin.tgz dmp
 
       - name: build-lite
         if: matrix.os == 'ubuntu-latest'
         run: |
-          CGO_ENABLED=0 go build -ldflags '-s -w' -v -tags=lite -o ./dmp-lite
+          CGO_ENABLED=0 go build -ldflags '-s -w' -v -o ./dmp-lite ./cmd/dmp-lite
           mkdir -p lite-package
           cp dmp-lite lite-package/
           cp -r lite/dist-lite lite-package/dist-lite
