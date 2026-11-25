@@ -7,6 +7,7 @@ import (
 	"context"
 	"dst-management-platform-api/constant"
 	"dst-management-platform-api/logger"
+	"dst-management-platform-api/utils"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -132,7 +133,7 @@ func (s *Service) fetchLobbyDetail(region, rowID string) (lobbyRoomJSON, error) 
 	defer cancel()
 
 	payload := map[string]any{
-		"__token":  constant.KleiLobbyToken,
+		"__token":  utils.GetDstToken(),
 		"__gameId": constant.KleiLobbyGameID,
 		"query": map[string]string{
 			"__rowId": rowID,
