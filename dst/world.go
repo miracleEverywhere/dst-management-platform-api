@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -291,26 +292,119 @@ func (g *Game) startAllWorld() error {
 	return nil
 }
 
+// worldStatusPollInterval 轮询世界进程是否退出的间隔
+const worldStatusPollInterval = 200 * time.Millisecond
+
 func (g *Game) stopWorld(id int) error {
 	world, err := g.getWorldByID(id)
 	if err != nil {
 		return err
 	}
 
+	// 世界未运行，无需关闭
+	if !g.worldUpStatus(id) {
+		logger.Logger.Debugf("当前世界未运行，跳过关闭，世界ID：%d", id)
+		return nil
+	}
+
+	// 记录日志当前位置，只检查关闭指令发出后新增的内容，避免历史日志误判
+	logPath := filepath.Join(world.worldPath, "server_log.txt")
+	offset := serverLogSize(logPath)
+
 	err = utils.ScreenCMD("c_shutdown()", world.screenName)
 	if err != nil {
 		logger.Logger.Infof("执行ScreenCMD失败，可能是未运行，忽略: %v, cmd: c_shutdown()", err)
 	}
 
-	time.Sleep(10 * time.Second)
-
 	killCMD := fmt.Sprintf("screen -S %s -X quit", utils.ShellQuote(world.screenName))
+
+	// 日志出现 Shutting down（或世界自行退出）说明关闭成功，静默结束 screen 会话
+	if g.waitShutdown(id, logPath, offset, constant.GameShutdownLogTimeout) {
+		_ = utils.BashCMD(killCMD)
+		g.waitWorldDown(id, constant.GameStopWaitTimeout)
+		return nil
+	}
+
+	// 超时仍未关闭，说明世界可能卡在存档或退出流程，显式杀进程
+	logger.Logger.Warnf("关闭游戏等待超时（%s），未检测到 %q 日志，强制结束进程: %s",
+		constant.GameShutdownLogTimeout, constant.GameShutdownLogKeyword, world.screenName)
 	err = utils.BashCMD(killCMD)
 	if err != nil {
 		logger.Logger.Infof("结束进程失败，可能是未运行，忽略: %v", err)
 	}
+	g.waitWorldDown(id, constant.GameStopWaitTimeout)
 
 	return nil
+}
+
+// waitShutdown 等待世界关闭完成。
+// 日志在 offset 之后出现关闭日志，或世界进程已自行退出（例如主世界已连带关闭洞穴），
+// 都视为关闭成功；超时返回 false。
+func (g *Game) waitShutdown(id int, logPath string, offset int64, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		if shutdownLogExists(logPath, offset) {
+			return true
+		}
+		if !g.worldUpStatus(id) {
+			return true
+		}
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(constant.GameShutdownLogInterval)
+	}
+}
+
+// waitWorldDown 等待世界进程退出，超时返回 false
+func (g *Game) waitWorldDown(id int, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		if !g.worldUpStatus(id) {
+			return true
+		}
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(worldStatusPollInterval)
+	}
+}
+
+// serverLogSize 返回世界日志当前大小，读取失败时返回 0
+func serverLogSize(logPath string) int64 {
+	info, err := os.Stat(logPath)
+	if err != nil {
+		return 0
+	}
+
+	return info.Size()
+}
+
+// shutdownLogExists 判断世界日志在 offset 之后是否出现关闭日志
+func shutdownLogExists(logPath string, offset int64) bool {
+	file, err := os.Open(logPath)
+	if err != nil {
+		return false
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			logger.Logger.Debugf("世界日志文件关闭失败: %v", closeErr)
+		}
+	}()
+
+	if _, err = file.Seek(offset, io.SeekStart); err != nil {
+		return false
+	}
+
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 64*1024), maxLogLineSize)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), constant.GameShutdownLogKeyword) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (g *Game) stopAllWorld() error {

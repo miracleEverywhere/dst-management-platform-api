@@ -130,7 +130,7 @@ func GameExec(cmdType, worldName, startType string) error {
 			return fmt.Errorf("发送 c_shutdown 到 %s: %w, 输出=%s", worldName, err, out)
 		}
 
-		deadline := time.Now().Add(15 * time.Second)
+		deadline := time.Now().Add(30 * time.Second)
 		for time.Now().Before(deadline) {
 			time.Sleep(500 * time.Millisecond)
 			if !ScreenAlive(screenName) {

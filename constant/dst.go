@@ -1,5 +1,7 @@
 package constant
 
+import "time"
+
 // GameMainPath 游戏主目录
 const GameMainPath = "dst"
 
@@ -18,6 +20,22 @@ const BannedModsFileName = "banned_mods.txt"
 
 // DSTLocalVersionPath 饥荒版本文件
 const DSTLocalVersionPath = "dst/version.txt"
+
+// GameShutdownLogKeyword 游戏关闭日志关键字。
+// 世界收到 c_shutdown 后完成存档会输出形如 "[00:02:33]: Shutting down" 的日志，
+// 出现该行即表示关闭成功，此时结束 screen 会话不必强杀进程。
+const GameShutdownLogKeyword = "Shutting down"
+
+// GameShutdownLogTimeout 关闭游戏后等待 Shutting down 日志的最长时间，
+// 超时说明世界可能卡在存档或退出流程，需要显式杀进程。
+const GameShutdownLogTimeout = 30 * time.Second
+
+// GameShutdownLogInterval 轮询 Shutting down 日志的间隔
+const GameShutdownLogInterval = 500 * time.Millisecond
+
+// GameStopWaitTimeout 结束 screen 会话后等待世界进程退出的最长时间，
+// 避免紧随关闭之后的启动操作因旧会话仍在而被跳过。
+const GameStopWaitTimeout = 5 * time.Second
 
 // DSTServerVersionKlei 饥荒版本查询页面
 const DSTServerVersionKlei = "https://kleiforums.com/game-updates/dst/"
@@ -39,9 +57,6 @@ const KleiLobbyListURL = "https://lobby-v2-cdn.klei.com/%s-Steam.json.gz"
 
 // KleiLobbyDetailURL 大厅房间详情接口（按区域）
 const KleiLobbyDetailURL = "https://lobby-v2-%s.klei.com/lobby/read"
-
-// KleiLobbyToken 大厅详情接口所需令牌，与 Klei 官方大厅网页请求一致
-const KleiLobbyToken = "pds-g^KU_JpEFW0P3^GLDPpmMYhgm/Bd254Xwi9MqRouHutahdIfGzv4Nv+zE="
 
 // KleiLobbyGameID 大厅详情请求体中的 __gameId
 const KleiLobbyGameID = "DontStarveTogether"
