@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMP v3.2.3 更新一览 · 录屏动画</title>
+<style>
+  :root{
+    --brand:#8459f6; --brand2:#a983ff; --cyan:#37c8e8; --green:#43d68a;
+    --yellow:#ffb84d; --red:#ff6b7a; --bg:#0b0a14; --panel:#151325;
+    --panel2:#1d1a33; --line:rgba(255,255,255,.09); --text:#f2f0ff; --dim:#9a94c4;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+    font-family:"PingFang SC","Microsoft YaHei","Source Han Sans SC",system-ui,sans-serif;color:var(--text)}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+  #canvas{position:relative;width:min(100vw,177.78vh);height:min(56.25vw,100vh);overflow:hidden;
+    background:radial-gradient(1200px 700px at 70% -10%,rgba(132,89,246,.22),transparent 60%),
+               radial-gradient(900px 600px at 10% 110%,rgba(55,200,232,.14),transparent 60%),var(--bg)}
+  /* 背景漂浮粒子 */
+  .orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;pointer-events:none}
+  .orb1{width:420px;height:420px;background:#5b3bd6;top:-120px;right:-80px;animation:drift1 22s ease-in-out infinite}
+  .orb2{width:360px;height:360px;background:#1d7f96;bottom:-140px;left:-100px;animation:drift2 26s ease-in-out infinite}
+  @keyframes drift1{50%{transform:translate(-90px,70px) scale(1.12)}}
+  @keyframes drift2{50%{transform:translate(110px,-60px) scale(.92)}}
+  .grid-bg{position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:56px 56px;
+    mask-image:radial-gradient(ellipse at center,#000 30%,transparent 75%)}
+
+  /* 场景容器 */
+  .scene{position:absolute;inset:0;padding:56px 72px 120px;opacity:0;visibility:hidden;
+    transform:translateY(24px) scale(.985);transition:opacity .5s ease,transform .5s ease,visibility 0s .5s}
+  .scene.active{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease,transform .55s cubic-bezier(.22,1,.36,1),visibility 0s}
+  .scene-tag{display:inline-flex;align-items:center;gap:8px;font-size:15px;letter-spacing:.14em;
+    color:var(--brand2);border:1px solid rgba(132,89,246,.4);border-radius:999px;padding:6px 16px;
+    background:rgba(132,89,246,.12)}
+  .scene-tag::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--brand2);box-shadow:0 0 10px var(--brand2)}
+  .scene h2{font-size:46px;margin:14px 0 8px;letter-spacing:.02em}
+  .scene h2 .hl{background:linear-gradient(120deg,var(--brand2),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .scene .sub{font-size:19px;color:var(--dim);max-width:860px;line-height:1.6}
+  .stage-body{position:absolute;left:72px;right:72px;top:296px;bottom:120px;display:flex;align-items:center;gap:36px}
+
+  /* 通用动效类 */
+  .pop{opacity:0;transform:translateY(18px) scale(.94);transition:all .55s cubic-bezier(.22,1.4,.36,1)}
+  .pop.on{opacity:1;transform:none}
+  .fade{opacity:0;transition:opacity .5s ease}
+  .fade.on{opacity:1}
+
+  /* 通用拟真卡片 */
+  .card{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid var(--line)}
+  .chip.purple{background:rgba(132,89,246,.16);color:#cdb8ff;border-color:rgba(132,89,246,.45)}
+  .chip.green{background:rgba(67,214,138,.14);color:#8ff0bd;border-color:rgba(67,214,138,.4)}
+  .chip.yellow{background:rgba(255,184,77,.14);color:#ffd398;border-color:rgba(255,184,77,.4)}
+  .chip.red{background:rgba(255,107,122,.14);color:#ffa8b2;border-color:rgba(255,107,122,.4)}
+  .chip.cyan{background:rgba(55,200,232,.14);color:#9be6f6;border-color:rgba(55,200,232,.4)}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;
+    background:linear-gradient(120deg,var(--brand),#6a3df0);color:#fff;box-shadow:0 8px 24px rgba(132,89,246,.4)}
+  .btn.ghost{background:rgba(255,255,255,.06);border:1px solid var(--line);box-shadow:none;color:var(--text)}
+  .btn.warn{background:linear-gradient(120deg,#e8a23d,#d97b2b);box-shadow:0 8px 24px rgba(232,162,61,.35)}
+  .pulse{animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(132,89,246,.12)}}
+  .tick{color:var(--green);font-weight:700}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:var(--brand2);
+    border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:-2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* 顶部章节与底部进度 */
+  #hud-top{position:absolute;top:22px;left:36px;right:36px;display:flex;align-items:center;justify-content:space-between;
+    z-index:60;font-size:14px;color:var(--dim);pointer-events:none}
+  #chapter-name{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--text);font-weight:600}
+  #chapter-name .dot{width:9px;height:9px;border-radius:50%;background:var(--brand2);box-shadow:0 0 12px var(--brand2)}
+  #version-badge{font-variant-numeric:tabular-nums;color:var(--brand2);border:1px solid rgba(132,89,246,.4);
+    padding:4px 12px;border-radius:999px;background:rgba(132,89,246,.1)}
+  #caption{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:55;max-width:78%;
+    font-size:22px;line-height:1.5;text-align:center;padding:12px 28px;border-radius:14px;pointer-events:none;
+    background:rgba(10,8,22,.72);border:1px solid var(--line);backdrop-filter:blur(8px);
+    opacity:0;transition:opacity .35s ease}
+  #caption.on{opacity:1}
+  #caption b{color:var(--brand2)}
+
+  /* 控制条 */
+  #controls{position:absolute;left:36px;right:36px;bottom:16px;z-index:70;display:flex;align-items:center;gap:14px;
+    opacity:1;transition:opacity .4s}
+  #controls.hidden-ui{opacity:0;pointer-events:none}
+  #canvas.hide-cursor, #canvas.hide-cursor *{cursor:none !important}
+  .ctl-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);
+    color:var(--text);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .ctl-btn:hover{background:rgba(132,89,246,.25);border-color:rgba(132,89,246,.5)}
+  #seek{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.1);cursor:pointer;position:relative}
+  #seek-fill{position:absolute;left:0;top:0;bottom:0;width:0%;border-radius:99px;
+    background:linear-gradient(90deg,var(--brand),var(--cyan));box-shadow:0 0 14px rgba(132,89,246,.6)}
+  #seek-thumb{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#fff;
+    transform:translate(-50%,-50%);left:0%;box-shadow:0 0 10px rgba(132,89,246,.9)}
+  #time-label{font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:96px;text-align:right}
+  #chapter-dots{display:flex;gap:7px}
+  #chapter-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18);cursor:pointer;transition:all .25s}
+  #chapter-dots i.cur{background:var(--brand2);transform:scale(1.35);box-shadow:0 0 8px var(--brand2)}
+
+  /* 场景切换划场 */
+  #wipe{position:absolute;inset:-20%;z-index:80;pointer-events:none;opacity:0;
+    background:linear-gradient(115deg,transparent 30%,rgba(132,89,246,.28) 46%,rgba(55,200,232,.28) 54%,transparent 70%);
+    transform:translateX(-100%)}
+  #wipe.go{animation:wipe .8s ease}
+  @keyframes wipe{0%{opacity:1;transform:translateX(-100%)}100%{opacity:1;transform:translateX(100%)}}
+
+  /* ===== 场景1 开场 ===== */
+  #s1{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  #s1 .logo{font-size:120px;font-weight:800;letter-spacing:.04em;
+    background:linear-gradient(120deg,#fff 20%,var(--brand2) 55%,var(--cyan) 85%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 34px rgba(132,89,246,.55))}
+  #s1 .ver-flow{display:flex;align-items:center;gap:26px;font-size:44px;font-weight:700;margin-top:26px;font-variant-numeric:tabular-nums}
+  #s1 .ver-old{color:var(--dim);text-decoration:line-through;text-decoration-thickness:3px;text-decoration-color:var(--red)}
+  #s1 .ver-arrow{font-size:38px;color:var(--cyan)}
+  #s1 .ver-new{color:var(--green);text-shadow:0 0 26px rgba(67,214,138,.6)}
+  #s1 .tagline{margin-top:22px;font-size:21px;color:var(--dim);letter-spacing:.28em}
+  #s1 .ring{position:absolute;border:1px solid rgba(132,89,246,.25);border-radius:50%;
+    width:520px;height:520px;animation:ringspin 14s linear infinite}
+  #s1 .ring.r2{width:680px;height:680px;border-color:rgba(55,200,232,.15);animation-duration:22s;animation-direction:reverse}
+  #s1 .ring::before{content:"";position:absolute;top:-4px;left:50%;width:8px;height:8px;border-radius:50%;
+    background:var(--brand2);box-shadow:0 0 14px var(--brand2)}
+  @keyframes ringspin{to{transform:rotate(360deg)}}
+
+  /* ===== 场景2 总览 ===== */
+  #s2 .feat-cloud{position:absolute;inset:0}
+  .feat{position:absolute;padding:16px 26px;border-radius:16px;font-size:21px;font-weight:600;
+    background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    box-shadow:0 16px 40px rgba(0,0,0,.4);display:flex;align-items:center;gap:12px;white-space:nowrap}
+  .feat .ico{font-size:26px}
+  .feat.star{border-color:rgba(132,89,246,.6);box-shadow:0 0 34px rgba(132,89,246,.35)}
+
+  /* ===== 场景3 AI诊断 ===== */
+  .diag-wrap{display:flex;gap:28px;width:100%;height:100%}
+  .diag-left{flex:1.15;display:flex;flex-direction:column;gap:14px}
+  .diag-input{padding:16px 18px;font-size:17px;min-height:86px;line-height:1.6;color:var(--text)}
+  .diag-input .caret{display:inline-block;width:2px;height:1.1em;background:var(--brand2);vertical-align:-2px;animation:blink .8s steps(1) infinite;margin-left:2px}
+  @keyframes blink{50%{opacity:0}}
+  .diag-scope{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--dim)}
+  .diag-steps{padding:16px 18px;display:flex;flex-direction:column;gap:12px;font-size:15.5px}
+  .diag-steps .row{display:flex;align-items:center;gap:10px;opacity:.25;transition:opacity .3s}
+  .diag-steps .row.on{opacity:1}
+  .diag-right{flex:1;display:flex;flex-direction:column;gap:12px}
+  .diag-report{padding:18px 20px;font-size:15px;line-height:1.7}
+  .diag-report h4{font-size:17px;margin-bottom:8px}
+  .diag-action{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;
+    border:1px solid rgba(67,214,138,.35);background:rgba(67,214,138,.08);font-size:14.5px}
+  .diag-action.applied{border-color:rgba(67,214,138,.7);box-shadow:0 0 24px rgba(67,214,138,.25)}
+  .diag-head{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--dim)}
+  .type-label{font-size:12px;color:var(--dim);letter-spacing:.1em}
+
+  /* ===== 场景4 大厅 ===== */
+  .lobby-wrap{display:flex;gap:26px;width:100%;height:100%;align-items:stretch}
+  .radar-box{width:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px}
+  .radar{position:relative;width:210px;height:210px;border-radius:50%;
+    border:1px solid rgba(55,200,232,.4);overflow:hidden;
+    background:radial-gradient(circle,rgba(55,200,232,.08) 0 25%,transparent 25% 50%,rgba(55,200,232,.08) 50% 51%,transparent 51% 75%,rgba(55,200,232,.08) 75% 76%,transparent 76%)}
+  .radar .sweep{position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 0deg,rgba(55,200,232,.55),transparent 70deg);
+    animation:sweep 2.6s linear infinite}
+  @keyframes sweep{to{transform:rotate(360deg)}}
+  .blip{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);opacity:0;transition:opacity .4s}
+  .blip.on{opacity:1;animation:blip 2.6s ease-out infinite}
+  @keyframes blip{0%{transform:scale(1.6)}100%{transform:scale(.8)}}
+  .lobby-table{flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+  .lobby-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:4px}
+  .lobby-search{flex:1;max-width:280px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);
+    background:rgba(255,255,255,.05);font-size:14px;color:var(--text)}
+  .lrow{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;font-size:14.5px;
+    background:rgba(255,255,255,.035);border:1px solid transparent}
+  .lrow.hl{border-color:rgba(132,89,246,.55);background:rgba(132,89,246,.1);box-shadow:0 0 18px rgba(132,89,246,.2)}
+  .lrow .name{flex:1;font-weight:600}
+  .lrow .cnt{font-variant-numeric:tabular-nums;color:var(--cyan);min-width:56px;text-align:right}
+  .lobby-detail{position:absolute;right:24px;top:150px;width:330px;padding:20px;z-index:5;font-size:14.5px;line-height:2}
+
+  /* ===== 场景5 地图 ===== */
+  .map-wrap{flex:1;height:100%;display:flex;gap:26px}
+  .map-view{flex:1;position:relative;overflow:hidden;padding:0;border-radius:16px}
+  .map-canvas{position:absolute;inset:-15%;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(7,1fr);gap:3px}
+  .tile{border-radius:6px;opacity:0;transform:scale(.4);transition:all .3s ease}
+  .tile.on{opacity:1;transform:scale(1)}
+  .map-marker{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--yellow);
+    box-shadow:0 0 0 5px rgba(255,184,77,.25),0 0 16px var(--yellow);opacity:0;transition:all .5s}
+  .map-marker.on{opacity:1}
+  .map-side{width:290px;display:flex;flex-direction:column;gap:12px;padding:20px;font-size:15px}
+  .map-side .stat{display:flex;justify-content:space-between;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.04)}
+
+  /* ===== 场景6 云同步 ===== */
+  .cloud-wrap{display:flex;align-items:center;justify-content:center;gap:0;width:100%;height:100%}
+  .cloud-card{width:330px;padding:24px;display:flex;flex-direction:column;gap:12px;font-size:15px;z-index:2}
+  .cloud-card h4{font-size:18px;display:flex;align-items:center;gap:8px}
+  .fav-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.04);font-size:14px}
+  .sync-lane{position:relative;width:300px;height:170px;flex-shrink:0}
+  .sync-arrow{position:absolute;left:12px;right:12px;height:2px;background:linear-gradient(90deg,transparent,var(--brand2),transparent)}
+  .sync-arrow.a1{top:44px}.sync-arrow.a2{bottom:44px}
+  .sync-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);top:-4px;left:0}
+  .sync-label{position:absolute;left:50%;transform:translateX(-50%);font-size:13px;color:var(--dim);white-space:nowrap}
+  .quota{align-self:flex-start}
+
+  /* ===== 场景7 Lite ===== */
+  .lite-wrap{display:flex;gap:36px;width:100%;height:100%;align-items:center;justify-content:center}
+  .lite-card{width:400px;padding:28px;display:flex;flex-direction:column;gap:16px;align-items:center;text-align:center}
+  .mem-bar{width:100%;height:22px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;position:relative}
+  .mem-fill{height:100%;border-radius:99px;width:0%;transition:width 1s cubic-bezier(.22,1,.36,1)}
+  .mem-fill.lite{background:linear-gradient(90deg,var(--green),var(--cyan))}
+  .mem-fill.full{background:linear-gradient(90deg,var(--brand),var(--brand2))}
+  .lite-num{font-size:52px;font-weight:800;font-variant-numeric:tabular-nums}
+  .lite-num small{font-size:20px;font-weight:600;color:var(--dim)}
+  .lite-list{display:flex;flex-direction:column;gap:9px;font-size:15px;text-align:left;width:100%}
+  .lite-vs{font-size:34px;font-weight:800;color:var(--dim)}
+
+  /* ===== 场景8 监控 ===== */
+  .mon-wrap{flex:1;height:100%;display:flex;flex-direction:column;gap:16px}
+  .mon-tabs{display:flex;gap:10px;align-items:center}
+  .mon-tab{padding:8px 22px;border-radius:10px;font-size:15px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--dim);transition:all .3s}
+  .mon-tab.cur{background:rgba(132,89,246,.18);border-color:rgba(132,89,246,.55);color:#fff}
+  .mon-charts{flex:1;display:flex;gap:22px;min-height:0}
+  .mon-chart{flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:8px}
+  .mon-chart h5{font-size:15px;color:var(--dim);display:flex;justify-content:space-between}
+  .mon-chart h5 b{font-size:19px;color:var(--text);font-variant-numeric:tabular-nums}
+  .mon-chart svg{flex:1;width:100%;min-height:0}
+  .range-chip{padding:5px 14px;font-size:13px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+  .range-chip.cur{color:#fff;border-color:var(--brand2);background:rgba(132,89,246,.18)}
+
+  /* ===== 场景9 模组 ===== */
+  .mod-wrap{display:flex;gap:26px;width:100%;height:100%}
+  .mod-list{flex:1.2;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+  .mod-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.035);font-size:15px;transition:all .3s}
+  .mod-row .cb{width:19px;height:19px;border-radius:6px;border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;
+    font-size:13px;color:#fff;transition:all .25s}
+  .mod-row.sel .cb{background:var(--brand);border-color:var(--brand)}
+  .mod-row.sel{background:rgba(132,89,246,.13)}
+  .mod-row.gone{opacity:.18;filter:grayscale(1)}
+  .mod-row .name{flex:1}
+  .mod-side{flex:1;display:flex;flex-direction:column;gap:14px}
+  .ban-box{padding:18px;display:flex;flex-direction:column;gap:12px;font-size:14.5px}
+  .ban-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:rgba(255,107,122,.08);border:1px solid rgba(255,107,122,.25)}
+  .shield{font-size:34px;filter:drop-shadow(0 0 14px rgba(255,107,122,.6))}
+  .toggle{width:52px;height:28px;border-radius:99px;background:rgba(255,255,255,.12);position:relative;transition:background .3s;flex-shrink:0}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .3s}
+  .toggle.on{background:var(--green)}
+  .toggle.on::after{left:27px}
+
+  /* ===== 场景10 优化矩阵 ===== */
+  #s10 .matrix{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;width:100%}
+  .mini{padding:20px 22px;display:flex;flex-direction:column;gap:10px;font-size:14.5px;line-height:1.55}
+  .mini .ico{font-size:30px}
+  .mini b{font-size:17px}
+  .mini span{color:var(--dim)}
+
+  /* ===== 场景11 在线更新 ===== */
+  #s11 .upd-wrap{width:100%;display:flex;justify-content:center}
+  .upd-card{width:620px;padding:34px 38px;display:flex;flex-direction:column;gap:20px;align-items:center;text-align:center}
+  .upd-vers{display:flex;align-items:center;gap:22px;font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+  .upd-bar{width:100%;height:14px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+  .upd-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--brand),var(--cyan));border-radius:99px}
+  .upd-log{font-family:"SF Mono",Consolas,monospace;font-size:13.5px;color:var(--dim);width:100%;text-align:left;
+    background:rgba(0,0,0,.3);border-radius:12px;padding:14px 16px;line-height:1.9;min-height:120px}
+  .upd-log .ok{color:var(--green)}
+
+  /* ===== 场景12 结尾 ===== */
+  #s12{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:26px}
+  #s12 .big-ver{font-size:88px;font-weight:800;background:linear-gradient(120deg,var(--brand2),var(--cyan));
+    -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 30px rgba(132,89,246,.5))}
+  #s12 .kw{display:flex;gap:18px;font-size:19px}
+  #s12 .cta{font-size:16px;color:var(--dim);letter-spacing:.2em}
+
+  #hint{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:60;font-size:13px;color:var(--dim);
+    background:rgba(10,8,22,.6);padding:6px 16px;border-radius:99px;border:1px solid var(--line);transition:opacity .6s;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="canvas">
+    <div class="grid-bg"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <!-- 顶部 HUD -->
+    <div id="hud-top">
+      <div id="chapter-name"><span class="dot"></span><span id="chapter-text">开场</span></div>
+      <div id="version-badge">DMP v3.1.7 → v3.2.3</div>
+    </div>
+    <div id="hint">空格 播放/暂停 · ←/→ 快退/快进 · F 全屏 · 点击进度条跳转</div>
+
+    <!-- 场景 1：开场 -->
+    <section class="scene" id="s1">
+      <div class="ring"></div><div class="ring r2"></div>
+      <div class="logo pop" data-t="0.05">DMP</div>
+      <div class="ver-flow">
+        <span class="ver-old pop" data-t="0.3">v3.1.7</span>
+        <span class="ver-arrow pop" data-t="0.5">⟶</span>
+        <span class="ver-new pop" data-t="0.68">v3.2.3</span>
+      </div>
+      <div class="tagline pop" data-t="0.85">饥荒联机版 · 服务器管理平台 · 更新一览</div>
+    </section>
+
+    <!-- 场景 2：功能总览 -->
+    <section class="scene" id="s2">
+      <span class="scene-tag">OVERVIEW</span>
+      <h2>这几个月，<span class="hl">DMP</span> 都更新了什么？</h2>
+      <div class="sub">从 AI 排障到游戏大厅，从云端同步到极致精简版 —— 只讲你能感知到的变化。</div>
+      <div class="feat-cloud">
+        <div class="feat star" style="left:6%;top:30%"><span class="ico">🩺</span>AI 诊断</div>
+        <div class="feat" style="left:38%;top:24%"><span class="ico">📡</span>游戏大厅</div>
+        <div class="feat" style="left:70%;top:32%"><span class="ico">🗺️</span>地图重做</div>
+        <div class="feat" style="left:14%;top:56%"><span class="ico">☁️</span>云账号同步</div>
+        <div class="feat star" style="left:46%;top:52%"><span class="ico">🪶</span>DMP Lite</div>
+        <div class="feat" style="left:74%;top:60%"><span class="ico">📈</span>房间级监控</div>
+        <div class="feat" style="left:8%;top:80%"><span class="ico">🧩</span>模组管理增强</div>
+        <div class="feat" style="left:40%;top:78%"><span class="ico">✨</span>十余项体验优化</div>
+        <div class="feat" style="left:70%;top:84%"><span class="ico">⬆️</span>在线更新 DMP</div>
+      </div>
+    </section>
+
+    <!-- 场景 3：AI 诊断 -->
+    <section class="scene" id="s3">
+      <span class="scene-tag">NEW · 重磅</span>
+      <h2><span class="hl">AI 诊断</span>：服务器出问题，先问它</h2>
+      <div class="sub">描述症状，AI 自动读取日志、检查配置、分析模组，给出带风险等级的修复建议，确认后一键执行。</div>
+      <div class="stage-body">
+        <div class="diag-wrap">
+          <div class="diag-left">
+            <div class="card diag-input">
+              <span class="type-label">问题描述</span><br>
+              <span id="diag-text"></span><span class="caret"></span>
+            </div>
+            <div class="diag-scope">
+              <span>诊断范围</span>
+              <span class="chip purple" id="diag-scope-room">🏠 当前房间</span>
+              <span class="chip" id="diag-scope-platform">🖥️ 整个平台</span>
+              <span style="flex:1"></span>
+              <span class="btn" id="diag-btn">✨ 开始诊断</span>
+            </div>
+            <div class="card diag-steps" id="diag-steps">
+              <div class="diag-head">🔍 诊断进度 <span class="chip cyan" style="margin-left:auto">SSE 实时推送</span></div>
+              <div class="row" data-step="0"><span class="st">○</span> 读取游戏日志与世界状态</div>
+              <div class="row" data-step="1"><span class="st">○</span> 检查房间与世界配置</div>
+              <div class="row" data-step="2"><span class="st">○</span> 分析模组加载与报错堆栈</div>
+              <div class="row" data-step="3"><span class="st">○</span> 生成诊断报告</div>
+            </div>
+          </div>
+          <div class="diag-right">
+            <div class="card diag-report pop" id="diag-report">
+              <h4>📋 诊断报告</h4>
+              <div>洞穴世界 <b>server.ini</b> 中端口与地面世界冲突，且一个模组配置存在非法值。</div>
+              <div style="margin-top:10px;display:flex;gap:8px">
+                <span class="chip yellow">证据 4 条</span>
+                <span class="chip cyan">已关联日志来源</span>
+              </div>
+            </div>
+            <div class="diag-action pop" id="diag-action">
+              <span>🛠️ 修复端口冲突并回退非法模组配置</span>
+              <span class="chip green">低风险</span>
+              <span class="chip green">可撤销</span>
+              <span style="flex:1"></span>
+              <span class="btn" id="diag-apply">应用</span>
+            </div>
+            <div class="diag-action applied pop" id="diag-done">
+              <span class="tick">✔</span> 已应用并完成验证 · 世界可正常启动
+              <span style="flex:1"></span><span class="chip green">已验证</span>
+            </div>
+            <div class="card pop" id="diag-extra" style="padding:14px 18px;font-size:14px;color:var(--dim)">
+              🗂️ 支持诊断历史回看 · 断线自动重连 · 随时取消 · 管理员可切换平台级诊断
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 4：游戏大厅 -->
+    <section class="scene" id="s4">
+      <span class="scene-tag">NEW</span>
+      <h2><span class="hl">游戏大厅</span>：全服房间，一屏看尽</h2>
+      <div class="sub">不用进游戏，就能浏览公开服务器：区域、季节、人数、玩法、是否有模组 / 密码，点开还能看详情。</div>
+      <div class="stage-body">
+        <div class="lobby-wrap">
+          <div class="card radar-box">
+            <div class="radar">
+              <div class="sweep"></div>
+              <span class="blip" style="left:32%;top:28%"></span>
+              <span class="blip" style="left:64%;top:44%"></span>
+              <span class="blip" style="left:46%;top:66%"></span>
+              <span class="blip" style="left:74%;top:22%"></span>
+            </div>
+            <div style="font-size:15px;color:var(--dim)">正在扫描 <b style="color:var(--cyan)" id="lobby-count">0</b> 个房间…</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+              <span class="chip cyan">亚太</span><span class="chip cyan">东南亚</span>
+              <span class="chip">美东</span><span class="chip">欧洲</span>
+            </div>
+          </div>
+          <div class="card lobby-table">
+            <div class="lobby-toolbar">
+              <div class="lobby-search">🔍 <span id="lobby-kw"></span></div>
+              <span class="chip purple">区域 ×2</span>
+              <span style="flex:1"></span>
+              
+              <span class="btn ghost" style="padding:7px 16px;font-size:13px">⟳ 刷新</span>
+            </div>
+            <div class="lrow" data-r="0"><span class="name">🏔️ 长秋季养老服 · 萌新友好</span><span class="chip cyan">亚太</span><span class="chip green">允许加入</span><span>🧩</span><span class="cnt">6/12</span></div>
+            <div class="lrow" data-r="1"><span class="name">⚔️ PVP 无尽模式 · 高手局</span><span class="chip cyan">亚太</span><span class="chip yellow">需要密码</span><span>🧩</span><span class="cnt">11/16</span></div>
+            <div class="lrow" data-r="2"><span class="name">🌲 纯净生存 · 无模组</span><span class="chip cyan">东南亚</span><span class="chip green">允许加入</span><span>🚫</span><span class="cnt">3/8</span></div>
+            <div class="lrow" data-r="3"><span class="name">🌋 海难火山 · 多世界</span><span class="chip cyan">亚太</span><span class="chip red">已暂停</span><span>🧩</span><span class="cnt">8/64</span></div>
+            <div class="lrow" data-r="4"><span class="name">❄️ 冬之王挑战 · 速通</span><span class="chip cyan">东南亚</span><span class="chip green">允许加入</span><span>🧩</span><span class="cnt">2/6</span></div>
+          </div>
+          <div class="card lobby-detail pop" id="lobby-detail">
+            <b>🏔️ 长秋季养老服</b>
+            <div style="color:var(--dim);margin-top:6px">127.0.0.1:10999</div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+              <span>🌍 区域：亚太 · 专线服务器</span>
+              <span>🍂 季节：秋季 第 12 天</span>
+              <span>👥 在线：6 / 12 人</span>
+              <span>🧩 启用 23 个模组</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 5：地图重做 -->
+    <section class="scene" id="s5">
+      <span class="scene-tag">REWRITE</span>
+      <h2>地图预览<span class="hl">全面重做</span></h2>
+      <div class="sub">全新渲染管线：地块加载更快、缩放拖动更顺滑，资源与地形一目了然。</div>
+      <div class="stage-body">
+        <div class="map-wrap">
+          <div class="card map-view">
+            <div class="map-canvas" id="map-canvas"></div>
+            <span class="map-marker" id="mk1" style="left:34%;top:38%"></span>
+            <span class="map-marker" id="mk2" style="left:62%;top:60%;background:var(--cyan);box-shadow:0 0 0 5px rgba(55,200,232,.25),0 0 16px var(--cyan)"></span>
+            <span class="map-marker" id="mk3" style="left:48%;top:24%;background:var(--green);box-shadow:0 0 0 5px rgba(67,214,138,.25),0 0 16px var(--green)"></span>
+            <div class="chip purple" style="position:absolute;left:16px;top:16px">🔍 缩放 125% · 流畅拖动</div>
+          </div>
+          <div class="card map-side">
+            <b style="font-size:17px">🗺️ 世界地图</b>
+            <div class="stat pop" data-t="0"><span>地块渲染</span><b style="color:var(--green)" id="tile-stat">0</b></div>
+            <div class="stat pop" data-t="1"><span>生物群落</span><b style="color:var(--brand2)">8 种</b></div>
+            <div class="stat pop" data-t="2"><span>资源标记</span><b style="color:var(--yellow)">实时同步</b></div>
+            <div class="stat pop" data-t="3"><span>渲染耗时</span><b style="color:var(--cyan)">↓ 明显更快</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 6：云账号 + 收藏同步 -->
+    <section class="scene" id="s6">
+      <span class="scene-tag">NEW · CLOUD</span>
+      <h2><span class="hl">DMP 云账号</span>：收藏配置，随身带走</h2>
+      <div class="sub">注册即送 4 个云端同步额度。房间收藏（游戏配置快照）可在本地与云端双向同步，换机器也能一键还原开服。</div>
+      <div class="stage-body">
+        <div class="cloud-wrap">
+          <div class="card cloud-card">
+            <h4>💾 本地收藏</h4>
+            <div class="fav-row">🔖 长期档 · 精灵公主 <span class="chip">4 世界</span></div>
+            <div class="fav-row">🔖 萌新养老模板 <span class="chip">2 世界</span></div>
+            <div class="fav-row">🔖 PVP 竞技场 <span class="chip">3 世界</span></div>
+            <span class="btn" style="align-self:flex-start" id="upload-btn">⬆ 上传到云端</span>
+          </div>
+          <div class="sync-lane">
+            <div class="sync-arrow a1"><span class="sync-dot" id="dot-up"></span></div>
+            <span class="sync-label" style="top:22px">上传</span>
+            <div class="sync-arrow a2"><span class="sync-dot" id="dot-down" style="background:var(--green);box-shadow:0 0 12px var(--green)"></span></div>
+            <span class="sync-label" style="bottom:22px">下载</span>
+          </div>
+          <div class="card cloud-card">
+            <h4>☁️ DMP 云</h4>
+            <span class="chip purple quota" id="quota-chip">基础版 · 已用 1/4</span>
+            <div class="fav-row">☁️ 长期档 · 精灵公主 <span class="tick">✔ 已同步</span></div>
+            <div class="fav-row pop" id="cloud-new">☁️ 萌新养老模板 <span class="chip green">刚上传</span></div>
+            <div class="fav-row" style="opacity:.55">☁️ 空位 ×2</div>
+            <div style="font-size:13px;color:var(--dim)">AES 加密存储 · 配额实时显示</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 7：DMP Lite -->
+    <section class="scene" id="s7">
+      <span class="scene-tag">NEW · 重磅</span>
+      <h2><span class="hl">DMP Lite</span>：10MB 内存的开服面板</h2>
+      <div class="sub">全新精简版：单二进制 + 前端目录，只保留核心开服能力，小内存机器也能轻松跑。</div>
+      <div class="stage-body">
+        <div class="lite-wrap">
+          <div class="card lite-card pop" id="lite-card">
+            <div style="font-size:44px">🪶</div>
+            <div class="lite-num" style="color:var(--green)"><span id="lite-mem">0</span><small> MB</small></div>
+            <b>DMP Lite 精简版</b>
+            <div class="mem-bar"><div class="mem-fill lite" id="lite-bar"></div></div>
+            <div class="lite-list">
+              <span><span class="tick">✔</span> 房间 / 世界 / 模组管理</span>
+              <span><span class="tick">✔</span> 游戏与聊天日志</span>
+              <span><span class="tick">✔</span> 在线玩家与定时任务</span>
+              <span><span class="tick">✔</span> 独立登录 · 脚本一键更新</span>
+            </div>
+          </div>
+          <div class="lite-vs">VS</div>
+          <div class="card lite-card pop" id="full-card">
+            <div style="font-size:44px">🚀</div>
+            <div class="lite-num" style="color:var(--brand2)"><span id="full-mem">0</span><small> MB+</small></div>
+            <b>DMP 完整版</b>
+            <div class="mem-bar"><div class="mem-fill full" id="full-bar"></div></div>
+            <div class="lite-list">
+              <span><span class="tick">✔</span> 多房间 · 多用户 · 权限</span>
+              <span><span class="tick">✔</span> AI 对话 / AI 诊断</span>
+              <span><span class="tick">✔</span> 云同步 · 备份 · Webhook</span>
+              <span><span class="tick">✔</span> 监控图表 · 全套工具</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 8：房间级监控 -->
+    <section class="scene" id="s8">
+      <span class="scene-tag">NEW</span>
+      <h2><span class="hl">房间级监控</span>：每个世界的资源曲线</h2>
+      <div class="sub">CPU、内存占用、内存大小、磁盘，按世界分开展示，支持 1 ~ 24 小时时间范围切换。</div>
+      <div class="stage-body">
+        <div class="mon-wrap">
+          <div class="mon-tabs">
+            <span class="mon-tab cur" id="tab-forest">🌲 森林</span>
+            <span class="mon-tab" id="tab-cave">🕳️ 洞穴</span>
+            <span style="flex:1"></span>
+            <span class="range-chip cur">1 小时</span><span class="range-chip">3 小时</span><span class="range-chip">24 小时</span>
+          </div>
+          <div class="mon-charts">
+            <div class="card mon-chart">
+              <h5>CPU 使用率 <b id="cpu-now">--%</b></h5>
+              <svg viewBox="0 0 400 160" preserveAspectRatio="none">
+                <path id="cpu-area" fill="rgba(132,89,246,.18)" d=""/>
+                <path id="cpu-line" fill="none" stroke="#a983ff" stroke-width="2.5" stroke-linecap="round" d=""/>
+              </svg>
+            </div>
+            <div class="card mon-chart">
+              <h5>内存占用 <b id="mem-now">--%</b></h5>
+              <svg viewBox="0 0 400 160" preserveAspectRatio="none">
+                <path id="mem-area" fill="rgba(67,214,138,.16)" d=""/>
+                <path id="mem-line" fill="none" stroke="#43d68a" stroke-width="2.5" stroke-linecap="round" d=""/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 9：模组管理 -->
+    <section class="scene" id="s9">
+      <span class="scene-tag">ENHANCED</span>
+      <h2>模组管理，<span class="hl">批量与安全</span>都安排上了</h2>
+      <div class="sub">批量删除、全局封禁名单、玩家自助更新模组 —— 模组再多也不乱。</div>
+      <div class="stage-body">
+        <div class="mod-wrap">
+          <div class="card mod-list">
+            <div class="diag-head">🧩 已安装模组 <span class="chip purple" id="sel-count" style="margin-left:auto">已选 0 项</span></div>
+            <div class="mod-row" data-m="0"><span class="cb"></span><span class="name">🌟 Global Positions</span><span class="chip">已启用</span></div>
+            <div class="mod-row" data-m="1"><span class="cb"></span><span class="name">📦 Extra Equip Slots</span><span class="chip">已启用</span></div>
+            <div class="mod-row" data-m="2"><span class="cb"></span><span class="name">🗡️ 无效模组 A</span><span class="chip yellow">待清理</span></div>
+            <div class="mod-row" data-m="3"><span class="cb"></span><span class="name">🛡️ 无效模组 B</span><span class="chip yellow">待清理</span></div>
+            <div class="mod-row" data-m="4"><span class="cb"></span><span class="name">🎒 45 格背包</span><span class="chip">已启用</span></div>
+            <div style="display:flex;gap:10px;margin-top:4px">
+              <span class="btn warn pop" id="batch-del" style="font-size:14px;padding:8px 18px">🗑️ 批量删除</span>
+              <span class="chip green pop" id="batch-done" style="align-self:center">✔ 已删除 2 个模组</span>
+            </div>
+          </div>
+          <div class="mod-side">
+            <div class="card ban-box pop" id="ban-box">
+              <b style="font-size:16px;display:flex;align-items:center;gap:8px"><span class="shield">🛡️</span>全局封禁模组</b>
+              <div class="ban-row"><span>2581234567</span><span style="flex:1;color:var(--dim)">恶意崩溃模组</span><span class="chip red">已封禁</span></div>
+              <div class="ban-row"><span>2633456789</span><span style="flex:1;color:var(--dim)">刷物品作弊</span><span class="chip red">已封禁</span></div>
+              <div style="font-size:13px;color:var(--dim)">所有用户可见 · 保存后全房间生效</div>
+            </div>
+            <div class="card ban-box pop" id="player-mod">
+              <div style="display:flex;align-items:center;gap:12px">
+                <b style="font-size:16px;flex:1">🙋 允许玩家更新模组</b>
+                <span class="toggle" id="player-toggle"></span>
+              </div>
+              <div style="font-size:13px;color:var(--dim)" id="player-toggle-text">开启后，游戏内玩家也能更新房间模组，无需管理员</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 10：体验优化矩阵 -->
+    <section class="scene" id="s10">
+      <span class="scene-tag">POLISH</span>
+      <h2>还有这些，<span class="hl">用起来更顺手</span></h2>
+      <div class="sub">每一次小改动，都是为了让开服这件事更省心。</div>
+      <div class="stage-body">
+        <div class="matrix">
+          <div class="card mini"><span class="ico">🔀</span><b>全局房间切换</b><span>顶部一键切换当前房间，各页面自动跟随刷新</span></div>
+          <div class="card mini"><span class="ico">⌨️</span><b>自定义启动命令</b><span>按房间、按世界配置启动命令前缀，含安全校验</span></div>
+          <div class="card mini"><span class="ico">📜</span><b>日志实时推送</b><span>日志与游戏安装 / 更新进度改用 SSE，边看边滚</span></div>
+          <div class="card mini"><span class="ico">🌗</span><b>主题跟随系统</b><span>明暗模式自动切换，也可以循环手动选择</span></div>
+          <div class="card mini"><span class="ico">👥</span><b>玩家信息更丰富</b><span>在线玩家展示更多信息，房间人数上限提升至 64</span></div>
+          <div class="card mini"><span class="ico">🤖</span><b>AI 配置更灵活</b><span>闲聊开关、向量维度配置，索引构建可随时取消</span></div>
+          <div class="card mini"><span class="ico">📱</span><b>移动端体验</b><span>聊天、菜单、布局多处适配，手机上也能管服务器</span></div>
+          <div class="card mini"><span class="ico">🚪</span><b>关游戏更快</b><span>关闭等待优化到 10 秒，关启不再干等</span></div>
+          <div class="card mini"><span class="ico">🔐</span><b>登录与安全</b><span>登录页焕新、登录限流优化、多项安全加固</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 11：在线更新 -->
+    <section class="scene" id="s11">
+      <span class="scene-tag">NEW</span>
+      <h2>DMP 自己，也能<span class="hl">在线更新</span>了</h2>
+      <div class="sub">检测到新版本后，在页面上点一下，自动下载、校验、替换、重启 —— 不用再 SSH 上去手动折腾。</div>
+      <div class="stage-body">
+        <div class="upd-wrap">
+          <div class="card upd-card">
+            <div class="upd-vers">
+              <span style="color:var(--dim)">v3.2.2</span>
+              <span style="color:var(--cyan);font-size:24px">⟶</span>
+              <span style="color:var(--green)">v3.2.3</span>
+            </div>
+            <div class="upd-bar"><div class="upd-fill" id="upd-fill"></div></div>
+            <div class="upd-log" id="upd-log"></div>
+            <div style="display:flex;gap:12px">
+              <span class="btn pop" id="upd-btn">⬆️ 立即更新</span>
+              <span class="chip green pop" id="upd-done">✔ 更新完成 · 已自动重启</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 场景 12：结尾 -->
+    <section class="scene" id="s12">
+      <div class="scene-tag pop" data-t="0.1">RELEASE</div>
+      <div class="big-ver pop" data-t="0.25">v3.2.3</div>
+      <div class="kw">
+        <span class="chip purple pop" data-t="0.45" style="font-size:17px;padding:8px 20px">🩺 更智能</span>
+        <span class="chip cyan pop" data-t="0.58" style="font-size:17px;padding:8px 20px">☁️ 更自由</span>
+        <span class="chip green pop" data-t="0.71" style="font-size:17px;padding:8px 20px">🪶 更轻巧</span>
+      </div>
+      <div class="cta pop" data-t="0.85">DMP · 饥荒管理平台 · 开源免费</div>
+    </section>
+
+    <!-- 字幕 -->
+    <div id="caption"></div>
+    <!-- 划场 -->
+    <div id="wipe"></div>
+
+    <!-- 控制条 -->
+    <div id="controls">
+      <button class="ctl-btn" id="btn-play" title="播放/暂停 (空格)">▶</button>
+      <button class="ctl-btn" id="btn-restart" title="从头播放">⏮</button>
+      <div id="chapter-dots" title="章节跳转"></div>
+      <div id="seek" title="点击 / 拖动跳转"><div id="seek-fill"></div><div id="seek-thumb"></div></div>
+      <div id="time-label">00:00 / 00:00</div>
+      <button class="ctl-btn" id="btn-fs" title="全屏 (F)">⛶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ 时间轴引擎 ============ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const ease = t => 1 - Math.pow(1 - t, 3);
+const seg = (p, a, b) => clamp01((p - a) / (b - a)); // 场景内分段进度
+
+/* ---------- 场景定义 ---------- */
+const scenes = [];
+
+/* 场景1 开场 */
+scenes.push({
+  id:"s1", name:"开场", dur:7,
+  captions:[[0,"DMP 饥荒管理平台"],[2.5,"从 v3.1.7 到 v3.2.3"],[4.5,"一次版本，满满的更新"]],
+  update(p){
+    $$("#s1 .pop").forEach(el=>el.classList.toggle("on", p >= +el.dataset.t));
+  }
+});
+
+/* 场景2 总览 */
+scenes.push({
+  id:"s2", name:"功能总览", dur:8,
+  captions:[[0,"这几个月，DMP 更新了什么？"],[3,"只讲你能感知到的变化"]],
+  update(p){
+    $$("#s2 .feat").forEach((el,i)=>{
+      const on = p > 0.12 + i*0.09;
+      el.classList.toggle("pop", !on); el.classList.toggle("on", on);
+      el.classList.add("pop"); if(on) el.classList.add("on");
+    });
+  }
+});
+
+/* 场景3 AI诊断 */
+const DIAG_TEXT = "洞穴世界启动失败，玩家一直进不去，帮看看是哪里出了问题…";
+scenes.push({
+  id:"s3", name:"AI 诊断", dur:22,
+  captions:[[0,"新增 AI 诊断：把症状告诉它"],[5,"自动读日志、查配置、分析模组"],[10,"给出带风险等级的修复建议"],[15,"确认后一键应用，并自动验证"],[18.5,"还支持历史回看、断线重连与平台级诊断"]],
+  update(p, lt){
+    // 打字机 0.02~0.28
+    const n = Math.floor(ease(seg(p,0.02,0.28)) * DIAG_TEXT.length);
+    $("#diag-text").textContent = DIAG_TEXT.slice(0, n);
+    // 按钮脉冲然后点击
+    const btn = $("#diag-btn");
+    btn.classList.toggle("pulse", p>0.28 && p<0.36);
+    btn.style.transform = (p>=0.36&&p<0.4) ? "scale(.9)" : "";
+    btn.textContent = p>=0.4 ? "⏳ 诊断中…" : "✨ 开始诊断";
+    if(p>=0.75) btn.textContent = "↻ 重新诊断";
+    // 步骤（只在状态变化时重写，避免 spinner 动画被每帧重置）
+    const stepTimes = [0.40, 0.47, 0.54, 0.62];
+    $$("#diag-steps .row").forEach((row,i)=>{
+      const t0 = stepTimes[i];
+      const state = p > t0+0.055 ? "done" : (p > t0 ? "run" : "wait");
+      row.classList.toggle("on", p > t0-0.02);
+      if(row.dataset.state === state) return;
+      row.dataset.state = state;
+      const st = row.querySelector(".st");
+      if(state==="done") st.innerHTML='<span class="tick">✔</span>';
+      else if(state==="run") st.innerHTML='<span class="spin"></span>';
+      else st.textContent="○";
+    });
+    // 报告与操作
+    $("#diag-report").classList.toggle("on", p>0.68);
+    // 修复建议出现后不消失，应用完成的结果在其下方追加显示
+    $("#diag-action").classList.toggle("on", p>0.72);
+    const applied = p>=0.86;
+    $("#diag-done").classList.toggle("on", applied);
+    // 应用后建议卡片变为“已选”的高亮色调
+    $("#diag-action").style.borderColor = applied ? "rgba(132,89,246,.6)" : "";
+    $("#diag-action").style.background = applied ? "rgba(132,89,246,.1)" : "";
+    $("#diag-extra").classList.toggle("on", p>0.9);
+    $("#diag-scope-platform").classList.toggle("purple", p>0.9);
+    $("#diag-scope-room").classList.toggle("purple", p<=0.9);
+  }
+});
+
+/* 场景4 游戏大厅 */
+scenes.push({
+  id:"s4", name:"游戏大厅", dur:16,
+  captions:[[0,"新增游戏大厅：不进游戏也能找房间"],[4,"按区域、关键词筛选，人数实时可见"],[8,"点开详情：季节、玩法、模组、密码一目了然"],[12,"内置缓存，刷得快也不打挤"]],
+  update(p, lt){
+    $$("#s4 .blip").forEach((b,i)=>b.classList.toggle("on", p>0.08+i*0.05));
+    $("#lobby-count").textContent = Math.floor(ease(seg(p,0.05,0.3))*16728);
+    // 关键词打字
+    const kw = "无尽 养老"; const n = Math.floor(seg(p,0.2,0.4)*kw.length);
+    $("#lobby-kw").textContent = kw.slice(0,n) || "搜索房间名 / 地址…";
+    // 行出现
+    $$("#s4 .lrow").forEach((r,i)=>{
+      const on = p > 0.34 + i*0.06;
+      r.style.opacity = on?1:0; r.style.transform = on?"none":"translateX(-24px)";
+      r.style.transition = "all .45s cubic-bezier(.22,1,.36,1)";
+      r.classList.toggle("hl", i===0 && p>0.62);
+    });
+    // 人数数字小幅跳动
+    if(p>0.5){
+      const cnt = $$("#s4 .lrow .cnt");
+      const bases = [[6,12],[11,16],[3,8],[8,64],[2,6]];
+      cnt.forEach((c,i)=>{
+        const [a,b]=bases[i];
+        const wob = Math.round(Math.sin(lt*1.6+i*2)*1)*(i%2===0?1:0);
+        c.textContent = Math.max(0,a+wob)+"/"+b;
+      });
+    }
+    $("#lobby-detail").classList.toggle("on", p>0.66);
+  }
+});
+
+/* 场景5 地图重做 */
+const TILE_COLORS = ["#3f6d43","#4a7a48","#8a7a4a","#5b8a5a","#7a6a9a","#4a6a8a","#6a5a3a","#3a5a6a"];
+scenes.push({
+  id:"s5", name:"地图重做", dur:13,
+  captions:[[0,"地图预览全面重做"],[3,"地块秒开，缩放拖动都顺滑"],[7,"地形、群落、资源标记实时呈现"]],
+  init(){
+    const box = $("#map-canvas"); box.innerHTML="";
+    for(let i=0;i<70;i++){
+      const t=document.createElement("div"); t.className="tile";
+      const c = TILE_COLORS[(i*7+Math.floor(i/10)*3)%TILE_COLORS.length];
+      t.style.background=`linear-gradient(140deg,${c},${c}cc)`;
+      box.appendChild(t);
+    }
+  },
+  update(p, lt){
+    const tiles = $$("#map-canvas .tile");
+    const showN = Math.floor(ease(seg(p,0.05,0.55))*tiles.length);
+    tiles.forEach((t,i)=>t.classList.toggle("on", i<showN));
+    $("#tile-stat").textContent = showN+" 块";
+    $$("#s5 .stat").forEach((s,i)=>s.classList.toggle("on", p>0.5+i*0.07));
+    ["#mk1","#mk2","#mk3"].forEach((id,i)=>$(id).classList.toggle("on", p>0.62+i*0.08));
+    // 缓慢平移 + 缩放呼吸
+    const z = 1 + 0.1*Math.sin(seg(p,0.3,1)*Math.PI);
+    const x = -3 + 6*seg(p,0.3,0.9), y = -2 + 4*Math.sin(seg(p,0.3,0.9)*Math.PI);
+    $("#map-canvas").style.transform = `translate(${x}%,${y}%) scale(${z})`;
+    $("#map-canvas").style.transition = "transform .12s linear";
+  }
+});
+
+/* 场景6 云同步 */
+scenes.push({
+  id:"s6", name:"云账号同步", dur:15,
+  captions:[[0,"DMP 云账号来了，注册即送 4 个同步额度"],[4.5,"房间收藏等于一整套游戏配置快照"],[8,"本地与云端双向同步，AES 加密存储"],[11.5,"换台机器，一键还原你的开服模板"]],
+  update(p, lt){
+    // 上传粒子 0.15~0.55
+    const up = seg(p,0.15,0.55);
+    $("#dot-up").style.left = (up*100)+"%";
+    $("#dot-up").style.opacity = (p>0.15&&p<0.6)?1:0;
+    const down = seg(p,0.55,0.9);
+    $("#dot-down").style.left = (100-down*100)+"%";
+    $("#dot-down").style.opacity = (p>0.55&&p<0.95)?1:0;
+    $("#upload-btn").classList.toggle("pulse", p>0.05&&p<0.15);
+    $("#cloud-new").classList.toggle("on", p>0.56);
+    const used = p>0.56 ? 2 : 1;
+    $("#quota-chip").textContent = `基础版 · 已用 ${used}/4`;
+  }
+});
+
+/* 场景7 Lite */
+scenes.push({
+  id:"s7", name:"DMP Lite", dur:14,
+  captions:[[0,"全新 DMP Lite 精简版"],[3.5,"内存占用只有 10MB 左右"],[7,"核心开服功能一个不少"],[10,"小内存服务器，也能拥有漂亮的管理面板"]],
+  update(p){
+    $("#lite-card").classList.toggle("on", p>0.06);
+    $("#full-card").classList.toggle("on", p>0.16);
+    const lm = Math.round(ease(seg(p,0.2,0.6))*10);
+    const fm = Math.round(ease(seg(p,0.25,0.7))*40);
+    $("#lite-mem").textContent = lm; $("#full-mem").textContent = fm;
+    $("#lite-bar").style.width = (lm/120*100)+"%";
+    $("#full-bar").style.width = (fm/120*100)+"%";
+  }
+});
+
+/* 场景8 房间监控 */
+function makeSeries(seed, n){
+  const pts=[]; let v=40+seed*10;
+  for(let i=0;i<n;i++){ v += (Math.sin(i*.7+seed*3)*6 + Math.cos(i*.31+seed)*4); v=Math.max(8,Math.min(95,v)); pts.push(v); }
+  return pts;
+}
+function pathFrom(pts, w, h, max){
+  return pts.map((v,i)=>{
+    const x = i/(pts.length-1)*w, y = h - (v/max)*h;
+    return (i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
+  }).join(" ");
+}
+const CPU = makeSeries(1, 40), MEM = makeSeries(2, 40);
+scenes.push({
+  id:"s8", name:"房间级监控", dur:13,
+  captions:[[0,"新增房间级监控"],[3.5,"按世界分开看 CPU 与内存曲线"],[7,"1 到 24 小时，时间范围随意切"]],
+  init(){
+    $("#cpu-line").setAttribute("d", pathFrom(CPU,400,150,100));
+    $("#mem-line").setAttribute("d", pathFrom(MEM,400,150,100));
+    $("#cpu-area").setAttribute("d", pathFrom(CPU,400,150,100)+"L400,150L0,150Z");
+    $("#mem-area").setAttribute("d", pathFrom(MEM,400,150,100)+"L400,150L0,150Z");
+    ["#cpu-line","#mem-line","#cpu-area","#mem-area"].forEach(id=>{
+      const el=$(id); const len = el.getTotalLength ? el.getTotalLength() : 2000;
+      el.dataset.len = len;
+    });
+  },
+  update(p, lt){
+    const draw = ease(seg(p,0.1,0.75));
+    [["#cpu-line",CPU],["#mem-line",MEM]].forEach(([id,pts])=>{
+      const el=$(id); const len = el.getTotalLength();
+      el.style.strokeDasharray = len; el.style.strokeDashoffset = len*(1-draw);
+    });
+    [["#cpu-area",draw],["#mem-area",draw]].forEach(([id,d])=>{ $(id).style.opacity = d; });
+    const idx = Math.min(CPU.length-1, Math.floor(draw*CPU.length));
+    if(draw>0.05){
+      $("#cpu-now").textContent = CPU[idx].toFixed(1)+"%";
+      $("#mem-now").textContent = MEM[idx].toFixed(1)+"%";
+    } else { $("#cpu-now").textContent="--%"; $("#mem-now").textContent="--%"; }
+    // 世界 Tab 切换演示
+    const cave = p>0.6;
+    $("#tab-forest").classList.toggle("cur", !cave);
+    $("#tab-cave").classList.toggle("cur", cave);
+    // 时间范围 chip
+    const chips = $$("#s8 .range-chip");
+    chips.forEach((c,i)=>c.classList.toggle("cur", (p<0.45&&i===0)||(p>=0.45&&p<0.8&&i===1)||(p>=0.8&&i===2)));
+  }
+});
+
+/* 场景9 模组管理 */
+scenes.push({
+  id:"s9", name:"模组管理", dur:15,
+  captions:[[0,"模组管理也更强了"],[3.5,"勾选多个模组，一键批量删除"],[7,"全局封禁名单：恶意模组全房间拦截"],[10.5,"还能放开权限，让玩家自己更新模组"]],
+  update(p){
+    const rows = $$("#s9 .mod-row");
+    // 勾选 2、3 号（过气模组）
+    const sel = [false,false,p>0.15,p>0.25,false];
+    let count = 0;
+    rows.forEach((r,i)=>{
+      const s = sel[i]; if(s) count++;
+      r.classList.toggle("sel", s);
+      r.querySelector(".cb").textContent = s ? "✔" : "";
+      r.classList.toggle("gone", p>0.45 && (i===2||i===3));
+    });
+    $("#sel-count").textContent = "已选 "+count+" 项";
+    $("#batch-del").classList.toggle("on", p>0.32 && p<0.5);
+    $("#batch-del").classList.toggle("pulse", p>0.32 && p<0.42);
+    $("#batch-done").classList.toggle("on", p>0.48);
+    $("#ban-box").classList.toggle("on", p>0.55);
+    $("#player-mod").classList.toggle("on", p>0.68);
+    const on = p>0.8;
+    $("#player-toggle").classList.toggle("on", on);
+    $("#player-toggle-text").textContent = on
+      ? "已开启：普通用户也能更新房间模组" : "开启后，普通用户也能更新房间模组，无需管理员";
+  }
+});
+
+/* 场景10 优化矩阵 */
+scenes.push({
+  id:"s10", name:"体验优化", dur:13,
+  captions:[[0,"还有一连串顺手的小优化"],[4,"启动命令、实时日志、主题跟随、64 人上限…"],[8,"每一处，都让开服更省心"]],
+  update(p){
+    $$("#s10 .mini").forEach((el,i)=>{
+      const on = p > 0.06 + i*0.075;
+      el.classList.toggle("pop", false); el.style.opacity = on?1:0;
+      el.style.transform = on?"none":"translateY(22px) scale(.95)";
+      el.style.transition = "all .5s cubic-bezier(.22,1.3,.36,1)";
+    });
+  }
+});
+
+/* 场景11 在线更新 */
+const UPD_LINES = [
+  [0.30,"$ dmp update","#9a94c4"],
+  [0.36,"✓ 发现新版本 v3.2.3","ok"],
+  [0.46,"✓ 下载完成 · 校验通过","ok"],
+  [0.58,"✓ 已备份当前版本","ok"],
+  [0.70,"✓ 替换二进制 · 重启服务","ok"],
+  [0.82,"🎉 更新完成，欢迎使用 v3.2.3","ok"],
+];
+scenes.push({
+  id:"s11", name:"在线更新", dur:13,
+  captions:[[0,"最后，DMP 自己也能在线更新了"],[4,"检测新版本，一键下载、校验、替换、重启"],[8,"告别 SSH 手动升级"]],
+  update(p){
+    $("#upd-btn").classList.toggle("on", p>0.06 && p<0.3);
+    $("#upd-btn").classList.toggle("pulse", p>0.06 && p<0.28);
+    $("#upd-fill").style.width = (ease(seg(p,0.3,0.85))*100)+"%";
+    const log = $("#upd-log"); let html = "";
+    UPD_LINES.forEach(([t,text,cls])=>{
+      if(p>t) html += `<div class="${cls==="ok"?"ok":""}">${text}</div>`;
+    });
+    log.innerHTML = html;
+    $("#upd-done").classList.toggle("on", p>0.86);
+  }
+});
+
+/* 场景12 结尾 */
+scenes.push({
+  id:"s12", name:"结尾", dur:8,
+  captions:[[0,"DMP v3.2.3 现已发布"],[3,"更智能 · 更自由 · 更轻巧"],[5.5,"感谢每一位使用和反馈的你"]],
+  update(p){
+    $$("#s12 .pop").forEach(el=>el.classList.toggle("on", p>=+el.dataset.t));
+  }
+});
+
+/* ---------- 初始化 ---------- */
+scenes.forEach(s=>{ s.el = document.getElementById(s.id); if(s.init) s.init(); });
+const total = scenes.reduce((a,s)=>a+s.dur,0);
+const starts = []; { let acc=0; scenes.forEach(s=>{starts.push(acc); acc+=s.dur;}); }
+
+let t = 0, playing = false, last = 0, curScene = -1;
+const captionEl = $("#caption"), chapterEl = $("#chapter-text");
+const dotsBox = $("#chapter-dots");
+scenes.forEach((s,i)=>{
+  const d=document.createElement("i"); d.title=s.name;
+  d.addEventListener("click",()=>{ t = starts[i]+0.01; curScene=-1; render(); });
+  dotsBox.appendChild(d);
+});
+
+function fmt(sec){
+  sec = Math.max(0, Math.round(sec));
+  return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");
+}
+
+function render(){
+  // 定位场景
+  let idx = scenes.length-1;
+  for(let i=0;i<scenes.length;i++){ if(t < starts[i]+scenes[i].dur){ idx=i; break; } }
+  if(t>=total) idx = scenes.length-1;
+  const s = scenes[idx], lt = t - starts[idx], p = clamp01(lt/s.dur);
+
+  if(idx!==curScene){
+    scenes.forEach((sc,i)=>sc.el.classList.toggle("active", i===idx));
+    chapterEl.textContent = (idx+1)+"/"+scenes.length+" · "+s.name;
+    $$("#chapter-dots i").forEach((d,i)=>d.classList.toggle("cur", i===idx));
+    const w = $("#wipe"); w.classList.remove("go"); void w.offsetWidth; w.classList.add("go");
+    curScene = idx;
+  }
+  s.update(p, lt);
+
+  // 字幕
+  let cap = "";
+  for(const [ct,txt] of s.captions){ if(lt>=ct) cap = txt; }
+  if(cap){ captionEl.innerHTML = cap; captionEl.classList.add("on"); }
+  else captionEl.classList.remove("on");
+
+  // 进度
+  const pct = (t/total*100);
+  $("#seek-fill").style.width = pct+"%";
+  $("#seek-thumb").style.left = pct+"%";
+  $("#time-label").textContent = fmt(t)+" / "+fmt(total);
+}
+
+function frame(now){
+  if(playing){
+    t += (now-last)/1000;
+    if(t>=total){ t=total; playing=false; $("#btn-play").textContent="▶"; }
+  }
+  last = now;
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 控制 ---------- */
+function setPlay(v){
+  playing = v;
+  $("#btn-play").textContent = v ? "⏸" : "▶";
+  if(v && t>=total) t = 0;
+}
+$("#btn-play").addEventListener("click",()=>setPlay(!playing));
+$("#btn-restart").addEventListener("click",()=>{ t=0; curScene=-1; setPlay(true); });
+$("#btn-fs").addEventListener("click",()=>{
+  const c = $("#canvas");
+  if(document.fullscreenElement) document.exitFullscreen();
+  else c.requestFullscreen && c.requestFullscreen();
+});
+const seek = $("#seek");
+function seekTo(ev){
+  const r = seek.getBoundingClientRect();
+  t = clamp01((ev.clientX-r.left)/r.width)*total; curScene=-1; render();
+}
+let dragging=false;
+seek.addEventListener("pointerdown",e=>{dragging=true;seekTo(e);seek.setPointerCapture(e.pointerId);});
+seek.addEventListener("pointermove",e=>{ if(dragging) seekTo(e); });
+seek.addEventListener("pointerup",()=>dragging=false);
+
+document.addEventListener("keydown",e=>{
+  if(e.code==="Space"){ e.preventDefault(); setPlay(!playing); }
+  else if(e.code==="ArrowRight"){ t=Math.min(total,t+5); curScene=-1; render(); }
+  else if(e.code==="ArrowLeft"){ t=Math.max(0,t-5); curScene=-1; render(); }
+  else if(e.key==="f"||e.key==="F"){ $("#btn-fs").click(); }
+  else if(e.key==="h"||e.key==="H"){ $("#controls").classList.toggle("hidden-ui"); $("#hint").style.opacity=0; }
+});
+
+// 录屏模式：提示 5 秒后消失；全屏时鼠标静止 1 秒隐藏光标和控制条（暂停也生效），窗口模式播放中 2.6 秒隐藏控制条
+setTimeout(()=>{ $("#hint").style.opacity=0; }, 5000);
+let idleTimer=null;
+function refreshIdleUI(){
+  $("#controls").classList.remove("hidden-ui");
+  $("#canvas").classList.remove("hide-cursor");
+  clearTimeout(idleTimer);
+  const fs = !!document.fullscreenElement;
+  idleTimer = setTimeout(()=>{
+    if(fs || playing){
+      $("#controls").classList.add("hidden-ui");
+      $("#canvas").classList.add("hide-cursor");
+    }
+  }, fs ? 1000 : 2600);
+}
+document.addEventListener("mousemove", refreshIdleUI);
+document.addEventListener("fullscreenchange", refreshIdleUI);
+
+render();
+requestAnimationFrame(frame);
+// 支持 ?t=秒数 直接定位到任意时间点（便于调试与分段录屏）
+const startAt = parseFloat(new URLSearchParams(location.search).get("t"));
+if(!Number.isNaN(startAt) && startAt > 0){
+  t = Math.min(total - 0.01, startAt);
+  curScene = -1;
+  render();
+  setPlay(true);
+}else{
+  // 自动开始播放（若浏览器允许；用户可随时空格暂停）
+  setPlay(true);
+}
+</script>
+</body>
+</html>
